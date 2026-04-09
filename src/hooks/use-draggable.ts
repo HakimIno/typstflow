@@ -1,6 +1,7 @@
 'use client';
 
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
 import { type RefObject, useEffect, useState } from 'react';
 
 interface DraggableOptions {
@@ -8,6 +9,7 @@ interface DraggableOptions {
   zoneKey: string;
   ref: RefObject<HTMLDivElement | null>;
   dragHandleRef?: RefObject<HTMLDivElement | null>;
+  previewRef?: RefObject<HTMLDivElement | null>;
   onDragStart?: () => void;
   onDragEnd?: () => void;
 }
@@ -17,6 +19,7 @@ export function useDraggable({
   zoneKey,
   ref,
   dragHandleRef,
+  previewRef,
   onDragStart,
   onDragEnd,
 }: DraggableOptions) {
@@ -39,6 +42,25 @@ export function useDraggable({
           dragOffsetY: input.clientY - rect.top,
         };
       },
+      onGenerateDragPreview: ({ nativeSetDragImage }) => {
+        const previewEl = previewRef?.current;
+        if (previewEl) {
+          setCustomNativeDragPreview({
+            nativeSetDragImage,
+            render: ({ container }) => {
+              // Creating a simple clean clone for the preview
+              const clone = previewEl.cloneNode(true) as HTMLDivElement;
+              clone.style.width = `${previewEl.offsetWidth}px`;
+              clone.style.height = `${previewEl.offsetHeight}px`;
+              clone.style.opacity = '0.8';
+              clone.style.backgroundColor = 'white';
+              clone.style.border = '1px solid #2563eb';
+              clone.style.boxShadow = '0 10px 15px -3px rgb(0 0 0 / 0.1)';
+              container.appendChild(clone);
+            },
+          });
+        }
+      },
       onDragStart: () => {
         setIsDragging(true);
         onDragStart?.();
@@ -48,7 +70,7 @@ export function useDraggable({
         onDragEnd?.();
       },
     });
-  }, [id, zoneKey, ref, dragHandleRef, onDragStart, onDragEnd]);
+  }, [id, zoneKey, ref, dragHandleRef, previewRef, onDragStart, onDragEnd]);
 
   return { isDragging };
 }

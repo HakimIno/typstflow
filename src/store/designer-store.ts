@@ -72,7 +72,7 @@ const BLANK_SCHEMA: LayoutSchema = {
 
 export const useDesignerStore = create<DesignerState>((set) => ({
   schema: BLANK_SCHEMA,
-  viewMode: 'split',
+  viewMode: 'design',
   activeTab: 'palette',
   selectedComponentId: null,
   selectedZone: null,
@@ -102,38 +102,39 @@ export const useDesignerStore = create<DesignerState>((set) => ({
   },
 
   addComponent: (zoneKey, component) =>
-    set((state) => ({
-      schema: {
-        ...state.schema,
-        zones: {
-          ...state.schema.zones,
-          [zoneKey]: {
-            ...state.schema.zones[zoneKey],
-            components: [
-              ...state.schema.zones[zoneKey].components,
-              {
-                ...component,
-                x: component.x ?? 10,
-                y: component.y ?? 10,
-                width: component.width ?? 100,
-                height: component.height ?? 20,
-              },
-            ],
+    set((state) => {
+      const id = `${component.type}-${Math.random().toString(36).substring(2, 9)}`;
+      const newComponent = {
+        ...component,
+        id,
+        x: component.x ?? 10,
+        y: component.y ?? 10,
+        width: component.width ?? 100,
+        height: component.height ?? 20,
+      };
+      return {
+        schema: {
+          ...state.schema,
+          zones: {
+            ...state.schema.zones,
+            [zoneKey]: {
+              ...state.schema.zones[zoneKey],
+              components: [...state.schema.zones[zoneKey].components, newComponent],
+            },
           },
         },
-      },
-    })),
+      };
+    }),
 
   updateComponent: (id, updates) =>
     set((state) => {
       const newZones = { ...state.schema.zones };
       for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-        const index = newZones[key].components.findIndex((c) => c.id === id);
+        const components = [...newZones[key].components];
+        const index = components.findIndex((c) => c.id === id);
         if (index !== -1) {
-          newZones[key].components[index] = {
-            ...newZones[key].components[index],
-            ...updates,
-          } as any;
+          components[index] = { ...components[index], ...updates } as ComponentNode;
+          newZones[key].components = components;
           break;
         }
       }

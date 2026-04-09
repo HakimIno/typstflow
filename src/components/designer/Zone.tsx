@@ -131,7 +131,7 @@ export function Zone({ zoneKey, label, components }: ZoneProps) {
         </div>
       </div>
 
-      <div ref={contentRef} className="relative flex-1 bg-white/40">
+      <div ref={contentRef} className="relative flex-1 bg-white/40 overflow-visible">
         {/* Ghost Frame Preview */}
         {dragGhost && (
           <div

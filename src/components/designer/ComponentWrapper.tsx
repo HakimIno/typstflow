@@ -31,6 +31,7 @@ const RESIZE_HANDLES = [
 export function ComponentWrapper({ component, zoneKey }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
   const selectComponent = useDesignerStore((state) => state.selectComponent);
@@ -70,6 +71,7 @@ export function ComponentWrapper({ component, zoneKey }: Props) {
     zoneKey,
     ref,
     dragHandleRef,
+    previewRef,
   });
 
   const handleDuplicate = (e: React.MouseEvent) => {
@@ -133,24 +135,25 @@ export function ComponentWrapper({ component, zoneKey }: Props) {
       }}
       style={{
         position: 'absolute',
-        top: y,
-        left: x,
-        width: width,
-        height: height,
+        top: `${y}px`,
+        left: `${x}px`,
+        width: `${width}px`,
+        height: `${height}px`,
         outline: 'none',
+        boxSizing: 'border-box',
       }}
       className={clsx(
-        'transition-none cursor-default select-none bg-white',
+        'transition-none cursor-default select-none group focus:outline-none',
         isSelected
-          ? 'z-50 ring-1 ring-blue-600 shadow-lg'
-          : 'hover:bg-slate-50 border border-transparent hover:border-slate-300 z-10',
-        isDragging && 'opacity-30',
-        isResizing && 'ring-2 ring-blue-500 z-[100]'
+          ? 'z-50 ring-2 ring-blue-500 ring-inset shadow-md bg-white'
+          : 'z-10 bg-white/50 hover:bg-white hover:ring-1 hover:ring-slate-300 ring-inset',
+        isDragging && 'opacity-0',
+        isResizing && 'ring-2 ring-blue-600 shadow-lg z-[100]'
       )}
     >
-      {/* Industrial Drag Handle & Actions */}
-      {isSelected && (
-        <div className="absolute -top-6 right-0 flex items-center bg-blue-600 border border-blue-700 rounded-t-sm px-1 h-6">
+      {/* Precision Action Bar */}
+      {isSelected && !isDragging && (
+        <div className="absolute -top-7 right-0 flex items-center bg-blue-600 border border-blue-700 rounded-md px-0.5 h-6.5 shadow-sm animate-in fade-in slide-in-from-bottom-1 duration-200">
           <div
             ref={dragHandleRef}
             className="p-1 hover:bg-blue-500 text-white cursor-grab active:cursor-grabbing border-r border-blue-700/50"
@@ -179,19 +182,20 @@ export function ComponentWrapper({ component, zoneKey }: Props) {
         </div>
       )}
 
-      {/* Logic Extracted: Preview Component */}
-      <div className="w-full h-full relative overflow-hidden pointer-events-none">
+      {/* Content Preview */}
+      <div ref={previewRef} className="w-full h-full relative pointer-events-none">
         <ComponentPreview component={component} />
       </div>
 
       {/* Resizing Handles */}
       {isSelected &&
+        !isDragging &&
         RESIZE_HANDLES.map((handle) => (
           <div
             key={handle}
             onMouseDown={(e) => handleResizeStart(e, handle)}
             className={clsx(
-              'absolute w-2 h-2 bg-white border border-blue-600 z-50 shadow-sm',
+              'absolute w-1.5 h-1.5 bg-white border border-blue-600 z-50 shadow-sm',
               handle === 'top-left' &&
                 'top-0 left-0 -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize',
               handle === 'top-center' &&

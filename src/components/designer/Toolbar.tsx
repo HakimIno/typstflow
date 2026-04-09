@@ -64,36 +64,51 @@ export function Toolbar() {
           </div>
 
           <nav className="flex items-center gap-1">
-            {['File', 'Edit', 'Insert', 'Format', 'View', 'Tools', 'Help'].map((item) => (
+            {['File', 'Edit'].map((item) => (
               <button
                 key={item}
                 type="button"
-                className="px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700 hover:text-white rounded-sm transition-colors"
+                className="px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700 hover:text-white rounded-sm"
+              >
+                {item}
+              </button>
+            ))}
+            <div className="relative group">
+              <button
+                type="button"
+                className="px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700 hover:text-white rounded-sm"
+              >
+                Insert
+              </button>
+              <div className="absolute top-full left-0 hidden group-hover:block bg-slate-800 border border-slate-700 shadow-xl rounded-md py-1 min-w-[160px] z-[100]">
+                <button
+                  type="button"
+                  onClick={() => (useDesignerStore.getState() as any).loadTemplate('invoice')}
+                  className="w-full text-left px-3 py-1.5 text-[10px] text-slate-300 hover:bg-blue-600 hover:text-white flex items-center gap-2"
+                >
+                  <Layout className="w-3 h-3" />
+                  Standard Invoice Template
+                </button>
+                <div className="h-px bg-slate-700 my-1" />
+                <button
+                  type="button"
+                  onClick={() => (useDesignerStore.getState() as any).loadTemplate('blank')}
+                  className="w-full text-left px-3 py-1.5 text-[10px] text-red-400 hover:bg-red-600 hover:text-white"
+                >
+                  Clear Canvas
+                </button>
+              </div>
+            </div>
+            {['Format', 'View', 'Tools', 'Help'].map((item) => (
+              <button
+                key={item}
+                type="button"
+                className="px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700 hover:text-white rounded-sm"
               >
                 {item}
               </button>
             ))}
           </nav>
-
-          <div className="h-4 w-px bg-slate-700 mx-2" />
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => (useDesignerStore.getState() as any).loadTemplate('invoice')}
-              className="px-2 py-1 text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-sm hover:bg-blue-500/40 transition-all flex items-center gap-1"
-            >
-              <Layout className="w-3 h-3" />
-              Load Invoice Template
-            </button>
-            <button
-              type="button"
-              onClick={() => (useDesignerStore.getState() as any).loadTemplate('blank')}
-              className="px-2 py-1 text-[10px] font-bold bg-slate-700 text-slate-300 border border-slate-600 rounded-sm hover:bg-slate-600 transition-all"
-            >
-              Clear Canvas
-            </button>
-          </div>
         </div>
 
         {/* View Switcher */}

@@ -11,11 +11,12 @@ export function ComponentPreview({ component }: Props) {
     case 'text':
       return (
         <div
-          className="leading-tight text-slate-800 p-1 w-full h-full"
+          className="leading-tight text-slate-900 w-full h-full overflow-hidden"
           style={{
             fontSize: `${component.style?.fontSize || 10}pt`,
             fontWeight: component.style?.fontWeight || 'regular',
             textAlign: component.align || 'left',
+            wordBreak: 'break-word',
           }}
         >
           {component.content || 'Empty text'}
@@ -44,14 +45,14 @@ export function ComponentPreview({ component }: Props) {
       );
     case 'spacer':
       return (
-        <div className="bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center text-[9px] italic text-slate-400 w-full h-full">
-          Spacer: {(component as any).height}mm
+        <div className="bg-slate-50/50 border border-dashed border-slate-200 flex items-center justify-center text-[8px] font-bold uppercase tracking-tight text-slate-400 w-full h-full">
+          Spacer ({(component as any).height}mm)
         </div>
       );
     case 'image':
       return (
-        <div className="w-full h-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-400 font-bold uppercase italic overflow-hidden">
-          Image Placeholder
+        <div className="w-full h-full bg-slate-50 border border-slate-200 flex items-center justify-center text-[9px] text-slate-400 font-bold uppercase tracking-widest overflow-hidden">
+          Image Component
         </div>
       );
     case 'barcode':

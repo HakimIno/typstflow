@@ -36,7 +36,7 @@ export class TypstGenerator {
     return `#set page(
   paper: "${page.size.toLowerCase()}",
   flipped: ${page.orientation === 'landscape'},
-  margin: (top: ${page.margin.top}, bottom: ${page.margin.bottom}, left: ${page.margin.left}, right: ${page.margin.right}),
+  margin: (top: ${page.margin.top}, bottom: ${page.margin.bottom}, left: ${page.margin.left}, right: ${page.margin.right})
 )\n`;
   }
 
@@ -120,7 +120,7 @@ export class TypstGenerator {
 
     if (comp.showHeader) {
       t += '    fill: (x, y) => if y == 0 { blue.lighten(92%) },\n';
-      t += `    ${comp.columns.map((c: any) => `[*${c.header}*]`).join(', ')},\n`;
+      t += `    ${comp.columns.map((c: any) => `[*${c.header}*]`).join(', ')}\n`;
     }
 
     const path = comp.dataSource?.replace(/\{\{(.+?)\}\}/g, '$1').trim();
@@ -132,7 +132,7 @@ export class TypstGenerator {
           const val = this.resolvePath(c.field, item);
           return `[${val !== undefined ? this.escapeTypst(String(val)) : ''}]`;
         })
-        .join(', ')},\n`;
+        .join(', ')}\n`;
     }
 
     return `${t})`;
