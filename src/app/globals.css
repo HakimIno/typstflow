@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --color-industrial-bg: #f8fafc;
+  --color-industrial-panel: #ffffff;
+  --color-industrial-border: #cbd5e1;
+  --color-industrial-text: #334155;
+  --color-industrial-accent: #005fb8; /* Windows Blue */
+  --color-industrial-hover: #f1f5f9;
+  
+  --shadow-none: none;
+  --radius-none: 0;
+  --radius-sm: 0.125rem;
+}
+
+:root {
+  --background: #f1f5f9;
+  --foreground: #334155;
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)] antialiased font-sans;
+    font-size: 12px;
+  }
+}
+
+@layer components {
+  .pro-panel {
+    @apply bg-white border border-slate-300 shadow-none;
+  }
+  
+  .pro-button {
+    @apply px-3 py-1.5 border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors disabled:opacity-50 text-[11px] font-medium;
+  }
+  
+  .pro-input {
+    @apply w-full px-2 py-1 border border-slate-300 text-[12px] focus:border-blue-500 focus:outline-none bg-white;
+  }
+
+  .pro-label {
+    @apply text-[10px] font-bold text-slate-500 uppercase tracking-tight mb-1 block;
+  }
+
+  /* Compact Rulers */
+  .ruler-container {
+    @apply relative bg-slate-200 overflow-hidden select-none;
+  }
+
+  /* Grid Pattern for Canvas */
+  .pro-grid {
+    background-image: radial-gradient(#cbd5e1 0.5px, transparent 0.5px);
+    background-size: 5mm 5mm;
+  }
+}

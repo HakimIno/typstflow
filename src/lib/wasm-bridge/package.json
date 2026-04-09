@@ -1,0 +1,15 @@
+{
+  "name": "typst-bridge",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "typst_bridge_bg.wasm",
+    "typst_bridge.js",
+    "typst_bridge.d.ts"
+  ],
+  "main": "typst_bridge.js",
+  "types": "typst_bridge.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
