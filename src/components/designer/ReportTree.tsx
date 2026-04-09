@@ -6,7 +6,9 @@ import { Layers, Type, Table, Image, Minus, ChevronRight, ChevronDown } from 'lu
 import { clsx } from 'clsx';
 
 export function ReportTree() {
-  const { schema, selectedComponentId, selectComponent } = useDesignerStore();
+  const schema = useDesignerStore(state => state.schema);
+  const selectedComponentId = useDesignerStore(state => state.selectedComponentId);
+  const selectComponent = useDesignerStore(state => state.selectComponent);
 
   const zones: (keyof typeof schema.zones)[] = ['header', 'body', 'footer'];
 

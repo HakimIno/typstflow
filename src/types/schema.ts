@@ -62,6 +62,10 @@ export interface BaseComponent {
   id: string
   type: ComponentNode['type']
   visible?: BindingExpression        // "{{invoice.show_discount}}"
+  x?: number                         // Absolute X in mm
+  y?: number                         // Absolute Y in mm
+  width?: number                     // Width in mm
+  height?: number                    // Height in mm
   marginTop?: string
   marginBottom?: string
   pageBreakBefore?: boolean

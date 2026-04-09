@@ -6,13 +6,18 @@ import { AlignLeft, AlignCenter, AlignRight, Bold, Trash2, Sliders, Layers } fro
 import { clsx } from 'clsx';
 
 export function PropertiesPanel() {
-  const { schema, selectedComponentId, updateComponent, removeComponent } = useDesignerStore();
-
-  const selectedComponent = selectedComponentId
-    ? Object.values(schema.zones)
-        .flatMap((z) => z.components)
-        .find((c) => c.id === selectedComponentId)
-    : null;
+  const selectedComponentId = useDesignerStore(state => state.selectedComponentId);
+  const updateComponent = useDesignerStore(state => state.updateComponent);
+  const removeComponent = useDesignerStore(state => state.removeComponent);
+  
+  const selectedComponent = useDesignerStore(state => {
+    if (!state.selectedComponentId) return null;
+    for (const zone of Object.values(state.schema.zones)) {
+      const found = zone.components.find(c => c.id === state.selectedComponentId);
+      if (found) return found;
+    }
+    return null;
+  });
 
   if (!selectedComponent) {
     return (
@@ -155,19 +160,43 @@ export function PropertiesPanel() {
           </PropertyRow>
         </section>
 
-        {selectedComponent.type === 'spacer' && (
-           <section>
-              <SectionHeader label="Geometry" />
-              <PropertyRow label="Height">
-                <input
-                  type="text"
-                  value={(selectedComponent as any).height || '1cm'}
-                  onChange={(e) => updateComponent(selectedComponent.id, { height: e.target.value } as any)}
-                  className="pro-input h-6 px-1"
-                />
-              </PropertyRow>
-           </section>
-        )}
+        <section>
+          <SectionHeader label="Geometry (mm)" />
+          <div className="grid grid-cols-2">
+            <PropertyRow label="X Pos">
+              <input
+                type="number"
+                value={selectedComponent.x || 0}
+                onChange={(e) => updateComponent(selectedComponent.id, { x: parseFloat(e.target.value) || 0 })}
+                className="pro-input h-6 px-1 w-full"
+              />
+            </PropertyRow>
+            <PropertyRow label="Y Pos">
+              <input
+                type="number"
+                value={selectedComponent.y || 0}
+                onChange={(e) => updateComponent(selectedComponent.id, { y: parseFloat(e.target.value) || 0 })}
+                className="pro-input h-6 px-1 w-full"
+              />
+            </PropertyRow>
+            <PropertyRow label="Width">
+              <input
+                type="number"
+                value={selectedComponent.width || 0}
+                onChange={(e) => updateComponent(selectedComponent.id, { width: parseFloat(e.target.value) || 0 })}
+                className="pro-input h-6 px-1 w-full"
+              />
+            </PropertyRow>
+            <PropertyRow label="Height">
+              <input
+                type="number"
+                value={selectedComponent.height || 0}
+                onChange={(e) => updateComponent(selectedComponent.id, { height: parseFloat(e.target.value) || 0 })}
+                className="pro-input h-6 px-1 w-full"
+              />
+            </PropertyRow>
+          </div>
+        </section>
       </div>
 
       <div className="p-2 border-t border-slate-300 bg-slate-100">

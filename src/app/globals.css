@@ -47,9 +47,15 @@
     @apply relative bg-slate-200 overflow-hidden select-none;
   }
 
-  /* Grid Pattern for Canvas */
+  /* Engineering Grid Pattern for Canvas */
   .pro-grid {
-    background-image: radial-gradient(#cbd5e1 0.5px, transparent 0.5px);
-    background-size: 5mm 5mm;
+    background-color: #ffffff;
+    background-image: 
+      linear-gradient(#f1f5f9 1px, transparent 1px),
+      linear-gradient(90deg, #f1f5f9 1px, transparent 1px),
+      linear-gradient(#cbd5e1 1px, transparent 1px),
+      linear-gradient(90deg, #cbd5e1 1px, transparent 1px);
+    background-size: 2mm 2mm, 2mm 2mm, 10mm 10mm, 10mm 10mm;
+    background-position: -1px -1px;
   }
 }

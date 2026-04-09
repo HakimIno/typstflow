@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
 import { FileText, Play, Loader2, AlertTriangle, RefreshCw, Cpu } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -8,34 +8,58 @@ import { renderToSvg } from '@/lib/typst-wasm';
 import { schemaToTypst } from '@/lib/schema-to-typst';
 
 export function PreviewPane() {
-  const { schema, sampleData } = useDesignerStore();
+  // Granular selectors to prevent unnecessary re-renders
+  const schema = useDesignerStore(state => state.schema);
+  const sampleData = useDesignerStore(state => state.sampleData);
+  
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Track the last rendered source to avoid redundant work
+  const lastSourceRef = useRef<string>('');
+
   useEffect(() => {
+    let active = true;
     let timeoutId: NodeJS.Timeout;
 
     const performRender = async () => {
-      setIsRendering(true);
-      setError(null);
       try {
         const typstCode = schemaToTypst(schema, sampleData);
+        
+        // Skip if nothing changed
+        if (typstCode === lastSourceRef.current) return;
+        
+        setIsRendering(true);
+        setError(null);
+        
+        console.log('--- REGENERATING TYPST SOURCE ---');
         const svg = await renderToSvg(typstCode);
+        
+        if (!active) return;
+
+        if (!svg) throw new Error('Engine returned empty SVG');
+        
+        lastSourceRef.current = typstCode;
         setSvgContent(svg);
       } catch (err: any) {
+        if (!active) return;
         console.error('Render error:', err);
         setError(err.message || 'Failed to render Typst');
       } finally {
-        setIsRendering(false);
+        if (active) setIsRendering(false);
       }
     };
 
-    // Debounce to avoid excessive WASM calls
-    timeoutId = setTimeout(performRender, 400);
+    // Low latency debounce - safe now that rendering is off-thread
+    timeoutId = setTimeout(performRender, 200);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      active = false;
+      clearTimeout(timeoutId);
+    };
   }, [schema, sampleData]);
+
 
   return (
     <div className="flex-1 flex flex-col bg-slate-400/20 shadow-inner overflow-hidden relative">

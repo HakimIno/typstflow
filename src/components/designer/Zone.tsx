@@ -7,6 +7,9 @@ import { ComponentWrapper } from './ComponentWrapper';
 import { clsx } from 'clsx';
 import { Layers } from 'lucide-react';
 
+import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { useDesignerStore } from '@/store/designer-store';
+
 interface ZoneProps {
   zoneKey: 'header' | 'body' | 'footer';
   label: string;
@@ -14,48 +17,143 @@ interface ZoneProps {
 }
 
 export function Zone({ zoneKey, label, components }: ZoneProps) {
-  const ref = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
+  const [dragGhost, setDragGhost] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
+  const addComponent = useDesignerStore(state => state.addComponent);
+  const moveComponent = useDesignerStore(state => state.moveComponent);
+
+  const contentRectRef = useRef<DOMRect | null>(null);
 
   useEffect(() => {
-    const el = ref.current;
+    const el = contentRef.current;
     if (!el) return;
+
+    let requestRef: number | null = null;
 
     return dropTargetForElements({
       element: el,
       getData: () => ({ zoneKey }),
-      onDragEnter: () => setIsDraggedOver(true),
-      onDragLeave: () => setIsDraggedOver(false),
-      onDrop: () => setIsDraggedOver(false),
+      onDragEnter: () => {
+        setIsDraggedOver(true);
+        contentRectRef.current = el.getBoundingClientRect();
+      },
+      onDragLeave: () => {
+        setIsDraggedOver(false);
+        setDragGhost(null);
+        contentRectRef.current = null;
+        if (requestRef) cancelAnimationFrame(requestRef);
+      },
+      onDrag: ({ location, source }) => {
+        if (!contentRectRef.current || !location.current) return;
+
+        if (requestRef) cancelAnimationFrame(requestRef);
+        
+        requestRef = requestAnimationFrame(() => {
+          if (!location.current) return; // Re-check inside async callback
+          const rect = contentRectRef.current;
+          if (!rect) return;
+
+          const data = source.data as any;
+          const { x, y } = LayoutEngine.calculateDropPosition(
+            location.current.input.clientX,
+            location.current.input.clientY,
+            rect,
+            data.dragOffsetX || 0,
+            data.dragOffsetY || 0
+          );
+
+          // Get dimensions from source data
+          const w = data.component?.width || data.width || 100;
+          const h = data.component?.height || data.height || 20;
+
+          setDragGhost({ x, y, w, h });
+        });
+      },
+      onDrop: ({ location, source }) => {
+        setIsDraggedOver(false);
+        setDragGhost(null);
+        if (requestRef) cancelAnimationFrame(requestRef);
+        
+        if (!location.current) return;
+        
+        const rect = contentRectRef.current || el.getBoundingClientRect();
+        const data = source.data as any;
+        
+        const { x, y } = LayoutEngine.calculateDropPosition(
+          location.current.input.clientX,
+          location.current.input.clientY,
+          rect,
+          data.dragOffsetX || 0,
+          data.dragOffsetY || 0
+        );
+
+        if (data.type === 'new-component') {
+          addComponent(zoneKey, {
+            ...data.component,
+            id: Math.random().toString(36).substring(7),
+            x, y,
+          });
+        } else if (data.id) {
+          moveComponent(data.id, data.zoneKey, zoneKey, 0, x, y);
+        }
+      },
     });
-  }, [zoneKey]);
+  }, [zoneKey, addComponent, moveComponent]);
 
   return (
     <div
-      ref={ref}
+      ref={containerRef}
       className={clsx(
-        "relative transition-colors border-b border-slate-300 group",
-        isDraggedOver ? "bg-blue-50/30" : "bg-transparent"
+        "relative transition-colors border-b border-slate-300 group min-h-[5cm] flex flex-col",
+        isDraggedOver ? "bg-blue-50/20" : "bg-transparent"
       )}
     >
-      {/* Band Label (Jasper style) */}
+      {/* Horizontal Band Header - Professional Style */}
       <div className={clsx(
-        "absolute left-0 top-0 bottom-0 w-6 flex flex-col items-center py-2 border-r select-none",
+        "h-6 px-3 flex items-center justify-between border-b select-none z-20 transition-all",
         isDraggedOver 
           ? "bg-blue-600 border-blue-700 text-white" 
-          : "bg-slate-100 border-slate-300 text-slate-400 group-hover:bg-slate-200"
+          : "bg-slate-100 border-slate-200 text-slate-500 group-hover:bg-slate-200/80"
       )}>
-        <span className="text-[9px] font-black uppercase [writing-mode:vertical-lr] rotate-180 tracking-widest">{label}</span>
+        <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em]">{label}</span>
+            <div className="h-px w-24 bg-current opacity-10" />
+        </div>
+        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-[8px] font-mono opacity-60">BAND: {zoneKey.toUpperCase()}</span>
+        </div>
       </div>
 
-      <div className="ml-6 flex flex-col min-h-[4cm]">
-        {components.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-300 opacity-40 select-none pointer-events-none p-12">
+      <div ref={contentRef} className="relative flex-1 bg-white/40">
+        {/* Ghost Frame Preview */}
+        {dragGhost && (
+          <div 
+            className="absolute border border-blue-500 bg-blue-500/10 z-40 pointer-events-none transition-none shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+            style={{
+              left: LayoutEngine.mmToPx(dragGhost.x),
+              top: LayoutEngine.mmToPx(dragGhost.y),
+              width: LayoutEngine.mmToPx(dragGhost.w),
+              height: LayoutEngine.mmToPx(dragGhost.h),
+            }}
+          >
+            <div className="absolute -top-4 left-0 bg-blue-500 text-white text-[7px] px-1 font-bold uppercase">
+              {dragGhost.x}mm, {dragGhost.y}mm
+            </div>
+            {/* Visual Crosshair for accuracy */}
+            <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-blue-600" />
+            <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-blue-600" />
+          </div>
+        )}
+
+        {components.length === 0 && !isDraggedOver ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 opacity-40 select-none pointer-events-none p-12">
             <Layers className="w-8 h-8 mb-2" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">{label} - NO CONTENT</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest">DRAG COMPONENTS TO {label}</p>
           </div>
         ) : (
-          <div className="flex flex-col">
+          <div className="absolute inset-0 overflow-visible">
             {components.map((comp) => (
               <ComponentWrapper key={comp.id} component={comp} zoneKey={zoneKey} />
             ))}
