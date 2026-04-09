@@ -29,7 +29,7 @@ self.onmessage = async (e: MessageEvent) => {
     await ensureInit();
     if (!bridge) throw new Error('Worker bridge not initialized');
 
-    let result;
+    let result: any;
     if (type === 'render-svg') {
       result = bridge.render_svg(payload);
     } else if (type === 'render-pdf') {

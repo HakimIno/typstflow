@@ -1,4 +1,4 @@
-import { LayoutSchema, ComponentNode } from '../types/schema';
+import type { ComponentNode, LayoutSchema } from '../types/schema';
 
 /**
  * Phoenix Generator (Stable FIX)
@@ -47,24 +47,27 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>): string
       let t = '#table(\n  columns: (';
       const columns = table.columns || [{ header: 'Column', field: '', width: '1fr' }];
       t += columns.map((c: any) => (c.width || '1fr').replace('*', 'fr')).join(', ');
-      t += '),\n  inset: 7pt, stroke: 0.5pt + gray, fill: (x, y) => if y == 0 { blue.lighten(92%) },\n';
-      
+      t +=
+        '),\n  inset: 7pt, stroke: 0.5pt + gray, fill: (x, y) => if y == 0 { blue.lighten(92%) },\n';
+
       // Headers
-      t += '  ' + columns.map((c: any) => `[*${escapeTypst(c.header || '')}*]`).join(', ') + ',\n';
-      
+      t += `  ${columns.map((c: any) => `[*${escapeTypst(c.header || '')}*]`).join(', ')},\n`;
+
       // Data Rows
       const path = (table.dataSource || '').replace(/\{\{(.+?)\}\}/g, '$1').trim();
       const items = resolvePath(path, data) || [];
       if (Array.isArray(items)) {
-        items.forEach(item => {
-          t += '  ' + columns.map((c: any) => {
-            const val = resolvePath(c.field, item);
-            const cellVal = val !== undefined ? escapeTypst(String(val)) : '';
-            return `[${cellVal}]`;
-          }).join(', ') + ',\n';
-        });
+        for (const item of items) {
+          t += `  ${columns
+            .map((c: any) => {
+              const val = resolvePath(c.field, item);
+              const cellVal = val !== undefined ? escapeTypst(String(val)) : '';
+              return `[${cellVal}]`;
+            })
+            .join(', ')},\n`;
+        }
       }
-      body = t + ')';
+      body = `${t})`;
       break;
     }
     case 'line':
@@ -78,11 +81,10 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>): string
   return `#place(dx: ${x}mm, dy: ${y}mm)[#block(width: ${w}mm, height: ${h}mm, clip: false)[${body}]]\n`;
 }
 
-
 export function schemaToTypst(schema: LayoutSchema, data: Record<string, any>): string {
   const { page } = schema;
-  let typst = `// PHOENIX ENGINE v1.1 STABLE\n`;
-  
+  let typst = '// PHOENIX ENGINE v1.1 STABLE\n';
+
   // Page Setup
   typst += `#set page(
   paper: "${page.size.toLowerCase()}",
@@ -100,12 +102,12 @@ export function schemaToTypst(schema: LayoutSchema, data: Record<string, any>): 
     if (zone.components.length > 0) {
       typst += `\n// ZONE: ${key.toUpperCase()}\n`;
       // We wrap in a block for namespacing but CLIP MUST BE FALSE or UNSET
-      typst += `#block(width: 100%)[\n`;
-      zone.components.forEach(c => {
+      typst += '#block(width: 100%)[\n';
+      for (const c of zone.components) {
         typst += `  ${renderComponent(c, data)}`;
-      });
+      }
       // Add some spacing between bands to prevent overlap if not absolutely positioned
-      typst += `]\n`;
+      typst += ']\n';
     }
   }
 

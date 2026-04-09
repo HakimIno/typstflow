@@ -1,12 +1,15 @@
 // Refactored to use Web Worker for main-thread responsiveness
 let worker: Worker | null = null;
-const pendingRequests = new Map<string, { resolve: Function; reject: Function }>();
+const pendingRequests = new Map<
+  string,
+  { resolve: (value: any) => void; reject: (reason?: any) => void }
+>();
 
 function getWorker(): Worker {
   if (worker) return worker;
 
   worker = new Worker(new URL('./typst-worker.ts', import.meta.url));
-  
+
   worker.onmessage = (e) => {
     const { type, id, payload } = e.data;
     const request = pendingRequests.get(id);
@@ -56,4 +59,3 @@ export async function renderToSvg(mainContent: string): Promise<string> {
 export async function renderToPdf(mainContent: string): Promise<Uint8Array> {
   return callWorker('render-pdf', mainContent);
 }
-

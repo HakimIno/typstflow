@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "TypstFlow - Visual Report Designer",
-  description: "Create premium PDF reports with Typst",
+  title: 'TypstFlow - Visual Report Designer',
+  description: 'Create premium PDF reports with Typst',
 };
 
 export default function RootLayout({
@@ -12,11 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className="h-full antialiased"
-      suppressHydrationWarning
-    >
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full flex flex-col font-sans select-none">{children}</body>
     </html>
   );

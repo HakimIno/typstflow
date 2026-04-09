@@ -2,40 +2,63 @@
 /* eslint-disable */
 
 export class TypstBridge {
-    free(): void;
-    [Symbol.dispose](): void;
-    constructor();
-    render_pdf(source_code: string): Uint8Array;
-    render_svg(source_code: string): string;
+  free(): void;
+  [Symbol.dispose](): void;
+  constructor();
+  render_pdf(source_code: string): Uint8Array;
+  render_svg(source_code: string): string;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
-    readonly memory: WebAssembly.Memory;
-    readonly __wbg_typstbridge_free: (a: number, b: number) => void;
-    readonly typstbridge_new: () => number;
-    readonly typstbridge_render_pdf: (a: number, b: number, c: number) => [number, number, number, number];
-    readonly typstbridge_render_svg: (a: number, b: number, c: number) => [number, number, number, number];
-    readonly qcms_transform_data_rgb_out_lut: (a: number, b: number, c: number, d: number) => void;
-    readonly qcms_transform_data_rgba_out_lut: (a: number, b: number, c: number, d: number) => void;
-    readonly qcms_transform_data_bgra_out_lut: (a: number, b: number, c: number, d: number) => void;
-    readonly qcms_transform_data_rgb_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
-    readonly qcms_transform_data_rgba_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
-    readonly qcms_transform_data_bgra_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
-    readonly qcms_profile_precache_output_transform: (a: number) => void;
-    readonly qcms_transform_release: (a: number) => void;
-    readonly qcms_white_point_sRGB: (a: number) => void;
-    readonly qcms_profile_is_bogus: (a: number) => number;
-    readonly lut_inverse_interp16: (a: number, b: number, c: number) => number;
-    readonly lut_interp_linear16: (a: number, b: number, c: number) => number;
-    readonly qcms_enable_iccv4: () => void;
-    readonly __wbindgen_externrefs: WebAssembly.Table;
-    readonly __wbindgen_malloc: (a: number, b: number) => number;
-    readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
-    readonly __externref_table_dealloc: (a: number) => void;
-    readonly __wbindgen_free: (a: number, b: number, c: number) => void;
-    readonly __wbindgen_start: () => void;
+  readonly memory: WebAssembly.Memory;
+  readonly __wbg_typstbridge_free: (a: number, b: number) => void;
+  readonly typstbridge_new: () => number;
+  readonly typstbridge_render_pdf: (
+    a: number,
+    b: number,
+    c: number
+  ) => [number, number, number, number];
+  readonly typstbridge_render_svg: (
+    a: number,
+    b: number,
+    c: number
+  ) => [number, number, number, number];
+  readonly qcms_transform_data_rgb_out_lut: (a: number, b: number, c: number, d: number) => void;
+  readonly qcms_transform_data_rgba_out_lut: (a: number, b: number, c: number, d: number) => void;
+  readonly qcms_transform_data_bgra_out_lut: (a: number, b: number, c: number, d: number) => void;
+  readonly qcms_transform_data_rgb_out_lut_precache: (
+    a: number,
+    b: number,
+    c: number,
+    d: number
+  ) => void;
+  readonly qcms_transform_data_rgba_out_lut_precache: (
+    a: number,
+    b: number,
+    c: number,
+    d: number
+  ) => void;
+  readonly qcms_transform_data_bgra_out_lut_precache: (
+    a: number,
+    b: number,
+    c: number,
+    d: number
+  ) => void;
+  readonly qcms_profile_precache_output_transform: (a: number) => void;
+  readonly qcms_transform_release: (a: number) => void;
+  readonly qcms_white_point_sRGB: (a: number) => void;
+  readonly qcms_profile_is_bogus: (a: number) => number;
+  readonly lut_inverse_interp16: (a: number, b: number, c: number) => number;
+  readonly lut_interp_linear16: (a: number, b: number, c: number) => number;
+  readonly qcms_enable_iccv4: () => void;
+  readonly __wbindgen_externrefs: WebAssembly.Table;
+  readonly __wbindgen_malloc: (a: number, b: number) => number;
+  readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+  readonly __externref_table_dealloc: (a: number) => void;
+  readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_start: () => void;
 }
 
 export type SyncInitInput = BufferSource | WebAssembly.Module;
@@ -58,4 +81,9 @@ export function initSync(module: { module: SyncInitInput } | SyncInitInput): Ini
  *
  * @returns {Promise<InitOutput>}
  */
-export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;
+export default function __wbg_init(
+  module_or_path?:
+    | { module_or_path: InitInput | Promise<InitInput> }
+    | InitInput
+    | Promise<InitInput>
+): Promise<InitOutput>;

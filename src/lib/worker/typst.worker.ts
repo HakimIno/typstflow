@@ -9,7 +9,7 @@ async function initialize() {
     await init();
     bridge = new TypstBridge();
     self.postMessage({ type: 'READY' });
-  } catch (err) {
+  } catch (_err) {
     self.postMessage({ type: 'ERROR', error: 'Failed to initialize WASM in worker' });
   }
 }
@@ -29,14 +29,18 @@ self.onmessage = async (e: MessageEvent) => {
 
   try {
     switch (type) {
-      case 'RENDER_SVG':
+      case 'RENDER_SVG': {
         const svg = bridge.render_svg(payload);
         self.postMessage({ id, type: 'RENDER_SVG_RESULT', payload: svg });
         break;
-      case 'RENDER_PDF':
+      }
+      case 'RENDER_PDF': {
         const pdf = bridge.render_pdf(payload);
-        self.postMessage({ id, type: 'RENDER_PDF_RESULT', payload: pdf }, { transfer: [pdf.buffer] } as any);
+        self.postMessage({ id, type: 'RENDER_PDF_RESULT', payload: pdf }, {
+          transfer: [pdf.buffer],
+        } as any);
         break;
+      }
     }
   } catch (err: any) {
     self.postMessage({ id, type: 'ERROR', error: err.message || 'Render failed' });

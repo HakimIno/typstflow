@@ -3,14 +3,37 @@
 export const memory: WebAssembly.Memory;
 export const __wbg_typstbridge_free: (a: number, b: number) => void;
 export const typstbridge_new: () => number;
-export const typstbridge_render_pdf: (a: number, b: number, c: number) => [number, number, number, number];
-export const typstbridge_render_svg: (a: number, b: number, c: number) => [number, number, number, number];
+export const typstbridge_render_pdf: (
+  a: number,
+  b: number,
+  c: number
+) => [number, number, number, number];
+export const typstbridge_render_svg: (
+  a: number,
+  b: number,
+  c: number
+) => [number, number, number, number];
 export const qcms_transform_data_rgb_out_lut: (a: number, b: number, c: number, d: number) => void;
 export const qcms_transform_data_rgba_out_lut: (a: number, b: number, c: number, d: number) => void;
 export const qcms_transform_data_bgra_out_lut: (a: number, b: number, c: number, d: number) => void;
-export const qcms_transform_data_rgb_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
-export const qcms_transform_data_rgba_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
-export const qcms_transform_data_bgra_out_lut_precache: (a: number, b: number, c: number, d: number) => void;
+export const qcms_transform_data_rgb_out_lut_precache: (
+  a: number,
+  b: number,
+  c: number,
+  d: number
+) => void;
+export const qcms_transform_data_rgba_out_lut_precache: (
+  a: number,
+  b: number,
+  c: number,
+  d: number
+) => void;
+export const qcms_transform_data_bgra_out_lut_precache: (
+  a: number,
+  b: number,
+  c: number,
+  d: number
+) => void;
 export const qcms_profile_precache_output_transform: (a: number) => void;
 export const qcms_transform_release: (a: number) => void;
 export const qcms_white_point_sRGB: (a: number) => void;

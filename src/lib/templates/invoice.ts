@@ -1,4 +1,4 @@
-import { LayoutSchema } from '../types/schema';
+import type { LayoutSchema } from '../../types/schema';
 
 export const INVOICE_TEMPLATE: LayoutSchema = {
   id: 'professional-invoice',
@@ -9,52 +9,152 @@ export const INVOICE_TEMPLATE: LayoutSchema = {
     orientation: 'portrait',
     margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' },
   },
-  fonts: [
-    { family: 'Sarabun', role: 'body', size: 10, embedded: true },
-  ],
+  fonts: [{ family: 'Sarabun', role: 'body', size: 10, embedded: true }],
   zones: {
-    header: { 
-      id: 'header', 
+    header: {
+      id: 'header',
       components: [
-        { id: 'logo', type: 'text', content: 'TYPSTFLOW', x: 0, y: 0, width: 60, height: 10, style: { fontSize: 18, fontWeight: 'bold' }, align: 'left' },
-        { id: 'title', type: 'text', content: 'INVOICE', x: 120, y: 0, width: 60, height: 10, style: { fontSize: 24, fontWeight: 'bold' }, align: 'right' },
-        { id: 'line1', type: 'line', x: 0, y: 15, width: 180, height: 1 },
-      ] 
-    },
-    body: { 
-      id: 'body', 
-      components: [
-        { id: 'cust-label', type: 'text', content: 'BILL TO:', x: 0, y: 5, width: 50, height: 6, style: { fontSize: 8, fontWeight: 'bold' } },
-        { id: 'cust-name', type: 'text', content: '{{customer.name}}', x: 0, y: 11, width: 80, height: 7, style: { fontSize: 11, fontWeight: 'bold' } },
-        { id: 'cust-addr', type: 'text', content: '{{customer.address}}', x: 0, y: 18, width: 80, height: 15, style: { fontSize: 9 } },
-        
-        { id: 'inv-label', type: 'text', content: 'INVOICE #', x: 130, y: 11, width: 25, height: 6, style: { fontSize: 8, fontWeight: 'bold' }, align: 'right' },
-        { id: 'inv-val', type: 'text', content: '{{invoiceNo}}', x: 155, y: 11, width: 25, height: 6, style: { fontSize: 9 }, align: 'right' },
-        
-        { 
-          id: 'main-table', 
-          type: 'table', 
-          x: 0, y: 40, width: 180, height: 60,
-          dataSource: '{{items}}',
-          showHeader: true,
-          columns: [
-            { header: 'Description', field: 'desc', width: '2fr' },
-            { header: 'Qty', field: 'qty', width: '40pt' },
-            { header: 'Unit Price', field: 'price', width: '70pt' },
-            { header: 'Total', field: 'total', width: '70pt' },
-          ]
+        {
+          id: 'logo',
+          type: 'text',
+          content: 'TYPSTFLOW',
+          x: 0,
+          y: 0,
+          width: 60,
+          height: 10,
+          style: { fontSize: 18, fontWeight: 'bold' },
+          align: 'left',
         },
-        
-        { id: 'total-label', type: 'text', content: 'TOTAL AMOUNT', x: 120, y: 110, width: 30, height: 8, style: { fontSize: 9, fontWeight: 'bold' }, align: 'right' },
-        { id: 'total-val', type: 'text', content: '{{totalAmount}}', x: 150, y: 110, width: 30, height: 8, style: { fontSize: 12, fontWeight: 'bold' }, align: 'right' },
-      ] 
+        {
+          id: 'title',
+          type: 'text',
+          content: 'INVOICE',
+          x: 120,
+          y: 0,
+          width: 60,
+          height: 10,
+          style: { fontSize: 24, fontWeight: 'bold' },
+          align: 'right',
+        },
+        { id: 'line1', type: 'line', x: 0, y: 15, width: 180, height: 1 },
+      ],
     },
-    footer: { 
-      id: 'footer', 
+    body: {
+      id: 'body',
+      components: [
+        {
+          id: 'cust-label',
+          type: 'text',
+          content: 'BILL TO:',
+          x: 0,
+          y: 5,
+          width: 50,
+          height: 6,
+          style: { fontSize: 8, fontWeight: 'bold' },
+        },
+        {
+          id: 'cust-name',
+          type: 'text',
+          content: '{{customer.name}}',
+          x: 0,
+          y: 11,
+          width: 80,
+          height: 7,
+          style: { fontSize: 11, fontWeight: 'bold' },
+        },
+        {
+          id: 'cust-addr',
+          type: 'text',
+          content: '{{customer.address}}',
+          x: 0,
+          y: 18,
+          width: 80,
+          height: 15,
+          style: { fontSize: 9 },
+        },
+
+        {
+          id: 'inv-label',
+          type: 'text',
+          content: 'INVOICE #',
+          x: 130,
+          y: 11,
+          width: 25,
+          height: 6,
+          style: { fontSize: 8, fontWeight: 'bold' },
+          align: 'right',
+        },
+        {
+          id: 'inv-val',
+          type: 'text',
+          content: '{{invoiceNo}}',
+          x: 155,
+          y: 11,
+          width: 25,
+          height: 6,
+          style: { fontSize: 9 },
+          align: 'right',
+        },
+
+        {
+          id: 'main-table',
+          type: 'table',
+          x: 0,
+          y: 40,
+          width: 180,
+          height: 60,
+          dataSource: '{{items}}',
+          style: {},
+          showHeader: true,
+          repeatHeaderOnPage: true,
+          columns: [
+            { id: 'c1', header: 'Description', field: 'desc', width: '2fr' },
+            { id: 'c2', header: 'Qty', field: 'qty', width: '40pt' },
+            { id: 'c3', header: 'Unit Price', field: 'price', width: '70pt' },
+            { id: 'c4', header: 'Total', field: 'total', width: '70pt' },
+          ],
+        },
+
+        {
+          id: 'total-label',
+          type: 'text',
+          content: 'TOTAL AMOUNT',
+          x: 120,
+          y: 110,
+          width: 30,
+          height: 8,
+          style: { fontSize: 9, fontWeight: 'bold' },
+          align: 'right',
+        },
+        {
+          id: 'total-val',
+          type: 'text',
+          content: '{{totalAmount}}',
+          x: 150,
+          y: 110,
+          width: 30,
+          height: 8,
+          style: { fontSize: 12, fontWeight: 'bold' },
+          align: 'right',
+        },
+      ],
+    },
+    footer: {
+      id: 'footer',
       components: [
         { id: 'footer-line', type: 'line', x: 0, y: 0, width: 180, height: 1 },
-        { id: 'thankyou', type: 'text', content: 'Thank you for your business!', x: 0, y: 5, width: 180, height: 10, align: 'center', style: { fontSize: 9, fontStyle: 'italic' } },
-      ] 
+        {
+          id: 'thankyou',
+          type: 'text',
+          content: 'Thank you for your business!',
+          x: 0,
+          y: 5,
+          width: 180,
+          height: 10,
+          align: 'center',
+          style: { fontSize: 9, italic: true },
+        },
+      ],
     },
   },
   variables: [],
@@ -70,12 +170,12 @@ export const INVOICE_SAMPLE_DATA = {
   invoiceNo: 'INV-2024-001',
   customer: {
     name: 'Acme Corporation',
-    address: '123 Business Road, Tech City, 10110'
+    address: '123 Business Road, Tech City, 10110',
   },
   items: [
     { desc: 'Web Design Services', qty: 1, price: '5,000.00', total: '5,000.00' },
     { desc: 'Backend Development', qty: 2, price: '3,500.00', total: '7,000.00' },
     { desc: 'API Integration', qty: 1, price: '2,500.00', total: '2,500.00' },
   ],
-  totalAmount: '14,500.00'
+  totalAmount: '14,500.00',
 };

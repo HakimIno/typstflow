@@ -7,7 +7,7 @@
   --color-industrial-text: #334155;
   --color-industrial-accent: #005fb8; /* Windows Blue */
   --color-industrial-hover: #f1f5f9;
-  
+
   --shadow-none: none;
   --radius-none: 0;
   --radius-sm: 0.125rem;
@@ -29,11 +29,11 @@
   .pro-panel {
     @apply bg-white border border-slate-300 shadow-none;
   }
-  
+
   .pro-button {
     @apply px-3 py-1.5 border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors disabled:opacity-50 text-[11px] font-medium;
   }
-  
+
   .pro-input {
     @apply w-full px-2 py-1 border border-slate-300 text-[12px] focus:border-blue-500 focus:outline-none bg-white;
   }
@@ -50,8 +50,7 @@
   /* Engineering Grid Pattern for Canvas */
   .pro-grid {
     background-color: #ffffff;
-    background-image: 
-      linear-gradient(#f1f5f9 1px, transparent 1px),
+    background-image: linear-gradient(#f1f5f9 1px, transparent 1px),
       linear-gradient(90deg, #f1f5f9 1px, transparent 1px),
       linear-gradient(#cbd5e1 1px, transparent 1px),
       linear-gradient(90deg, #cbd5e1 1px, transparent 1px);

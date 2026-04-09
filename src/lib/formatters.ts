@@ -7,7 +7,7 @@ export const formatTHB = (amount: number): string => {
 
 export const formatThaiDate = (date: string | Date): string => {
   const d = typeof date === 'string' ? new Date(date) : date;
-  if (isNaN(d.getTime())) return 'Invalid Date';
+  if (Number.isNaN(d.getTime())) return 'Invalid Date';
 
   // Thai Buddhist Era (BE) is CE + 543
   return new Intl.DateTimeFormat('th-TH', {
@@ -17,7 +17,7 @@ export const formatThaiDate = (date: string | Date): string => {
   }).format(d);
 };
 
-export const formatNumber = (n: number, decimals: number = 2): string => {
+export const formatNumber = (n: number, decimals = 2): string => {
   return new Intl.NumberFormat('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,

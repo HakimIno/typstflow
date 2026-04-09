@@ -1,36 +1,43 @@
 import { create } from 'zustand';
-import { LayoutSchema, ComponentNode, Zone } from '../types/schema';
-import { INVOICE_TEMPLATE, INVOICE_SAMPLE_DATA } from '../lib/templates/invoice';
+import { INVOICE_SAMPLE_DATA, INVOICE_TEMPLATE } from '../lib/templates/invoice';
+import type { ComponentNode, LayoutSchema } from '../types/schema';
 
 type ZoneKey = 'header' | 'body' | 'footer';
 
 interface DesignerState {
   // Schema
   schema: LayoutSchema;
-  
+
   // App State
   viewMode: 'design' | 'preview' | 'split';
   activeTab: 'palette' | 'outline' | 'data';
-  
+
   // Selection
   selectedComponentId: string | null;
   selectedZone: ZoneKey | null;
-  
+
   // Preview / Data Binding
   sampleData: Record<string, any>;
   previewPages: string[];
   previewStatus: 'idle' | 'compiling' | 'error';
   previewError: string | null;
-  
+
   // History
   history: LayoutSchema[];
   historyIndex: number;
-  
+
   // Actions
   addComponent: (zoneKey: ZoneKey, component: ComponentNode) => void;
   updateComponent: (id: string, updates: Partial<ComponentNode>) => void;
   removeComponent: (id: string) => void;
-  moveComponent: (id: string, fromZone: ZoneKey, toZone: ZoneKey, newIndex: number, x?: number, y?: number) => void;
+  moveComponent: (
+    id: string,
+    fromZone: ZoneKey,
+    toZone: ZoneKey,
+    newIndex: number,
+    x?: number,
+    y?: number
+  ) => void;
   selectComponent: (id: string | null) => void;
   updateSchema: (updates: Partial<LayoutSchema>) => void;
   setSampleData: (data: Record<string, any>) => void;
@@ -48,9 +55,7 @@ const BLANK_SCHEMA: LayoutSchema = {
     orientation: 'portrait',
     margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' },
   },
-  fonts: [
-    { family: 'Sarabun', role: 'body', size: 10, embedded: true },
-  ],
+  fonts: [{ family: 'Sarabun', role: 'body', size: 10, embedded: true }],
   zones: {
     header: { id: 'header', components: [] },
     body: { id: 'body', components: [] },
@@ -80,23 +85,23 @@ export const useDesignerStore = create<DesignerState>((set) => ({
 
   loadTemplate: (name) => {
     if (name === 'invoice') {
-      set({ 
-        schema: INVOICE_TEMPLATE, 
+      set({
+        schema: INVOICE_TEMPLATE,
         sampleData: INVOICE_SAMPLE_DATA,
         history: [INVOICE_TEMPLATE],
-        historyIndex: 0
+        historyIndex: 0,
       });
     } else {
-      set({ 
-        schema: BLANK_SCHEMA, 
+      set({
+        schema: BLANK_SCHEMA,
         sampleData: {},
         history: [BLANK_SCHEMA],
-        historyIndex: 0
+        historyIndex: 0,
       });
     }
   },
 
-  addComponent: (zoneKey, component) => 
+  addComponent: (zoneKey, component) =>
     set((state) => ({
       schema: {
         ...state.schema,
@@ -104,13 +109,16 @@ export const useDesignerStore = create<DesignerState>((set) => ({
           ...state.schema.zones,
           [zoneKey]: {
             ...state.schema.zones[zoneKey],
-            components: [...state.schema.zones[zoneKey].components, {
-               ...component,
-               x: component.x ?? 10,
-               y: component.y ?? 10,
-               width: component.width ?? 100,
-               height: component.height ?? 20,
-            }],
+            components: [
+              ...state.schema.zones[zoneKey].components,
+              {
+                ...component,
+                x: component.x ?? 10,
+                y: component.y ?? 10,
+                width: component.width ?? 100,
+                height: component.height ?? 20,
+              },
+            ],
           },
         },
       },
@@ -122,7 +130,10 @@ export const useDesignerStore = create<DesignerState>((set) => ({
       for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
         const index = newZones[key].components.findIndex((c) => c.id === id);
         if (index !== -1) {
-          newZones[key].components[index] = { ...newZones[key].components[index], ...updates } as any;
+          newZones[key].components[index] = {
+            ...newZones[key].components[index],
+            ...updates,
+          } as any;
           break;
         }
       }
@@ -141,12 +152,12 @@ export const useDesignerStore = create<DesignerState>((set) => ({
   moveComponent: (id, fromZone, toZone, newIndex, x?: number, y?: number) =>
     set((state) => {
       const newZones = { ...state.schema.zones };
-      const component = newZones[fromZone].components.find(c => c.id === id);
+      const component = newZones[fromZone].components.find((c) => c.id === id);
       if (!component) return state;
 
       // Remove from source
-      newZones[fromZone].components = newZones[fromZone].components.filter(c => c.id !== id);
-      
+      newZones[fromZone].components = newZones[fromZone].components.filter((c) => c.id !== id);
+
       // Update coordinates if provided
       const updatedComponent = {
         ...component,
@@ -162,8 +173,7 @@ export const useDesignerStore = create<DesignerState>((set) => ({
 
   selectComponent: (id) => set({ selectedComponentId: id }),
 
-  updateSchema: (updates) =>
-    set((state) => ({ schema: { ...state.schema, ...updates } })),
+  updateSchema: (updates) => set((state) => ({ schema: { ...state.schema, ...updates } })),
 
   setSampleData: (data) => set({ sampleData: data }),
   setViewMode: (mode) => set({ viewMode: mode }),

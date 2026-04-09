@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
-import { Zone } from './Zone';
 import { clsx } from 'clsx';
+import { useEffect, useState } from 'react';
+import { Zone } from './Zone';
 
 export function Canvas() {
-  const schema = useDesignerStore(state => state.schema);
+  const schema = useDesignerStore((state) => state.schema);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -31,21 +31,33 @@ export function Canvas() {
         <div className="w-6 bg-slate-100 border-r border-slate-300 flex-shrink-0 relative overflow-hidden flex flex-col items-end">
           {Array.from({ length: 31 }).map((_, i) => (
             <div key={i} className="flex-shrink-0 h-[1cm] w-3 border-t border-slate-400 relative">
-              <span className="absolute top-1 left-0.5 text-[8px] font-bold text-slate-500 -rotate-90">{i}</span>
+              <span className="absolute top-1 left-0.5 text-[8px] font-bold text-slate-500 -rotate-90">
+                {i}
+              </span>
             </div>
           ))}
         </div>
 
         {/* Professional Drafting Area */}
         <div className="flex-1 p-8 flex justify-center min-h-max bg-slate-300 shadow-inner">
-          <div className={clsx(
-            "w-[21cm] min-h-[29.7cm] bg-white pro-grid border border-slate-400 relative shadow-2xl transition-none",
-            schema.page.orientation === 'landscape' && "w-[29.7cm] min-h-[21cm]"
-          )}>
+          <div
+            className={clsx(
+              'w-[21cm] min-h-[29.7cm] bg-white pro-grid border border-slate-400 relative shadow-2xl transition-none',
+              schema.page.orientation === 'landscape' && 'w-[29.7cm] min-h-[21cm]'
+            )}
+          >
             <div className="flex flex-col gap-0 min-h-full">
-              <Zone zoneKey="header" label="Report Header" components={schema.zones.header.components} />
+              <Zone
+                zoneKey="header"
+                label="Report Header"
+                components={schema.zones.header.components}
+              />
               <Zone zoneKey="body" label="Detail Band" components={schema.zones.body.components} />
-              <Zone zoneKey="footer" label="Page Footer" components={schema.zones.footer.components} />
+              <Zone
+                zoneKey="footer"
+                label="Page Footer"
+                components={schema.zones.footer.components}
+              />
             </div>
           </div>
         </div>
