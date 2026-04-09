@@ -20,9 +20,13 @@ function resolveBinding(expr: string, data: Record<string, any>): string {
 
 function escapeTypst(str: string): string {
   if (!str) return '';
-  // Typst syntax characters: #, *, _, [, ], (, ), {, }, <, >, @, =, /
-  // We need to be careful with backslashes too.
   return str.replace(/([#\*_\[\]\(\)\{\}<>@=\/])/g, '\\$1');
+}
+
+function formatColor(color: string): string {
+  if (!color) return 'none';
+  if (color.startsWith('#')) return `rgb("${color}")`;
+  return color;
 }
 
 function renderComponent(comp: ComponentNode, data: Record<string, any>): string {
@@ -44,11 +48,17 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>): string
     }
     case 'table': {
       const table = comp as any;
+      const style = table.style || {};
+      const headerBg = formatColor(style.headerBackground || 'blue.lighten(92%)');
+      const alternateBg = formatColor(style.alternateRowBackground || 'none');
+      const borderColor = formatColor(style.borderColor || 'gray');
+      const borderWidth = style.borderWidth || '0.5pt';
+
       let t = '#table(\n  columns: (';
       const columns = table.columns || [{ header: 'Column', field: '', width: '1fr' }];
       t += columns.map((c: any) => (c.width || '1fr').replace('*', 'fr')).join(', ');
-      t +=
-        '),\n  inset: 7pt, stroke: 0.5pt + gray, fill: (x, y) => if y == 0 { blue.lighten(92%) },\n';
+      t += `),\n  inset: 7pt, stroke: ${borderWidth} + ${borderColor}, `;
+      t += `fill: (x, y) => if y == 0 { ${headerBg} } else if calc.even(y) { ${alternateBg} } else { none },\n`;
 
       // Headers
       t += `  ${columns.map((c: any) => `[*${escapeTypst(c.header || '')}*]`).join(', ')},\n`;
@@ -71,8 +81,38 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>): string
       break;
     }
     case 'line':
-      body = `#line(length: 100%, stroke: ${(comp as any).thickness || '1pt'} + ${(comp as any).color || 'black'})`;
+      body = `#line(length: 100%, stroke: ${(comp as any).thickness || '1pt'} + ${formatColor((comp as any).color || 'black')})`;
       break;
+    case 'image': {
+      const img = comp as any;
+      const fit = img.fit || 'contain';
+      // In Typst WASM, we usually use paths or we'd need to provide files.
+      // For now, we use the source string.
+      body = `#image("${img.src}", width: 100%, height: 100%, fit: "${fit}")`;
+      break;
+    }
+    case 'spacer':
+      body = `#v(${(comp as any).height || 0}mm, weak: true)`;
+      break;
+    case 'summary-box': {
+      const box = comp as any;
+      let rowsHtml = '';
+      for (const row of box.rows || []) {
+        const val = resolveBinding(row.value || '', data);
+        const isTotal = row.style === 'total';
+        const weight = isTotal ? 'bold' : 'regular';
+        const size = isTotal ? '11pt' : '10pt';
+        rowsHtml += `  [${escapeTypst(row.label)}:], [#text(weight: "${weight}", size: ${size})[${escapeTypst(val)}]],\n`;
+      }
+      body = `#table(columns: (1fr, auto), stroke: none, inset: 4pt,\n${rowsHtml})`;
+      break;
+    }
+    case 'barcode':
+    case 'qr': {
+      const val = resolveBinding((comp as any).value || '', data);
+      body = `#rect(width: 100%, height: 100%, fill: gray.lighten(80%), stroke: 0.5pt + black)[\n    #set align(center + horizon)\n    #text(size: 8pt)[${comp.type.toUpperCase()}\n${escapeTypst(val)}]\n  ]`;
+      break;
+    }
     default:
       body = `/* [${comp.type}] fallback */`;
   }

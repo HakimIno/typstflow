@@ -36,13 +36,15 @@ export const LayoutEngine = {
     containerRect: DOMRect,
     dragOffsetX = 0,
     dragOffsetY = 0
-  ): { x: number; y: number } {
+  ): { x: number; y: number; rawX: number; rawY: number } {
     const rawX = LayoutEngine.pxToMm(clientX - containerRect.left - dragOffsetX);
     const rawY = LayoutEngine.pxToMm(clientY - containerRect.top - dragOffsetY);
 
     return {
       x: Math.max(0, LayoutEngine.snap(rawX)),
       y: Math.max(0, LayoutEngine.snap(rawY)),
+      rawX,
+      rawY,
     };
   },
 };

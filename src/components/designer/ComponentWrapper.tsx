@@ -5,7 +5,7 @@ import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
 import { Copy, GripVertical, Trash2 } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 
 import { useDraggable } from '@/hooks/use-draggable';
 import { useResizable } from '@/hooks/use-resizable';
@@ -28,7 +28,7 @@ const RESIZE_HANDLES = [
   'bottom-right',
 ];
 
-export function ComponentWrapper({ component, zoneKey }: Props) {
+export const ComponentWrapper = memo(function ComponentWrapper({ component, zoneKey }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -69,9 +69,12 @@ export function ComponentWrapper({ component, zoneKey }: Props) {
   const { isDragging } = useDraggable({
     id: component.id,
     zoneKey,
+    width: localBounds.width,
+    height: localBounds.height,
     ref,
     dragHandleRef,
     previewRef,
+    isSelected,
   });
 
   const handleDuplicate = (e: React.MouseEvent) => {
@@ -217,4 +220,4 @@ export function ComponentWrapper({ component, zoneKey }: Props) {
         ))}
     </div>
   );
-}
+});

@@ -1,12 +1,14 @@
 'use client';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
+import { useState, useEffect } from 'react';
 import {
   AlignCenter,
   AlignLeft,
   AlignRight,
   Cpu,
   FileText,
+  Download,
   Layout,
   Play,
   Redo,
@@ -25,7 +27,31 @@ export function Toolbar() {
     setActiveTab,
     selectedComponentId,
     updateComponent,
+    undo,
+    redo,
+    history,
+    historyIndex,
   } = useDesignerStore();
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (isMod && e.key === 'z') {
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+        e.preventDefault();
+      } else if (isMod && e.key === 'y') {
+        redo();
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
 
   const handleAlign = (type: string) => {
     if (!selectedComponentId) return;
@@ -47,8 +73,33 @@ export function Toolbar() {
     }
   };
 
+  const { sampleData } = useDesignerStore();
+  const [isExporting, setIsExporting] = useState(false);
+
   const handleExport = async () => {
-    // ... logic preserved ...
+    const { schemaToTypst } = await import('@/lib/schema-to-typst');
+    const { renderToPdf } = await import('@/lib/typst-wasm');
+    const { downloadPdf } = await import('@/lib/export-utils');
+
+    setIsExporting(true);
+    try {
+      const source = schemaToTypst(schema, sampleData);
+      const pdfBytes = await renderToPdf(source);
+      downloadPdf(pdfBytes, `${schema.name || 'report'}.pdf`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to generate PDF. Check console for details.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDownloadSource = async () => {
+    const { schemaToTypst } = await import('@/lib/schema-to-typst');
+    const { downloadText } = await import('@/lib/export-utils');
+
+    const source = schemaToTypst(schema, sampleData);
+    downloadText(source, `${schema.name || 'report'}.typ`);
   };
 
   return (
@@ -170,10 +221,22 @@ export function Toolbar() {
           </div>
 
           <div className="flex items-center gap-0.5 bg-white border border-slate-300 rounded-sm p-0.5 mr-2">
-            <button type="button" className="p-1 hover:bg-slate-100 text-slate-600" title="Undo">
+            <button
+              type="button"
+              onClick={undo}
+              disabled={historyIndex <= 0}
+              className="p-1 hover:bg-slate-100 text-slate-600 disabled:opacity-30"
+              title="Undo (Cmd+Z)"
+            >
               <Undo className="w-3.5 h-3.5" />
             </button>
-            <button type="button" className="p-1 hover:bg-slate-100 text-slate-600" title="Redo">
+            <button
+              type="button"
+              onClick={redo}
+              disabled={historyIndex >= history.length - 1}
+              className="p-1 hover:bg-slate-100 text-slate-600 disabled:opacity-30"
+              title="Redo (Cmd+Shift+Z)"
+            >
               <Redo className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -232,10 +295,23 @@ export function Toolbar() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleExport}
-            className="pro-button flex items-center gap-1.5 bg-blue-700 hover:bg-blue-800 text-white border-blue-900 shadow-sm"
+            onClick={handleDownloadSource}
+            className="pro-button flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700"
           >
-            <Play className="w-3 h-3 fill-current" />
+            <Download className="w-3 h-3" />
+            Source (.typ)
+          </button>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={isExporting}
+            className="pro-button flex items-center gap-1.5 bg-blue-700 hover:bg-blue-800 text-white border-blue-900 shadow-sm disabled:opacity-50"
+          >
+            {isExporting ? (
+              <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Play className="w-3 h-3 fill-current" />
+            )}
             Run Final PDF
           </button>
         </div>

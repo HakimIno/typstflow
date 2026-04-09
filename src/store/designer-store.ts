@@ -39,12 +39,26 @@ interface DesignerState {
     y?: number
   ) => void;
   selectComponent: (id: string | null) => void;
-  updateSchema: (updates: Partial<LayoutSchema>) => void;
-  setSampleData: (data: Record<string, any>) => void;
-  setViewMode: (mode: 'design' | 'preview' | 'split') => void;
-  setActiveTab: (tab: 'palette' | 'outline' | 'data') => void;
+  updateZone: (zoneKey: ZoneKey, updates: Partial<LayoutSchema['zones']['header']>) => void;
+  undo: () => void;
+  redo: () => void;
   loadTemplate: (name: 'blank' | 'invoice') => void;
 }
+
+const MAX_HISTORY = 50;
+
+const pushHistory = (state: DesignerState, newSchema: LayoutSchema) => {
+  const newHistory = state.history.slice(0, state.historyIndex + 1);
+  newHistory.push(newSchema);
+  if (newHistory.length > MAX_HISTORY) {
+    newHistory.shift();
+  }
+  return {
+    schema: newSchema,
+    history: newHistory,
+    historyIndex: newHistory.length - 1,
+  };
+};
 
 const BLANK_SCHEMA: LayoutSchema = {
   id: 'new-report',
@@ -57,9 +71,9 @@ const BLANK_SCHEMA: LayoutSchema = {
   },
   fonts: [{ family: 'Sarabun', role: 'body', size: 10, embedded: true }],
   zones: {
-    header: { id: 'header', components: [] },
-    body: { id: 'body', components: [] },
-    footer: { id: 'footer', components: [] },
+    header: { id: 'header', minHeight: '30mm', components: [] },
+    body: { id: 'body', minHeight: '150mm', components: [] },
+    footer: { id: 'footer', minHeight: '20mm', components: [] },
   },
   variables: [],
   dataSchema: [],
@@ -112,18 +126,17 @@ export const useDesignerStore = create<DesignerState>((set) => ({
         width: component.width ?? 100,
         height: component.height ?? 20,
       };
-      return {
-        schema: {
-          ...state.schema,
-          zones: {
-            ...state.schema.zones,
-            [zoneKey]: {
-              ...state.schema.zones[zoneKey],
-              components: [...state.schema.zones[zoneKey].components, newComponent],
-            },
+      const newSchema = {
+        ...state.schema,
+        zones: {
+          ...state.schema.zones,
+          [zoneKey]: {
+            ...state.schema.zones[zoneKey],
+            components: [...state.schema.zones[zoneKey].components, newComponent],
           },
         },
       };
+      return pushHistory(state, newSchema);
     }),
 
   updateComponent: (id, updates) =>
@@ -138,7 +151,8 @@ export const useDesignerStore = create<DesignerState>((set) => ({
           break;
         }
       }
-      return { schema: { ...state.schema, zones: newZones } };
+      const newSchema = { ...state.schema, zones: newZones };
+      return pushHistory(state, newSchema);
     }),
 
   removeComponent: (id) =>
@@ -147,7 +161,8 @@ export const useDesignerStore = create<DesignerState>((set) => ({
       for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
         newZones[key].components = newZones[key].components.filter((c) => c.id !== id);
       }
-      return { schema: { ...state.schema, zones: newZones }, selectedComponentId: null };
+      const newSchema = { ...state.schema, zones: newZones };
+      return { ...pushHistory(state, newSchema), selectedComponentId: null };
     }),
 
   moveComponent: (id, fromZone, toZone, newIndex, x?: number, y?: number) =>
@@ -169,12 +184,52 @@ export const useDesignerStore = create<DesignerState>((set) => ({
       // Add to target
       newZones[toZone].components.splice(newIndex, 0, updatedComponent);
 
-      return { schema: { ...state.schema, zones: newZones } };
+      const newSchema = { ...state.schema, zones: newZones };
+      return pushHistory(state, newSchema);
     }),
 
-  selectComponent: (id) => set({ selectedComponentId: id }),
+  selectComponent: (id: string | null) => set({ selectedComponentId: id }),
 
-  updateSchema: (updates) => set((state) => ({ schema: { ...state.schema, ...updates } })),
+  updateSchema: (updates: Partial<LayoutSchema>) =>
+    set((state) => {
+      const newSchema = { ...state.schema, ...updates };
+      return pushHistory(state, newSchema);
+    }),
+
+  updateZone: (zoneKey: ZoneKey, updates: Partial<LayoutSchema['zones']['header']>) =>
+    set((state) => {
+      const newSchema = {
+        ...state.schema,
+        zones: {
+          ...state.schema.zones,
+          [zoneKey]: {
+            ...state.schema.zones[zoneKey],
+            ...updates,
+          },
+        },
+      };
+      return pushHistory(state, newSchema);
+    }),
+
+  undo: () =>
+    set((state) => {
+      if (state.historyIndex <= 0) return state;
+      const newIndex = state.historyIndex - 1;
+      return {
+        schema: state.history[newIndex],
+        historyIndex: newIndex,
+      };
+    }),
+
+  redo: () =>
+    set((state) => {
+      if (state.historyIndex >= state.history.length - 1) return state;
+      const newIndex = state.historyIndex + 1;
+      return {
+        schema: state.history[newIndex],
+        historyIndex: newIndex,
+      };
+    }),
 
   setSampleData: (data) => set({ sampleData: data }),
   setViewMode: (mode) => set({ viewMode: mode }),

@@ -1,6 +1,8 @@
 'use client';
 
+import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
 import { clsx } from 'clsx';
 import { Columns, Image, Layout, Minus, QrCode, ScanLine, Space, Table, Type } from 'lucide-react';
 import { useEffect, useRef } from 'react';
@@ -93,7 +95,44 @@ function PaletteItem({ type, label, icon: Icon }: any) {
 
     return draggable({
       element: el,
-      getInitialData: () => ({ type: 'new-component', component: getTemplate() }),
+      getInitialData: ({ input }) => {
+        const rect = el.getBoundingClientRect();
+        const comp = getTemplate();
+        
+        // Calculate where the user clicked relative to the icon (0 to 1)
+        const percentX = (input.clientX - rect.left) / rect.width;
+        const percentY = (input.clientY - rect.top) / rect.height;
+        
+        // Apply that same percentage to the final component size
+        // This makes it feel like you "grabbed" the exact spot
+        return {
+          type: 'new-component',
+          component: comp,
+          dragOffsetX: LayoutEngine.mmToPx(comp.width || 100) * percentX,
+          dragOffsetY: LayoutEngine.mmToPx(comp.height || 20) * percentY,
+        };
+      },
+      onGenerateDragPreview: ({ nativeSetDragImage, source }) => {
+        const comp = getTemplate();
+        const data = source.data as any;
+        setCustomNativeDragPreview({
+          nativeSetDragImage,
+          getOffset: () => ({ x: data.dragOffsetX, y: data.dragOffsetY }),
+          render: ({ container }) => {
+            const preview = document.createElement('div');
+            preview.className = 'natural-preview';
+            preview.style.width = `${LayoutEngine.mmToPx(comp.width || 100)}px`;
+            preview.style.height = `${LayoutEngine.mmToPx(comp.height || 20)}px`;
+            preview.style.display = 'flex';
+            preview.style.alignItems = 'center';
+            preview.style.justifyContent = 'center';
+            preview.style.fontSize = '8px';
+            preview.style.color = '#94a3b8';
+            preview.innerHTML = `NEW ${label.toUpperCase()}`;
+            container.appendChild(preview);
+          },
+        });
+      },
     });
   }, [type]);
 

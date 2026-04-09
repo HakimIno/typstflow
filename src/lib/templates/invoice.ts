@@ -13,6 +13,7 @@ export const INVOICE_TEMPLATE: LayoutSchema = {
   zones: {
     header: {
       id: 'header',
+      minHeight: '30mm',
       components: [
         {
           id: 'logo',
@@ -41,6 +42,7 @@ export const INVOICE_TEMPLATE: LayoutSchema = {
     },
     body: {
       id: 'body',
+      minHeight: '150mm',
       components: [
         {
           id: 'cust-label',
@@ -141,6 +143,7 @@ export const INVOICE_TEMPLATE: LayoutSchema = {
     },
     footer: {
       id: 'footer',
+      minHeight: '20mm',
       components: [
         { id: 'footer-line', type: 'line', x: 0, y: 0, width: 180, height: 1 },
         {

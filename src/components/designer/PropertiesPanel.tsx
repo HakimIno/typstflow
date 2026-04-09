@@ -10,6 +10,7 @@ export function PropertiesPanel() {
   const updateComponent = useDesignerStore((state) => state.updateComponent);
   const removeComponent = useDesignerStore((state) => state.removeComponent);
 
+  const { schema, updateSchema } = useDesignerStore();
   const selectedComponent = useDesignerStore((state) => {
     if (!state.selectedComponentId) return null;
     for (const zone of Object.values(state.schema.zones)) {
@@ -21,9 +22,85 @@ export function PropertiesPanel() {
 
   if (!selectedComponent) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-4 text-center bg-slate-50">
-        <Layers className="w-6 h-6 text-slate-300 mb-2" />
-        <p className="text-[11px] text-slate-400 font-bold uppercase">No Selection</p>
+      <div className="h-full flex flex-col bg-white">
+        <div className="h-8 min-h-[32px] bg-slate-700 text-white flex items-center px-3 gap-2">
+          <Layers className="w-3 h-3 text-slate-400" />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Report Settings</span>
+        </div>
+        <div className="flex-1 overflow-auto border-l border-slate-200">
+          <section>
+            <div className="px-3 py-1.5 bg-slate-200 border-b border-slate-300 text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+              Page Configuration
+            </div>
+            <div className="flex border-b border-slate-100 last:border-0 hover:bg-slate-50 group">
+              <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-50/50 border-r border-slate-100 flex items-center shrink-0">
+                Paper Size
+              </div>
+              <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">
+                <select
+                  value={schema.page.size}
+                  onChange={(e) =>
+                    updateSchema({ page: { ...schema.page, size: e.target.value as any } })
+                  }
+                  className="pro-input h-6 px-1 w-full bg-white text-[11px]"
+                >
+                  <option value="A4">A4</option>
+                  <option value="A5">A5</option>
+                  <option value="Letter">Letter</option>
+                  <option value="Legal">Legal</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex border-b border-slate-100 last:border-0 hover:bg-slate-50 group">
+              <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-50/50 border-r border-slate-100 flex items-center shrink-0">
+                Orientation
+              </div>
+              <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">
+                <select
+                  value={schema.page.orientation}
+                  onChange={(e) =>
+                    updateSchema({ page: { ...schema.page, orientation: e.target.value as any } })
+                  }
+                  className="pro-input h-6 px-1 w-full bg-white text-[11px]"
+                >
+                  <option value="portrait">Portrait</option>
+                  <option value="landscape">Landscape</option>
+                </select>
+              </div>
+            </div>
+          </section>
+          <section>
+            <div className="px-3 py-1.5 bg-slate-200 border-b border-slate-300 text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+              Margins
+            </div>
+            {(['top', 'bottom', 'left', 'right'] as const).map((side) => (
+              <div
+                key={side}
+                className="flex border-b border-slate-100 last:border-0 hover:bg-slate-50 group"
+              >
+                <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-50/50 border-r border-slate-100 flex items-center shrink-0 capitalize">
+                  {side}
+                </div>
+                <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">
+                  <input
+                    type="text"
+                    value={schema.page.margin[side]}
+                    onChange={(e) =>
+                      updateSchema({
+                        page: {
+                          ...schema.page,
+                          margin: { ...schema.page.margin, [side]: e.target.value },
+                        },
+                      })
+                    }
+                    className="pro-input h-6 px-1 w-full bg-white text-[11px] font-mono"
+                    placeholder="15mm"
+                  />
+                </div>
+              </div>
+            ))}
+          </section>
+        </div>
       </div>
     );
   }
@@ -108,6 +185,19 @@ export function PropertiesPanel() {
               />
             </PropertyRow>
           )}
+          {selectedComponent.type === 'image' && (
+            <PropertyRow label="Image URL">
+              <input
+                type="text"
+                value={(selectedComponent as any).src || ''}
+                onChange={(e) =>
+                  updateComponent(selectedComponent.id, { src: e.target.value } as any)
+                }
+                className="pro-input h-6 px-1 font-mono"
+                placeholder="https://..."
+              />
+            </PropertyRow>
+          )}
         </section>
 
         {(selectedComponent.type === 'text' || selectedComponent.type === 'table') && (
@@ -151,6 +241,70 @@ export function PropertiesPanel() {
               >
                 <Bold className="w-3 h-3" />
               </button>
+            </PropertyRow>
+          </section>
+        )}
+
+        {selectedComponent.type === 'image' && (
+          <section>
+            <SectionHeader label="Image Settings" />
+            <PropertyRow label="Fit Mode">
+              <select
+                value={(selectedComponent as any).fit || 'contain'}
+                onChange={(e) =>
+                  updateComponent(selectedComponent.id, { fit: e.target.value } as any)
+                }
+                className="pro-input h-6 px-1 w-full bg-white text-[11px]"
+              >
+                <option value="contain">Contain</option>
+                <option value="cover">Cover</option>
+                <option value="stretch">Stretch</option>
+              </select>
+            </PropertyRow>
+          </section>
+        )}
+
+        {selectedComponent.type === 'table' && (
+          <section>
+            <SectionHeader label="Table Styling" />
+            <PropertyRow label="Header BG">
+              <input
+                type="color"
+                value={(selectedComponent as any).style?.headerBackground || '#f1f5f9'}
+                onChange={(e) =>
+                  updateComponent(selectedComponent.id, {
+                    style: { ...(selectedComponent as any).style, headerBackground: e.target.value },
+                  } as any)
+                }
+                className="w-full h-6 rounded-sm cursor-pointer"
+              />
+            </PropertyRow>
+            <PropertyRow label="Alt Row BG">
+              <input
+                type="color"
+                value={(selectedComponent as any).style?.alternateRowBackground || '#ffffff'}
+                onChange={(e) =>
+                  updateComponent(selectedComponent.id, {
+                    style: {
+                      ...(selectedComponent as any).style,
+                      alternateRowBackground: e.target.value,
+                    },
+                  } as any)
+                }
+                className="w-full h-6 rounded-sm cursor-pointer"
+              />
+            </PropertyRow>
+            <PropertyRow label="Border Color">
+              <input
+                type="color"
+                value={(selectedComponent as any).style?.borderColor || '#cbd5e1'}
+                onChange={(e) =>
+                  updateComponent(selectedComponent.id, {
+                    style: { ...(selectedComponent as any).style, borderColor: e.target.value },
+                  } as any)
+                }
+                className="w-full h-6 rounded-sm cursor-pointer"
+              />
             </PropertyRow>
           </section>
         )}

@@ -57,4 +57,17 @@
     background-size: 2mm 2mm, 2mm 2mm, 10mm 10mm, 10mm 10mm;
     background-position: -1px -1px;
   }
+
+  /* Natural Drag Preview (Simple & Direct) */
+  .natural-preview {
+    @apply bg-white ring-1 ring-slate-400 shadow-xl pointer-events-none opacity-90;
+  }
+
+  .snap-guide {
+    @apply outline-1 outline-dashed outline-blue-400 opacity-40 pointer-events-none;
+  }
+
+  .coord-pill {
+    @apply bg-slate-800 text-white text-[9px] font-medium px-1.5 py-0.5 shadow-sm flex items-center gap-1 leading-none rounded-none;
+  }
 }
