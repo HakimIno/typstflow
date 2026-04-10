@@ -2000,6 +2000,7 @@ dependencies = [
  "js-sys",
  "serde",
  "serde-wasm-bindgen",
+ "serde_json",
  "typst",
  "typst-assets",
  "typst-pdf",

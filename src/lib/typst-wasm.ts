@@ -1,17 +1,27 @@
-// Refactored to use Web Worker for main-thread responsiveness
 let worker: Worker | null = null;
 const pendingRequests = new Map<
   string,
   { resolve: (value: any) => void; reject: (reason?: any) => void }
 >();
+let workerReadyPromise: Promise<void> | null = null;
+let resolveWorkerReady: (() => void) | null = null;
 
 function getWorker(): Worker {
   if (worker) return worker;
 
-  worker = new Worker(new URL('./typst-worker.ts', import.meta.url));
+  worker = new Worker(new URL('./worker/typst.worker.ts', import.meta.url));
+  workerReadyPromise = new Promise((resolve) => {
+    resolveWorkerReady = resolve;
+  });
 
   worker.onmessage = (e) => {
     const { type, id, payload } = e.data;
+
+    if (type === 'READY') {
+      resolveWorkerReady?.();
+      return;
+    }
+
     const request = pendingRequests.get(id);
     if (!request) return;
 
@@ -30,11 +40,17 @@ function getWorker(): Worker {
   return worker;
 }
 
-function callWorker(type: string, payload: string): Promise<any> {
+async function callWorker(type: string, payload: any): Promise<any> {
   const id = Math.random().toString(36).substring(7);
+  const w = getWorker();
+  
+  if (workerReadyPromise) {
+    await workerReadyPromise;
+  }
+
   return new Promise((resolve, reject) => {
     pendingRequests.set(id, { resolve, reject });
-    getWorker().postMessage({ type, id, payload });
+    w.postMessage({ type, id, payload });
   });
 }
 
@@ -50,12 +66,33 @@ export async function initTypst() {
  * Renders Typst source code to an SVG string using the Web Worker.
  */
 export async function renderToSvg(mainContent: string): Promise<string> {
-  return callWorker('render-svg', mainContent);
+  return callWorker('RENDER_SVG', mainContent);
 }
 
 /**
  * Renders Typst source code to a PDF Uint8Array using the Web Worker.
  */
 export async function renderToPdf(mainContent: string): Promise<Uint8Array> {
-  return callWorker('render-pdf', mainContent);
+  return callWorker('RENDER_PDF', mainContent);
+}
+
+/**
+ * Renders a full report to an SVG string using the new WASM-powered engine.
+ */
+export async function renderReportToSvg(schema: any, data: any): Promise<string> {
+  return callWorker('RENDER_REPORT_SVG', { schema, data });
+}
+
+/**
+ * Renders a full report to a PDF Uint8Array using the new WASM-powered engine.
+ */
+export async function renderReportToPdf(schema: any, data: any): Promise<Uint8Array> {
+  return callWorker('RENDER_REPORT_PDF', { schema, data });
+}
+
+/**
+ * Generates the Typst source code for a report using the Rust generator.
+ */
+export async function generateReportTypst(schema: any, data: any): Promise<string> {
+  return callWorker('GENERATE_REPORT_TYPST', { schema, data });
 }

@@ -7,6 +7,9 @@ use typst::Library;
 use typst::World;
 use wasm_bindgen::prelude::*;
 
+mod schema;
+mod generator;
+
 #[wasm_bindgen]
 pub struct TypstBridge {
     library: Prehashed<Library>,
@@ -72,6 +75,35 @@ impl TypstBridge {
         
         let pdf = typst_pdf::pdf(&doc, typst::foundations::Smart::Auto, None);
         Ok(pdf)
+    }
+
+    pub fn render_report_svg(&self, schema_json: &str, data_json: &str) -> Result<String, JsValue> {
+        let schema: schema::LayoutSchema = serde_json::from_str(schema_json)
+            .map_err(|e| JsValue::from_str(&format!("Schema parse error: {} (line {}, col {})", e, e.line(), e.column())))?;
+        let data: serde_json::Value = serde_json::from_str(data_json)
+            .map_err(|e| JsValue::from_str(&format!("Data parse error: {} (line {}, col {})", e, e.line(), e.column())))?;
+        
+        let source_code = generator::generate_typst(&schema, &data);
+        self.render_svg(&source_code)
+    }
+
+    pub fn render_report_pdf(&self, schema_json: &str, data_json: &str) -> Result<Vec<u8>, JsValue> {
+        let schema: schema::LayoutSchema = serde_json::from_str(schema_json)
+            .map_err(|e| JsValue::from_str(&format!("Schema parse error: {} (line {}, col {})", e, e.line(), e.column())))?;
+        let data: serde_json::Value = serde_json::from_str(data_json)
+            .map_err(|e| JsValue::from_str(&format!("Data parse error: {} (line {}, col {})", e, e.line(), e.column())))?;
+        
+        let source_code = generator::generate_typst(&schema, &data);
+        self.render_pdf(&source_code)
+    }
+
+    pub fn generate_report_typst(&self, schema_json: &str, data_json: &str) -> Result<String, JsValue> {
+        let schema: schema::LayoutSchema = serde_json::from_str(schema_json)
+            .map_err(|e| JsValue::from_str(&format!("Schema parse error: {} (line {}, col {})", e, e.line(), e.column())))?;
+        let data: serde_json::Value = serde_json::from_str(data_json)
+            .map_err(|e| JsValue::from_str(&format!("Data parse error: {} (line {}, col {})", e, e.line(), e.column())))?;
+        
+        Ok(generator::generate_typst(&schema, &data))
     }
 }
 

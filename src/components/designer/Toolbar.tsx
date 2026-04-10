@@ -77,14 +77,12 @@ export function Toolbar() {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
-    const { schemaToTypst } = await import('@/lib/schema-to-typst');
-    const { renderToPdf } = await import('@/lib/typst-wasm');
+    const { renderReportToPdf } = await import('@/lib/typst-wasm');
     const { downloadPdf } = await import('@/lib/export-utils');
 
     setIsExporting(true);
     try {
-      const source = schemaToTypst(schema, sampleData);
-      const pdfBytes = await renderToPdf(source);
+      const pdfBytes = await renderReportToPdf(schema, sampleData);
       downloadPdf(pdfBytes, `${schema.name || 'report'}.pdf`);
     } catch (error) {
       console.error('Export failed:', error);
@@ -95,11 +93,16 @@ export function Toolbar() {
   };
 
   const handleDownloadSource = async () => {
-    const { schemaToTypst } = await import('@/lib/schema-to-typst');
+    const { generateReportTypst } = await import('@/lib/typst-wasm');
     const { downloadText } = await import('@/lib/export-utils');
 
-    const source = schemaToTypst(schema, sampleData);
-    downloadText(source, `${schema.name || 'report'}.typ`);
+    try {
+      const source = await generateReportTypst(schema, sampleData);
+      downloadText(source, `${schema.name || 'report'}.typ`);
+    } catch (error) {
+      console.error('Download source failed:', error);
+      alert('Failed to generate source.');
+    }
   };
 
   return (

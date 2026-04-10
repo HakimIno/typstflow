@@ -9,8 +9,8 @@ async function initialize() {
     await init();
     bridge = new TypstBridge();
     self.postMessage({ type: 'READY' });
-  } catch (_err) {
-    self.postMessage({ type: 'ERROR', error: 'Failed to initialize WASM in worker' });
+  } catch (err: any) {
+    self.postMessage({ type: 'error', payload: `Failed to initialize WASM: ${err.message || err}` });
   }
 }
 
@@ -23,7 +23,7 @@ self.onmessage = async (e: MessageEvent) => {
   }
 
   if (!bridge) {
-    self.postMessage({ id, type: 'ERROR', error: 'Bridge not initialized' });
+    self.postMessage({ id, type: 'error', payload: 'Bridge not initialized' });
     return;
   }
 
@@ -31,19 +31,41 @@ self.onmessage = async (e: MessageEvent) => {
     switch (type) {
       case 'RENDER_SVG': {
         const svg = bridge.render_svg(payload);
-        self.postMessage({ id, type: 'RENDER_SVG_RESULT', payload: svg });
+        self.postMessage({ id, type: 'success', payload: svg });
         break;
       }
       case 'RENDER_PDF': {
         const pdf = bridge.render_pdf(payload);
-        self.postMessage({ id, type: 'RENDER_PDF_RESULT', payload: pdf }, {
+        self.postMessage({ id, type: 'success', payload: pdf }, {
           transfer: [pdf.buffer],
         } as any);
         break;
       }
+      case 'RENDER_REPORT_SVG': {
+        const { schema, data } = payload;
+        const svg = bridge.render_report_svg(JSON.stringify(schema), JSON.stringify(data));
+        self.postMessage({ id, type: 'success', payload: svg });
+        break;
+      }
+      case 'RENDER_REPORT_PDF': {
+        const { schema, data } = payload;
+        const pdf = bridge.render_report_pdf(JSON.stringify(schema), JSON.stringify(data));
+        self.postMessage({ id, type: 'success', payload: pdf }, {
+          transfer: [pdf.buffer],
+        } as any);
+        break;
+      }
+      case 'GENERATE_REPORT_TYPST': {
+        const { schema, data } = payload;
+        const source = bridge.generate_report_typst(JSON.stringify(schema), JSON.stringify(data));
+        self.postMessage({ id, type: 'success', payload: source });
+        break;
+      }
     }
   } catch (err: any) {
-    self.postMessage({ id, type: 'ERROR', error: err.message || 'Render failed' });
+    console.error('Typst Worker [RENDER ERROR]:', err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    self.postMessage({ id, type: 'error', payload: errorMessage });
   }
 };
 

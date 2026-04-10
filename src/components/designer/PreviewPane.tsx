@@ -1,7 +1,6 @@
 'use client';
 
-import { schemaToTypst } from '@/lib/schema-to-typst';
-import { renderToSvg } from '@/lib/typst-wasm';
+import { renderReportToSvg } from '@/lib/typst-wasm';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { AlertTriangle, Cpu, Loader2, RefreshCw } from 'lucide-react';
@@ -24,22 +23,15 @@ export function PreviewPane() {
 
     const performRender = async () => {
       try {
-        const typstCode = schemaToTypst(schema, sampleData);
-
-        // Skip if nothing changed
-        if (typstCode === lastSourceRef.current) return;
-
         setIsRendering(true);
         setError(null);
 
-        console.log('--- REGENERATING TYPST SOURCE ---');
-        const svg = await renderToSvg(typstCode);
+        console.log('--- RENDERING VIA RUST ENGINE (WASM) ---');
+        const svg = await renderReportToSvg(schema, sampleData);
 
         if (!active) return;
-
         if (!svg) throw new Error('Engine returned empty SVG');
 
-        lastSourceRef.current = typstCode;
         setSvgContent(svg);
       } catch (err: any) {
         if (!active) return;
