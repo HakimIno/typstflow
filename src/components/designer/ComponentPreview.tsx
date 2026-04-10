@@ -11,11 +11,13 @@ export function ComponentPreview({ component }: Props) {
     case 'text':
       return (
         <div
-          className="leading-tight text-slate-900 w-full h-full overflow-hidden"
+          className="text-slate-900 w-full h-full overflow-hidden"
           style={{
             fontSize: `${component.style?.fontSize || 10}pt`,
             fontWeight: component.style?.fontWeight || 'regular',
             textAlign: component.align || 'left',
+            lineHeight: '1.2',
+            fontFamily: 'Sarabun, "Noto Sans Thai", sans-serif',
             wordBreak: 'break-word',
           }}
         >

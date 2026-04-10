@@ -43,7 +43,7 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>): string
       const size = comp.style?.fontSize || 10;
       const content = resolveBinding(comp.content || '', data);
       const escapedContent = escapeTypst(content) || ' '; // Ensure non-empty content
-      body = `#set align(${align})\n#text(size: ${size}pt, weight: "${weight}")[${escapedContent}]`;
+      body = `#set align(${align})\n#set par(leading: 0.2em)\n#text(size: ${size}pt, weight: "${weight}")[${escapedContent}]`;
       break;
     }
     case 'table': {
@@ -132,9 +132,10 @@ export function schemaToTypst(schema: LayoutSchema, data: Record<string, any>): 
   margin: (top: ${page.margin.top}, bottom: ${page.margin.bottom}, left: ${page.margin.left}, right: ${page.margin.right}),
 )\n`;
 
-  // Fonts
+  // Fonts & Paragraph Setup
   const mainFont = schema.fonts[0];
   typst += `#set text(font: "${mainFont.family}", size: ${mainFont.size}pt, lang: "th")\n`;
+  typst += `#set par(leading: 0.2em, justify: false)\n`;
 
   // Zones - NO CLIPPING here, as absolute placed items have 0 height in their container flow
   for (const key of ['header', 'body', 'footer'] as const) {
