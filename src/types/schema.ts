@@ -87,6 +87,9 @@ export interface TextStyle {
   italic?: boolean;
   underline?: boolean;
   textTransform?: 'none' | 'upper' | 'lower' | 'title';
+  lineHeight?: number; // scale: 1.2
+  letterSpacing?: string; // e.g. "0.05em"
+  justify?: boolean;
 }
 
 // --- Table Component ---
@@ -119,6 +122,9 @@ export interface TableStyle {
   cellPadding?: string;
   fontSize?: number;
   fontWeight?: 'regular' | 'medium' | 'bold';
+  lineHeight?: number;
+  letterSpacing?: string;
+  justify?: boolean;
 }
 
 export interface SummaryRow {

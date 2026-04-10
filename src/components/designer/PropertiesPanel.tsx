@@ -10,7 +10,16 @@ import type {
   TextComponent,
 } from '@/types/schema';
 import { clsx } from 'clsx';
-import { AlignCenter, AlignLeft, AlignRight, Bold, Layers, Sliders, Trash2 } from 'lucide-react';
+import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  Bold,
+  Layers,
+  Sliders,
+  Trash2,
+} from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 
@@ -249,6 +258,28 @@ export function PropertiesPanel() {
                 className="pro-input h-6 px-1"
               />
             </PropertyRow>
+            <PropertyRow label="Line Height">
+              <input
+                type="number"
+                step="0.1"
+                min="0.5"
+                max="3"
+                value={selectedComponent.style?.lineHeight || 1.2}
+                onChange={(e) =>
+                  handleStyleUpdate({ lineHeight: Number.parseFloat(e.target.value) || 1.2 })
+                }
+                className="pro-input h-6 px-1"
+              />
+            </PropertyRow>
+            <PropertyRow label="Spacing (em)">
+              <input
+                type="text"
+                value={selectedComponent.style?.letterSpacing || '0pt'}
+                onChange={(e) => handleStyleUpdate({ letterSpacing: e.target.value })}
+                className="pro-input h-6 px-1 font-mono"
+                placeholder="0.05em"
+              />
+            </PropertyRow>
             <PropertyRow label="Weight">
               <button
                 type="button"
@@ -327,11 +358,19 @@ export function PropertiesPanel() {
                 { id: 'left', icon: AlignLeft },
                 { id: 'center', icon: AlignCenter },
                 { id: 'right', icon: AlignRight },
+                { id: 'justify', icon: AlignJustify },
               ].map((align) => (
                 <button
                   key={align.id}
                   type="button"
-                  onClick={() => updateComponent(selectedComponent.id, { align: align.id as any })}
+                  onClick={() => {
+                    updateComponent(selectedComponent.id, { align: align.id as any });
+                    if (align.id === 'justify' && isText(selectedComponent)) {
+                      handleStyleUpdate({ justify: true });
+                    } else if (isText(selectedComponent)) {
+                      handleStyleUpdate({ justify: false });
+                    }
+                  }}
                   className={clsx(
                     'flex-1 py-1 flex items-center justify-center transition-all',
                     selectedComponent.align === align.id

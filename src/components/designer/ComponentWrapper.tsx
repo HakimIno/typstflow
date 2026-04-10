@@ -4,8 +4,7 @@ import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
 import { Copy, GripVertical, Trash2 } from 'lucide-react';
-import type React from 'react';
-import { memo, useCallback, useEffect, useRef } from 'react';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useDraggable } from '@/hooks/use-draggable';
@@ -45,7 +44,24 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       }))
     );
 
+  const [isEditing, setIsEditing] = useState(false);
   const isSelected = selectedComponentId === component.id;
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (component.type === 'text') {
+      e.stopPropagation();
+      setIsEditing(true);
+      selectComponent(component.id);
+    }
+  };
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    updateComponent(component.id, { content: e.target.value });
+  };
+
+  const handleBlur = () => {
+    setIsEditing(false);
+  };
 
   // 1. Logic Extracted: Resizing
   const { localBounds, isResizing, handleResizeStart, syncBounds } = useResizable(
@@ -78,6 +94,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
     id: component.id,
     zoneKey,
     ref,
+    disabled: isEditing,
   });
 
   // STABLE: Prevent recreation of handlers on every render
@@ -100,6 +117,17 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
   const height = LayoutEngine.mmToPx(localBounds.height);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isEditing) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        setIsEditing(false);
+      }
+      if (e.key === 'Escape') {
+        setIsEditing(false);
+      }
+      return;
+    }
+
     if (!isSelected) return;
 
     const step = e.shiftKey ? 5 : 1;
@@ -139,9 +167,10 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
     <div
       ref={ref}
       onKeyDown={handleKeyDown}
+      onDoubleClick={handleDoubleClick}
       onClick={(e) => {
         e.stopPropagation();
-        selectComponent(component.id);
+        if (!isEditing) selectComponent(component.id);
       }}
       style={{
         position: 'absolute',
@@ -161,6 +190,25 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
         isResizing && 'ring-2 ring-blue-600 shadow-lg z-[100]'
       )}
     >
+      {/* Inline Editor */}
+      {isEditing && component.type === 'text' && (
+        <textarea
+          autoFocus
+          className="absolute inset-0 w-full h-full p-0 m-0 border-none outline-none bg-white z-[60] resize-none overflow-hidden"
+          value={component.content}
+          onChange={handleTextChange}
+          onBlur={handleBlur}
+          style={{
+            fontSize: `${component.style?.fontSize || 10}pt`,
+            lineHeight: component.style?.lineHeight || 1.2,
+            letterSpacing: component.style?.letterSpacing || 'normal',
+            textAlign: component.align === 'justify' ? 'left' : component.align || 'left',
+            fontFamily: 'Sarabun, sans-serif',
+            color: component.style?.color || 'black',
+            fontWeight: component.style?.fontWeight === 'bold' ? 'bold' : 'normal',
+          }}
+        />
+      )}
       {/* Precision Action Bar - Always mounted, visibility controlled by CSS */}
       <div
         key={`action-bar-${component.id}`}

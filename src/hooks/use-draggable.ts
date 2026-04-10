@@ -9,14 +9,16 @@ interface DraggableOptions {
   id: string;
   zoneKey: string;
   ref: RefObject<HTMLDivElement | null>;
+  disabled?: boolean;
   onDragStart?: () => void;
   onDragEnd?: () => void;
 }
 
-export function useDraggable({ id, zoneKey, ref, onDragStart, onDragEnd }: DraggableOptions) {
+export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEnd }: DraggableOptions) {
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
+    if (disabled) return;
     const el = ref.current;
     if (!el) return;
 
@@ -88,7 +90,7 @@ export function useDraggable({ id, zoneKey, ref, onDragStart, onDragEnd }: Dragg
         onDragEnd?.();
       },
     });
-  }, [id, zoneKey, ref, onDragStart, onDragEnd]);
+  }, [id, zoneKey, ref, disabled, onDragStart, onDragEnd]);
 
   return { isDragging };
 }

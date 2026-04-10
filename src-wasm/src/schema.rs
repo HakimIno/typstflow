@@ -104,6 +104,9 @@ pub struct TextStyle {
     pub color: Option<String>,
     pub italic: Option<bool>,
     pub underline: Option<bool>,
+    pub line_height: Option<f64>,
+    pub letter_spacing: Option<String>,
+    pub justify: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -135,6 +138,9 @@ pub struct TableStyle {
     pub alternate_row_background: Option<String>,
     pub border_color: Option<String>,
     pub border_width: Option<String>,
+    pub line_height: Option<f64>,
+    pub letter_spacing: Option<String>,
+    pub justify: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

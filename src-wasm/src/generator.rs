@@ -5,15 +5,11 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     let mut t = String::new();
     t.push_str("// PHOENIX ENGINE (RUST/WASM) v1.1\n");
 
-    // Page Setup
+    // Page Setup (Margins are set to 0 for absolute positioning parity)
     t.push_str(&format!(
-        "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: (top: {}, bottom: {}, left: {}, right: {}),\n)\n",
+        "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: 0mm,\n)\n",
         schema.page.size.to_lowercase(),
         schema.page.orientation == "landscape",
-        schema.page.margin.top,
-        schema.page.margin.bottom,
-        schema.page.margin.left,
-        schema.page.margin.right,
     ));
 
     // Fonts
@@ -78,13 +74,20 @@ fn comp_base(comp: &ComponentNode) -> &BaseComponent {
 
 fn render_text(c: &TextComponent, data: &Value) -> String {
     let content = resolve_binding(&c.content, data);
-    let size = c.style.as_ref().and_then(|s| s.font_size).unwrap_or(10.0);
-    let weight = c.style.as_ref().and_then(|s| s.font_weight.clone()).unwrap_or("regular".to_string());
+    let s = c.style.as_ref();
+    let size = s.and_then(|st| st.font_size).unwrap_or(10.0);
+    let weight = s.and_then(|st| st.font_weight.clone()).unwrap_or("regular".to_string());
     let align = c.base.align.as_deref().unwrap_or("left");
 
+    // Advanced Props
+    let leading = s.and_then(|st| st.line_height).map(|v| v - 1.0).unwrap_or(0.2); 
+    let mut tracking = s.and_then(|st| st.letter_spacing.clone()).unwrap_or_default();
+    if tracking.is_empty() { tracking = "0pt".to_string(); }
+    let justify = s.and_then(|st| st.justify).unwrap_or(false);
+
     let body = format!(
-        "#set align({})\n#set par(leading: 0.2em)\n#text(size: {}pt, weight: \"{}\")[{}]",
-        align, size, weight, escape_typst(&content)
+        "#set align({})\n#set par(leading: {}em, justify: {})\n#text(size: {}pt, weight: \"{}\", tracking: {})[{}]",
+        align, leading, justify, size, weight, tracking, escape_typst(&content)
     );
 
     wrap_placement(&c.base, &body)
