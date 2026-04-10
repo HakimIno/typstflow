@@ -70,6 +70,7 @@ export interface BaseComponent {
   marginTop?: string;
   marginBottom?: string;
   pageBreakBefore?: boolean;
+  align?: 'left' | 'center' | 'right' | 'justify';
 }
 
 // --- Text Component ---
@@ -77,7 +78,6 @@ export interface TextComponent extends BaseComponent {
   type: 'text';
   content: string; // "{{customer.name}}" or static
   style: TextStyle;
-  align?: 'left' | 'center' | 'right' | 'justify';
 }
 
 export interface TextStyle {
@@ -117,6 +117,8 @@ export interface TableStyle {
   borderColor?: string;
   borderWidth?: string;
   cellPadding?: string;
+  fontSize?: number;
+  fontWeight?: 'regular' | 'medium' | 'bold';
 }
 
 export interface SummaryRow {
@@ -133,7 +135,6 @@ export interface ImageComponent extends BaseComponent {
   width?: number;
   height?: number;
   fit?: 'cover' | 'contain' | 'stretch';
-  align?: 'left' | 'center' | 'right';
 }
 
 // --- Line Component ---
@@ -194,7 +195,6 @@ export interface SummaryBoxComponent extends BaseComponent {
     style?: 'normal' | 'subtotal' | 'total' | 'highlight';
   }[];
   width?: number;
-  align?: 'left' | 'right';
 }
 
 // --- Supporting Types ---

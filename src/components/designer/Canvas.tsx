@@ -3,7 +3,6 @@
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { useEffect, useState } from 'react';
-import { DragOverlay } from './DragOverlay';
 import { Zone } from './Zone';
 
 export function Canvas() {
@@ -54,10 +53,10 @@ export function Canvas() {
                 components={schema.zones.header.components}
                 minHeight={schema.zones.header.minHeight}
               />
-              <Zone 
-                zoneKey="body" 
-                label="Detail Band" 
-                components={schema.zones.body.components} 
+              <Zone
+                zoneKey="body"
+                label="Detail Band"
+                components={schema.zones.body.components}
                 minHeight={schema.zones.body.minHeight}
               />
               <Zone

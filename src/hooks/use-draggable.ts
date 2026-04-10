@@ -1,60 +1,42 @@
 'use client';
 
+import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useState } from 'react';
 
 interface DraggableOptions {
   id: string;
   zoneKey: string;
-  width: number;
-  height: number;
   ref: RefObject<HTMLDivElement | null>;
-  dragHandleRef?: RefObject<HTMLDivElement | null>;
-  previewRef?: RefObject<HTMLDivElement | null>;
-  isSelected?: boolean;
   onDragStart?: () => void;
   onDragEnd?: () => void;
 }
 
-export function useDraggable({
-  id,
-  zoneKey,
-  width,
-  height,
-  ref,
-  dragHandleRef,
-  previewRef,
-  isSelected,
-  onDragStart,
-  onDragEnd,
-}: DraggableOptions) {
+export function useDraggable({ id, zoneKey, ref, onDragStart, onDragEnd }: DraggableOptions) {
   const [isDragging, setIsDragging] = useState(false);
-  
-  // Use a ref for dimensions to avoid re-registering draggable during resizing
-  const dimensionsRef = useRef({ width, height });
-  useEffect(() => {
-    dimensionsRef.current = { width, height };
-  }, [width, height]);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
 
-    // The drag handle might only appear when isSelected is true
-    const handle = dragHandleRef?.current || undefined;
-
     return draggable({
       element: el,
-      dragHandle: handle,
+      dragHandle: undefined, // Allow dragging from anywhere
       getInitialData: ({ input }) => {
         const rect = el.getBoundingClientRect();
+
+        // ALWAYS read fresh dimensions from DOM to avoid stale data
+        // This is critical after resize operations
+        const currentWidth = LayoutEngine.pxToMm(el.offsetWidth);
+        const currentHeight = LayoutEngine.pxToMm(el.offsetHeight);
+
         return {
           type: 'canvas-item',
           id,
           zoneKey,
-          width: dimensionsRef.current.width,
-          height: dimensionsRef.current.height,
+          width: currentWidth,
+          height: currentHeight,
           dragOffsetX: input.clientX - rect.left,
           dragOffsetY: input.clientY - rect.top,
         };
@@ -73,27 +55,31 @@ export function useDraggable({
               clone.style.height = `${sourceEl.offsetHeight}px`;
               clone.style.opacity = '0.7';
               clone.style.backgroundColor = 'white';
-              clone.style.position = 'relative'; 
+              clone.style.position = 'relative';
               clone.style.top = '0';
               clone.style.left = '0';
               clone.style.margin = '0';
               clone.style.pointerEvents = 'none';
               clone.style.transform = 'none'; // Ensure no existing transforms affect it
-              
+
               // Remove interactive elements from preview
               const actionBar = clone.querySelector('.absolute.-top-7');
               if (actionBar) actionBar.remove();
-              
+
               // Hide resize handles in preview (using robust class matches)
               const handles = clone.querySelectorAll('[class*="cursor-"]');
-              handles.forEach(h => (h as HTMLElement).remove());
-              
+              for (const h of handles) {
+                (h as HTMLElement).remove();
+              }
+
               container.appendChild(clone);
             },
           });
         }
       },
       onDragStart: () => {
+        // UX: Allow dragging from anywhere within the element
+        // User can drag by holding anywhere on the component
         setIsDragging(true);
         onDragStart?.();
       },
@@ -102,7 +88,7 @@ export function useDraggable({
         onDragEnd?.();
       },
     });
-  }, [id, zoneKey, ref, dragHandleRef, isSelected, onDragStart, onDragEnd]);
+  }, [id, zoneKey, ref, onDragStart, onDragEnd]);
 
   return { isDragging };
 }

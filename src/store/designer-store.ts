@@ -40,6 +40,10 @@ interface DesignerState {
   ) => void;
   selectComponent: (id: string | null) => void;
   updateZone: (zoneKey: ZoneKey, updates: Partial<LayoutSchema['zones']['header']>) => void;
+  updateSchema: (updates: Partial<LayoutSchema>) => void;
+  setSampleData: (data: Record<string, any>) => void;
+  setViewMode: (mode: 'design' | 'preview' | 'split') => void;
+  setActiveTab: (tab: 'palette' | 'outline' | 'data') => void;
   undo: () => void;
   redo: () => void;
   loadTemplate: (name: 'blank' | 'invoice') => void;

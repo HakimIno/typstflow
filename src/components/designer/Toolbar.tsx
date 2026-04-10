@@ -1,14 +1,13 @@
 'use client';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { useState, useEffect } from 'react';
 import {
   AlignCenter,
   AlignLeft,
   AlignRight,
   Cpu,
-  FileText,
   Download,
+  FileText,
   Layout,
   Play,
   Redo,
@@ -16,6 +15,7 @@ import {
   Search,
   Undo,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export function Toolbar() {
   const {
@@ -134,7 +134,7 @@ export function Toolbar() {
               <div className="absolute top-full left-0 hidden group-hover:block bg-slate-800 border border-slate-700 shadow-xl rounded-md py-1 min-w-[160px] z-[100]">
                 <button
                   type="button"
-                  onClick={() => (useDesignerStore.getState() as any).loadTemplate('invoice')}
+                  onClick={() => useDesignerStore.getState().loadTemplate('invoice')}
                   className="w-full text-left px-3 py-1.5 text-[10px] text-slate-300 hover:bg-blue-600 hover:text-white flex items-center gap-2"
                 >
                   <Layout className="w-3 h-3" />
@@ -143,7 +143,7 @@ export function Toolbar() {
                 <div className="h-px bg-slate-700 my-1" />
                 <button
                   type="button"
-                  onClick={() => (useDesignerStore.getState() as any).loadTemplate('blank')}
+                  onClick={() => useDesignerStore.getState().loadTemplate('blank')}
                   className="w-full text-left px-3 py-1.5 text-[10px] text-red-400 hover:bg-red-600 hover:text-white"
                 >
                   Clear Canvas
@@ -206,7 +206,7 @@ export function Toolbar() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as 'palette' | 'outline' | 'data')}
                 className={clsx(
                   'p-1.5 rounded-sm transition-all',
                   activeTab === tab.id

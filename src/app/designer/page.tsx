@@ -7,6 +7,8 @@ import { PreviewPane } from '@/components/designer/PreviewPane';
 import { PropertiesPanel } from '@/components/designer/PropertiesPanel';
 import { ReportTree as ReportTreeComponent } from '@/components/designer/ReportTree';
 import { Toolbar } from '@/components/designer/Toolbar';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode } from '@/types/schema';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
@@ -18,6 +20,17 @@ export default function DesignerPage() {
 
   useEffect(() => {
     setMounted(true);
+
+    // Setup DPI monitoring for accurate coordinate calculations
+    // This ensures drag & drop works correctly when:
+    // - User zooms browser (Ctrl +/-)
+    // - Moving between displays with different DPI
+    // - System DPI changes
+    const cleanupDpiMonitoring = LayoutEngine.setupDpiMonitoring();
+
+    return () => {
+      cleanupDpiMonitoring();
+    };
   }, []);
 
   const createComponent = useCallback((type: string): ComponentNode => {
@@ -95,31 +108,39 @@ export default function DesignerPage() {
 
   return (
     <div className="flex flex-col h-screen bg-slate-200 overflow-hidden font-sans">
-      <Toolbar />
+      <ErrorBoundary componentName="Toolbar">
+        <Toolbar />
+      </ErrorBoundary>
       <div className="flex flex-1 overflow-hidden p-0.5 gap-0.5">
         {/* Left Sidebar: Dynamic Panels */}
         <aside className="w-56 flex flex-col pro-panel overflow-hidden border-r border-slate-300 shadow-sm">
-          {renderLeftPanel()}
+          <ErrorBoundary componentName="Sidebar Panel">{renderLeftPanel()}</ErrorBoundary>
         </aside>
 
         {/* Center: Workspace (Design / Preview / Split) */}
         <div className="flex-1 flex overflow-hidden gap-0.5">
           {(viewMode === 'design' || viewMode === 'split') && (
             <main className="flex-1 overflow-auto bg-slate-300 shadow-inner flex justify-center p-0 transition-all border-r border-slate-400/20">
-              <Canvas />
+              <ErrorBoundary componentName="Designer Canvas">
+                <Canvas />
+              </ErrorBoundary>
             </main>
           )}
 
           {(viewMode === 'preview' || viewMode === 'split') && (
             <div className="flex-1 flex overflow-hidden bg-slate-200">
-              <PreviewPane />
+              <ErrorBoundary componentName="Preview Engine">
+                <PreviewPane />
+              </ErrorBoundary>
             </div>
           )}
         </div>
 
         {/* Right Sidebar: Properties */}
         <aside className="w-64 pro-panel overflow-hidden border-l border-slate-300 shadow-sm">
-          <PropertiesPanel />
+          <ErrorBoundary componentName="Properties Inspector">
+            <PropertiesPanel />
+          </ErrorBoundary>
         </aside>
       </div>
 

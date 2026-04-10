@@ -23,7 +23,7 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
   const [isDraggedOver, setIsDraggedOver] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
 
-  const initialHeightMm = parseFloat(minHeight || '50');
+  const initialHeightMm = Number.parseFloat(minHeight || '50');
   const [localHeight, setLocalHeight] = useState(initialHeightMm);
 
   const addComponent = useDesignerStore((state) => state.addComponent);
@@ -32,7 +32,7 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
 
   // Sync with store when minHeight changes externally
   useEffect(() => {
-    setLocalHeight(parseFloat(minHeight || '50'));
+    setLocalHeight(Number.parseFloat(minHeight || '50'));
   }, [minHeight]);
 
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -67,7 +67,7 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
     const el = contentRef.current;
     if (!el) return;
 
-    let requestRef: number | null = null;
+    const requestRef: number | null = null;
 
     return dropTargetForElements({
       element: el,
@@ -91,13 +91,14 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
 
         if (!location.current) return;
 
-        const rect = el.getBoundingClientRect();
+        // Use enhanced LayoutEngine with scroll compensation
+        const context = LayoutEngine.createContextFromElement(el);
         const data = source.data as any;
 
         const { x, y } = LayoutEngine.calculateDropPosition(
           location.current.input.clientX,
           location.current.input.clientY,
-          rect,
+          context,
           data.dragOffsetX || 0,
           data.dragOffsetY || 0
         );
@@ -175,9 +176,9 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
         )}
       >
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover/zone:opacity-100">
-           <div className="w-1 h-1 rounded-full bg-slate-400" />
-           <div className="w-1 h-1 rounded-full bg-slate-400" />
-           <div className="w-1 h-1 rounded-full bg-slate-400" />
+          <div className="w-1 h-1 rounded-full bg-slate-400" />
+          <div className="w-1 h-1 rounded-full bg-slate-400" />
+          <div className="w-1 h-1 rounded-full bg-slate-400" />
         </div>
       </div>
     </div>

@@ -98,11 +98,11 @@ function PaletteItem({ type, label, icon: Icon }: any) {
       getInitialData: ({ input }) => {
         const rect = el.getBoundingClientRect();
         const comp = getTemplate();
-        
+
         // Calculate where the user clicked relative to the icon (0 to 1)
         const percentX = (input.clientX - rect.left) / rect.width;
         const percentY = (input.clientY - rect.top) / rect.height;
-        
+
         // Apply that same percentage to the final component size
         // This makes it feel like you "grabbed" the exact spot
         return {
@@ -134,7 +134,7 @@ function PaletteItem({ type, label, icon: Icon }: any) {
         });
       },
     });
-  }, [type]);
+  }, [type, label]);
 
   return (
     <div

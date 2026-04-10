@@ -20,6 +20,8 @@ export function downloadText(content: string, fileName: string) {
 }
 
 export function downloadPdf(data: Uint8Array, fileName: string) {
-  const blob = new Blob([data], { type: 'application/pdf' });
+  // Convert Uint8Array to Blob-compatible format
+  // Create a proper ArrayBuffer view that Blob can accept
+  const blob = new Blob([new Uint8Array(data)], { type: 'application/pdf' });
   downloadBlob(blob, fileName);
 }

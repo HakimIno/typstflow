@@ -5,7 +5,8 @@ import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
 import { Copy, GripVertical, Trash2 } from 'lucide-react';
 import type React from 'react';
-import { memo, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { useDraggable } from '@/hooks/use-draggable';
 import { useResizable } from '@/hooks/use-resizable';
@@ -33,11 +34,16 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
   const dragHandleRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
-  const selectComponent = useDesignerStore((state) => state.selectComponent);
-  const removeComponent = useDesignerStore((state) => state.removeComponent);
-  const addComponent = useDesignerStore((state) => state.addComponent);
-  const updateComponent = useDesignerStore((state) => state.updateComponent);
+  const { selectedComponentId, selectComponent, removeComponent, addComponent, updateComponent } =
+    useDesignerStore(
+      useShallow((state) => ({
+        selectedComponentId: state.selectedComponentId,
+        selectComponent: state.selectComponent,
+        removeComponent: state.removeComponent,
+        addComponent: state.addComponent,
+        updateComponent: state.updateComponent,
+      }))
+    );
 
   const isSelected = selectedComponentId === component.id;
 
@@ -66,26 +72,27 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
   }, [component.x, component.y, component.width, component.height, syncBounds]);
 
   // 2. Logic Extracted: Dragging
+  // Note: We don't pass width/height anymore - useDraggable reads from DOM
+  // This prevents stale dimensions after resize operations
   const { isDragging } = useDraggable({
     id: component.id,
     zoneKey,
-    width: localBounds.width,
-    height: localBounds.height,
     ref,
-    dragHandleRef,
-    previewRef,
-    isSelected,
   });
 
-  const handleDuplicate = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    addComponent(zoneKey, {
-      ...component,
-      id: Math.random().toString(36).substring(7),
-      x: (component.x || 0) + 10,
-      y: (component.y || 0) + 10,
-    });
-  };
+  // STABLE: Prevent recreation of handlers on every render
+  const handleDuplicate = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      addComponent(zoneKey, {
+        ...component,
+        id: Math.random().toString(36).substring(7),
+        x: (component.x || 0) + 10,
+        y: (component.y || 0) + 10,
+      });
+    },
+    [addComponent, component, zoneKey]
+  );
 
   const x = LayoutEngine.mmToPx(localBounds.x);
   const y = LayoutEngine.mmToPx(localBounds.y);
@@ -154,36 +161,44 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
         isResizing && 'ring-2 ring-blue-600 shadow-lg z-[100]'
       )}
     >
-      {/* Precision Action Bar */}
-      {isSelected && !isDragging && (
-        <div className="absolute -top-7 right-0 flex items-center bg-blue-600 border border-blue-700 rounded-md px-0.5 h-6.5 shadow-sm animate-in fade-in slide-in-from-bottom-1 duration-200">
-          <div
-            ref={dragHandleRef}
-            className="p-1 hover:bg-blue-500 text-white cursor-grab active:cursor-grabbing border-r border-blue-700/50"
-          >
-            <GripVertical className="w-3 h-3" />
-          </div>
-          <button
-            type="button"
-            onClick={handleDuplicate}
-            className="p-1 hover:bg-blue-500 text-white border-r border-blue-700/50"
-            title="Duplicate"
-          >
-            <Copy className="w-3 h-3" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeComponent(component.id);
-            }}
-            className="p-1 hover:bg-red-500 text-white"
-            title="Delete"
-          >
-            <Trash2 className="w-3 h-3" />
-          </button>
+      {/* Precision Action Bar - Always mounted, visibility controlled by CSS */}
+      <div
+        key={`action-bar-${component.id}`}
+        className={clsx(
+          'absolute -top-7 right-0 flex items-center bg-blue-600 border border-blue-700 rounded-md px-0.5 h-6.5 shadow-sm transition-opacity duration-200',
+          !isSelected || isDragging ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        )}
+      >
+        <div
+          key="drag-handle"
+          ref={dragHandleRef}
+          data-drag-handle="true"
+          className="p-1 hover:bg-blue-500 text-white cursor-grab active:cursor-grabbing border-r border-blue-700/50"
+        >
+          <GripVertical className="w-3 h-3" />
         </div>
-      )}
+        <button
+          key="duplicate-btn"
+          type="button"
+          onClick={handleDuplicate}
+          className="p-1 hover:bg-blue-500 text-white border-r border-blue-700/50"
+          title="Duplicate"
+        >
+          <Copy className="w-3 h-3" />
+        </button>
+        <button
+          key="delete-btn"
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            removeComponent(component.id);
+          }}
+          className="p-1 hover:bg-red-500 text-white"
+          title="Delete"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
 
       {/* Content Preview */}
       <div ref={previewRef} className="w-full h-full relative pointer-events-none">

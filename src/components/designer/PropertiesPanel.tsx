@@ -1,24 +1,49 @@
 'use client';
 
 import { useDesignerStore } from '@/store/designer-store';
+import type {
+  BarcodeComponent,
+  ComponentNode,
+  ImageComponent,
+  QRComponent,
+  TableComponent,
+  TextComponent,
+} from '@/types/schema';
 import { clsx } from 'clsx';
 import { AlignCenter, AlignLeft, AlignRight, Bold, Layers, Sliders, Trash2 } from 'lucide-react';
 import type React from 'react';
+import { useMemo } from 'react';
+
+// Type guards for safe component access
+const isText = (c: ComponentNode): c is TextComponent => c.type === 'text';
+const isTable = (c: ComponentNode): c is TableComponent => c.type === 'table';
+const isImage = (c: ComponentNode): c is ImageComponent => c.type === 'image';
+const isBarcode = (c: ComponentNode): c is BarcodeComponent =>
+  c.type === 'barcode' || c.type === 'qr';
 
 export function PropertiesPanel() {
-  const _selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
+  // Select state with proper memoization - avoid selecting entire schema
+  const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
+  const zones = useDesignerStore((state) => state.schema.zones);
+  const page = useDesignerStore((state) => state.schema.page);
+
+  // Select actions separately (they don't change)
+  const updateSchema = useDesignerStore((state) => state.updateSchema);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
   const removeComponent = useDesignerStore((state) => state.removeComponent);
 
-  const { schema, updateSchema } = useDesignerStore();
-  const selectedComponent = useDesignerStore((state) => {
-    if (!state.selectedComponentId) return null;
-    for (const zone of Object.values(state.schema.zones)) {
-      const found = zone.components.find((c) => c.id === state.selectedComponentId);
+  // Find selected component with memoization
+  const selectedComponent = useMemo(() => {
+    if (!selectedComponentId) return null;
+    for (const zone of Object.values(zones)) {
+      const found = zone.components.find((c) => c.id === selectedComponentId);
       if (found) return found;
     }
     return null;
-  });
+  }, [zones, selectedComponentId]);
+
+  // Create schema object for properties that need it
+  const schema = useMemo(() => ({ zones, page }), [zones, page]);
 
   if (!selectedComponent) {
     return (
@@ -120,6 +145,21 @@ export function PropertiesPanel() {
     </div>
   );
 
+  // Validation helpers
+  const handleNumericUpdate = (key: keyof ComponentNode, value: string) => {
+    const num = Number.parseFloat(value);
+    if (!Number.isNaN(num)) {
+      updateComponent(selectedComponent.id, { [key]: num });
+    }
+  };
+
+  const handleStyleUpdate = (updates: any) => {
+    const currentStyle = (selectedComponent as any).style || {};
+    updateComponent(selectedComponent.id, {
+      style: { ...currentStyle, ...updates },
+    } as any);
+  };
+
   return (
     <div className="h-full flex flex-col bg-white">
       <div className="h-8 min-h-[32px] bg-slate-700 text-white flex items-center px-3 gap-2">
@@ -144,55 +184,49 @@ export function PropertiesPanel() {
 
         <section>
           <SectionHeader label="Content & Binding" />
-          {selectedComponent.type === 'text' && (
+          {isText(selectedComponent) && (
             <div className="flex flex-col border-b border-slate-100">
               <div className="px-3 py-1 text-[10px] font-bold text-slate-500 bg-slate-50/50 uppercase tracking-tighter">
                 Text Content
               </div>
               <textarea
-                value={(selectedComponent as any).content || ''}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, { content: e.target.value } as any)
-                }
+                value={selectedComponent.content || ''}
+                onChange={(e) => updateComponent(selectedComponent.id, { content: e.target.value })}
                 className="w-full h-16 px-3 py-2 text-[11px] font-mono border-none focus:ring-0 focus:outline-none resize-none bg-white"
                 placeholder="Type static text or {{binding}}..."
               />
             </div>
           )}
-          {selectedComponent.type === 'table' && (
+          {isTable(selectedComponent) && (
             <PropertyRow label="Data Source">
               <input
                 type="text"
-                value={(selectedComponent as any).dataSource || ''}
+                value={selectedComponent.dataSource || ''}
                 onChange={(e) =>
-                  updateComponent(selectedComponent.id, { dataSource: e.target.value } as any)
+                  updateComponent(selectedComponent.id, { dataSource: e.target.value })
                 }
                 className="pro-input h-6 px-1 font-mono"
                 placeholder="{{path.to.array}}"
               />
             </PropertyRow>
           )}
-          {(selectedComponent.type === 'barcode' || selectedComponent.type === 'qr') && (
+          {isBarcode(selectedComponent) && (
             <PropertyRow label="Value">
               <input
                 type="text"
-                value={(selectedComponent as any).value || ''}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, { value: e.target.value } as any)
-                }
+                value={(selectedComponent as BarcodeComponent | QRComponent).value || ''}
+                onChange={(e) => updateComponent(selectedComponent.id, { value: e.target.value })}
                 className="pro-input h-6 px-1 font-mono"
                 placeholder="{{item.id}}"
               />
             </PropertyRow>
           )}
-          {selectedComponent.type === 'image' && (
+          {isImage(selectedComponent) && (
             <PropertyRow label="Image URL">
               <input
                 type="text"
-                value={(selectedComponent as any).src || ''}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, { src: e.target.value } as any)
-                }
+                value={selectedComponent.src || ''}
+                onChange={(e) => updateComponent(selectedComponent.id, { src: e.target.value })}
                 className="pro-input h-6 px-1 font-mono"
                 placeholder="https://..."
               />
@@ -200,20 +234,17 @@ export function PropertiesPanel() {
           )}
         </section>
 
-        {(selectedComponent.type === 'text' || selectedComponent.type === 'table') && (
+        {(isText(selectedComponent) || isTable(selectedComponent)) && (
           <section>
             <SectionHeader label="Typography" />
             <PropertyRow label="Font Size (pt)">
               <input
                 type="number"
-                value={(selectedComponent as any).style?.fontSize || 10}
+                min="1"
+                max="200"
+                value={selectedComponent.style?.fontSize || 10}
                 onChange={(e) =>
-                  updateComponent(selectedComponent.id, {
-                    style: {
-                      ...(selectedComponent as any).style,
-                      fontSize: Number.parseInt(e.target.value),
-                    },
-                  } as any)
+                  handleStyleUpdate({ fontSize: Number.parseInt(e.target.value) || 10 })
                 }
                 className="pro-input h-6 px-1"
               />
@@ -222,19 +253,13 @@ export function PropertiesPanel() {
               <button
                 type="button"
                 onClick={() =>
-                  updateComponent(selectedComponent.id, {
-                    style: {
-                      ...(selectedComponent as any).style,
-                      fontWeight:
-                        (selectedComponent as any).style?.fontWeight === 'bold'
-                          ? 'regular'
-                          : 'bold',
-                    },
-                  } as any)
+                  handleStyleUpdate({
+                    fontWeight: selectedComponent.style?.fontWeight === 'bold' ? 'regular' : 'bold',
+                  })
                 }
                 className={clsx(
                   'px-2 py-0.5 border text-[10px] font-bold transition-all',
-                  (selectedComponent as any).style?.fontWeight === 'bold'
+                  selectedComponent.style?.fontWeight === 'bold'
                     ? 'bg-slate-800 text-white border-slate-800'
                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                 )}
@@ -245,14 +270,14 @@ export function PropertiesPanel() {
           </section>
         )}
 
-        {selectedComponent.type === 'image' && (
+        {isImage(selectedComponent) && (
           <section>
             <SectionHeader label="Image Settings" />
             <PropertyRow label="Fit Mode">
               <select
-                value={(selectedComponent as any).fit || 'contain'}
+                value={selectedComponent.fit || 'contain'}
                 onChange={(e) =>
-                  updateComponent(selectedComponent.id, { fit: e.target.value } as any)
+                  updateComponent(selectedComponent.id, { fit: e.target.value as any })
                 }
                 className="pro-input h-6 px-1 w-full bg-white text-[11px]"
               >
@@ -264,45 +289,30 @@ export function PropertiesPanel() {
           </section>
         )}
 
-        {selectedComponent.type === 'table' && (
+        {isTable(selectedComponent) && (
           <section>
             <SectionHeader label="Table Styling" />
             <PropertyRow label="Header BG">
               <input
                 type="color"
-                value={(selectedComponent as any).style?.headerBackground || '#f1f5f9'}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, {
-                    style: { ...(selectedComponent as any).style, headerBackground: e.target.value },
-                  } as any)
-                }
+                value={selectedComponent.style?.headerBackground || '#f1f5f9'}
+                onChange={(e) => handleStyleUpdate({ headerBackground: e.target.value })}
                 className="w-full h-6 rounded-sm cursor-pointer"
               />
             </PropertyRow>
             <PropertyRow label="Alt Row BG">
               <input
                 type="color"
-                value={(selectedComponent as any).style?.alternateRowBackground || '#ffffff'}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, {
-                    style: {
-                      ...(selectedComponent as any).style,
-                      alternateRowBackground: e.target.value,
-                    },
-                  } as any)
-                }
+                value={selectedComponent.style?.alternateRowBackground || '#ffffff'}
+                onChange={(e) => handleStyleUpdate({ alternateRowBackground: e.target.value })}
                 className="w-full h-6 rounded-sm cursor-pointer"
               />
             </PropertyRow>
             <PropertyRow label="Border Color">
               <input
                 type="color"
-                value={(selectedComponent as any).style?.borderColor || '#cbd5e1'}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, {
-                    style: { ...(selectedComponent as any).style, borderColor: e.target.value },
-                  } as any)
-                }
+                value={selectedComponent.style?.borderColor || '#cbd5e1'}
+                onChange={(e) => handleStyleUpdate({ borderColor: e.target.value })}
                 className="w-full h-6 rounded-sm cursor-pointer"
               />
             </PropertyRow>
@@ -321,10 +331,10 @@ export function PropertiesPanel() {
                 <button
                   key={align.id}
                   type="button"
-                  onClick={() => updateComponent(selectedComponent.id, { align: align.id } as any)}
+                  onClick={() => updateComponent(selectedComponent.id, { align: align.id as any })}
                   className={clsx(
                     'flex-1 py-1 flex items-center justify-center transition-all',
-                    (selectedComponent as any).align === align.id
+                    selectedComponent.align === align.id
                       ? 'bg-blue-600 text-white'
                       : 'bg-white text-slate-400 hover:text-slate-600'
                   )}
@@ -342,48 +352,38 @@ export function PropertiesPanel() {
             <PropertyRow label="X Pos">
               <input
                 type="number"
+                step="1"
                 value={selectedComponent.x || 0}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, {
-                    x: Number.parseFloat(e.target.value) || 0,
-                  })
-                }
+                onChange={(e) => handleNumericUpdate('x', e.target.value)}
                 className="pro-input h-6 px-1 w-full"
               />
             </PropertyRow>
             <PropertyRow label="Y Pos">
               <input
                 type="number"
+                step="1"
                 value={selectedComponent.y || 0}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, {
-                    y: Number.parseFloat(e.target.value) || 0,
-                  })
-                }
+                onChange={(e) => handleNumericUpdate('y', e.target.value)}
                 className="pro-input h-6 px-1 w-full"
               />
             </PropertyRow>
             <PropertyRow label="Width">
               <input
                 type="number"
+                step="1"
+                min="1"
                 value={selectedComponent.width || 0}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, {
-                    width: Number.parseFloat(e.target.value) || 0,
-                  })
-                }
+                onChange={(e) => handleNumericUpdate('width', e.target.value)}
                 className="pro-input h-6 px-1 w-full"
               />
             </PropertyRow>
             <PropertyRow label="Height">
               <input
                 type="number"
+                step="1"
+                min="1"
                 value={selectedComponent.height || 0}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, {
-                    height: Number.parseFloat(e.target.value) || 0,
-                  })
-                }
+                onChange={(e) => handleNumericUpdate('height', e.target.value)}
                 className="pro-input h-6 px-1 w-full"
               />
             </PropertyRow>
