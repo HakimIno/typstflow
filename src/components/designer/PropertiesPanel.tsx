@@ -207,17 +207,31 @@ export function PropertiesPanel() {
             </div>
           )}
           {isTable(selectedComponent) && (
-            <PropertyRow label="Data Source">
-              <input
-                type="text"
-                value={selectedComponent.dataSource || ''}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, { dataSource: e.target.value })
-                }
-                className="pro-input h-6 px-1 font-mono"
-                placeholder="{{path.to.array}}"
-              />
-            </PropertyRow>
+            <div className="space-y-0 text-[10px]">
+              <PropertyRow label="Data Source">
+                <input
+                  type="text"
+                  value={selectedComponent.dataSource || ''}
+                  onChange={(e) =>
+                    updateComponent(selectedComponent.id, { dataSource: e.target.value })
+                  }
+                  className="pro-input h-6 px-1 font-mono"
+                  placeholder="{{path.to.array}}"
+                />
+              </PropertyRow>
+              <PropertyRow label="Header Rows">
+                <input
+                  type="number"
+                  min="0"
+                  max="5"
+                  value={selectedComponent.style?.headerRows ?? 1}
+                  onChange={(e) =>
+                    handleStyleUpdate({ headerRows: parseInt(e.target.value) || 0 })
+                  }
+                  className="pro-input h-6 px-1"
+                />
+              </PropertyRow>
+            </div>
           )}
           {isBarcode(selectedComponent) && (
             <PropertyRow label="Value">
@@ -322,6 +336,56 @@ export function PropertiesPanel() {
 
         {isTable(selectedComponent) && (
           <section>
+            <SectionHeader label="Column Management" />
+            <div className="p-2 space-y-1 bg-slate-50/50">
+              {selectedComponent.columns.map((col, idx) => (
+                <div key={col.id} className="flex gap-1 items-center bg-white border border-slate-200 p-1 rounded-sm group/col">
+                  <span className="w-4 text-[9px] font-bold text-slate-400">#{idx+1}</span>
+                  <input 
+                    className="flex-1 text-[10px] bg-transparent border-none focus:ring-0 p-0 font-bold"
+                    value={col.header}
+                    onChange={(e) => {
+                      const newCols = [...selectedComponent.columns];
+                      newCols[idx] = { ...col, header: e.target.value };
+                      updateComponent(selectedComponent.id, { columns: newCols } as any);
+                    }}
+                  />
+                  <input 
+                    className="w-16 text-[9px] bg-slate-50 border border-slate-100 rounded px-1"
+                    value={col.width}
+                    onChange={(e) => {
+                      const newCols = [...selectedComponent.columns];
+                      newCols[idx] = { ...col, width: e.target.value };
+                      updateComponent(selectedComponent.id, { columns: newCols } as any);
+                    }}
+                  />
+                  <button 
+                    className="p-1 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded opacity-0 group-hover/col:opacity-100 transition-opacity"
+                    onClick={() => {
+                        const newCols = selectedComponent.columns.filter((_, i) => i !== idx);
+                        updateComponent(selectedComponent.id, { columns: newCols } as any);
+                    }}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              <button 
+                className="w-full py-1.5 border border-dashed border-slate-300 text-[9px] font-bold uppercase text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all mt-2"
+                onClick={() => {
+                    const newCols = [...selectedComponent.columns, { 
+                        id: Math.random().toString(36).substring(7),
+                        header: 'New Column',
+                        field: 'field',
+                        width: '40mm'
+                    }];
+                    updateComponent(selectedComponent.id, { columns: newCols } as any);
+                }}
+              >
+                + Add Column
+              </button>
+            </div>
+
             <SectionHeader label="Table Styling" />
             <PropertyRow label="Header BG">
               <input
@@ -345,6 +409,15 @@ export function PropertiesPanel() {
                 value={selectedComponent.style?.borderColor || '#cbd5e1'}
                 onChange={(e) => handleStyleUpdate({ borderColor: e.target.value })}
                 className="w-full h-6 rounded-sm cursor-pointer"
+              />
+            </PropertyRow>
+            <PropertyRow label="Border Width">
+              <input
+                type="text"
+                value={selectedComponent.style?.borderWidth || '0.5pt'}
+                onChange={(e) => handleStyleUpdate({ borderWidth: e.target.value })}
+                className="pro-input h-6 px-1 font-mono"
+                placeholder="0.5pt"
               />
             </PropertyRow>
           </section>

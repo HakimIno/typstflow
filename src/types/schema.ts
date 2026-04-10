@@ -111,6 +111,9 @@ export interface TableColumn {
   align?: 'left' | 'center' | 'right';
   format?: FormatType;
   style?: TextStyle;
+  borderWidth?: string;
+  borderColor?: string;
+  background?: string;
 }
 
 export interface TableStyle {
@@ -125,6 +128,19 @@ export interface TableStyle {
   lineHeight?: number;
   letterSpacing?: string;
   justify?: boolean;
+  cellStyles?: Record<string, CellStyle>; // Keys: "header:col", "row:col", "data:col"
+  headerRows?: number;
+  footerRows?: number;
+  rowHeights?: string[];
+}
+
+export interface CellStyle {
+  fill?: string;
+  stroke?: string | { top?: string; bottom?: string; left?: string; right?: string };
+  align?: 'left' | 'center' | 'right';
+  weight?: 'bold' | 'regular';
+  size?: number;
+  color?: string;
 }
 
 export interface SummaryRow {

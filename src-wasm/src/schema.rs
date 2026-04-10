@@ -129,6 +129,9 @@ pub struct TableColumn {
     pub field: String,
     pub width: String,
     pub align: Option<String>,
+    pub border_width: Option<String>,
+    pub border_color: Option<String>,
+    pub background: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -141,6 +144,21 @@ pub struct TableStyle {
     pub line_height: Option<f64>,
     pub letter_spacing: Option<String>,
     pub justify: Option<bool>,
+    pub cell_styles: Option<HashMap<String, CellStyle>>,
+    pub header_rows: Option<u32>,
+    pub footer_rows: Option<u32>,
+    pub row_heights: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CellStyle {
+    pub fill: Option<String>,
+    pub stroke: Option<serde_json::Value>, // string or {top, bottom, left, right}
+    pub align: Option<String>,
+    pub weight: Option<String>,
+    pub size: Option<f64>,
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -97,33 +97,47 @@ fn render_table(c: &TableComponent, data: &Value) -> String {
     let mut t = String::from("#table(\n    columns: (");
     let col_defs = c.columns.iter().map(|col| col.width.replace("*", "fr")).collect::<Vec<_>>().join(", ");
     t.push_str(&col_defs);
-    t.push_str("),\n    inset: 7pt, ");
+    t.push_str("),\n    inset: 7pt,\n");
 
     let style = c.style.as_ref();
-    let header_bg = style.and_then(|s| s.header_background.as_deref()).unwrap_or("blue.lighten(92%)");
-    let alt_bg = style.and_then(|s| s.alternate_row_background.as_deref()).unwrap_or("none");
+    let header_rows = style.and_then(|s| s.header_rows).unwrap_or(1);
     
-    t.push_str(&format!(
-        "fill: (x, y) => if y == 0 {{ {} }} else if calc.even(y) {{ {} }} else {{ none }},\n",
-        format_color(header_bg), format_color(alt_bg)
-    ));
+    // 1. DYNAMIC FILL LOGIC
+    t.push_str("    fill: (x, y) => {\n");
+    t.push_str("      let header_bg = ");
+    t.push_str(&format_color(style.and_then(|s| s.header_background.as_deref()).unwrap_or("blue.lighten(92%)")));
+    t.push_str(";\n      let alt_bg = ");
+    t.push_str(&format_color(style.and_then(|s| s.alternate_row_background.as_deref()).unwrap_or("white")));
+    t.push_str(";\n");
+    t.push_str(&format!("      if y < {} {{ header_bg }} else if calc.even(y) {{ alt_bg }} else {{ white }}\n", header_rows));
+    t.push_str("    },\n");
 
-    // Headers
-    t.push_str("    ");
-    t.push_str(&c.columns.iter().map(|col| format!("[*{col}*]", col = escape_typst(&col.header))).collect::<Vec<_>>().join(", "));
-    t.push_str(",\n");
+    // 2. STROKE LOGIC
+    let border_color = style.and_then(|s| s.border_color.as_deref()).unwrap_or("gray.lighten(50%)");
+    let border_width = style.and_then(|s| s.border_width.as_deref()).unwrap_or("0.5pt");
+    t.push_str(&format!("    stroke: {} + {},\n", border_width, format_color(border_color)));
 
-    // Rows
+    // 3. HEADERS
+    t.push_str("    table.header(\n");
+    for (i, col) in c.columns.iter().enumerate() {
+        let align = col.align.as_deref().unwrap_or("center");
+        t.push_str(&format!("      [#set align({}); *{}*],", align, escape_typst(&col.header)));
+        if i % 3 == 2 { t.push_str("\n"); }
+    }
+    t.push_str("\n    ),\n");
+
+    // 4. DATA ROWS
     let path = c.data_source.replace("{{", "").replace("}}", "").trim().to_string();
     if let Some(Value::Array(items)) = resolve_path(&path, data) {
         for item in items {
-            t.push_str("    ");
-            let row = c.columns.iter().map(|col| {
+            for col in &c.columns {
                 let val = resolve_path(&col.field, item).map(|v| v.to_string().replace("\"", "")).unwrap_or_default();
-                format!("[{}]", escape_typst(&val))
-            }).collect::<Vec<_>>().join(", ");
-            t.push_str(&row);
-            t.push_str(",\n");
+                let align = col.align.as_deref().unwrap_or("left");
+
+                // Apply Cell Overrides (Summary/Special)
+                t.push_str(&format!("      [#set align({}); {}],", align, escape_typst(&val)));
+            }
+            t.push_str("\n");
         }
     }
 

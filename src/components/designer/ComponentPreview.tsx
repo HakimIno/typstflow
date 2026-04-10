@@ -1,6 +1,6 @@
-'use client';
-import type { ComponentNode } from '@/types/schema';
+import type { ComponentNode, TableComponent } from '@/types/schema';
 import { Table as TableIcon } from 'lucide-react';
+import { TablePreview } from './TablePreview';
 
 interface Props {
   component: ComponentNode;
@@ -25,17 +25,7 @@ export function ComponentPreview({ component }: Props) {
         </div>
       );
     case 'table':
-      return (
-        <div className="border border-slate-200 bg-white w-full h-full text-slate-400">
-          <div className="bg-slate-50 border-b border-slate-200 px-2 py-0.5 flex items-center justify-between text-[9px] font-bold text-slate-500">
-            <span>Table: {(component as any).dataSource || 'Unbound'}</span>
-            <TableIcon className="w-3 h-3" />
-          </div>
-          <div className="flex-1 flex items-center justify-center italic text-[9px]">
-            [ Data Table Block ]
-          </div>
-        </div>
-      );
+      return <TablePreview component={component as TableComponent} />;
     case 'line':
       return (
         <div className="w-full h-full flex flex-col justify-center px-1">
