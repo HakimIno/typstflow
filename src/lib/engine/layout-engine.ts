@@ -39,29 +39,26 @@ export interface PositionResult {
  * High-performance Coordinate & Layout Engine for TypstFlow.
  *
  * FEATURES:
- * - Automatic DPI detection (handles browser zoom, high DPI displays)
+ * - Standard 96 DPI conversion (matches browser CSS units)
  * - Scroll compensation for accurate positioning in scrollable containers
  * - CSS transform awareness
  * - Grid snapping for precise alignment
  * - Cached calculations for performance
  *
+ * NOTE: We use standardized 96 DPI for consistency between design view and PDF output.
+ * Browser zoom handles display scaling automatically, so we keep logical pixels constant.
+ *
  * @example
  * ```ts
- * const context = {
- *   rect: container.getBoundingClientRect(),
- *   scrollLeft: container.scrollLeft,
- *   scrollTop: container.scrollTop
- * };
- * const position = LayoutEngine.calculateDropPosition(clientX, clientY, context, dragOffsetX, dragOffsetY);
+ * const context = LayoutEngine.createContextFromElement(containerElement);
+ * const position = LayoutEngine.calculateDropPosition(clientX, clientY, context);
  * ```
  */
 export const LayoutEngine = {
   /**
-   * Converts screen pixels to physical millimeters at CURRENT detected DPI.
-   * Automatically handles:
-   * - High DPI screens (Retina, 4K)
-   * - Browser zoom (Ctrl +/-)
-   * - System DPI scaling (Windows 125%/150%)
+   * Converts screen pixels to physical millimeters.
+   * Uses standard 96 DPI conversion (96px = 1 inch = 25.4mm).
+   * This ensures consistent positioning between design view and PDF output.
    *
    * @param px - Pixel value to convert
    * @returns Equivalent value in millimeters
@@ -71,8 +68,8 @@ export const LayoutEngine = {
   },
 
   /**
-   * Converts physical millimeters to screen pixels at CURRENT detected DPI.
-   * Reverse of pxToMm with automatic DPI handling.
+   * Converts physical millimeters to screen pixels.
+   * Reverse of pxToMm using standard 96 DPI.
    *
    * @param mm - Millimeter value to convert
    * @returns Equivalent value in pixels
@@ -82,10 +79,10 @@ export const LayoutEngine = {
   },
 
   /**
-   * Gets the current DPI ratio being used for conversions.
-   * Useful for debugging or display purposes.
+   * Gets the DPI ratio being used for conversions.
+   * Always returns 1.0 as we use standard 96 DPI.
    *
-   * @returns Current DPI ratio (e.g., 1.5 = 150% zoom, 2 = Retina)
+   * @returns DPI ratio (always 1.0)
    */
   getCurrentDpiRatio(): number {
     return getDpiRatio();

@@ -3,7 +3,15 @@ import type { ComponentNode, LayoutSchema } from '../types/schema';
 /**
  * Phoenix Generator (Stable FIX)
  * Removed 'clip: true' from zones to prevent absolute components from being hidden.
+ *
+ * COORDINATE SYSTEM:
+ * The designer has a 24px (6.35mm) header bar in each zone.
+ * Components are positioned relative to the content area below this header.
+ * To match this in Typst (which doesn't render the header), we offset all
+ * component y-positions by ZONE_HEADER_HEIGHT_MM.
  */
+
+const ZONE_HEADER_HEIGHT_MM = 6.35; // 24px at 96 DPI
 
 function resolvePath(path: string, obj: any) {
   if (!path) return undefined;
@@ -29,9 +37,9 @@ function formatColor(color: string): string {
   return color;
 }
 
-function renderComponent(comp: ComponentNode, data: Record<string, any>): string {
+function renderComponent(comp: ComponentNode, data: Record<string, any>, yOffset = 0): string {
   const x = comp.x || 0;
-  const y = comp.y || 0;
+  const y = (comp.y || 0) + yOffset; // Apply vertical offset for zone header
   const w = comp.width || 100;
   const h = comp.height || 20;
 
@@ -135,7 +143,7 @@ export function schemaToTypst(schema: LayoutSchema, data: Record<string, any>): 
   // Fonts & Paragraph Setup
   const mainFont = schema.fonts[0];
   typst += `#set text(font: "${mainFont.family}", size: ${mainFont.size}pt, lang: "th")\n`;
-  typst += `#set par(leading: 0.2em, justify: false)\n`;
+  typst += '#set par(leading: 0.2em, justify: false)\n';
 
   // Zones - NO CLIPPING here, as absolute placed items have 0 height in their container flow
   for (const key of ['header', 'body', 'footer'] as const) {
@@ -145,7 +153,9 @@ export function schemaToTypst(schema: LayoutSchema, data: Record<string, any>): 
       // We wrap in a block for namespacing but CLIP MUST BE FALSE or UNSET
       typst += '#block(width: 100%)[\n';
       for (const c of zone.components) {
-        typst += `  ${renderComponent(c, data)}`;
+        // Apply ZONE_HEADER_HEIGHT_MM offset to match designer's coordinate system
+        // (designer has a 24px header bar that Typst doesn't render)
+        typst += `  ${renderComponent(c, data, ZONE_HEADER_HEIGHT_MM)}`;
       }
       // Add some spacing between bands to prevent overlap if not absolutely positioned
       typst += ']\n';

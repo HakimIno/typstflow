@@ -1,5 +1,5 @@
-/* 
- * Standard DPI mapping for web displays. 
+/*
+ * Standard DPI mapping for web displays.
  * Browser CSS units (cm, mm, in) are based on 96 DPI (96px = 1 inch).
  * We use this fixed ratio to map Designer pixels to PDF millimeters accurately,
  * regardless of the physical screen resolution or browser zoom (which handles scaling automatically).
@@ -22,7 +22,7 @@ export function pxToMm(px: number): number {
   return px / (DPI / MM_PER_INCH);
 }
 
-// Re-export legacy/helper names for backward compatibility if needed, 
+// Re-export legacy/helper names for backward compatibility if needed,
 // but pointing to the new stable logic.
 export const mmToPxAtCurrentDpi = mmToPx;
 export const pxToMmAtCurrentDpi = pxToMm;
@@ -36,4 +36,3 @@ export function updateDpiRatio(): void {
 }
 
 export const SNAP_GRID_MM = 0.1;
-
