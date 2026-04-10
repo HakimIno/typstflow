@@ -26,6 +26,20 @@ interface DesignerState {
   history: LayoutSchema[];
   historyIndex: number;
 
+  // Drag & Snapping
+  dragState: {
+    isDragging: boolean;
+    draggedComponentId: string | null;
+    currentX: number; // mm
+    currentY: number; // mm
+    lastSnappedX: number; // For drop persistence
+    lastSnappedY: number; // For drop persistence
+    activeGuides: {
+      vertical: number[]; // x positions in mm
+      horizontal: number[]; // y positions in mm
+    };
+  };
+
   // Actions
   addComponent: (zoneKey: ZoneKey, component: ComponentNode) => void;
   updateComponent: (id: string, updates: Partial<ComponentNode>) => void;
@@ -41,6 +55,7 @@ interface DesignerState {
   selectComponent: (id: string | null) => void;
   updateZone: (zoneKey: ZoneKey, updates: Partial<LayoutSchema['zones']['header']>) => void;
   updateSchema: (updates: Partial<LayoutSchema>) => void;
+  setDragState: (updates: Partial<DesignerState['dragState']>) => void;
   setSampleData: (data: Record<string, any>) => void;
   setViewMode: (mode: 'design' | 'preview' | 'split') => void;
   setActiveTab: (tab: 'palette' | 'outline' | 'data') => void;
@@ -100,6 +115,18 @@ export const useDesignerStore = create<DesignerState>((set) => ({
   previewError: null,
   history: [BLANK_SCHEMA],
   historyIndex: 0,
+  dragState: {
+    isDragging: false,
+    draggedComponentId: null,
+    currentX: 0,
+    currentY: 0,
+    lastSnappedX: 0,
+    lastSnappedY: 0,
+    activeGuides: {
+      vertical: [],
+      horizontal: [],
+    },
+  },
 
   loadTemplate: (name) => {
     if (name === 'invoice') {
@@ -238,4 +265,7 @@ export const useDesignerStore = create<DesignerState>((set) => ({
   setSampleData: (data) => set({ sampleData: data }),
   setViewMode: (mode) => set({ viewMode: mode }),
   setActiveTab: (tab) => set({ activeTab: tab }),
+  setDragState: (updates) => set((state) => ({ 
+    dragState: { ...state.dragState, ...updates } 
+  })),
 }));

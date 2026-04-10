@@ -104,14 +104,23 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
         );
 
         if (data.type === 'new-component') {
+          const snappedX = useDesignerStore.getState().dragState.lastSnappedX;
+          const snappedY = useDesignerStore.getState().dragState.lastSnappedY;
+          const zoneOffset = LayoutEngine.calculateZoneOffset(zoneKey, useDesignerStore.getState().schema);
+
           addComponent(zoneKey, {
             ...data.component,
             id: Math.random().toString(36).substring(7),
-            x,
-            y,
+            x: snappedX,
+            y: snappedY - zoneOffset,
           });
         } else if (data.id) {
-          moveComponent(data.id, data.zoneKey, zoneKey, 0, x, y);
+          // Use persistent snapped coordinates from store
+          const finalX = useDesignerStore.getState().dragState.lastSnappedX;
+          const finalY = useDesignerStore.getState().dragState.lastSnappedY;
+          const zoneOffset = LayoutEngine.calculateZoneOffset(zoneKey, useDesignerStore.getState().schema);
+          
+          moveComponent(data.id, data.zoneKey, zoneKey, 0, finalX, finalY - zoneOffset);
         }
       },
     });
@@ -122,32 +131,30 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
       ref={containerRef}
       style={{ minHeight: `${localHeight}mm` }}
       className={clsx(
-        'flex flex-col border-b last:border-b-0 border-slate-300 relative transition-colors group/zone',
+        'relative border-b last:border-b-0 border-slate-300 transition-colors group/zone',
         isDraggedOver ? 'bg-blue-50/50' : 'bg-transparent',
         isResizing && 'ring-1 ring-blue-400 z-50 shadow-lg'
       )}
     >
-      {/* Horizontal Band Header */}
+      {/* Horizontal Band Header (Floating/Absolute) */}
       <div
         className={clsx(
-          'h-6 px-3 flex items-center justify-between border-b select-none z-20 transition-all',
-          isDraggedOver
-            ? 'bg-blue-600 border-blue-700 text-white'
-            : 'bg-slate-100 border-slate-200 text-slate-500 group-hover/zone:bg-slate-200'
+          'absolute -top-6 left-0 right-0 h-6 px-3 flex items-center justify-between pointer-events-none select-none z-30 transition-all opacity-0 group-hover/zone:opacity-100',
+          isDraggedOver && 'opacity-100'
         )}
       >
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-black uppercase tracking-[0.2em]">{label}</span>
-          <div className="h-px w-24 bg-current opacity-10" />
+        <div className="flex items-center gap-2 bg-slate-100/80 backdrop-blur-sm px-2 py-0.5 rounded-tr rounded-br border border-slate-200 border-l-0">
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</span>
+          <div className="h-px w-8 bg-slate-300" />
         </div>
       </div>
 
-      <div ref={contentRef} className="relative flex-1 bg-white/40 overflow-visible">
+      <div ref={contentRef} className="relative w-full h-full bg-white/10 overflow-visible min-h-[inherit]">
         {components.length === 0 && !isDraggedOver ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 opacity-40 select-none pointer-events-none p-12">
-            <Layers className="w-8 h-8 mb-2" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">
-              DRAG COMPONENTS TO {label}
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 opacity-20 select-none pointer-events-none">
+            <Layers className="w-6 h-6 mb-1" />
+            <p className="text-[9px] font-bold uppercase tracking-widest">
+              {label} EMPTY
             </p>
           </div>
         ) : (

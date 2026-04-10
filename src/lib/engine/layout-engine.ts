@@ -146,14 +146,11 @@ export const LayoutEngine = {
     // Adjust for scale transform if present
     const effectiveScale = scale > 0 ? scale : 1;
 
-    // Calculate position relative to container, accounting for scroll
-    // The formula is:
-    // 1. Subtract viewport offset to get relative to element
-    // 2. Add scroll offset to get position in scrollable content
-    // 3. Subtract drag offset to position from the drag handle point
-    // 4. Divide by scale to handle CSS transforms
-    const relativeX = (clientX - rect.left + scrollLeft - dragOffsetX) / effectiveScale;
-    const relativeY = (clientY - rect.top + scrollTop - dragOffsetY) / effectiveScale;
+    // Calculate position relative to container
+    // When using getBoundingClientRect(), the rect already accounts for viewport-relative scroll.
+    // The distance between the cursor and the element's edge is direct: (clientX - rect.left).
+    const relativeX = (clientX - rect.left - dragOffsetX) / effectiveScale;
+    const relativeY = (clientY - rect.top - dragOffsetY) / effectiveScale;
 
     // Convert to millimeters (automatically handles DPI/zoom)
     const rawX = LayoutEngine.pxToMm(relativeX);
@@ -207,6 +204,55 @@ export const LayoutEngine = {
       scrollTop: element.scrollTop,
       scale: detectedScale ?? 1,
     };
+  },
+
+  /**
+   * High-level method to calculate component position relative to the main drafting container.
+   * This handles the complex coordinate mapping between viewport screen space and 
+   * scrollable millimeter-based page space.
+   */
+  calculateAbsolutePosition(
+    clientX: number,
+    clientY: number,
+    dragOffsetX = 0,
+    dragOffsetY = 0
+  ): PositionResult {
+    // 1. Find the pro-grid (the real page container)
+    const container = document.querySelector('[class*="pro-grid"]') as HTMLElement;
+    if (!container) return { x: 0, y: 0, rawX: 0, rawY: 0 };
+
+    // 2. Find the scrollable parent
+    const scrollParent = container.closest('.overflow-auto') as HTMLElement;
+    
+    // 3. Create context combined from both
+    const context: CoordinateContext = {
+      rect: container.getBoundingClientRect(),
+      scrollLeft: scrollParent?.scrollLeft || 0,
+      scrollTop: scrollParent?.scrollTop || 0,
+      scale: 1, // Currently default, but can be expanded
+    };
+
+    // 4. Use base drop calculation
+    return this.calculateDropPosition(clientX, clientY, context, dragOffsetX, dragOffsetY);
+  },
+
+  /**
+   * Calculates the cumulative Y offset (mm) from the top of the page to the start of a specific zone.
+   */
+  calculateZoneOffset(zoneKey: string, schema: any): number {
+    const { parseTypstUnit } = require('@/lib/utils/units');
+    let offset = 0;
+    
+    // Order: Header -> Body -> Footer
+    if (zoneKey === 'header') return 0;
+    
+    offset += parseTypstUnit(schema.zones.header.minHeight);
+    if (zoneKey === 'body') return offset;
+    
+    offset += parseTypstUnit(schema.zones.body.minHeight);
+    if (zoneKey === 'footer') return offset;
+    
+    return offset;
   },
 
   /**

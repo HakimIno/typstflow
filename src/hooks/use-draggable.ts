@@ -1,6 +1,7 @@
 'use client';
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { useDesignerStore } from '@/store/designer-store';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
 import { type RefObject, useEffect, useState } from 'react';
@@ -14,6 +15,11 @@ interface DraggableOptions {
   onDragEnd?: () => void;
 }
 
+/**
+ * useDraggable hook handles the interaction side of dragging.
+ * It manages the drag handle, initial data, and custom drag preview.
+ * The global DragMonitor handles the real-time position tracking and snapping.
+ */
 export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEnd }: DraggableOptions) {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -24,12 +30,10 @@ export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEn
 
     return draggable({
       element: el,
-      dragHandle: undefined, // Allow dragging from anywhere
       getInitialData: ({ input }) => {
         const rect = el.getBoundingClientRect();
 
         // ALWAYS read fresh dimensions from DOM to avoid stale data
-        // This is critical after resize operations
         const currentWidth = LayoutEngine.pxToMm(el.offsetWidth);
         const currentHeight = LayoutEngine.pxToMm(el.offsetHeight);
 
@@ -51,7 +55,6 @@ export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEn
             nativeSetDragImage,
             getOffset: () => ({ x: data.dragOffsetX, y: data.dragOffsetY }),
             render: ({ container }) => {
-              // Create a literal clone of the actual element as it looks right now
               const clone = sourceEl.cloneNode(true) as HTMLDivElement;
               clone.style.width = `${sourceEl.offsetWidth}px`;
               clone.style.height = `${sourceEl.offsetHeight}px`;
@@ -62,13 +65,11 @@ export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEn
               clone.style.left = '0';
               clone.style.margin = '0';
               clone.style.pointerEvents = 'none';
-              clone.style.transform = 'none'; // Ensure no existing transforms affect it
+              clone.style.transform = 'none';
 
-              // Remove interactive elements from preview
               const actionBar = clone.querySelector('.absolute.-top-7');
               if (actionBar) actionBar.remove();
 
-              // Hide resize handles in preview (using robust class matches)
               const handles = clone.querySelectorAll('[class*="cursor-"]');
               for (const h of handles) {
                 (h as HTMLElement).remove();
@@ -80,14 +81,24 @@ export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEn
         }
       },
       onDragStart: () => {
-        // UX: Allow dragging from anywhere within the element
-        // User can drag by holding anywhere on the component
         setIsDragging(true);
         onDragStart?.();
+        
+        useDesignerStore.getState().setDragState({
+            isDragging: true,
+            draggedComponentId: id,
+            activeGuides: { vertical: [], horizontal: [] }
+        });
       },
       onDrop: () => {
         setIsDragging(false);
         onDragEnd?.();
+        
+        useDesignerStore.getState().setDragState({
+            isDragging: false,
+            draggedComponentId: null,
+            activeGuides: { vertical: [], horizontal: [] }
+        });
       },
     });
   }, [id, zoneKey, ref, disabled, onDragStart, onDragEnd]);
