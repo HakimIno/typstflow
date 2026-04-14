@@ -132,6 +132,8 @@ pub struct TableColumn {
     pub border_width: Option<String>,
     pub border_color: Option<String>,
     pub background: Option<String>,
+    pub colspan: Option<u32>,
+    pub rowspan: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

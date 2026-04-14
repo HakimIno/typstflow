@@ -113,26 +113,55 @@ export class TypstGenerator {
     }
   }
 
-  private renderTable(comp: any): string {
+  private renderTable(comp: TableComponent): string {
+    const style = comp.style || {};
+    const headerBg = style.headerBackground || 'blue.lighten(92%)';
+    const borderColor = style.borderColor || 'gray';
+    const borderWidth = style.borderWidth || '0.5pt';
+
     let t = '#table(\n    columns: (';
     t += `${comp.columns.map((c: any) => (c.width || '1fr').replace('*', 'fr')).join(', ')}),\n`;
-    t += '    inset: 7pt, align: horizon, stroke: 0.5pt + gray,\n';
+    t += `    inset: 7pt, align: horizon, stroke: ${borderWidth} + ${borderColor},\n`;
 
     if (comp.showHeader) {
-      t += '    fill: (x, y) => if y == 0 { blue.lighten(92%) },\n';
-      t += `    ${comp.columns.map((c: any) => `[*${c.header}*]`).join(', ')}\n`;
+      t += `    fill: (x, y) => if y == 0 { ${headerBg} },\n`;
+    }
+
+    let currentY = 0;
+    if (comp.showHeader) {
+      let currentX = 0;
+      for (const col of comp.columns) {
+        const cs = col.colspan || 1;
+        const rs = col.rowspan || 1;
+        if (cs === 1 && rs === 1) {
+          t += `    [*${this.escapeTypst(col.header)}*],\n`;
+        } else {
+          t += `    table.cell(x: ${currentX}, y: ${currentY}, colspan: ${cs}, rowspan: ${rs})[*${this.escapeTypst(col.header)}*],\n`;
+        }
+        currentX += cs;
+      }
+      currentY += 1;
     }
 
     const path = comp.dataSource?.replace(/\{\{(.+?)\}\}/g, '$1').trim();
     const items = this.resolvePath(path, this.data) || [];
 
     for (const item of items as any[]) {
-      t += `    ${comp.columns
-        .map((c: any) => {
-          const val = this.resolvePath(c.field, item);
-          return `[${val !== undefined ? this.escapeTypst(String(val)) : ''}]`;
-        })
-        .join(', ')}\n`;
+      let currentX = 0;
+      for (const col of comp.columns) {
+        const val = this.resolvePath(col.field, item);
+        const cellVal = val !== undefined ? this.escapeTypst(String(val)) : '';
+        const cs = col.colspan || 1;
+        const rs = col.rowspan || 1;
+
+        if (cs === 1 && rs === 1) {
+          t += `    [${cellVal}],\n`;
+        } else {
+          t += `    table.cell(x: ${currentX}, y: ${currentY}, colspan: ${cs}, rowspan: ${rs})[${cellVal}],\n`;
+        }
+        currentX += cs;
+      }
+      currentY += 1;
     }
 
     return `${t})`;

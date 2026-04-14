@@ -1,9 +1,10 @@
-use comemo::Prehashed;
 use typst::diag::{FileError, FileResult};
 use typst::foundations::{Bytes, Datetime};
-use typst::syntax::{FileId, Source};
+use typst::syntax::{FileId, Source, VirtualPath};
 use typst::text::{Font, FontBook};
+use typst::utils::LazyHash;
 use typst::Library;
+use typst::LibraryExt;
 use typst::World;
 use wasm_bindgen::prelude::*;
 
@@ -12,8 +13,8 @@ mod generator;
 
 #[wasm_bindgen]
 pub struct TypstBridge {
-    library: Prehashed<Library>,
-    font_book: Prehashed<FontBook>,
+    library: LazyHash<Library>,
+    font_book: LazyHash<FontBook>,
     fonts: Vec<Font>,
 }
 
@@ -23,9 +24,8 @@ impl TypstBridge {
     pub fn new() -> Self {
         let mut fonts = Vec::new();
 
-        // Helper to load fonts safely
         let mut load_font = |data: &'static [u8]| {
-            let bytes = Bytes::from_static(data);
+            let bytes = Bytes::new(data);
             for i in 0.. {
                 if let Some(font) = Font::new(bytes.clone(), i) {
                     fonts.push(font);
@@ -35,32 +35,30 @@ impl TypstBridge {
             }
         };
 
-        // Embed Sarabun
         load_font(include_bytes!("../fonts/Sarabun-Regular.ttf"));
         load_font(include_bytes!("../fonts/Sarabun-Bold.ttf"));
-        
-        // Embed Geist
         load_font(include_bytes!("../fonts/Geist-Regular.ttf"));
         load_font(include_bytes!("../fonts/Geist-Bold.ttf"));
 
         let font_book = FontBook::from_fonts(&fonts);
-        let library = Library::default();
+        let library = typst::Library::builder().build();
+        web_sys::console::log_1(&"✅ Typst WASM Engine v0.14.2 Loaded (Library Builder)".into());
 
         Self {
-            library: Prehashed::new(library),
-            font_book: Prehashed::new(font_book),
+            library: LazyHash::new(library),
+            font_book: LazyHash::new(font_book),
             fonts,
         }
     }
 
     pub fn render_svg(&self, source_code: &str) -> Result<String, JsValue> {
-        let mut tracer = typst::eval::Tracer::new();
         let world = WasmWorld::new(source_code, self);
-        let doc = typst::compile(&world, &mut tracer)
+        let output = typst::compile(&world).output;
+        let doc: typst::layout::PagedDocument = output
             .map_err(|err| JsValue::from_str(&format!("Compilation failed: {:?}", err)))?;
         
         if let Some(page) = doc.pages.first() {
-            let svg = typst_svg::svg(&page.frame);
+            let svg = typst_svg::svg(page);
             Ok(svg)
         } else {
             Err(JsValue::from_str("No pages rendered"))
@@ -68,12 +66,13 @@ impl TypstBridge {
     }
 
     pub fn render_pdf(&self, source_code: &str) -> Result<Vec<u8>, JsValue> {
-        let mut tracer = typst::eval::Tracer::new();
         let world = WasmWorld::new(source_code, self);
-        let doc = typst::compile(&world, &mut tracer)
+        let output = typst::compile(&world).output;
+        let doc: typst::layout::PagedDocument = output
             .map_err(|err| JsValue::from_str(&format!("Compilation failed: {:?}", err)))?;
         
-        let pdf = typst_pdf::pdf(&doc, typst::foundations::Smart::Auto, None);
+        let pdf = typst_pdf::pdf(&doc, &Default::default())
+            .map_err(|err| JsValue::from_str(&format!("PDF generation failed: {:?}", err)))?;
         Ok(pdf)
     }
 
@@ -115,23 +114,23 @@ struct WasmWorld<'a> {
 impl<'a> WasmWorld<'a> {
     fn new(source_code: &str, bridge: &'a TypstBridge) -> Self {
         Self {
-            source: Source::detached(source_code),
+            source: Source::new(FileId::new(None, VirtualPath::new("main.typ")), source_code.to_string()),
             bridge,
         }
     }
 }
 
 impl World for WasmWorld<'_> {
-    fn library(&self) -> &Prehashed<Library> {
+    fn library(&self) -> &LazyHash<Library> {
         &self.bridge.library
     }
 
-    fn book(&self) -> &Prehashed<FontBook> {
+    fn book(&self) -> &LazyHash<FontBook> {
         &self.bridge.font_book
     }
 
-    fn main(&self) -> Source {
-        self.source.clone()
+    fn main(&self) -> FileId {
+        FileId::new(None, VirtualPath::new("main.typ"))
     }
 
     fn source(&self, _id: FileId) -> FileResult<Source> {

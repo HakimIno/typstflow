@@ -95,14 +95,14 @@ fn render_text(c: &TextComponent, data: &Value) -> String {
 
 fn render_table(c: &TableComponent, data: &Value) -> String {
     let mut t = String::from("#table(\n    columns: (");
-    let col_defs = c.columns.iter().map(|col| col.width.replace("*", "fr")).collect::<Vec<_>>().join(", ");
+    let col_defs = c.columns.iter().map(|col| col.width.clone().replace("*", "fr")).collect::<Vec<_>>().join(", ");
     t.push_str(&col_defs);
     t.push_str("),\n    inset: 7pt,\n");
 
     let style = c.style.as_ref();
     let header_rows = style.and_then(|s| s.header_rows).unwrap_or(1);
     
-    // 1. DYNAMIC FILL LOGIC
+    // 1. DYNAMIC FILL LOGIC (Skip if covered)
     t.push_str("    fill: (x, y) => {\n");
     t.push_str("      let header_bg = ");
     t.push_str(&format_color(style.and_then(|s| s.header_background.as_deref()).unwrap_or("blue.lighten(92%)")));
@@ -117,27 +117,68 @@ fn render_table(c: &TableComponent, data: &Value) -> String {
     let border_width = style.and_then(|s| s.border_width.as_deref()).unwrap_or("0.5pt");
     t.push_str(&format!("    stroke: {} + {},\n", border_width, format_color(border_color)));
 
-    // 3. HEADERS
-    t.push_str("    table.header(\n");
-    for (i, col) in c.columns.iter().enumerate() {
-        let align = col.align.as_deref().unwrap_or("center");
-        t.push_str(&format!("      [#set align({}); *{}*],", align, escape_typst(&col.header)));
-        if i % 3 == 2 { t.push_str("\n"); }
-    }
-    t.push_str("\n    ),\n");
+    let mut current_y = 0;
 
-    // 4. DATA ROWS
+    // 3. HEADERS (Overlap & Skip)
+    if c.show_header.unwrap_or(true) {
+        let mut covered = std::collections::HashSet::new();
+        for x in 0..c.columns.len() {
+            if covered.contains(&x) { continue; }
+            let col = &c.columns[x];
+            let cs = col.colspan.unwrap_or(1);
+            let rs = col.rowspan.unwrap_or(1);
+            let align = col.align.as_deref().unwrap_or("center");
+            
+            if cs == 1 && rs == 1 {
+                t.push_str(&format!(
+                    "    [#set align({}); *{}*],\n",
+                    align, escape_typst(&col.header)
+                ));
+            } else {
+                t.push_str(&format!(
+                    "    table.cell(x: {}, y: {}, colspan: {}, rowspan: {})[#set align({}); *{}*],\n",
+                    x, current_y, cs, rs, align, escape_typst(&col.header)
+                ));
+            }
+            
+            for i in 1..cs { covered.insert(x + i as usize); }
+        }
+        current_y += 1;
+    }
+
+    // 4. DATA ROWS (Overlap & Skip)
     let path = c.data_source.replace("{{", "").replace("}}", "").trim().to_string();
-    if let Some(Value::Array(items)) = resolve_path(&path, data) {
+    if let Some(serde_json::Value::Array(items)) = resolve_path(&path, data) {
         for item in items {
-            for col in &c.columns {
-                let val = resolve_path(&col.field, item).map(|v| v.to_string().replace("\"", "")).unwrap_or_default();
+            let mut covered = std::collections::HashSet::new();
+            for x in 0..c.columns.len() {
+                if covered.contains(&x) { continue; }
+                let col = &c.columns[x];
+                let cs = col.colspan.unwrap_or(1);
+                let rs = col.rowspan.unwrap_or(1);
+                let val = resolve_path(&col.field, item).map(|v| {
+                    match v {
+                        serde_json::Value::String(s) => s.clone(),
+                        _ => v.to_string(),
+                    }
+                }).unwrap_or_default();
                 let align = col.align.as_deref().unwrap_or("left");
 
-                // Apply Cell Overrides (Summary/Special)
-                t.push_str(&format!("      [#set align({}); {}],", align, escape_typst(&val)));
+                if cs == 1 && rs == 1 {
+                    t.push_str(&format!(
+                        "    [#set align({}); {}],\n",
+                        align, escape_typst(&val)
+                    ));
+                } else {
+                    t.push_str(&format!(
+                        "    table.cell(x: {}, y: {}, colspan: {}, rowspan: {})[#set align({}); {}],\n",
+                        x, current_y, cs, rs, align, escape_typst(&val)
+                    ));
+                }
+                
+                for i in 1..cs { covered.insert(x + i as usize); }
             }
-            t.push_str("\n");
+            current_y += 1;
         }
     }
 
@@ -221,6 +262,7 @@ fn resolve_binding(expr: &str, data: &Value) -> String {
 
 fn escape_typst(s: &str) -> String {
     s.replace("#", "\\#")
+     .replace("$", "\\$")
      .replace("*", "\\*")
      .replace("_", "\\_")
      .replace("[", "\\[")

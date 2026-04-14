@@ -55,34 +55,71 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>, yOffset
       break;
     }
     case 'table': {
-      const table = comp as any;
+      const table = comp as TableComponent;
       const style = table.style || {};
       const headerBg = formatColor(style.headerBackground || 'blue.lighten(92%)');
       const alternateBg = formatColor(style.alternateRowBackground || 'none');
       const borderColor = formatColor(style.borderColor || 'gray');
       const borderWidth = style.borderWidth || '0.5pt';
 
+      const columns = table.columns || [];
+      if (columns.length === 0) {
+        body = '/* empty table */';
+        break;
+      }
+
+      // 1. Physical Tracks (Standard, one track per column definition)
       let t = '#table(\n  columns: (';
-      const columns = table.columns || [{ header: 'Column', field: '', width: '1fr' }];
       t += columns.map((c: any) => (c.width || '1fr').replace('*', 'fr')).join(', ');
-      t += `),\n  inset: 7pt, stroke: ${borderWidth} + ${borderColor}, `;
-      t += `fill: (x, y) => if y == 0 { ${headerBg} } else if calc.even(y) { ${alternateBg} } else { none },\n`;
+      t += `),\n  inset: 7pt, stroke: ${borderWidth} + ${borderColor},\n`;
+      t += `  fill: (x, y) => if y == 0 { ${headerBg} } else if calc.even(y) { ${alternateBg} } else { none },\n`;
 
-      // Headers
-      t += `  ${columns.map((c: any) => `[*${escapeTypst(c.header || '')}*]`).join(', ')},\n`;
+      let currentY = 0;
 
-      // Data Rows
+      // (2) Header Row
+      const coveredHeader = new Set<number>();
+      for (let x = 0; x < columns.length; x++) {
+        if (coveredHeader.has(x)) continue;
+        
+        const col = columns[x];
+        const cs = col.colspan || 1;
+        const rs = col.rowspan || 1;
+        const escapedHeader = escapeTypst(col.header || '');
+        
+        if (cs === 1 && rs === 1) {
+          t += `  [*${escapedHeader}*],\n`;
+        } else {
+          t += `  table.cell(x: ${x}, y: ${currentY}, colspan: ${cs}, rowspan: ${rs})[*${escapedHeader}*],\n`;
+        }
+        
+        for (let i = 1; i < cs; i++) coveredHeader.add(x + i);
+      }
+      currentY += 1;
+
+      // (3) Data Rows
       const path = (table.dataSource || '').replace(/\{\{(.+?)\}\}/g, '$1').trim();
       const items = resolvePath(path, data) || [];
       if (Array.isArray(items)) {
         for (const item of items) {
-          t += `  ${columns
-            .map((c: any) => {
-              const val = resolvePath(c.field, item);
-              const cellVal = val !== undefined ? escapeTypst(String(val)) : '';
-              return `[${cellVal}]`;
-            })
-            .join(', ')},\n`;
+          const coveredRow = new Set<number>();
+          for (let x = 0; x < columns.length; x++) {
+            if (coveredRow.has(x)) continue;
+
+            const col = columns[x];
+            const cs = col.colspan || 1;
+            const rs = col.rowspan || 1;
+            const val = resolvePath(col.field, item);
+            const cellVal = val !== undefined ? escapeTypst(String(val)) : '';
+            
+            if (cs === 1 && rs === 1) {
+              t += `  [${cellVal}],\n`;
+            } else {
+              t += `  table.cell(x: ${x}, y: ${currentY}, colspan: ${cs}, rowspan: ${rs})[${cellVal}],\n`;
+            }
+            
+            for (let i = 1; i < cs; i++) coveredRow.add(x + i);
+          }
+          currentY += 1;
         }
       }
       body = `${t})`;

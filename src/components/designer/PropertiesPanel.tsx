@@ -21,7 +21,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import type React from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 // Type guards for safe component access
 const isText = (c: ComponentNode): c is TextComponent => c.type === 'text';
@@ -31,10 +31,13 @@ const isBarcode = (c: ComponentNode): c is BarcodeComponent =>
   c.type === 'barcode' || c.type === 'qr';
 
 export function PropertiesPanel() {
+  const [expandedColIndex, setExpandedColIndex] = useState<number | null>(null);
+
   // Select state with proper memoization - avoid selecting entire schema
   const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
   const zones = useDesignerStore((state) => state.schema.zones);
   const page = useDesignerStore((state) => state.schema.page);
+
 
   // Select actions separately (they don't change)
   const updateSchema = useDesignerStore((state) => state.updateSchema);
@@ -339,35 +342,125 @@ export function PropertiesPanel() {
             <SectionHeader label="Column Management" />
             <div className="p-2 space-y-1 bg-slate-50/50">
               {selectedComponent.columns.map((col, idx) => (
-                <div key={col.id} className="flex gap-1 items-center bg-white border border-slate-200 p-1 rounded-sm group/col">
-                  <span className="w-4 text-[9px] font-bold text-slate-400">#{idx+1}</span>
-                  <input 
-                    className="flex-1 text-[10px] bg-transparent border-none focus:ring-0 p-0 font-bold"
-                    value={col.header}
-                    onChange={(e) => {
-                      const newCols = [...selectedComponent.columns];
-                      newCols[idx] = { ...col, header: e.target.value };
-                      updateComponent(selectedComponent.id, { columns: newCols } as any);
-                    }}
-                  />
-                  <input 
-                    className="w-16 text-[9px] bg-slate-50 border border-slate-100 rounded px-1"
-                    value={col.width}
-                    onChange={(e) => {
-                      const newCols = [...selectedComponent.columns];
-                      newCols[idx] = { ...col, width: e.target.value };
-                      updateComponent(selectedComponent.id, { columns: newCols } as any);
-                    }}
-                  />
-                  <button 
-                    className="p-1 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded opacity-0 group-hover/col:opacity-100 transition-opacity"
-                    onClick={() => {
+                <div key={col.id} className="flex flex-col bg-white border border-slate-200 rounded shadow-sm group/col overflow-hidden">
+                  {/* Compact List View */}
+                  <div 
+                    className={clsx(
+                      "flex items-center gap-2 p-1.5 cursor-pointer transition-colors",
+                      expandedColIndex === idx ? "bg-blue-50" : "hover:bg-slate-50"
+                    )}
+                    onClick={() => setExpandedColIndex(expandedColIndex === idx ? null : idx)}
+                  >
+                    <span className="w-4 h-4 flex items-center justify-center bg-slate-200 text-[8px] font-bold text-slate-500 rounded-full shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-700 truncate">{col.header || 'Untitled'}</span>
+                      <span className="text-[8px] text-slate-400 font-mono truncate">{col.field ? `{${col.field}}` : 'unbound'}</span>
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-400 bg-slate-100 px-1 py-0.5 rounded border border-slate-200">
+                      {col.width}
+                    </span>
+                    {((col.colspan && col.colspan > 1) || (col.rowspan && col.rowspan > 1)) && (
+                      <div className="flex gap-0.5">
+                        {col.colspan && col.colspan > 1 ? <span className="text-[8px] bg-purple-100 text-purple-600 px-1 py-0.5 rounded font-bold">C{col.colspan}</span> : null}
+                        {col.rowspan && col.rowspan > 1 ? <span className="text-[8px] bg-orange-100 text-orange-600 px-1 py-0.5 rounded font-bold">R{col.rowspan}</span> : null}
+                      </div>
+                    )}
+                    <button
+                      className="p-1 hover:bg-red-100 text-slate-300 hover:text-red-500 rounded opacity-0 group-hover/col:opacity-100 transition-all shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const newCols = selectedComponent.columns.filter((_, i) => i !== idx);
                         updateComponent(selectedComponent.id, { columns: newCols } as any);
-                    }}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                      }}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {/* Expanded Advanced Settings */}
+                  {expandedColIndex === idx && (
+                    <div className="flex flex-wrap items-center gap-2 p-2 bg-slate-50 border-t border-slate-200">
+                      {/* Width */}
+                      <div className="flex flex-col gap-0.5 min-w-[60px]">
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Width</span>
+                        <input
+                          className="w-full text-[10px] bg-white border border-slate-200 rounded px-1.5 h-5 focus:border-blue-300 outline-none"
+                          value={col.width}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            const newCols = [...selectedComponent.columns];
+                            newCols[idx] = { ...col, width: e.target.value };
+                            updateComponent(selectedComponent.id, { columns: newCols } as any);
+                          }}
+                        />
+                      </div>
+
+                      {/* Colspan */}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Colspan</span>
+                        <input
+                          type="number"
+                          min="1"
+                          className="w-10 text-[10px] bg-white border border-slate-200 rounded px-1 h-5 text-center focus:border-blue-300 outline-none"
+                          value={col.colspan || 1}
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+                          }}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const num = parseInt(val);
+                            const newCols = [...selectedComponent.columns];
+                            newCols[idx] = { ...col, colspan: isNaN(num) ? 1 : Math.max(1, num) };
+                            updateComponent(selectedComponent.id, { columns: newCols } as any);
+                          }}
+                        />
+                      </div>
+
+                      {/* Rowspan */}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Rowspan</span>
+                        <input
+                          type="number"
+                          min="1"
+                          className="w-10 text-[10px] bg-white border border-slate-200 rounded px-1 h-5 text-center focus:border-blue-300 outline-none"
+                          value={col.rowspan || 1}
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+                          }}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const num = parseInt(val);
+                            const newCols = [...selectedComponent.columns];
+                            newCols[idx] = { ...col, rowspan: isNaN(num) ? 1 : Math.max(1, num) };
+                            updateComponent(selectedComponent.id, { columns: newCols } as any);
+                          }}
+                        />
+                      </div>
+
+                      {/* Align */}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Align</span>
+                        <select
+                          className="w-12 text-[9px] bg-white border border-slate-200 rounded px-0.5 h-5 outline-none cursor-pointer"
+                          value={col.align || 'left'}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            const newCols = [...selectedComponent.columns];
+                            newCols[idx] = { ...col, align: e.target.value as any };
+                            updateComponent(selectedComponent.id, { columns: newCols } as any);
+                          }}
+                        >
+                          <option value="left">L</option>
+                          <option value="center">C</option>
+                          <option value="right">R</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               <button 
@@ -385,6 +478,18 @@ export function PropertiesPanel() {
                 + Add Column
               </button>
             </div>
+
+            <SectionHeader label="Data Binding" />
+            <PropertyRow label="Data Source">
+              <input
+                className="pro-input h-6 px-1 w-full bg-white text-[11px]"
+                value={selectedComponent.dataSource || ''}
+                onChange={(e) =>
+                  updateComponent(selectedComponent.id, { dataSource: e.target.value })
+                }
+                placeholder="e.g. {{items}}"
+              />
+            </PropertyRow>
 
             <SectionHeader label="Table Styling" />
             <PropertyRow label="Header BG">

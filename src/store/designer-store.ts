@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { INVOICE_SAMPLE_DATA, INVOICE_TEMPLATE } from '../lib/templates/invoice';
+import { COMPLEX_SAMPLE_DATA, COMPLEX_TABLE_TEMPLATE } from '../lib/templates/complex-table';
 import type { ComponentNode, LayoutSchema } from '../types/schema';
 
 type ZoneKey = 'header' | 'body' | 'footer';
@@ -61,7 +62,7 @@ interface DesignerState {
   setActiveTab: (tab: 'palette' | 'outline' | 'data') => void;
   undo: () => void;
   redo: () => void;
-  loadTemplate: (name: 'blank' | 'invoice') => void;
+  loadTemplate: (name: 'blank' | 'invoice' | 'complex') => void;
 }
 
 const MAX_HISTORY = 50;
@@ -134,6 +135,13 @@ export const useDesignerStore = create<DesignerState>((set) => ({
         schema: INVOICE_TEMPLATE,
         sampleData: INVOICE_SAMPLE_DATA,
         history: [INVOICE_TEMPLATE],
+        historyIndex: 0,
+      });
+    } else if (name === 'complex') {
+      set({
+        schema: COMPLEX_TABLE_TEMPLATE,
+        sampleData: COMPLEX_SAMPLE_DATA,
+        history: [COMPLEX_TABLE_TEMPLATE],
         historyIndex: 0,
       });
     } else {

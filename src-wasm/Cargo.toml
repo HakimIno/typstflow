@@ -7,16 +7,18 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-typst = "0.11.1"
+typst = "0.14.2"
 wasm-bindgen = "0.2"
 js-sys = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde-wasm-bindgen = "0.6"
 comemo = "0.4"
-typst-assets = "0.11.1"
-typst-svg = "0.11.1"
-typst-pdf = "0.11.1"
+web-sys = { version = "0.3", features = ["console"] }
+typst-assets = "0.14.2"
+typst-library = "0.14.2"
+typst-svg = "0.14.2"
+typst-pdf = "0.14.2"
 
 [profile.release]
 lto = true

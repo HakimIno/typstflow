@@ -114,6 +114,8 @@ export interface TableColumn {
   borderWidth?: string;
   borderColor?: string;
   background?: string;
+  colspan?: number;
+  rowspan?: number;
 }
 
 export interface TableStyle {
@@ -132,6 +134,7 @@ export interface TableStyle {
   headerRows?: number;
   footerRows?: number;
   rowHeights?: string[];
+  gutter?: string; // padding between cells
 }
 
 export interface CellStyle {

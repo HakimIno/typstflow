@@ -137,11 +137,11 @@ export function Toolbar() {
               <div className="absolute top-full left-0 hidden group-hover:block bg-slate-800 border border-slate-700 shadow-xl rounded-md py-1 min-w-[160px] z-[100]">
                 <button
                   type="button"
-                  onClick={() => useDesignerStore.getState().loadTemplate('invoice')}
+                  onClick={() => useDesignerStore.getState().loadTemplate('complex')}
                   className="w-full text-left px-3 py-1.5 text-[10px] text-slate-300 hover:bg-blue-600 hover:text-white flex items-center gap-2"
                 >
-                  <Layout className="w-3 h-3" />
-                  Standard Invoice Template
+                  <Play className="w-3 h-3 text-green-400" />
+                  Advanced Table Demo
                 </button>
                 <div className="h-px bg-slate-700 my-1" />
                 <button
