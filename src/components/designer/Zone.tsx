@@ -4,7 +4,7 @@ import type { ComponentNode } from '@/types/schema';
 import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { clsx } from 'clsx';
 import { Layers } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ComponentWrapper } from './ComponentWrapper';
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';

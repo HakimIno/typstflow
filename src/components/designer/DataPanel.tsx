@@ -2,10 +2,10 @@
 
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { AlertCircle, Braces, CheckCircle2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { AlertCircle, Braces, CheckCircle2, X } from 'lucide-react';
+import { useEffect, useState, memo } from 'react';
 
-export function DataPanel() {
+export const DataPanel = memo(function DataPanel() {
   const { sampleData, setSampleData } = useDesignerStore();
   const [jsonString, setJsonString] = useState(JSON.stringify(sampleData, null, 2));
   const [error, setError] = useState<string | null>(null);
@@ -51,24 +51,33 @@ export function DataPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
-      <div className="p-3 border-b border-slate-200 bg-white">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1.5 text-slate-700">
-            <Braces className="w-4 h-4" />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Sample JSON Data</span>
-          </div>
+    <div className="flex flex-col h-full bg-white overflow-hidden font-sans border-r border-slate-200">
+      {/* Utility Header */}
+      <div className="px-3 py-2 bg-slate-50 flex items-center justify-between border-b border-slate-200 shrink-0">
+        <div className="flex items-center gap-1.5 text-slate-600">
+          <Braces className="w-3.5 h-3.5" />
+          <span className="text-[11px] font-bold uppercase tracking-tight">Data Source</span>
+        </div>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={loadExample}
-            className="text-[10px] text-blue-600 hover:underline font-bold"
+            className="text-[10px] text-slate-500 hover:text-slate-800 font-bold border border-slate-300 px-2 py-0.5 rounded-sm hover:bg-white transition-colors"
           >
             Load Example
           </button>
+          <button 
+            onClick={() => useDesignerStore.getState().setSidebarOpen(false)}
+            className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
-        <p className="text-[10px] text-slate-500 leading-relaxed mb-1">
-          Define mock data to test bindings like{' '}
-          <code className="bg-slate-100 px-1 truncate">{'{{customer.name}}'}</code> in real-time.
+      </div>
+
+      <div className="p-2 bg-slate-50/50 border-b border-slate-100 shrink-0">
+        <p className="text-[10px] text-slate-400 leading-tight">
+          Define JSON schema for data bindings.
         </p>
       </div>
 
@@ -107,4 +116,4 @@ export function DataPanel() {
       )}
     </div>
   );
-}
+});

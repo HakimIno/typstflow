@@ -4,13 +4,13 @@ import { useDesignerStore } from '@/store/designer-store';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { clsx } from 'clsx';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, memo } from 'react';
 import { Zone } from './Zone';
 import { Ruler } from './Ruler';
 import { AlignmentGuides } from './AlignmentGuides';
 import { DragMonitor } from './DragMonitor';
 
-export function Canvas() {
+export const Canvas = memo(function Canvas() {
   const schema = useDesignerStore((state) => state.schema);
   const [mounted, setMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -40,9 +40,9 @@ export function Canvas() {
   const marginRight = parseTypstUnit(schema.page.margin.right);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden relative bg-slate-800">
+    <div className="flex-1 flex flex-col overflow-hidden relative bg-slate-800 contain-layout">
       <DragMonitor />
-      <div className="flex-1 flex flex-col relative overflow-hidden">
+      <div className="flex-1 flex flex-col relative overflow-hidden transform-gpu">
         {/* Top Ruler Row */}
         <div className="flex h-6 bg-slate-100 border-b border-slate-300 relative z-30">
           <div className="w-6 h-6 bg-slate-200 border-r border-slate-300 flex-shrink-0" />
@@ -50,7 +50,7 @@ export function Canvas() {
              <Ruler 
                 orientation="horizontal" 
                 length={pageWidthMm + 100} // Extra length for margins/padding
-                scrollPos={scrollPos.x - 32} // Offset for p-8 (32px)
+                scrollPos={scrollPos.x - 80} 
              />
           </div>
         </div>
@@ -71,7 +71,7 @@ export function Canvas() {
             onScroll={handleScroll}
             className="flex-1 overflow-auto scrollbar-thin bg-slate-300 shadow-inner p-8"
           >
-            <div className="min-w-max min-h-max flex justify-center">
+            <div className="min-w-max min-h-max flex justify-start pl-12 pr-12 pb-12">
                 <div
                 className={clsx(
                     'bg-white pro-grid border border-slate-400 relative shadow-2xl transition-none',
@@ -123,4 +123,4 @@ export function Canvas() {
       </div>
     </div>
   );
-}
+});

@@ -20,8 +20,7 @@ import {
   Sliders,
   Trash2,
 } from 'lucide-react';
-import type React from 'react';
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 // Type guards for safe component access
 const isText = (c: ComponentNode): c is TextComponent => c.type === 'text';

@@ -1,24 +1,29 @@
 'use client';
+
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { ChevronDown, Image, Layers, Minus, Table, Type } from 'lucide-react';
+import { AlertCircle, Braces, CheckCircle2, ChevronDown, Image, Layers, ListTree, Minus, Table, Type, X } from 'lucide-react';
+import { memo } from 'react';
 
-export function ReportTree() {
-  const schema = useDesignerStore((state) => state.schema);
-  const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
-  const selectComponent = useDesignerStore((state) => state.selectComponent);
+export const ReportTree = memo(function ReportTree() {
+  const { schema, selectedComponentId, selectComponent, setSidebarOpen } = useDesignerStore();
 
   const zones: (keyof typeof schema.zones)[] = ['header', 'body', 'footer'];
 
   return (
-    <div className="flex flex-col h-full bg-white border-t border-slate-200">
-      <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Layers className="w-3.5 h-3.5 text-slate-500" />
-          <span className="text-[11px] font-bold text-slate-700 uppercase tracking-tight">
-            Report Outline
-          </span>
+    <div className="flex flex-col h-full bg-white overflow-hidden font-sans border-r border-slate-200">
+      {/* Utility Header */}
+      <div className="px-3 py-2 bg-slate-50 shrink-0 flex items-center justify-between border-b border-slate-200">
+        <div className="flex items-center gap-1.5 text-slate-600">
+          <ListTree className="w-3.5 h-3.5" />
+          <span className="text-[11px] font-bold uppercase tracking-tight">Report Tree</span>
         </div>
+        <button 
+          onClick={() => setSidebarOpen(false)}
+          className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400 hover:text-slate-600"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       <div className="flex-1 overflow-auto p-1">
@@ -48,7 +53,7 @@ export function ReportTree() {
       </div>
     </div>
   );
-}
+});
 
 function TreeItem({ component, isSelected, onClick }: any) {
   const icons: any = {

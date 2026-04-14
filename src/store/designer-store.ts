@@ -12,6 +12,7 @@ interface DesignerState {
   // App State
   viewMode: 'design' | 'preview' | 'split';
   activeTab: 'palette' | 'outline' | 'data';
+  isSidebarOpen: boolean;
 
   // Selection
   selectedComponentId: string | null;
@@ -60,6 +61,8 @@ interface DesignerState {
   setSampleData: (data: Record<string, any>) => void;
   setViewMode: (mode: 'design' | 'preview' | 'split') => void;
   setActiveTab: (tab: 'palette' | 'outline' | 'data') => void;
+  setSidebarOpen: (open: boolean) => void;
+  toggleSidebar: () => void;
   undo: () => void;
   redo: () => void;
   loadTemplate: (name: 'blank' | 'invoice' | 'complex') => void;
@@ -108,6 +111,7 @@ export const useDesignerStore = create<DesignerState>((set) => ({
   schema: BLANK_SCHEMA,
   viewMode: 'design',
   activeTab: 'palette',
+  isSidebarOpen: true,
   selectedComponentId: null,
   selectedZone: null,
   sampleData: {},
@@ -272,7 +276,9 @@ export const useDesignerStore = create<DesignerState>((set) => ({
 
   setSampleData: (data) => set({ sampleData: data }),
   setViewMode: (mode) => set({ viewMode: mode }),
-  setActiveTab: (tab) => set({ activeTab: tab }),
+  setActiveTab: (tab) => set({ activeTab: tab, isSidebarOpen: true }),
+  setSidebarOpen: (open) => set({ isSidebarOpen: open }),
+  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
   setDragState: (updates) => set((state) => ({ 
     dragState: { ...state.dragState, ...updates } 
   })),

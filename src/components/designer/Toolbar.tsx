@@ -15,23 +15,23 @@ import {
   Search,
   Undo,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 
-export function Toolbar() {
-  const {
-    schema,
-    updateSchema,
-    viewMode,
-    setViewMode,
-    activeTab,
-    setActiveTab,
-    selectedComponentId,
-    updateComponent,
-    undo,
-    redo,
-    history,
-    historyIndex,
-  } = useDesignerStore();
+export const Toolbar = memo(function Toolbar() {
+  const schema = useDesignerStore((state) => state.schema);
+  const updateSchema = useDesignerStore((state) => state.updateSchema);
+  const viewMode = useDesignerStore((state) => state.viewMode);
+  const setViewMode = useDesignerStore((state) => state.setViewMode);
+  const activeTab = useDesignerStore((state) => state.activeTab);
+  const setActiveTab = useDesignerStore((state) => state.setActiveTab);
+  const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
+  const updateComponent = useDesignerStore((state) => state.updateComponent);
+  const undo = useDesignerStore((state) => state.undo);
+  const redo = useDesignerStore((state) => state.redo);
+  const history = useDesignerStore((state) => state.history);
+  const historyIndex = useDesignerStore((state) => state.historyIndex);
+  const sampleData = useDesignerStore((state) => state.sampleData);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -57,7 +57,6 @@ export function Toolbar() {
     if (!selectedComponentId) return;
 
     const A4_WIDTH_MM = schema.page.orientation === 'landscape' ? 297 : 210;
-    const _padding = 20; // fallback / margin
     const PAGE_CONTENT_WIDTH = A4_WIDTH_MM - 40; // Approx
 
     switch (type) {
@@ -66,15 +65,12 @@ export function Toolbar() {
         break;
       case 'center':
         updateComponent(selectedComponentId, { x: PAGE_CONTENT_WIDTH / 2 - 50 });
-        break; // 50 is half default width
+        break; 
       case 'right':
         updateComponent(selectedComponentId, { x: PAGE_CONTENT_WIDTH - 100 });
         break;
     }
   };
-
-  const { sampleData } = useDesignerStore();
-  const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
     const { renderReportToPdf } = await import('@/lib/typst-wasm');
@@ -321,4 +317,4 @@ export function Toolbar() {
       </div>
     </div>
   );
-}
+});

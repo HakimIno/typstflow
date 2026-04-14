@@ -4,7 +4,7 @@ import type { TableComponent } from '@/types/schema';
 import { useDesignerStore } from '@/store/designer-store';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { clsx } from 'clsx';
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 interface Props {
   component: TableComponent;
