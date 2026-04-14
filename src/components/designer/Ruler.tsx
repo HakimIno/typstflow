@@ -7,12 +7,13 @@ interface RulerProps {
   orientation: 'horizontal' | 'vertical';
   length: number; // in mm
   scrollPos?: number;
+  zoom?: number;
   unit?: string;
 }
 
-export const Ruler = memo(({ orientation, length, scrollPos = 0, unit = 'mm' }: RulerProps) => {
+export const Ruler = memo(({ orientation, length, scrollPos = 0, zoom = 1.0, unit = 'mm' }: RulerProps) => {
   const isHorizontal = orientation === 'horizontal';
-  const pxPerMm = LayoutEngine.mmToPx(1);
+  const pxPerMm = LayoutEngine.mmToPx(1) * zoom;
   const totalPx = length * pxPerMm;
 
   const ticks = useMemo(() => {

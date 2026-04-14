@@ -29,6 +29,7 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
   const addComponent = useDesignerStore((state) => state.addComponent);
   const moveComponent = useDesignerStore((state) => state.moveComponent);
   const updateZone = useDesignerStore((state) => state.updateZone);
+  const viewMode = useDesignerStore((state) => state.viewMode);
 
   // Sync with store when minHeight changes externally
   useEffect(() => {
@@ -91,8 +92,9 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
 
         if (!location.current) return;
 
-        // Use enhanced LayoutEngine with scroll compensation
-        const context = LayoutEngine.createContextFromElement(el);
+        // Use enhanced LayoutEngine with scroll compensation and scale awareness
+        const scale = useDesignerStore.getState().zoom;
+        const context = LayoutEngine.createContextFromElement(el, scale);
         const data = source.data as any;
 
         const { x, y } = LayoutEngine.calculateDropPosition(

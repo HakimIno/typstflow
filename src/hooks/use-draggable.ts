@@ -65,7 +65,15 @@ export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEn
               clone.style.left = '0';
               clone.style.margin = '0';
               clone.style.pointerEvents = 'none';
-              clone.style.transform = 'none';
+
+              // Apply the exact zoom level of the canvas to the drag clone!
+              const currentZoom = useDesignerStore.getState().zoom;
+              if (currentZoom !== 1) {
+                  clone.style.transform = `scale(${currentZoom})`;
+                  clone.style.transformOrigin = 'top left';
+              } else {
+                  clone.style.transform = 'none';
+              }
 
               const actionBar = clone.querySelector('.absolute.-top-7');
               if (actionBar) actionBar.remove();

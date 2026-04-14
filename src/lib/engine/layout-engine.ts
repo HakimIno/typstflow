@@ -224,13 +224,14 @@ export const LayoutEngine = {
     // 2. Find the scrollable parent
     const scrollParent = container.closest('.overflow-auto') as HTMLElement;
     
-    // 3. Create context combined from both
-    const context: CoordinateContext = {
-      rect: container.getBoundingClientRect(),
-      scrollLeft: scrollParent?.scrollLeft || 0,
-      scrollTop: scrollParent?.scrollTop || 0,
-      scale: 1, // Currently default, but can be expanded
-    };
+    // 3. Create context using the robust element detection
+    const context = this.createContextFromElement(container);
+    
+    // Add scroll info from parent if needed (createContextFromElement uses element's own scroll)
+    if (scrollParent) {
+      context.scrollLeft = scrollParent.scrollLeft;
+      context.scrollTop = scrollParent.scrollTop;
+    }
 
     // 4. Use base drop calculation
     return this.calculateDropPosition(clientX, clientY, context, dragOffsetX, dragOffsetY);

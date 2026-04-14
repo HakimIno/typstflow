@@ -11,8 +11,10 @@ interface DesignerState {
 
   // App State
   viewMode: 'design' | 'preview' | 'split';
+  zoom: number;
   activeTab: 'palette' | 'outline' | 'data';
   isSidebarOpen: boolean;
+  isRightSidebarOpen: boolean;
 
   // Selection
   selectedComponentId: string | null;
@@ -59,10 +61,13 @@ interface DesignerState {
   updateSchema: (updates: Partial<LayoutSchema>) => void;
   setDragState: (updates: Partial<DesignerState['dragState']>) => void;
   setSampleData: (data: Record<string, any>) => void;
+  setZoom: (zoom: number) => void;
   setViewMode: (mode: 'design' | 'preview' | 'split') => void;
   setActiveTab: (tab: 'palette' | 'outline' | 'data') => void;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
+  toggleRightSidebar: () => void;
+  setRightSidebarOpen: (open: boolean) => void;
   undo: () => void;
   redo: () => void;
   loadTemplate: (name: 'blank' | 'invoice' | 'complex') => void;
@@ -110,8 +115,10 @@ const BLANK_SCHEMA: LayoutSchema = {
 export const useDesignerStore = create<DesignerState>((set) => ({
   schema: BLANK_SCHEMA,
   viewMode: 'design',
+  zoom: 1.0,
   activeTab: 'palette',
   isSidebarOpen: true,
+  isRightSidebarOpen: true,
   selectedComponentId: null,
   selectedZone: null,
   sampleData: {},
@@ -275,10 +282,16 @@ export const useDesignerStore = create<DesignerState>((set) => ({
     }),
 
   setSampleData: (data) => set({ sampleData: data }),
-  setViewMode: (mode) => set({ viewMode: mode }),
+  setZoom: (zoom) => set({ zoom: Math.max(0.2, Math.min(zoom, 3.0)) }),
+  setViewMode: (mode) => set({ 
+    viewMode: mode,
+    zoom: mode === 'split' ? 0.65 : 1.0 
+  }),
   setActiveTab: (tab) => set({ activeTab: tab, isSidebarOpen: true }),
   setSidebarOpen: (open) => set({ isSidebarOpen: open }),
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  setRightSidebarOpen: (open) => set({ isRightSidebarOpen: open }),
+  toggleRightSidebar: () => set((state) => ({ isRightSidebarOpen: !state.isRightSidebarOpen })),
   setDragState: (updates) => set((state) => ({ 
     dragState: { ...state.dragState, ...updates } 
   })),

@@ -4,7 +4,7 @@ import { useDesignerStore } from '@/store/designer-store';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { clsx } from 'clsx';
-import React, { useEffect, useRef, useState, memo } from 'react';
+import React, { useEffect, useRef, useState, memo, useCallback } from 'react';
 import { Zone } from './Zone';
 import { Ruler } from './Ruler';
 import { AlignmentGuides } from './AlignmentGuides';
@@ -12,20 +12,40 @@ import { DragMonitor } from './DragMonitor';
 
 export const Canvas = memo(function Canvas() {
   const schema = useDesignerStore((state) => state.schema);
+  const isSidebarOpen = useDesignerStore((state) => state.isSidebarOpen);
+  const viewMode = useDesignerStore((state) => state.viewMode);
+  const zoom = useDesignerStore((state) => state.zoom);
   const [mounted, setMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const paperRef = useRef<HTMLDivElement>(null);
   const [scrollPos, setScrollPos] = useState({ x: 0, y: 0 });
+
+  const updateScrollPos = useCallback(() => {
+    if (scrollRef.current && paperRef.current) {
+      const scrollRect = scrollRef.current.getBoundingClientRect();
+      const paperRect = paperRef.current.getBoundingClientRect();
+      
+      setScrollPos({
+        x: scrollRect.left - paperRect.left,
+        y: scrollRect.top - paperRect.top,
+      });
+    }
+  }, []);
+
+  const handleScroll = () => {
+    updateScrollPos();
+  };
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollPos({
-      x: e.currentTarget.scrollLeft,
-      y: e.currentTarget.scrollTop,
-    });
-  };
+    // Initial measurement after a short delay to ensure layout is done
+    const t = setTimeout(updateScrollPos, 50);
+    window.addEventListener('resize', updateScrollPos);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', updateScrollPos);
+    };
+  }, [updateScrollPos, schema, zoom, isSidebarOpen, viewMode]);
 
   if (!mounted) return <div className="flex-1 flex flex-col bg-slate-200" />;
 
@@ -40,7 +60,7 @@ export const Canvas = memo(function Canvas() {
   const marginRight = parseTypstUnit(schema.page.margin.right);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden relative bg-slate-800 contain-layout">
+    <div className="flex-1 flex flex-col overflow-hidden relative bg-slate-200 contain-layout">
       <DragMonitor />
       <div className="flex-1 flex flex-col relative overflow-hidden transform-gpu">
         {/* Top Ruler Row */}
@@ -49,8 +69,9 @@ export const Canvas = memo(function Canvas() {
           <div className="flex-1 relative overflow-hidden">
              <Ruler 
                 orientation="horizontal" 
-                length={pageWidthMm + 100} // Extra length for margins/padding
-                scrollPos={scrollPos.x - 80} 
+                length={pageWidthMm} 
+                scrollPos={scrollPos.x} 
+                zoom={zoom}
              />
           </div>
         </div>
@@ -60,8 +81,9 @@ export const Canvas = memo(function Canvas() {
           <div className="w-6 bg-slate-100 border-r border-slate-300 flex-shrink-0 relative z-30 overflow-hidden">
             <Ruler 
                 orientation="vertical" 
-                length={pageHeightMm + 200} 
-                scrollPos={scrollPos.y - 32} 
+                length={pageHeightMm} 
+                scrollPos={scrollPos.y} 
+                zoom={zoom}
             />
           </div>
 
@@ -69,17 +91,19 @@ export const Canvas = memo(function Canvas() {
           <div 
             ref={scrollRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-auto scrollbar-thin bg-slate-300 shadow-inner p-8"
+            className="flex-1 overflow-auto p-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform"
           >
-            <div className="min-w-max min-h-max flex justify-start pl-12 pr-12 pb-12">
+            <div className="min-w-max min-h-max pl-12 pr-12 pb-12 pt-12">
                 <div
+                ref={paperRef}
                 className={clsx(
-                    'bg-white pro-grid border border-slate-400 relative shadow-2xl transition-none',
+                    'bg-white pro-grid border border-slate-400 relative shadow-2xl transition-all duration-300 origin-top-left',
                     isLandscape ? 'w-[29.7cm] min-h-[21cm]' : 'w-[21cm] min-h-[29.7cm]'
                 )}
                 style={{
                     width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
                     minHeight: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
+                    transform: `scale(${zoom})`,
                 }}
                 >
                 {/* Margin Guides (Dashed) */}

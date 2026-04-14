@@ -2,6 +2,7 @@
 
 import { renderReportToSvg } from '@/lib/typst-wasm';
 import { useDesignerStore } from '@/store/designer-store';
+import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { clsx } from 'clsx';
 import { AlertTriangle, Cpu, Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -10,7 +11,9 @@ export function PreviewPane() {
   // Granular selectors to prevent unnecessary re-renders
   const schema = useDesignerStore((state) => state.schema);
   const sampleData = useDesignerStore((state) => state.sampleData);
-
+  const isSidebarOpen = useDesignerStore((state) => state.isSidebarOpen);
+  const viewMode = useDesignerStore((state) => state.viewMode);
+  const zoom = useDesignerStore((state) => state.zoom);
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,11 +56,27 @@ export function PreviewPane() {
     };
   }, [schema, sampleData]);
 
+  const isLandscape = schema.page.orientation === 'landscape';
+  const pageWidthMm = isLandscape ? 297 : 210;
+  const pageHeightMm = isLandscape ? 210 : 297;
+
   return (
-    <div className="flex-1 flex flex-col bg-slate-400/20 shadow-inner overflow-hidden relative">
+    <div className="flex-1 flex flex-col bg-slate-400/20 shadow-inner overflow-hidden relative transition-colors duration-500">
       {/* Precision Preview Area */}
-      <div className="flex-1 overflow-auto flex justify-center p-8 scrollbar-thin">
-        <div className="relative bg-white shadow-2xl overflow-hidden border border-slate-400 min-w-[210mm] min-h-[297mm]">
+      <div 
+        className="flex-1 overflow-auto p-8 scrollbar-thin transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform"
+      >
+        <div 
+          className={clsx(
+              "relative bg-white shadow-2xl overflow-hidden border border-slate-400 transition-transform duration-300 origin-top-left",
+              isLandscape ? 'w-[29.7cm] min-h-[21cm]' : 'w-[21cm] min-h-[29.7cm]'
+          )}
+          style={{ 
+              width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
+              minHeight: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
+              transform: `scale(${zoom})` 
+          }}
+        >
           {svgContent ? (
             // biome-ignore lint/security/noDangerouslySetInnerHtml: Needed for SVG preview
             <div className="w-full h-full" dangerouslySetInnerHTML={{ __html: svgContent }} />
@@ -86,7 +105,7 @@ export function PreviewPane() {
       <div
         className={clsx(
           'absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-800/90 text-white rounded-full shadow-lg border border-slate-700 flex items-center gap-3 transition-all duration-500',
-          isRendering ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+          isRendering && viewMode !== 'split' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
         )}
       >
         <div className="flex items-center gap-2">
