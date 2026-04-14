@@ -5,7 +5,7 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     let mut t = String::new();
     t.push_str("// PHOENIX ENGINE (RUST/WASM) v1.1\n");
 
-    // Page Setup (Margins are set to 0 for absolute positioning parity)
+    // Page Setup (Margins are 0mm to maintain absolute coordinate parity with the designer)
     t.push_str(&format!(
         "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: 0mm,\n)\n",
         schema.page.size.to_lowercase(),
@@ -30,11 +30,20 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
 }
 
 fn render_zone(t: &mut String, zone: &Zone, label: &str, data: &Value) {
-    if zone.components.is_empty() {
+    if zone.components.is_empty() && zone.min_height.is_none() {
         return;
     }
     t.push_str(&format!("\n// ZONE: {}\n", label));
-    t.push_str("#block(width: 100%)[\n");
+    
+    let height = zone.min_height.as_deref().unwrap_or("auto");
+    let fill = zone.background.as_deref().map(|c| format_color(c)).unwrap_or("none".to_string());
+    let inset = zone.padding.as_deref().unwrap_or("0mm");
+    
+    t.push_str(&format!(
+        "#block(width: 100%, height: {}, fill: {}, inset: {})[\n",
+        height, fill, inset
+    ));
+    
     for comp in &zone.components {
         t.push_str("  ");
         t.push_str(&render_component(comp, data));
