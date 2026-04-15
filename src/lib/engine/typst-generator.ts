@@ -1,4 +1,4 @@
-import type { ComponentNode, LayoutSchema } from '../../types/schema';
+import type { ComponentNode, LayoutSchema, TableComponent } from '../../types/schema';
 
 /**
  * Professional-grade Typst Code Generator.

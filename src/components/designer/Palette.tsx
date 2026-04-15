@@ -161,11 +161,11 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: any) 
     <div
       ref={ref}
       className={clsx(
-        'group flex items-center gap-2 px-2 py-2 rounded-sm bg-slate-50 border border-slate-200 transition-colors cursor-grab active:cursor-grabbing hover:bg-white hover:border-slate-400 hover:shadow-sm'
+        'group flex flex-col items-center gap-2 px-2 py-2 rounded-md bg-slate-50 border border-slate-200 transition-colors cursor-grab active:cursor-grabbing hover:bg-white hover:border-slate-400 hover:shadow-sm'
       )}
     >
-      <div className="w-6 h-6 flex items-center justify-center shrink-0">
-        <Icon className="w-4 h-4 text-slate-500 group-hover:text-slate-800 transition-colors" />
+      <div className="w-6 h-6 flex  items-center justify-center shrink-0">
+        <Icon className="w-6 h-6 text-slate-500 group-hover:text-slate-800 transition-colors" />
       </div>
 
       <span className="text-[11px] text-slate-600 font-medium truncate group-hover:text-slate-900">

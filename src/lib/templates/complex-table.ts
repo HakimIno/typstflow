@@ -41,6 +41,7 @@ export const COMPLEX_TABLE_TEMPLATE: LayoutSchema = {
           height: 80,
           dataSource: '{{inventory}}',
           showHeader: true,
+          repeatHeaderOnPage: true,
           style: {
             headerBackground: '#1e293b',
             headerRows: 1,

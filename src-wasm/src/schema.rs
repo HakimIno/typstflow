@@ -109,6 +109,66 @@ pub struct TextStyle {
     pub justify: Option<bool>,
 }
 
+// --- Per-cell stroke config (maps to Typst stroke dictionary) ---
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StrokeConfig {
+    pub top: Option<String>,
+    pub bottom: Option<String>,
+    pub left: Option<String>,
+    pub right: Option<String>,
+}
+
+// --- Individual table cell (maps to Typst table.cell) ---
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TableCell {
+    pub id: String,
+    pub content: String,
+    pub colspan: Option<u32>,
+    pub rowspan: Option<u32>,
+    pub align: Option<String>,
+    pub fill: Option<String>,
+    pub inset: Option<String>,
+    pub stroke: Option<serde_json::Value>, // string or StrokeConfig object
+    pub style: Option<TextStyle>,
+}
+
+// --- Structured table row (maps to table.header / table.footer / data row) ---
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TableRow {
+    pub id: String,
+    pub r#type: String, // "header" | "data" | "footer"
+    pub cells: Vec<TableCell>,
+    pub height: Option<String>,
+    pub repeat: Option<bool>,
+}
+
+// --- Manual horizontal line (maps to table.hline) ---
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HLineConfig {
+    pub id: String,
+    pub y: u32,
+    pub start: Option<u32>,
+    pub end: Option<u32>,
+    pub stroke: Option<String>,
+    pub position: Option<String>, // "top" | "bottom"
+}
+
+// --- Manual vertical line (maps to table.vline) ---
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VLineConfig {
+    pub id: String,
+    pub x: u32,
+    pub start: Option<u32>,
+    pub end: Option<u32>,
+    pub stroke: Option<String>,
+    pub position: Option<String>, // "start" | "end"
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TableComponent {
@@ -119,6 +179,13 @@ pub struct TableComponent {
     pub style: Option<TableStyle>,
     pub show_header: Option<bool>,
     pub repeat_header_on_page: Option<bool>,
+    pub summary_rows: Option<Vec<SummaryRow>>,
+    // --- New: Structured header/footer rows ---
+    pub header_rows: Option<Vec<TableRow>>,
+    pub footer_rows: Option<Vec<TableRow>>,
+    // --- New: Manual lines ---
+    pub hlines: Option<Vec<HLineConfig>>,
+    pub vlines: Option<Vec<VLineConfig>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -134,6 +201,7 @@ pub struct TableColumn {
     pub background: Option<String>,
     pub colspan: Option<u32>,
     pub rowspan: Option<u32>,
+    pub format: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -150,13 +218,26 @@ pub struct TableStyle {
     pub header_rows: Option<u32>,
     pub footer_rows: Option<u32>,
     pub row_heights: Option<Vec<String>>,
+    // --- New fields from TypeScript schema ---
+    pub inset: Option<String>,
+    pub fill_pattern: Option<String>, // "none"|"striped-rows"|"striped-cols"|"checkerboard"|"header-only"
+    pub striped_color1: Option<String>,
+    pub striped_color2: Option<String>,
+    pub stroke: Option<serde_json::Value>, // string or StrokeConfig object
+    pub column_gutter: Option<String>,
+    pub row_gutter: Option<String>,
+    pub gutter: Option<String>,
+    pub font_size: Option<f64>,
+    pub font_weight: Option<String>,
+    pub cell_padding: Option<String>,
+    pub header_text_color: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CellStyle {
     pub fill: Option<String>,
-    pub stroke: Option<serde_json::Value>, // string or {top, bottom, left, right}
+    pub stroke: Option<serde_json::Value>,
     pub align: Option<String>,
     pub weight: Option<String>,
     pub size: Option<f64>,
@@ -204,6 +285,7 @@ pub struct SummaryRow {
     pub label: String,
     pub value: String,
     pub style: Option<String>,
+    pub separator: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

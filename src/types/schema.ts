@@ -92,6 +92,64 @@ export interface TextStyle {
   justify?: boolean;
 }
 
+// --- Stroke Configuration (maps to Typst stroke dictionary) ---
+export interface StrokeConfig {
+  top?: string;    // e.g. "1pt + black"
+  bottom?: string;
+  left?: string;
+  right?: string;
+}
+
+// --- Table Cell (maps to Typst table.cell) ---
+export interface TableCell {
+  id: string;
+  content: string;        // static text or {{binding}}
+  colspan?: number;
+  rowspan?: number;
+  align?: 'left' | 'center' | 'right';
+  fill?: string;           // per-cell background color
+  stroke?: StrokeConfig;   // per-cell border override
+  inset?: string;          // per-cell padding override
+  style?: TextStyle;       // per-cell text style
+}
+
+// --- Table Row (maps to table.header / table.footer / data rows) ---
+export interface TableRow {
+  id: string;
+  type: 'header' | 'data' | 'footer';
+  cells: TableCell[];
+  height?: string;        // row height (e.g. "30pt", "auto")
+  repeat?: boolean;       // for header/footer: repeat across pages
+}
+
+// --- Horizontal / Vertical Line (maps to table.hline / table.vline) ---
+export interface HLineConfig {
+  id: string;
+  y: number;               // row position (zero-indexed)
+  start?: number;          // start column (zero-indexed, inclusive)
+  end?: number;            // end column (zero-indexed, exclusive)
+  stroke?: string;         // e.g. "1pt + red"
+  position?: 'top' | 'bottom';
+}
+
+export interface VLineConfig {
+  id: string;
+  x: number;               // column position (zero-indexed)
+  start?: number;          // start row (zero-indexed, inclusive)
+  end?: number;            // end row (zero-indexed, exclusive)
+  stroke?: string;         // e.g. "1pt + blue"
+  position?: 'start' | 'end';
+}
+
+// --- Fill Pattern Presets ---
+export type FillPattern =
+  | 'none'
+  | 'striped-rows'
+  | 'striped-cols'
+  | 'checkerboard'
+  | 'header-only'
+  | 'custom';
+
 // --- Table Component ---
 export interface TableComponent extends BaseComponent {
   type: 'table';
@@ -101,6 +159,12 @@ export interface TableComponent extends BaseComponent {
   showHeader: boolean;
   repeatHeaderOnPage: boolean;
   summaryRows?: SummaryRow[];
+  // --- New: Structured rows for multi-row header/footer ---
+  headerRows?: TableRow[];   // structured header rows
+  footerRows?: TableRow[];   // structured footer rows
+  // --- New: Manual lines ---
+  hlines?: HLineConfig[];    // manual horizontal lines
+  vlines?: VLineConfig[];    // manual vertical lines
 }
 
 export interface TableColumn {
@@ -135,6 +199,14 @@ export interface TableStyle {
   footerRows?: number;
   rowHeights?: string[];
   gutter?: string; // padding between cells
+  // --- New: Typst table API extensions ---
+  inset?: string;                       // global cell padding (e.g. "7pt")
+  fillPattern?: FillPattern;            // fill pattern preset
+  stripedColor1?: string;               // even row/col color for patterns
+  stripedColor2?: string;               // odd row/col color for patterns
+  stroke?: string | StrokeConfig;       // global stroke config
+  columnGutter?: string;                // space between columns
+  rowGutter?: string;                   // space between rows
 }
 
 export interface CellStyle {

@@ -36,6 +36,7 @@ export const Toolbar = memo(function Toolbar() {
   const history = useDesignerStore((state) => state.history);
   const historyIndex = useDesignerStore((state) => state.historyIndex);
   const sampleData = useDesignerStore((state) => state.sampleData);
+  const isRightSidebarOpen = useDesignerStore((state) => state.isRightSidebarOpen);
   const [isExporting, setIsExporting] = useState(false);
 
   // Keyboard Shortcuts
@@ -331,7 +332,7 @@ export const Toolbar = memo(function Toolbar() {
             onClick={() => useDesignerStore.getState().toggleRightSidebar()}
             className={clsx(
               "p-2 rounded-sm border transition-all mr-1",
-              useDesignerStore((state) => state.isRightSidebarOpen)
+              isRightSidebarOpen
                 ? "bg-blue-50 border-blue-200 text-blue-600 shadow-inner"
                 : "bg-white border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-50"
             )}

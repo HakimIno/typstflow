@@ -1,8 +1,9 @@
-import type { ComponentNode, LayoutSchema } from '../types/schema';
+import type { ComponentNode, FillPattern, LayoutSchema, TableComponent } from '../types/schema';
 
 /**
- * Phoenix Generator (Stable FIX)
- * Removed 'clip: true' from zones to prevent absolute components from being hidden.
+ * Phoenix Generator v2.0 — Advanced Table Engine
+ * Full Typst table API support: table.header, table.footer, table.cell,
+ * table.hline, table.vline, fill patterns, inset, gutter, stroke.
  *
  * COORDINATE SYSTEM:
  * The designer has a 24px (6.35mm) header bar in each zone.
@@ -37,6 +38,29 @@ function formatColor(color: string): string {
   return color;
 }
 
+// --- Fill pattern generator ---
+function generateFillFunction(
+  pattern: FillPattern,
+  headerBg: string,
+  color1: string,
+  color2: string
+): string {
+  switch (pattern) {
+    case 'none':
+      return 'none';
+    case 'header-only':
+      return `(x, y) => if y == 0 { ${formatColor(headerBg)} } else { none }`;
+    case 'striped-rows':
+      return `(x, y) => if y == 0 { ${formatColor(headerBg)} } else if calc.even(y) { ${formatColor(color1)} } else { ${formatColor(color2)} }`;
+    case 'striped-cols':
+      return `(x, y) => if y == 0 { ${formatColor(headerBg)} } else if calc.even(x) { ${formatColor(color1)} } else { ${formatColor(color2)} }`;
+    case 'checkerboard':
+      return `(x, y) => if y == 0 { ${formatColor(headerBg)} } else if calc.even(x + y) { ${formatColor(color1)} } else { ${formatColor(color2)} }`;
+    default:
+      return `(x, y) => if y == 0 { ${formatColor(headerBg)} } else { none }`;
+  }
+}
+
 function renderComponent(comp: ComponentNode, data: Record<string, any>, yOffset = 0): string {
   const x = comp.x || 0;
   const y = (comp.y || 0) + yOffset; // Apply vertical offset for zone header
@@ -56,73 +80,7 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>, yOffset
     }
     case 'table': {
       const table = comp as TableComponent;
-      const style = table.style || {};
-      const headerBg = formatColor(style.headerBackground || 'blue.lighten(92%)');
-      const alternateBg = formatColor(style.alternateRowBackground || 'none');
-      const borderColor = formatColor(style.borderColor || 'gray');
-      const borderWidth = style.borderWidth || '0.5pt';
-
-      const columns = table.columns || [];
-      if (columns.length === 0) {
-        body = '/* empty table */';
-        break;
-      }
-
-      // 1. Physical Tracks (Standard, one track per column definition)
-      let t = '#table(\n  columns: (';
-      t += columns.map((c: any) => (c.width || '1fr').replace('*', 'fr')).join(', ');
-      t += `),\n  inset: 7pt, stroke: ${borderWidth} + ${borderColor},\n`;
-      t += `  fill: (x, y) => if y == 0 { ${headerBg} } else if calc.even(y) { ${alternateBg} } else { none },\n`;
-
-      let currentY = 0;
-
-      // (2) Header Row
-      const coveredHeader = new Set<number>();
-      for (let x = 0; x < columns.length; x++) {
-        if (coveredHeader.has(x)) continue;
-        
-        const col = columns[x];
-        const cs = col.colspan || 1;
-        const rs = col.rowspan || 1;
-        const escapedHeader = escapeTypst(col.header || '');
-        
-        if (cs === 1 && rs === 1) {
-          t += `  [*${escapedHeader}*],\n`;
-        } else {
-          t += `  table.cell(x: ${x}, y: ${currentY}, colspan: ${cs}, rowspan: ${rs})[*${escapedHeader}*],\n`;
-        }
-        
-        for (let i = 1; i < cs; i++) coveredHeader.add(x + i);
-      }
-      currentY += 1;
-
-      // (3) Data Rows
-      const path = (table.dataSource || '').replace(/\{\{(.+?)\}\}/g, '$1').trim();
-      const items = resolvePath(path, data) || [];
-      if (Array.isArray(items)) {
-        for (const item of items) {
-          const coveredRow = new Set<number>();
-          for (let x = 0; x < columns.length; x++) {
-            if (coveredRow.has(x)) continue;
-
-            const col = columns[x];
-            const cs = col.colspan || 1;
-            const rs = col.rowspan || 1;
-            const val = resolvePath(col.field, item);
-            const cellVal = val !== undefined ? escapeTypst(String(val)) : '';
-            
-            if (cs === 1 && rs === 1) {
-              t += `  [${cellVal}],\n`;
-            } else {
-              t += `  table.cell(x: ${x}, y: ${currentY}, colspan: ${cs}, rowspan: ${rs})[${cellVal}],\n`;
-            }
-            
-            for (let i = 1; i < cs; i++) coveredRow.add(x + i);
-          }
-          currentY += 1;
-        }
-      }
-      body = `${t})`;
+      body = renderTable(table, data);
       break;
     }
     case 'line':
@@ -131,8 +89,6 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>, yOffset
     case 'image': {
       const img = comp as any;
       const fit = img.fit || 'contain';
-      // In Typst WASM, we usually use paths or we'd need to provide files.
-      // For now, we use the source string.
       body = `#image("${img.src}", width: 100%, height: 100%, fit: "${fit}")`;
       break;
     }
@@ -166,9 +122,248 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>, yOffset
   return `#place(dx: ${x}mm, dy: ${y}mm)[#block(width: ${w}mm, height: ${h}mm, clip: false)[${body}]]\n`;
 }
 
+// --- Advanced Table Renderer ---
+function renderTable(table: TableComponent, data: Record<string, any>): string {
+  const style = table.style || {};
+  const columns = table.columns || [];
+
+  if (columns.length === 0) {
+    return '/* empty table */';
+  }
+
+  let t = '#table(\n';
+
+  // 1. Columns
+  t += '  columns: (';
+  t += columns.map((c) => (c.width || '1fr').replace('*', 'fr')).join(', ');
+  t += '),\n';
+
+  // 2. Row heights (if specified)
+  if (style.rowHeights && style.rowHeights.length > 0) {
+    t += `  rows: (${style.rowHeights.join(', ')}),\n`;
+  }
+
+  // 3. Inset
+  const inset = style.inset || style.cellPadding || '7pt';
+  t += `  inset: ${inset},\n`;
+
+  // 4. Stroke
+  const borderWidth = style.borderWidth || '0.5pt';
+  const borderColor = formatColor(style.borderColor || 'gray');
+  if (typeof style.stroke === 'object' && style.stroke) {
+    // Per-side stroke dictionary
+    const s = style.stroke;
+    const parts: string[] = [];
+    if (s.top) parts.push(`top: ${s.top}`);
+    if (s.bottom) parts.push(`bottom: ${s.bottom}`);
+    if (s.left) parts.push(`left: ${s.left}`);
+    if (s.right) parts.push(`right: ${s.right}`);
+    t += `  stroke: (${parts.join(', ')}),\n`;
+  } else {
+    t += `  stroke: ${borderWidth} + ${borderColor},\n`;
+  }
+
+  // 5. Gutter
+  if (style.columnGutter) {
+    t += `  column-gutter: ${style.columnGutter},\n`;
+  }
+  if (style.rowGutter) {
+    t += `  row-gutter: ${style.rowGutter},\n`;
+  }
+  if (style.gutter && !style.columnGutter && !style.rowGutter) {
+    t += `  gutter: ${style.gutter},\n`;
+  }
+
+  // 6. Fill
+  const fillPattern = style.fillPattern || 'header-only';
+  const headerBg = style.headerBackground || '#e2e8f0';
+  const color1 = style.stripedColor1 || style.alternateRowBackground || '#f8fafc';
+  const color2 = style.stripedColor2 || '#ffffff';
+
+  if (fillPattern === 'none') {
+    t += '  fill: none,\n';
+  } else {
+    const fillFn = generateFillFunction(fillPattern, headerBg, color1, color2);
+    t += `  fill: ${fillFn},\n`;
+  }
+
+  // 7. Align (per-column array)
+  const aligns = columns.map((c) => c.align || 'left');
+  const hasVariedAligns = aligns.some((a) => a !== aligns[0]);
+  if (hasVariedAligns) {
+    t += `  align: (${aligns.join(', ')}),\n`;
+  }
+
+  // 8. Header
+  let currentY = 0;
+
+  if (table.headerRows && table.headerRows.length > 0) {
+    // Structured multi-row header
+    const repeat = table.repeatHeaderOnPage !== false;
+    t += `  table.header(repeat: ${repeat},\n`;
+    for (const headerRow of table.headerRows) {
+      for (const cell of headerRow.cells) {
+        const content = escapeTypst(cell.content || '');
+        const cs = cell.colspan || 1;
+        const rs = cell.rowspan || 1;
+        if (cs === 1 && rs === 1 && !cell.fill && !cell.align) {
+          t += `    [*${content}*],\n`;
+        } else {
+          let cellArgs = '';
+          if (cs > 1) cellArgs += `colspan: ${cs}, `;
+          if (rs > 1) cellArgs += `rowspan: ${rs}, `;
+          if (cell.fill) cellArgs += `fill: ${formatColor(cell.fill)}, `;
+          if (cell.align) cellArgs += `align: ${cell.align}, `;
+          if (cell.inset) cellArgs += `inset: ${cell.inset}, `;
+          t += `    table.cell(${cellArgs})[*${content}*],\n`;
+        }
+      }
+      currentY++;
+    }
+    t += '  ),\n';
+  } else {
+    // Legacy: use column headers as single header row
+    if (table.showHeader !== false) {
+      const repeat = table.repeatHeaderOnPage !== false;
+      t += `  table.header(repeat: ${repeat},\n`;
+      const coveredHeader = new Set<number>();
+      for (let cx = 0; cx < columns.length; cx++) {
+        if (coveredHeader.has(cx)) continue;
+        const col = columns[cx];
+        const cs = col.colspan || 1;
+        const rs = col.rowspan || 1;
+        const escapedHeader = escapeTypst(col.header || '');
+
+        if (cs === 1 && rs === 1) {
+          t += `    [*${escapedHeader}*],\n`;
+        } else {
+          let cellArgs = `x: ${cx}, y: ${currentY}`;
+          if (cs > 1) cellArgs += `, colspan: ${cs}`;
+          if (rs > 1) cellArgs += `, rowspan: ${rs}`;
+          t += `    table.cell(${cellArgs})[*${escapedHeader}*],\n`;
+        }
+        for (let i = 1; i < cs; i++) coveredHeader.add(cx + i);
+      }
+      t += '  ),\n';
+      currentY++;
+    }
+  }
+
+  // 9. HLines before data (if any target row <= currentY)
+  const hlines = table.hlines || [];
+  for (const hl of hlines.filter((h) => h.y <= currentY)) {
+    let hlArgs = `y: ${hl.y}`;
+    if (hl.start !== undefined && hl.start > 0) hlArgs += `, start: ${hl.start}`;
+    if (hl.end !== undefined) hlArgs += `, end: ${hl.end}`;
+    if (hl.stroke) hlArgs += `, stroke: ${hl.stroke}`;
+    t += `  table.hline(${hlArgs}),\n`;
+  }
+
+  // 10. Data Rows
+  const path = (table.dataSource || '').replace(/\{\{(.+?)\}\}/g, '$1').trim();
+  const items = resolvePath(path, data) || [];
+  if (Array.isArray(items)) {
+    for (const item of items) {
+      const coveredRow = new Set<number>();
+      for (let cx = 0; cx < columns.length; cx++) {
+        if (coveredRow.has(cx)) continue;
+        const col = columns[cx];
+        const cs = col.colspan || 1;
+        const rs = col.rowspan || 1;
+        const val = resolvePath(col.field, item);
+        const cellVal = val !== undefined ? escapeTypst(String(val)) : '';
+
+        // Check for per-column cell style overrides
+        const hasOverrides = col.background || (cs > 1) || (rs > 1);
+
+        if (!hasOverrides) {
+          t += `  [${cellVal}],\n`;
+        } else {
+          let cellArgs = '';
+          if (cs > 1) cellArgs += `colspan: ${cs}, `;
+          if (rs > 1) cellArgs += `rowspan: ${rs}, `;
+          if (col.background) cellArgs += `fill: ${formatColor(col.background)}, `;
+          t += `  table.cell(${cellArgs})[${cellVal}],\n`;
+        }
+
+        for (let i = 1; i < cs; i++) coveredRow.add(cx + i);
+      }
+      currentY++;
+    }
+  }
+
+  // 11. HLines (rendered after data rows — Typst places them by y position)
+  const headerEndY = table.showHeader !== false ? 1 : 0;
+  for (const hl of hlines) {
+    if (hl.y <= headerEndY) continue; // already rendered before data
+    let hlArgs = `y: ${hl.y}`;
+    if (hl.start !== undefined && hl.start > 0) hlArgs += `, start: ${hl.start}`;
+    if (hl.end !== undefined) hlArgs += `, end: ${hl.end}`;
+    if (hl.stroke) hlArgs += `, stroke: ${hl.stroke}`;
+    if (hl.position) hlArgs += `, position: ${hl.position}`;
+    t += `  table.hline(${hlArgs}),\n`;
+  }
+
+  // 12. VLines
+  const vlines = table.vlines || [];
+  for (const vl of vlines) {
+    let vlArgs = `x: ${vl.x}`;
+    if (vl.start !== undefined && vl.start > 0) vlArgs += `, start: ${vl.start}`;
+    if (vl.end !== undefined) vlArgs += `, end: ${vl.end}`;
+    if (vl.stroke) vlArgs += `, stroke: ${vl.stroke}`;
+    if (vl.position) vlArgs += `, position: ${vl.position}`;
+    t += `  table.vline(${vlArgs}),\n`;
+  }
+
+  // 13. Footer
+  const footerRows = table.footerRows || [];
+  if (footerRows.length > 0) {
+    const repeat = footerRows[0]?.repeat !== false;
+    t += `  table.footer(repeat: ${repeat},\n`;
+    for (const footerRow of footerRows) {
+      for (const cell of footerRow.cells) {
+        const content = resolveBinding(cell.content || '', data);
+        const escapedContent = escapeTypst(content);
+        const cs = cell.colspan || 1;
+        const rs = cell.rowspan || 1;
+
+        if (cs === 1 && rs === 1 && !cell.fill && !cell.align) {
+          t += `    [*${escapedContent}*],\n`;
+        } else {
+          let cellArgs = '';
+          if (cs > 1) cellArgs += `colspan: ${cs}, `;
+          if (rs > 1) cellArgs += `rowspan: ${rs}, `;
+          if (cell.fill) cellArgs += `fill: ${formatColor(cell.fill)}, `;
+          if (cell.align) cellArgs += `align: ${cell.align}, `;
+          t += `    table.cell(${cellArgs})[*${escapedContent}*],\n`;
+        }
+      }
+    }
+    t += '  ),\n';
+  }
+
+  // 14. Summary Rows (legacy support)
+  if (table.summaryRows && table.summaryRows.length > 0) {
+    for (const row of table.summaryRows) {
+      if (row.separator) {
+        t += `  table.hline(stroke: 1pt + black),\n`;
+      }
+      const val = resolveBinding(row.value || '', data);
+      const escapedLabel = escapeTypst(row.label || '');
+      const escapedVal = escapeTypst(val);
+      const weight = row.style?.fontWeight === 'bold' ? 'bold' : 'regular';
+      t += `  table.cell(colspan: ${columns.length - 1}, align: right)[*${escapedLabel}*],\n`;
+      t += `  [#text(weight: "${weight}")[${escapedVal}]],\n`;
+    }
+  }
+
+  t += ')';
+  return t;
+}
+
 export function schemaToTypst(schema: LayoutSchema, data: Record<string, any>): string {
   const { page } = schema;
-  let typst = '// PHOENIX ENGINE v1.1 STABLE\n';
+  let typst = '// PHOENIX ENGINE v2.0 — ADVANCED TABLE\n';
 
   // Page Setup
   typst += `#set page(
