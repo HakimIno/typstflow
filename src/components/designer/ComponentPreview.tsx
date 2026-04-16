@@ -1,3 +1,5 @@
+import { useDesignerStore } from '@/store/designer-store';
+import { resolveBindings } from '@/lib/utils/json-path';
 import type { ComponentNode, TableComponent } from '@/types/schema';
 import { Table as TableIcon } from 'lucide-react';
 import { TablePreview } from './TablePreview';
@@ -7,6 +9,8 @@ interface Props {
 }
 
 export function ComponentPreview({ component }: Props) {
+  const sampleData = useDesignerStore((state) => state.sampleData);
+
   switch (component.type) {
     case 'text':
       return (
@@ -21,7 +25,9 @@ export function ComponentPreview({ component }: Props) {
             wordBreak: 'break-word',
           }}
         >
-          {component.content || 'Empty text'}
+          {resolveBindings(component.content || '', sampleData) || (
+            <span className="text-slate-300 italic">Empty text</span>
+          )}
         </div>
       );
     case 'table':

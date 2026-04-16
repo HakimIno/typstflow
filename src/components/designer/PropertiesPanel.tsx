@@ -10,6 +10,8 @@ import type {
   TextComponent,
 } from '@/types/schema';
 import { TablePropertiesPanel } from './TablePropertiesPanel';
+import { TextEditor } from './TextEditor';
+import { VariablePicker } from './VariablePicker';
 import { clsx } from 'clsx';
 import {
   AlignCenter,
@@ -37,6 +39,7 @@ export function PropertiesPanel() {
   const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
   const zones = useDesignerStore((state) => state.schema.zones);
   const page = useDesignerStore((state) => state.schema.page);
+  const sampleData = useDesignerStore((state) => state.sampleData);
 
 
   // Select actions separately (they don't change)
@@ -198,14 +201,22 @@ export function PropertiesPanel() {
           <SectionHeader label="Content & Binding" />
           {isText(selectedComponent) && (
             <div className="flex flex-col border-b border-slate-100">
-              <div className="px-3 py-1 text-[10px] font-bold text-slate-500 bg-slate-50/50 uppercase tracking-tighter">
-                Text Content
+              <div className="px-3 py-1 flex items-center justify-between text-[10px] bg-slate-50/50">
+                <span className="font-bold text-slate-500 uppercase tracking-tighter">Text Content</span>
+                <VariablePicker
+                  sampleData={sampleData}
+                  onSelect={(path, binding) => {
+                    const currentContent = selectedComponent.content || '';
+                    updateComponent(selectedComponent.id, { content: currentContent + binding });
+                  }}
+                />
               </div>
-              <textarea
+              <TextEditor
                 value={selectedComponent.content || ''}
-                onChange={(e) => updateComponent(selectedComponent.id, { content: e.target.value })}
-                className="w-full h-16 px-3 py-2 text-[11px] font-mono border-none focus:ring-0 focus:outline-none resize-none bg-white"
+                onChange={(value) => updateComponent(selectedComponent.id, { content: value })}
+                sampleData={sampleData}
                 placeholder="Type static text or {{binding}}..."
+                className="bg-white"
               />
             </div>
           )}

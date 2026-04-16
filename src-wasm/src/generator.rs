@@ -500,27 +500,50 @@ fn wrap_placement(base: &BaseComponent, body: &str) -> String {
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 fn resolve_path<'a>(path: &str, data: &'a Value) -> Option<&'a Value> {
-    if path.is_empty() { return Some(data); }
+    let p = path.trim();
+    if p.is_empty() { return None; }
     let mut current = data;
-    for part in path.split('.') {
+    for part in p.split('.') {
+        if part.is_empty() { continue; }
         current = current.get(part)?;
     }
     Some(current)
 }
 
 fn resolve_binding(expr: &str, data: &Value) -> String {
-    let mut result = expr.to_string();
-    while let Some(start) = result.find("{{") {
-        if let Some(end) = result[start..].find("}}") {
-            let path = result[start + 2..start + end].trim().to_string();
+    let mut result = String::new();
+    let mut last_end = 0;
+    
+    let mut current = 0;
+    while let Some(start_offset) = expr[current..].find("{{") {
+        let start = current + start_offset;
+        if let Some(end_offset) = expr[start..].find("}}") {
+            let end = start + end_offset;
+            
+            // Add static text before the placeholder
+            result.push_str(&expr[last_end..start]);
+            
+            let path = expr[start + 2..end].trim().to_string();
             let value = resolve_path(&path, data)
-                .map(|v| v.to_string().replace("\"", ""))
+                .map(|v| {
+                    match v {
+                        Value::String(s) => s.clone(),
+                        _ => v.to_string()
+                    }
+                })
                 .unwrap_or_else(|| format!("{{{{{}}}}}", path));
-            result.replace_range(start..start + end + 2, &value);
+            
+            result.push_str(&value);
+            
+            last_end = end + 2;
+            current = last_end;
         } else {
             break;
         }
     }
+    
+    // Add remaining static text
+    result.push_str(&expr[last_end..]);
     result
 }
 

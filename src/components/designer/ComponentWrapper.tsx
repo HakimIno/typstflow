@@ -11,6 +11,7 @@ import { useDraggable } from '@/hooks/use-draggable';
 import { useResizable } from '@/hooks/use-resizable';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { ComponentPreview } from './ComponentPreview';
+import { TextEditor } from './TextEditor';
 
 interface Props {
   component: ComponentNode;
@@ -32,8 +33,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
   const ref = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
-  const { selectedComponentId, selectComponent, removeComponent, addComponent, updateComponent } =
+  const { selectedComponentId, selectComponent, removeComponent, addComponent, updateComponent, sampleData } =
     useDesignerStore(
       useShallow((state) => ({
         selectedComponentId: state.selectedComponentId,
@@ -41,6 +43,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
         removeComponent: state.removeComponent,
         addComponent: state.addComponent,
         updateComponent: state.updateComponent,
+        sampleData: state.sampleData,
       }))
     );
 
@@ -55,13 +58,47 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
     }
   };
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    updateComponent(component.id, { content: e.target.value });
+  const handleTextChange = (value: string) => {
+    updateComponent(component.id, { content: value });
   };
 
-  const handleBlur = () => {
+  const handleExitEdit = useCallback(() => {
     setIsEditing(false);
-  };
+  }, []);
+
+  // Handle click outside to exit editing mode
+  useEffect(() => {
+    if (!isEditing) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      // Don't exit if clicking on dropdown or other UI parts
+      const target = e.target as Element;
+      if (
+        !target ||
+        target.closest?.('[data-variable-dropdown="true"]') ||
+        target.parentElement?.classList.contains('z-50') ||
+        target.parentElement?.parentElement?.classList.contains('z-50')
+      ) {
+        return;
+      }
+
+      if (editorContainerRef.current &&
+          !editorContainerRef.current.contains(target) &&
+          !dragHandleRef.current?.contains(target)) {
+        setIsEditing(false);
+      }
+    };
+
+    // Add delay to prevent conflicts with TextEditor clicks
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isEditing]);
 
   // 1. Logic Extracted: Resizing
   const { localBounds, isResizing, handleResizeStart, syncBounds } = useResizable(
@@ -116,11 +153,13 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
   const width = LayoutEngine.mmToPx(localBounds.width);
   const height = LayoutEngine.mmToPx(localBounds.height);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement | HTMLTextAreaElement>) => {
+    // Handle editing mode key events
     if (isEditing) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        setIsEditing(false);
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        // We let TextEditor's internal logic handle Enter first
+        // It will call onExit if no autocomplete is active
+        return;
       }
       if (e.key === 'Escape') {
         setIsEditing(false);
@@ -166,7 +205,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
   return (
     <div
       ref={ref}
-      onKeyDown={handleKeyDown}
+      onKeyDown={!isEditing ? handleKeyDown : undefined}
       onDoubleClick={handleDoubleClick}
       onClick={(e) => {
         e.stopPropagation();
@@ -192,22 +231,43 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
     >
       {/* Inline Editor */}
       {isEditing && component.type === 'text' && (
-        <textarea
-          autoFocus
-          className="absolute inset-0 w-full h-full p-0 m-0 border-none outline-none bg-white z-[60] resize-none overflow-hidden"
-          value={component.content}
-          onChange={handleTextChange}
-          onBlur={handleBlur}
+        <div
+          ref={editorContainerRef}
+          className="absolute inset-0 w-full h-full bg-white z-[60] overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={handleKeyDown}
           style={{
-            fontSize: `${component.style?.fontSize || 10}pt`,
-            lineHeight: component.style?.lineHeight || 1.2,
-            letterSpacing: component.style?.letterSpacing || 'normal',
-            textAlign: component.align === 'justify' ? 'left' : component.align || 'left',
-            fontFamily: 'Sarabun, sans-serif',
-            color: component.style?.color || 'black',
-            fontWeight: component.style?.fontWeight === 'bold' ? 'bold' : 'normal',
+            // Keep text in the same position
+            display: 'flex',
+            alignItems: (component.style as any)?.verticalAlign || 'flex-start',
+            justifyContent: component.align === 'center' ? 'center' :
+                         component.align === 'right' ? 'flex-end' :
+                         component.align === 'justify' ? 'flex-start' : 'flex-start',
           }}
-        />
+        >
+          <TextEditor
+            value={component.content || ''}
+            onChange={handleTextChange}
+            sampleData={sampleData}
+            className="w-full h-full"
+            placeholder=""
+            inline={true}
+            style={{
+              fontSize: `${component.style?.fontSize || 10}pt`,
+              lineHeight: component.style?.lineHeight || 1.2,
+              letterSpacing: component.style?.letterSpacing || 'normal',
+              textAlign: component.align === 'justify' ? 'left' : component.align || 'left',
+              fontFamily: 'Sarabun, sans-serif',
+              color: component.style?.color || 'black',
+              fontWeight: component.style?.fontWeight === 'bold' ? 'bold' : 'normal',
+              // Prevent layout shift
+              minHeight: `${component.height || 20}px`,
+              display: 'block',
+            }}
+            textareaClassName="resize-none"
+            onExit={handleExitEdit}
+          />
+        </div>
       )}
       {/* Precision Action Bar - Always mounted, visibility controlled by CSS */}
       <div
