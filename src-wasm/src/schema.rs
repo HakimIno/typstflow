@@ -298,6 +298,7 @@ pub struct BarcodeComponent {
     pub base: BaseComponent,
     pub value: String,
     pub format: String,
+    pub src: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -306,6 +307,7 @@ pub struct QRComponent {
     #[serde(flatten)]
     pub base: BaseComponent,
     pub value: String,
+    pub src: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

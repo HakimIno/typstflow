@@ -22,6 +22,8 @@ pub struct TypstBridge {
     font_book: LazyHash<FontBook>,
     fonts: Vec<Font>,
     images: ImageRegistry,
+    /// Native Typst packages embedded in the binary
+    packages: HashMap<String, String>,
 }
 
 #[wasm_bindgen]
@@ -48,13 +50,26 @@ impl TypstBridge {
 
         let font_book = FontBook::from_fonts(&fonts);
         let library = typst::Library::builder().build();
-        web_sys::console::log_1(&"✅ Typst WASM Engine v0.14.2 Loaded (Image Registry Enabled)".into());
+        web_sys::console::log_1(&"✅ Typst WASM Engine v0.14.2 Loaded (Image Registry + Native Packages)".into());
+
+        let mut packages = HashMap::new();
+        let pkg_prefix = "@preview/codetastic:0.2.2/";
+        packages.insert(format!("{}typst.toml", pkg_prefix), include_str!("../typst-packages/codetastic/0.2.2/typst.toml").to_string());
+        packages.insert(format!("{}codetastic.typ", pkg_prefix), include_str!("../typst-packages/codetastic/0.2.2/codetastic.typ").to_string());
+        packages.insert(format!("{}bitfield.typ", pkg_prefix), include_str!("../typst-packages/codetastic/0.2.2/bitfield.typ").to_string());
+        packages.insert(format!("{}bits.typ", pkg_prefix), include_str!("../typst-packages/codetastic/0.2.2/bits.typ").to_string());
+        packages.insert(format!("{}checksum.typ", pkg_prefix), include_str!("../typst-packages/codetastic/0.2.2/checksum.typ").to_string());
+        packages.insert(format!("{}ecc.typ", pkg_prefix), include_str!("../typst-packages/codetastic/0.2.2/ecc.typ").to_string());
+        packages.insert(format!("{}qrluts.typ", pkg_prefix), include_str!("../typst-packages/codetastic/0.2.2/qrluts.typ").to_string());
+        packages.insert(format!("{}qrutil.typ", pkg_prefix), include_str!("../typst-packages/codetastic/0.2.2/qrutil.typ").to_string());
+        packages.insert(format!("{}util.typ", pkg_prefix), include_str!("../typst-packages/codetastic/0.2.2/util.typ").to_string());
 
         Self {
             library: LazyHash::new(library),
             font_book: LazyHash::new(font_book),
             fonts,
             images: Arc::new(RwLock::new(HashMap::new())),
+            packages,
         }
     }
 
@@ -156,18 +171,42 @@ impl World for WasmWorld<'_> {
         FileId::new(None, VirtualPath::new("main.typ"))
     }
 
-    fn source(&self, _id: FileId) -> FileResult<Source> {
-        Ok(self.source.clone())
+    fn source(&self, id: FileId) -> FileResult<Source> {
+        if id == self.main() {
+            return Ok(self.source.clone());
+        }
+
+        let bytes = self.file(id)?;
+        let text = std::str::from_utf8(&bytes)
+            .map_err(|_| FileError::InvalidUtf8)?;
+        Ok(Source::new(id, text.to_string()))
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        // Look up image by virtual path name in the registry
-        let path_str = id.vpath().as_rootless_path().to_string_lossy().to_string();
+        // Construct the effective path for internal lookup
+        let path_str = if let Some(pkg) = id.package() {
+            // Standard Typst package path format: @namespace/name:version/path
+            format!("{}/{}", pkg, id.vpath().as_rootless_path().to_string_lossy())
+        } else {
+            // Standard rootless path for images and main source
+            id.vpath().as_rootless_path().to_string_lossy().to_string()
+        };
+
+        // Debug logging in WASM console
+        web_sys::console::log_1(&format!("🔍 Requesting file: {} (ID: {:?})", path_str, id).into());
+
+        // 1. Look up image by virtual path name in the registry
         if let Ok(map) = self.bridge.images.read() {
             if let Some(bytes) = map.get(&path_str) {
                 return Ok(bytes.clone());
             }
         }
+
+        // 2. Look up embedded Typst packages (e.g. @preview/codetastic:0.2.2/...)
+        if let Some(content) = self.bridge.packages.get(&path_str) {
+            return Ok(Bytes::new(content.as_bytes().to_vec()));
+        }
+
         Err(FileError::NotFound(id.vpath().as_rootless_path().to_path_buf()))
     }
 

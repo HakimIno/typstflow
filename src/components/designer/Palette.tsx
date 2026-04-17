@@ -127,18 +127,45 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: any) 
     if (!el) return;
 
     const getTemplate = () => {
-      const base = { id: '', x: 0, y: 0 };
+      const base = { id: '', x: 10, y: 10, width: 100, height: 20 };
       switch (type) {
         case 'text':
-          return { ...base, type: 'text', content: 'Double click to edit', style: { fontSize: 10 }, width: 100, height: 10 };
+          return { ...base, type: 'text', content: 'Double click to edit', style: { fontSize: 10 }, height: 10 };
         case 'table':
           return { ...base, type: 'table', dataSource: '{{items}}', columns: [{ id: '1', header: 'Header', field: 'field', width: '1fr' }], width: 180, height: 40 };
         case 'image':
           return { ...base, type: 'image', src: '/logo.png', width: 40, height: 40 };
         case 'line':
           return { ...base, type: 'line', thickness: '1pt', color: 'black', width: 180, height: 2 };
+        case 'barcode':
+          return { ...base, type: 'barcode', value: '12345678', format: 'code128', width: 40, height: 15 };
+        case 'qr':
+          return { ...base, type: 'qr', value: 'https://example.com', width: 30, height: 30 };
+        case 'spacer':
+          return { ...base, type: 'spacer', height: 10, width: 10 };
+        case 'columns':
+          return { 
+            ...base, 
+            type: 'columns', 
+            columns: [
+              { width: '1fr', components: [] },
+              { width: '1fr', components: [] }
+            ],
+            width: 180,
+            height: 40
+          };
+        case 'repeater':
+          return { ...base, type: 'repeater', dataSource: '{{items}}', children: [], width: 180, height: 40 };
+        case 'summary-box':
+          return { 
+            ...base, 
+            type: 'summary-box', 
+            rows: [{ label: 'Subtotal', value: '$0.00' }],
+            width: 80,
+            height: 30
+          };
         default:
-          return { ...base, type: 'text', width: 50, height: 20 };
+          return { ...base, type: 'text', content: '', height: 10 };
       }
     };
 

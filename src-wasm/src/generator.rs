@@ -3,7 +3,8 @@ use serde_json::Value;
 
 pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     let mut t = String::new();
-    t.push_str("// PHOENIX ENGINE (RUST/WASM) v2.0 — ADVANCED TABLE\n");
+    t.push_str("// PHOENIX ENGINE (RUST/WASM) v2.0 — NATIVE PACKAGES\n");
+    t.push_str("#import \"@preview/codetastic:0.2.2\": qrcode, ean13, ean8\n\n");
 
     // Page Setup
     t.push_str(&format!(
@@ -59,8 +60,8 @@ fn render_component(comp: &ComponentNode, data: &Value) -> String {
         ComponentNode::Image(c) => render_image(c),
         ComponentNode::Spacer(c) => render_spacer(c),
         ComponentNode::SummaryBox(c) => render_summary_box(c, data),
-        ComponentNode::Barcode(c) => render_placeholder_box("BARCODE", &c.base, &c.value, data),
-        ComponentNode::Qr(c) => render_placeholder_box("QR", &c.base, &c.value, data),
+        ComponentNode::Barcode(c) => render_barcode(c),
+        ComponentNode::Qr(c) => render_qr(c),
         ComponentNode::Repeater(_) => render_placeholder_box("REPEATER (NESTED)", &comp_base(comp), "", data),
         ComponentNode::Columns(_) => render_placeholder_box("COLUMNS (LAYOUT)", &comp_base(comp), "", data),
     }
@@ -488,6 +489,36 @@ fn render_summary_box(c: &SummaryBoxComponent, data: &Value) -> String {
         ));
     }
     let body = format!("#table(columns: (1fr, auto), stroke: none, inset: 4pt,\n{})", rows_typst);
+    wrap_placement(&c.base, &body)
+}
+
+fn render_barcode(c: &BarcodeComponent) -> String {
+    let val = resolve_binding(&c.value, &serde_json::Value::Null); // dummy resolve if static
+    // Use codetastic native function based on format
+    let func = match c.format.as_str() {
+        "ean13" => "ean13",
+        "ean8" => "ean8",
+        _ => "ean13", // v0.2.2 doesn't have code128/pdf417, fallback to ean13
+    };
+    
+    // EAN barcodes in codetastic have a default baseline size. 
+    // ean13 width is roughly 25.08mm, height is roughly 18.28mm (excluding text).
+    // To allow the user to stretch the barcode in the UI, we use Typst's #scale.
+    let base_w = c.base.width.unwrap_or(30.0);
+    let base_h = c.base.height.unwrap_or(15.0);
+    
+    let scale_x = (base_w / 25.08) * 100.0;
+    let scale_y = (base_h / 18.28) * 100.0;
+    
+    let body = format!("#scale(x: {:.2}%, y: {:.2}%, reflow: true)[#{}(\"{}\")]", scale_x, scale_y, func, escape_typst(&val));
+    wrap_placement(&c.base, &body)
+}
+
+fn render_qr(c: &QRComponent) -> String {
+    let val = resolve_binding(&c.value, &serde_json::Value::Null);
+    let width = c.base.width.unwrap_or(30.0);
+    // qrcode in codetastic expects a length for width, not a ratio
+    let body = format!("#qrcode(\"{}\", width: {}mm)", escape_typst(&val), width);
     wrap_placement(&c.base, &body)
 }
 

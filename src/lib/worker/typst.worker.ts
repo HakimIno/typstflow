@@ -107,7 +107,6 @@ function walkComponents(components: any[]) {
       }
     }
 
-    // Recurse into nested structures
     if (comp.type === 'repeater' && comp.children) {
       walkComponents(comp.children);
     } else if (comp.type === 'columns' && comp.columns) {

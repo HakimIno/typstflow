@@ -28,7 +28,25 @@ import {
   ImageIcon,
   Loader2,
 } from 'lucide-react';
-import React, { useMemo, useRef, useState, useCallback } from 'react';
+import React, { useMemo, useRef, useState, useCallback, memo } from 'react';
+
+// ---------------------------------------------------------------------------
+// Shared UI Primitives (Defined outside to prevent focus loss)
+// ---------------------------------------------------------------------------
+const PropertyRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="flex border-b border-slate-100 last:border-0 hover:bg-slate-50 group">
+    <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-50/50 border-r border-slate-100 flex items-center shrink-0">
+      {label}
+    </div>
+    <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">{children}</div>
+  </div>
+);
+
+const SectionHeader = ({ label }: { label: string }) => (
+  <div className="px-3 py-1.5 bg-slate-200 border-b border-slate-300 text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+    {label}
+  </div>
+);
 
 // Type guards for safe component access
 const isText = (c: ComponentNode): c is TextComponent => c.type === 'text';
@@ -206,7 +224,7 @@ function ImageUploader({
   );
 }
 
-export function PropertiesPanel() {
+export const PropertiesPanel = memo(function PropertiesPanel() {
 
 
   // Select state with proper memoization - avoid selecting entire schema
@@ -319,20 +337,6 @@ export function PropertiesPanel() {
     );
   }
 
-  const PropertyRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="flex border-b border-slate-100 last:border-0 hover:bg-slate-50 group">
-      <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-50/50 border-r border-slate-100 flex items-center shrink-0">
-        {label}
-      </div>
-      <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">{children}</div>
-    </div>
-  );
-
-  const SectionHeader = ({ label }: { label: string }) => (
-    <div className="px-3 py-1.5 bg-slate-200 border-b border-slate-300 text-[9px] font-bold text-slate-600 uppercase tracking-widest">
-      {label}
-    </div>
-  );
 
   // Validation helpers
   const handleNumericUpdate = (key: keyof ComponentNode, value: string) => {
@@ -613,4 +617,4 @@ export function PropertiesPanel() {
       </div>
     </div>
   );
-}
+});
