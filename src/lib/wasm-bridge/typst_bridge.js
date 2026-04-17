@@ -12,6 +12,12 @@ export class TypstBridge {
         wasm.__wbg_typstbridge_free(ptr, 0);
     }
     /**
+     * Clear all registered images (call between renders if needed).
+     */
+    clear_images() {
+        wasm.typstbridge_clear_images(this.__wbg_ptr);
+    }
+    /**
      * @param {string} schema_json
      * @param {string} data_json
      * @returns {string}
@@ -43,6 +49,19 @@ export class TypstBridge {
         this.__wbg_ptr = ret >>> 0;
         TypstBridgeFinalization.register(this, this.__wbg_ptr, this);
         return this;
+    }
+    /**
+     * Register raw image bytes under a virtual filename.
+     * Call this before rendering when source uses #image("virtual-name.png").
+     * @param {string} virtual_path
+     * @param {Uint8Array} data
+     */
+    register_image(virtual_path, data) {
+        const ptr0 = passStringToWasm0(virtual_path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.typstbridge_register_image(this.__wbg_ptr, ptr0, len0, ptr1, len1);
     }
     /**
      * @param {string} source_code
@@ -181,6 +200,13 @@ function getUint8ArrayMemory0() {
         cachedUint8ArrayMemory0 = new Uint8Array(wasm.memory.buffer);
     }
     return cachedUint8ArrayMemory0;
+}
+
+function passArray8ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 1, 1) >>> 0;
+    getUint8ArrayMemory0().set(arg, ptr / 1);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
 }
 
 function passStringToWasm0(arg, malloc, realloc) {

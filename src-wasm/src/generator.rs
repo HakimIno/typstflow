@@ -455,7 +455,18 @@ fn render_line(c: &LineComponent) -> String {
 
 fn render_image(c: &ImageComponent) -> String {
     let fit = c.fit.as_deref().unwrap_or("contain");
-    let body = format!("#image(\"{}\", width: 100%, height: 100%, fit: \"{}\")", c.src, fit);
+    // If srcData is present the image bytes are pre-registered in the WASM image
+    // registry under the virtual path "img-{id}.png". Use that path so Typst
+    // resolves from the registry instead of trying to fetch a URL (which would
+    // fail in the sandboxed Web Worker environment).
+    let path = if c.src_data.is_some() {
+        // Trust the src field provided in JSON, as the Worker has already 
+        // swapped it to the correct virtual path (e.g. img-123.webp)
+        c.src.clone()
+    } else {
+        c.src.clone()
+    };
+    let body = format!("#image(\"{}\", width: 100%, height: 100%, fit: \"{}\")", path, fit);
     wrap_placement(&c.base, &body)
 }
 

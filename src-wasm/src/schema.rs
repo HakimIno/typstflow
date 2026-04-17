@@ -250,6 +250,9 @@ pub struct ImageComponent {
     #[serde(flatten)]
     pub base: BaseComponent,
     pub src: String,
+    /// Base64 data URL (data:image/png;base64,...) — pre-registered in WASM image registry
+    pub src_data: Option<String>,
+    pub mime_type: Option<String>,
     pub fit: Option<String>,
 }
 

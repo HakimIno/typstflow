@@ -22,8 +22,13 @@ import {
   Layers,
   Sliders,
   Trash2,
+  Upload,
+  Link,
+  X,
+  ImageIcon,
+  Loader2,
 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState, useCallback } from 'react';
 
 // Type guards for safe component access
 const isText = (c: ComponentNode): c is TextComponent => c.type === 'text';
@@ -31,6 +36,175 @@ const isTable = (c: ComponentNode): c is TableComponent => c.type === 'table';
 const isImage = (c: ComponentNode): c is ImageComponent => c.type === 'image';
 const isBarcode = (c: ComponentNode): c is BarcodeComponent =>
   c.type === 'barcode' || c.type === 'qr';
+
+// ---------------------------------------------------------------------------
+// ImageUploader — handles local file upload and URL fetch
+// ---------------------------------------------------------------------------
+function ImageUploader({
+  component,
+  onUpdate,
+}: {
+  component: ImageComponent;
+  onUpdate: (updates: Partial<ImageComponent>) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [urlInput, setUrlInput] = useState(component.src?.startsWith('http') ? component.src : '');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<'upload' | 'url'>('upload');
+
+  const previewSrc = component.srcData || (component.src?.startsWith('http') ? '' : '');
+
+  const handleFile = useCallback((file: File) => {
+    setError(null);
+    if (file.size > 8 * 1024 * 1024) {
+      setError('File too large (max 8 MB)');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const mimeType = file.type || 'image/png';
+      onUpdate({ src: file.name, srcData: dataUrl, mimeType });
+    };
+    reader.onerror = () => setError('Failed to read file');
+    reader.readAsDataURL(file);
+  }, [onUpdate]);
+
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+    e.target.value = '';
+  }, [handleFile]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file?.type.startsWith('image/')) handleFile(file);
+  }, [handleFile]);
+
+  const handleUrlLoad = useCallback(async () => {
+    const url = urlInput.trim();
+    if (!url) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      if (!blob.type.startsWith('image/')) throw new Error('URL is not an image');
+      if (blob.size > 8 * 1024 * 1024) throw new Error('Image too large (max 8 MB)');
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        onUpdate({ src: url, srcData: dataUrl, mimeType: blob.type });
+        setLoading(false);
+      };
+      reader.onerror = () => { setError('Failed to decode image'); setLoading(false); };
+      reader.readAsDataURL(blob);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load URL');
+      setLoading(false);
+    }
+  }, [urlInput, onUpdate]);
+
+  const handleClear = useCallback(() => {
+    onUpdate({ src: '', srcData: undefined, mimeType: undefined });
+    setUrlInput('');
+    setError(null);
+  }, [onUpdate]);
+
+  return (
+    <div className="border-b border-slate-100">
+      {/* Tab switcher */}
+      <div className="flex border-b border-slate-100">
+        {(['upload', 'url'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={clsx(
+              'flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all',
+              tab === t
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-50 text-slate-400 hover:text-slate-600'
+            )}
+          >
+            {t === 'upload' ? <Upload className="w-2.5 h-2.5" /> : <Link className="w-2.5 h-2.5" />}
+            {t === 'upload' ? 'Upload' : 'URL'}
+          </button>
+        ))}
+      </div>
+
+      {/* Preview */}
+      {previewSrc ? (
+        <div className="relative mx-3 my-2 rounded border border-slate-200 overflow-hidden bg-slate-50" style={{ height: 80 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={previewSrc} alt="preview" className="w-full h-full object-contain" />
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-0.5 transition-all"
+          >
+            <X className="w-2.5 h-2.5" />
+          </button>
+        </div>
+      ) : (
+        <div
+          className="mx-3 my-2 rounded border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all"
+          style={{ height: 64 }}
+          onClick={() => tab === 'upload' && fileRef.current?.click()}
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+        >
+          <ImageIcon className="w-4 h-4 text-slate-300" />
+          <span className="text-[8px] text-slate-300 font-bold uppercase tracking-widest">No Image</span>
+        </div>
+      )}
+
+      {/* Upload tab */}
+      {tab === 'upload' && (
+        <div className="px-3 pb-2">
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileInput} />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[9px] font-bold text-slate-600 uppercase tracking-wider transition-all"
+          >
+            <Upload className="w-3 h-3" />
+            Browse file…
+          </button>
+          <p className="mt-1 text-[8px] text-slate-300 text-center">PNG, JPG, WebP — max 8 MB</p>
+        </div>
+      )}
+
+      {/* URL tab */}
+      {tab === 'url' && (
+        <div className="px-3 pb-2 space-y-1.5">
+          <div className="flex gap-1">
+            <input
+              type="url"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleUrlLoad()}
+              placeholder="https://example.com/logo.png"
+              className="pro-input flex-1 h-6 px-1 font-mono text-[9px]"
+            />
+            <button
+              type="button"
+              onClick={handleUrlLoad}
+              disabled={loading || !urlInput.trim()}
+              className="flex items-center gap-1 px-2 h-6 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-[9px] font-bold rounded transition-all"
+            >
+              {loading ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : 'Load'}
+            </button>
+          </div>
+          {error && <p className="text-[8px] text-red-500 font-medium">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function PropertiesPanel() {
 
@@ -259,15 +433,10 @@ export function PropertiesPanel() {
             </PropertyRow>
           )}
           {isImage(selectedComponent) && (
-            <PropertyRow label="Image URL">
-              <input
-                type="text"
-                value={selectedComponent.src || ''}
-                onChange={(e) => updateComponent(selectedComponent.id, { src: e.target.value })}
-                className="pro-input h-6 px-1 font-mono"
-                placeholder="https://..."
-              />
-            </PropertyRow>
+            <ImageUploader
+              component={selectedComponent}
+              onUpdate={(updates) => updateComponent(selectedComponent.id, updates as any)}
+            />
           )}
         </section>
 

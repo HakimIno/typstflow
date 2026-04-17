@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use typst::diag::{FileError, FileResult};
 use typst::foundations::{Bytes, Datetime};
 use typst::syntax::{FileId, Source, VirtualPath};
@@ -11,11 +13,15 @@ use wasm_bindgen::prelude::*;
 mod schema;
 mod generator;
 
+/// Shared image registry — maps virtual path (e.g. "img-abc.png") → raw bytes
+type ImageRegistry = Arc<RwLock<HashMap<String, Bytes>>>;
+
 #[wasm_bindgen]
 pub struct TypstBridge {
     library: LazyHash<Library>,
     font_book: LazyHash<FontBook>,
     fonts: Vec<Font>,
+    images: ImageRegistry,
 }
 
 #[wasm_bindgen]
@@ -42,12 +48,29 @@ impl TypstBridge {
 
         let font_book = FontBook::from_fonts(&fonts);
         let library = typst::Library::builder().build();
-        web_sys::console::log_1(&"✅ Typst WASM Engine v0.14.2 Loaded (Library Builder)".into());
+        web_sys::console::log_1(&"✅ Typst WASM Engine v0.14.2 Loaded (Image Registry Enabled)".into());
 
         Self {
             library: LazyHash::new(library),
             font_book: LazyHash::new(font_book),
             fonts,
+            images: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    /// Register raw image bytes under a virtual filename.
+    /// Call this before rendering when source uses #image("virtual-name.png").
+    pub fn register_image(&self, virtual_path: &str, data: &[u8]) {
+        let bytes = Bytes::new(data.to_vec());
+        if let Ok(mut map) = self.images.write() {
+            map.insert(virtual_path.to_string(), bytes);
+        }
+    }
+
+    /// Clear all registered images (call between renders if needed).
+    pub fn clear_images(&self) {
+        if let Ok(mut map) = self.images.write() {
+            map.clear();
         }
     }
 
@@ -137,8 +160,15 @@ impl World for WasmWorld<'_> {
         Ok(self.source.clone())
     }
 
-    fn file(&self, _id: FileId) -> FileResult<Bytes> {
-        Err(FileError::NotFound(_id.vpath().as_rootless_path().to_path_buf()))
+    fn file(&self, id: FileId) -> FileResult<Bytes> {
+        // Look up image by virtual path name in the registry
+        let path_str = id.vpath().as_rootless_path().to_string_lossy().to_string();
+        if let Ok(map) = self.bridge.images.read() {
+            if let Some(bytes) = map.get(&path_str) {
+                return Ok(bytes.clone());
+            }
+        }
+        Err(FileError::NotFound(id.vpath().as_rootless_path().to_path_buf()))
     }
 
     fn font(&self, id: usize) -> Option<Font> {

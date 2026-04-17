@@ -4,8 +4,17 @@
 export class TypstBridge {
     free(): void;
     [Symbol.dispose](): void;
+    /**
+     * Clear all registered images (call between renders if needed).
+     */
+    clear_images(): void;
     generate_report_typst(schema_json: string, data_json: string): string;
     constructor();
+    /**
+     * Register raw image bytes under a virtual filename.
+     * Call this before rendering when source uses #image("virtual-name.png").
+     */
+    register_image(virtual_path: string, data: Uint8Array): void;
     render_pdf(source_code: string): Uint8Array;
     render_report_pdf(schema_json: string, data_json: string): Uint8Array;
     render_report_svg(schema_json: string, data_json: string): string;
@@ -29,8 +38,10 @@ export interface InitOutput {
     readonly lut_inverse_interp16: (a: number, b: number, c: number) => number;
     readonly lut_interp_linear16: (a: number, b: number, c: number) => number;
     readonly __wbg_typstbridge_free: (a: number, b: number) => void;
+    readonly typstbridge_clear_images: (a: number) => void;
     readonly typstbridge_generate_report_typst: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly typstbridge_new: () => number;
+    readonly typstbridge_register_image: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly typstbridge_render_pdf: (a: number, b: number, c: number) => [number, number, number, number];
     readonly typstbridge_render_report_pdf: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly typstbridge_render_report_svg: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];

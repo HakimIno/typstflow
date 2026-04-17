@@ -228,7 +228,9 @@ export interface SummaryRow {
 // --- Image Component ---
 export interface ImageComponent extends BaseComponent {
   type: 'image';
-  src: string; // path or "{{company.logo_url}}"
+  src: string;       // display URL (shown in designer canvas preview)
+  srcData?: string;  // base64 data URL (data:image/png;base64,...) — used by WASM
+  mimeType?: string; // e.g. "image/png", "image/jpeg", "image/webp"
   width?: number;
   height?: number;
   fit?: 'cover' | 'contain' | 'stretch';

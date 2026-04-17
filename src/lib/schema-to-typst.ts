@@ -89,7 +89,9 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>, yOffset
     case 'image': {
       const img = comp as any;
       const fit = img.fit || 'contain';
-      body = `#image("${img.src}", width: 100%, height: 100%, fit: "${fit}")`;
+      // Use virtual path if srcData is present — trust the Worker which already swapped it
+      const path = img.src;
+      body = `#image("${path}", width: 100%, height: 100%, fit: "${fit}")`;
       break;
     }
     case 'spacer':
