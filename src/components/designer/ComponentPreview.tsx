@@ -104,6 +104,23 @@ export function ComponentPreview({ component }: Props) {
           </div>
         </div>
       );
+    case 'page-break-indicator':
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center gap-1 px-2 py-1 bg-slate-50 border border-dashed border-slate-300">
+          <div className="flex items-center gap-2 w-full">
+            <div className="flex-1 h-px bg-slate-400" />
+            <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
+              {(component as any).label || 'Page Break'}
+            </span>
+            <div className="flex-1 h-px bg-slate-400" />
+          </div>
+          {(component as any).showPageNumber !== false && (
+            <div className="text-[6px] text-slate-400 font-mono">
+              Page X of Y
+            </div>
+          )}
+        </div>
+      );
     default:
       return <div className="p-2 text-[10px] italic text-slate-400">Block: {component.type}</div>;
   }

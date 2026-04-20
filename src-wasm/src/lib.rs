@@ -93,7 +93,10 @@ impl TypstBridge {
         let world = WasmWorld::new(source_code, self);
         let output = typst::compile(&world).output;
         let doc: typst::layout::PagedDocument = output
-            .map_err(|err| JsValue::from_str(&format!("Compilation failed: {:?}", err)))?;
+            .map_err(|err| {
+                web_sys::console::error_1(&format!("❌ Typst Compilation Failed. Source:\n{}", source_code).into());
+                JsValue::from_str(&format!("Compilation failed: {:?}", err))
+            })?;
         
         if let Some(page) = doc.pages.first() {
             let svg = typst_svg::svg(page);
@@ -107,7 +110,10 @@ impl TypstBridge {
         let world = WasmWorld::new(source_code, self);
         let output = typst::compile(&world).output;
         let doc: typst::layout::PagedDocument = output
-            .map_err(|err| JsValue::from_str(&format!("Compilation failed: {:?}", err)))?;
+            .map_err(|err| {
+                web_sys::console::error_1(&format!("❌ Typst Compilation Failed. Source:\n{}", source_code).into());
+                JsValue::from_str(&format!("Compilation failed: {:?}", err))
+            })?;
         
         let pdf = typst_pdf::pdf(&doc, &Default::default())
             .map_err(|err| JsValue::from_str(&format!("PDF generation failed: {:?}", err)))?;

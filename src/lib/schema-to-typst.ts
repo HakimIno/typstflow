@@ -1,9 +1,15 @@
 import type { ComponentNode, FillPattern, LayoutSchema, TableComponent } from '../types/schema';
 
 /**
- * Phoenix Generator v2.0 — Advanced Table Engine
+ * Phoenix Generator v3.0 — Advanced Table Engine + Page Management
  * Full Typst table API support: table.header, table.footer, table.cell,
  * table.hline, table.vline, fill patterns, inset, gutter, stroke.
+ *
+ * PAGE MANAGEMENT:
+ * - Multi-page tables with automatic header repeat
+ * - Zone-based page control (first/last/every page)
+ * - Manual page breaks before components
+ * - Page break indicators
  *
  * COORDINATE SYSTEM:
  * The designer has a 24px (6.35mm) header bar in each zone.
@@ -67,6 +73,9 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>, yOffset
   const w = comp.width || 100;
   const h = comp.height || 20;
 
+  // Handle page break before component
+  const pageBreakBefore = (comp as any).pageBreakBefore ? '\n#pagebreak(weak: true)\n' : '';
+
   let body = '';
   switch (comp.type) {
     case 'text': {
@@ -102,12 +111,19 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>, yOffset
       let rowsHtml = '';
       for (const row of box.rows || []) {
         const val = resolveBinding(row.value || '', data);
-        const isTotal = row.style === 'total';
-        const weight = isTotal ? 'bold' : 'regular';
-        const size = isTotal ? '11pt' : '10pt';
-        rowsHtml += `  [${escapeTypst(row.label)}:], [#text(weight: "${weight}", size: ${size})[${escapeTypst(val)}]],\n`;
+        const style = row.style || 'normal';
+        const isTotal = style === 'total';
+        const isHighlight = style === 'highlight';
+        
+        const weight = (isTotal || isHighlight) ? 'bold' : 'regular';
+        const size = isTotal ? '12pt' : '10pt';
+        const color = isTotal ? formatColor('#2563eb') : isHighlight ? formatColor('#3b82f6') : formatColor('#1e293b');
+        const bg = isTotal ? formatColor('#eff6ff') : 'none';
+        
+        rowsHtml += `  table.cell(inset: 5pt, fill: ${bg})[#text(size: 9pt, fill: gray.darken(20%))[${escapeTypst(row.label)}]],\n`;
+        rowsHtml += `  table.cell(inset: 5pt, align: right, fill: ${bg})[#text(weight: "${weight}", size: ${size}, fill: ${color})[${escapeTypst(val)}]],\n`;
       }
-      body = `#table(columns: (1fr, auto), stroke: none, inset: 4pt,\n${rowsHtml})`;
+      body = `#table(columns: (1fr, auto), stroke: none, inset: 1pt,\n${rowsHtml})`;
       break;
     }
     case 'barcode':
@@ -116,12 +132,26 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>, yOffset
       body = `#rect(width: 100%, height: 100%, fill: gray.lighten(80%), stroke: 0.5pt + black)[\n    #set align(center + horizon)\n    #text(size: 8pt)[${comp.type.toUpperCase()}\n${escapeTypst(val)}]\n  ]`;
       break;
     }
+    case 'page-break-indicator': {
+      const indicator = comp as any;
+      const label = indicator.label || 'Continued on next page...';
+      const showPageNum = indicator.showPageNumber !== false;
+      const strokeStyle = indicator.style || 'dashed';
+      const stroke = strokeStyle === 'dashed' ? 'dash' : strokeStyle === 'dotted' ? 'dot' : 'solid';
+
+      if (showPageNum) {
+        body = `#align(center)[#line(length: 40%, stroke: 0.5pt + gray, ${stroke})\n#text(size: 8pt, fill: gray)[${escapeTypst(label)} — Page #context counter(page).display() of #context counter(page).final().display()]\n#line(length: 40%, stroke: 0.5pt + gray, ${stroke})]`;
+      } else {
+        body = `#align(center)[#line(length: 40%, stroke: 0.5pt + gray, ${stroke})\n#text(size: 8pt, fill: gray)[${escapeTypst(label)}]\n#line(length: 40%, stroke: 0.5pt + gray, ${stroke})]`;
+      }
+      break;
+    }
     default:
       body = `/* [${comp.type}] fallback */`;
   }
 
   // Final placement with fixed dimensions. Use block(clip: true) to contain content.
-  return `#place(dx: ${x}mm, dy: ${y}mm)[#block(width: ${w}mm, height: ${h}mm, clip: false)[${body}]]\n`;
+  return `${pageBreakBefore}#place(dx: ${x}mm, dy: ${y}mm)[#block(width: ${w}mm, height: ${h}mm, clip: false)[${body}]]\n`;
 }
 
 // --- Advanced Table Renderer ---
@@ -196,12 +226,12 @@ function renderTable(table: TableComponent, data: Record<string, any>): string {
     t += `  align: (${aligns.join(', ')}),\n`;
   }
 
-  // 8. Header
+  // 8. Header - Enhanced multi-page support
   let currentY = 0;
 
   if (table.headerRows && table.headerRows.length > 0) {
-    // Structured multi-row header
-    const repeat = table.repeatHeaderOnPage !== false;
+    // Structured multi-row header with automatic page repeat
+    const repeat = table.repeatHeaderOnPage !== false; // Default: true for multi-page
     t += `  table.header(repeat: ${repeat},\n`;
     for (const headerRow of table.headerRows) {
       for (const cell of headerRow.cells) {
@@ -226,7 +256,7 @@ function renderTable(table: TableComponent, data: Record<string, any>): string {
   } else {
     // Legacy: use column headers as single header row
     if (table.showHeader !== false) {
-      const repeat = table.repeatHeaderOnPage !== false;
+      const repeat = table.repeatHeaderOnPage !== false; // Enable auto-repeat on multi-page
       t += `  table.header(repeat: ${repeat},\n`;
       const coveredHeader = new Set<number>();
       for (let cx = 0; cx < columns.length; cx++) {
@@ -365,13 +395,55 @@ function renderTable(table: TableComponent, data: Record<string, any>): string {
 
 export function schemaToTypst(schema: LayoutSchema, data: Record<string, any>): string {
   const { page } = schema;
-  let typst = '// PHOENIX ENGINE v2.0 — ADVANCED TABLE\n';
+  let typst = '// PHOENIX ENGINE v3.0 — PAGE MANAGEMENT + MULTI-PAGE TABLES\n';
 
-  // Page Setup
+  // Page Setup with zone-based control
+  const headerZone = schema.zones.header;
+  const footerZone = schema.zones.footer;
+  const bodyZone = schema.zones.body;
+
+  // Build header content for page setup
+  let headerContent = '';
+  if (headerZone.components.length > 0) {
+    // Check if header should only show on first page
+    if (headerZone.showOnFirstPageOnly) {
+      headerContent = '#context if counter(page).get().at(0) == 1 [';
+      for (const c of headerZone.components) {
+        headerContent += `  ${renderComponent(c, data, ZONE_HEADER_HEIGHT_MM)}`;
+      }
+      headerContent += ']';
+    } else {
+      // Default: show on every page
+      for (const c of headerZone.components) {
+        headerContent += `  ${renderComponent(c, data, ZONE_HEADER_HEIGHT_MM)}`;
+      }
+    }
+  }
+
+  // Build footer content for page setup
+  let footerContent = '';
+  if (footerZone.components.length > 0) {
+    // Check if footer should only show on last page
+    if (footerZone.showOnLastPageOnly) {
+      footerContent = '#context if counter(page).get().at(0) == counter(page).final().at(0) [';
+      for (const c of footerZone.components) {
+        footerContent += `  ${renderComponent(c, data, ZONE_HEADER_HEIGHT_MM)}`;
+      }
+      footerContent += ']';
+    } else {
+      // Default: show on every page
+      for (const c of footerZone.components) {
+        footerContent += `  ${renderComponent(c, data, ZONE_HEADER_HEIGHT_MM)}`;
+      }
+    }
+  }
+
   typst += `#set page(
   paper: "${page.size.toLowerCase()}",
   flipped: ${page.orientation === 'landscape'},
   margin: (top: ${page.margin.top}, bottom: ${page.margin.bottom}, left: ${page.margin.left}, right: ${page.margin.right}),
+  header: ${headerContent ? '[#place(dx: 0mm, dy: 2mm)[' + headerContent + ']]' : 'none'},
+  footer: ${footerContent ? '[#place(dx: 0mm, dy: -2mm)[' + footerContent + ']]' : 'none'},
 )\n`;
 
   // Fonts & Paragraph Setup
@@ -379,21 +451,15 @@ export function schemaToTypst(schema: LayoutSchema, data: Record<string, any>): 
   typst += `#set text(font: "${mainFont.family}", size: ${mainFont.size}pt, lang: "th")\n`;
   typst += '#set par(leading: 0.2em, justify: false)\n';
 
-  // Zones - NO CLIPPING here, as absolute placed items have 0 height in their container flow
-  for (const key of ['header', 'body', 'footer'] as const) {
-    const zone = schema.zones[key];
-    if (zone.components.length > 0) {
-      typst += `\n// ZONE: ${key.toUpperCase()}\n`;
-      // We wrap in a block for namespacing but CLIP MUST BE FALSE or UNSET
-      typst += '#block(width: 100%)[\n';
-      for (const c of zone.components) {
-        // Apply ZONE_HEADER_HEIGHT_MM offset to match designer's coordinate system
-        // (designer has a 24px header bar that Typst doesn't render)
-        typst += `  ${renderComponent(c, data, ZONE_HEADER_HEIGHT_MM)}`;
-      }
-      // Add some spacing between bands to prevent overlap if not absolutely positioned
-      typst += ']\n';
+  // Body Zone - Main content area (header/footer are handled by page setup)
+  if (bodyZone.components.length > 0) {
+    typst += '\n// ZONE: BODY (MAIN CONTENT)\n';
+    typst += '#block(width: 100%)[\n';
+    for (const c of bodyZone.components) {
+      // Apply ZONE_HEADER_HEIGHT_MM offset to match designer's coordinate system
+      typst += `  ${renderComponent(c, data, ZONE_HEADER_HEIGHT_MM)}`;
     }
+    typst += ']\n';
   }
 
   return typst;

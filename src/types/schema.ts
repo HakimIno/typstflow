@@ -57,7 +57,8 @@ export type ComponentNode =
   | ColumnLayoutComponent
   | BarcodeComponent
   | QRComponent
-  | SummaryBoxComponent;
+  | SummaryBoxComponent
+  | PageBreakIndicatorComponent;
 
 export interface BaseComponent {
   id: string;
@@ -294,6 +295,14 @@ export interface SummaryBoxComponent extends BaseComponent {
     style?: 'normal' | 'subtotal' | 'total' | 'highlight';
   }[];
   width?: number;
+}
+
+// --- Page Break Indicator ---
+export interface PageBreakIndicatorComponent extends BaseComponent {
+  type: 'page-break-indicator';
+  label?: string; // Optional label like "Continued on next page..."
+  style?: 'solid' | 'dashed' | 'dotted';
+  showPageNumber?: boolean; // Show "Page X of Y"
 }
 
 // --- Supporting Types ---

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { INVOICE_SAMPLE_DATA, INVOICE_TEMPLATE } from '../lib/templates/invoice';
 import { COMPLEX_SAMPLE_DATA, COMPLEX_TABLE_TEMPLATE } from '../lib/templates/complex-table';
+import { INVOICE_WITH_MANY_ITEMS_SAMPLE_DATA, INVOICE_WITH_PAGE_BREAKS_TEMPLATE } from '../lib/templates/invoice-with-page-breaks';
 import type { ComponentNode, LayoutSchema } from '../types/schema';
 
 type ZoneKey = 'header' | 'body' | 'footer';
@@ -70,7 +71,7 @@ interface DesignerState {
   setRightSidebarOpen: (open: boolean) => void;
   undo: () => void;
   redo: () => void;
-  loadTemplate: (name: 'blank' | 'invoice' | 'complex') => void;
+  loadTemplate: (name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks') => void;
 }
 
 const MAX_HISTORY = 50;
@@ -153,6 +154,13 @@ export const useDesignerStore = create<DesignerState>((set) => ({
         schema: COMPLEX_TABLE_TEMPLATE,
         sampleData: COMPLEX_SAMPLE_DATA,
         history: [COMPLEX_TABLE_TEMPLATE],
+        historyIndex: 0,
+      });
+    } else if (name === 'invoice-with-breaks') {
+      set({
+        schema: INVOICE_WITH_PAGE_BREAKS_TEMPLATE,
+        sampleData: INVOICE_WITH_MANY_ITEMS_SAMPLE_DATA,
+        history: [INVOICE_WITH_PAGE_BREAKS_TEMPLATE],
         historyIndex: 0,
       });
     } else {

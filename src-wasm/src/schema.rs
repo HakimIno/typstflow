@@ -73,6 +73,8 @@ pub enum ComponentNode {
     Qr(QRComponent),
     Repeater(RepeaterComponent),
     Columns(ColumnsComponent),
+    #[serde(rename = "page-break-indicator")]
+    PageBreakIndicator(PageBreakIndicatorComponent),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -348,4 +350,14 @@ pub struct ColumnsComponent {
 pub struct ColumnDef {
     pub width: String,
     pub components: Vec<ComponentNode>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PageBreakIndicatorComponent {
+    #[serde(flatten)]
+    pub base: BaseComponent,
+    pub label: Option<String>,
+    pub style: Option<String>,
+    pub show_page_number: Option<bool>,
 }

@@ -72,6 +72,8 @@ export default function DesignerPage() {
         return { ...base, height: '1cm' } as any;
       case 'image':
         return { ...base, src: '', width: '4cm' } as any;
+      case 'page-break-indicator':
+        return { ...base, label: 'Continued on next page...', style: 'dashed', showPageNumber: true } as any;
       default:
         return base;
     }

@@ -42,9 +42,9 @@ export const SidebarNav = memo(function SidebarNav() {
             key={item.id}
             onClick={() => handleTabClick(item.id)}
             className={clsx(
-              "group relative flex flex-col items-center transition-colors duration-100 w-full py-2.5 rounded-sm",
+              "group relative flex flex-col items-center transition-none w-full py-2.5 rounded-none",
               activeTab === item.id && isSidebarOpen
-                ? "bg-white text-slate-800 shadow-sm border border-slate-300"
+                ? "bg-white text-slate-800 border border-slate-300"
                 : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"
             )}
             title={item.label}

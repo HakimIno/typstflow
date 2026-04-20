@@ -6,12 +6,34 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     t.push_str("// PHOENIX ENGINE (RUST/WASM) v2.0 — NATIVE PACKAGES\n");
     t.push_str("#import \"@preview/codetastic:0.2.2\": qrcode, ean13, ean8\n\n");
 
-    // Page Setup
+    // Page Setup with Margins and Zones
+    let margin = &schema.page.margin;
     t.push_str(&format!(
-        "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: 0mm,\n)\n",
+        "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: (top: {}, bottom: {}, left: {}, right: {}),\n",
         schema.page.size.to_lowercase(),
         schema.page.orientation == "landscape",
+        margin.top, margin.bottom, margin.left, margin.right,
     ));
+
+    // Page Header
+    t.push_str("  header: ");
+    if is_zone_empty(&schema.zones.header) {
+        t.push_str("none");
+    } else {
+        render_zone(&mut t, &schema.zones.header, "HEADER", data, false);
+    }
+    t.push_str(",\n");
+
+    // Page Footer
+    t.push_str("  footer: ");
+    if is_zone_empty(&schema.zones.footer) {
+        t.push_str("none");
+    } else {
+        render_zone(&mut t, &schema.zones.footer, "FOOTER", data, false);
+    }
+    t.push_str(",\n");
+
+    t.push_str(")\n\n");
 
     // Fonts
     if let Some(font) = schema.fonts.first() {
@@ -22,26 +44,32 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     }
     t.push_str("#set par(leading: 0.2em, justify: false)\n");
 
-    // Zones
-    render_zone(&mut t, &schema.zones.header, "HEADER", data);
-    render_zone(&mut t, &schema.zones.body, "BODY", data);
-    render_zone(&mut t, &schema.zones.footer, "FOOTER", data);
+    // Body Zone (Main Flow)
+    if !is_zone_empty(&schema.zones.body) {
+        render_zone(&mut t, &schema.zones.body, "BODY", data, true);
+    }
 
     t
 }
 
-fn render_zone(t: &mut String, zone: &Zone, label: &str, data: &Value) {
-    if zone.components.is_empty() && zone.min_height.is_none() {
+fn render_zone(t: &mut String, zone: &Zone, label: &str, data: &Value, use_hash: bool) {
+    if is_zone_empty(zone) {
         return;
     }
-    t.push_str(&format!("\n// ZONE: {}\n", label));
+    
+    if use_hash {
+        t.push_str(&format!("\n// ZONE: {}\n#", label));
+    } else {
+        // Inside an expression (like header/footer), we wrap markup in []
+        t.push_str("[");
+    }
 
     let height = zone.min_height.as_deref().unwrap_or("auto");
     let fill = zone.background.as_deref().map(|c| format_color(c)).unwrap_or("none".to_string());
     let inset = zone.padding.as_deref().unwrap_or("0mm");
 
     t.push_str(&format!(
-        "#block(width: 100%, height: {}, fill: {}, inset: {})[\n",
+        "block(width: 100%, height: {}, fill: {}, inset: {})[\n",
         height, fill, inset
     ));
 
@@ -49,7 +77,11 @@ fn render_zone(t: &mut String, zone: &Zone, label: &str, data: &Value) {
         t.push_str("  ");
         t.push_str(&render_component(comp, data));
     }
-    t.push_str("]\n");
+    t.push_str("]");
+    if !use_hash {
+        t.push_str("]");
+    }
+    t.push_str("\n");
 }
 
 fn render_component(comp: &ComponentNode, data: &Value) -> String {
@@ -62,6 +94,7 @@ fn render_component(comp: &ComponentNode, data: &Value) -> String {
         ComponentNode::SummaryBox(c) => render_summary_box(c, data),
         ComponentNode::Barcode(c) => render_barcode(c),
         ComponentNode::Qr(c) => render_qr(c),
+        ComponentNode::PageBreakIndicator(c) => render_page_break_indicator(c),
         ComponentNode::Repeater(_) => render_placeholder_box("REPEATER (NESTED)", &comp_base(comp), "", data),
         ComponentNode::Columns(_) => render_placeholder_box("COLUMNS (LAYOUT)", &comp_base(comp), "", data),
     }
@@ -77,6 +110,7 @@ fn comp_base(comp: &ComponentNode) -> &BaseComponent {
         ComponentNode::SummaryBox(c) => &c.base,
         ComponentNode::Barcode(c) => &c.base,
         ComponentNode::Qr(c) => &c.base,
+        ComponentNode::PageBreakIndicator(c) => &c.base,
         ComponentNode::Repeater(c) => &c.base,
         ComponentNode::Columns(c) => &c.base,
     }
@@ -94,10 +128,16 @@ fn render_text(c: &TextComponent, data: &Value) -> String {
     if tracking.is_empty() { tracking = "0pt".to_string(); }
     let justify = s.and_then(|st| st.justify).unwrap_or(false);
 
-    let body = format!(
-        "#set align({})\n#set par(leading: {}em, justify: {})\n#text(size: {}pt, weight: \"{}\", tracking: {})[{}]",
-        align, leading, justify, size, weight, tracking, escape_typst(&content)
-    );
+    let body = if content.contains('#') && !content.contains("\\#") {
+        // Raw Typst Mode - detected presence of Typst function calls
+        content
+    } else {
+        // Standard Text Mode
+        format!(
+            "#set align({})\n#set par(leading: {}em, justify: {})\n#text(size: {}pt, weight: \"{}\", tracking: {})[{}]",
+            align, leading, justify, size, weight, tracking, escape_typst(&content)
+        )
+    };
 
     wrap_placement(&c.base, &body)
 }
@@ -144,16 +184,16 @@ fn render_stroke(style_stroke: Option<&Value>, border_width: &str, border_color:
                 // Per-side stroke dictionary
                 let mut parts = Vec::new();
                 if let Some(v) = map.get("top").and_then(|v| v.as_str()) {
-                    parts.push(format!("top: {}", v));
+                    parts.push(format!("top: {}", format_color(v)));
                 }
                 if let Some(v) = map.get("bottom").and_then(|v| v.as_str()) {
-                    parts.push(format!("bottom: {}", v));
+                    parts.push(format!("bottom: {}", format_color(v)));
                 }
                 if let Some(v) = map.get("left").and_then(|v| v.as_str()) {
-                    parts.push(format!("left: {}", v));
+                    parts.push(format!("left: {}", format_color(v)));
                 }
                 if let Some(v) = map.get("right").and_then(|v| v.as_str()) {
-                    parts.push(format!("right: {}", v));
+                    parts.push(format!("right: {}", format_color(v)));
                 }
                 if parts.is_empty() {
                     format!("{} + {}", border_width, format_color(border_color))
@@ -161,7 +201,14 @@ fn render_stroke(style_stroke: Option<&Value>, border_width: &str, border_color:
                     format!("({})", parts.join(", "))
                 }
             }
-            Value::String(s) => s.clone(),
+            Value::String(s) => {
+                // For string strokes, we try to format any hex color inside
+                if s.starts_with('#') {
+                    format_color(s)
+                } else {
+                    s.clone()
+                }
+            },
             _ => format!("{} + {}", border_width, format_color(border_color)),
         }
     } else {
@@ -431,7 +478,7 @@ fn render_hline(hl: &HLineConfig) -> String {
     let mut args = vec![format!("y: {}", hl.y)];
     if let Some(start) = hl.start { if start > 0 { args.push(format!("start: {}", start)); } }
     if let Some(end) = hl.end { args.push(format!("end: {}", end)); }
-    if let Some(stroke) = &hl.stroke { args.push(format!("stroke: {}", stroke)); }
+    if let Some(stroke) = &hl.stroke { args.push(format!("stroke: {}", format_color(stroke))); }
     if let Some(pos) = &hl.position { args.push(format!("position: {}", pos)); }
     format!("  table.hline({}),\n", args.join(", "))
 }
@@ -440,7 +487,7 @@ fn render_vline(vl: &VLineConfig) -> String {
     let mut args = vec![format!("x: {}", vl.x)];
     if let Some(start) = vl.start { if start > 0 { args.push(format!("start: {}", start)); } }
     if let Some(end) = vl.end { args.push(format!("end: {}", end)); }
-    if let Some(stroke) = &vl.stroke { args.push(format!("stroke: {}", stroke)); }
+    if let Some(stroke) = &vl.stroke { args.push(format!("stroke: {}", format_color(stroke))); }
     if let Some(pos) = &vl.position { args.push(format!("position: {}", pos)); }
     format!("  table.vline({}),\n", args.join(", "))
 }
@@ -479,16 +526,28 @@ fn render_summary_box(c: &SummaryBoxComponent, data: &Value) -> String {
     let mut rows_typst = String::new();
     for row in &c.rows {
         if row.separator.unwrap_or(false) {
-            rows_typst.push_str("  table.hline(stroke: 0.5pt + black),\n");
+            rows_typst.push_str("  table.hline(stroke: 0.5pt + gray),\n");
         }
         let val = resolve_binding(&row.value, data);
-        let weight = if row.style.as_deref() == Some("total") { "bold" } else { "regular" };
+        let style = row.style.as_deref().unwrap_or("normal");
+        let is_total = style == "total";
+        let is_highlight = style == "highlight";
+        
+        let weight = if is_total || is_highlight { "bold" } else { "regular" };
+        let size = if is_total { "12" } else { "10" };
+        let color = if is_total { format_color("#2563eb") } else if is_highlight { format_color("#3b82f6") } else { format_color("#1e293b") };
+        let bg = if is_total { format_color("#eff6ff") } else { "none".to_string() };
+
         rows_typst.push_str(&format!(
-            "  [{}:], [#text(weight: \"{}\")[{}]],\n",
-            escape_typst(&row.label), weight, escape_typst(&val)
+            "  table.cell(inset: 5pt, fill: {})[#text(size: 9pt, fill: gray.darken(20%))[{} :]],\n",
+            bg, escape_typst(&row.label)
+        ));
+        rows_typst.push_str(&format!(
+            "  table.cell(inset: 5pt, align: right, fill: {})[#text(weight: \"{}\", size: {}pt, fill: {})[{}]],\n",
+            bg, weight, size, color, escape_typst(&val)
         ));
     }
-    let body = format!("#table(columns: (1fr, auto), stroke: none, inset: 4pt,\n{})", rows_typst);
+    let body = format!("#table(columns: (1fr, auto), stroke: none, inset: 1pt,\n{})", rows_typst);
     wrap_placement(&c.base, &body)
 }
 
@@ -522,6 +581,33 @@ fn render_qr(c: &QRComponent) -> String {
     wrap_placement(&c.base, &body)
 }
 
+fn render_page_break_indicator(c: &PageBreakIndicatorComponent) -> String {
+    let label = c.label.as_ref().map(|s| s.as_str()).unwrap_or("Continued on next page...");
+    let show_page_num = c.show_page_number.unwrap_or(true);
+    let stroke_style = c.style.as_deref().unwrap_or("dashed");
+
+    // Use proper Typst stroke syntax for dashed/dotted lines
+    let stroke = match stroke_style {
+        "dashed" => "stroke: (paint: gray, dash: \"dashed\", thickness: 0.5pt)",
+        "dotted" => "stroke: (paint: gray, dash: \"dotted\", thickness: 0.5pt)",
+        _ => "stroke: 0.5pt + gray",
+    };
+
+    let body = if show_page_num {
+        format!(
+            "#align(center)[#line(length: 40%, {})\n#text(size: 8pt, fill: gray)[{}\n— Page #context counter(page).display()]\n#line(length: 40%, {})]",
+            stroke, escape_typst(label), stroke
+        )
+    } else {
+        format!(
+            "#align(center)[#line(length: 40%, {})\n#text(size: 8pt, fill: gray)[{}]\n#line(length: 40%, {})]",
+            stroke, escape_typst(label), stroke
+        )
+    };
+
+    wrap_placement(&c.base, &body)
+}
+
 fn render_placeholder_box(label: &str, base: &BaseComponent, value: &str, data: &Value) -> String {
     let val = resolve_binding(value, data);
     let body = format!(
@@ -540,6 +626,10 @@ fn wrap_placement(base: &BaseComponent, body: &str) -> String {
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
+
+fn is_zone_empty(zone: &Zone) -> bool {
+    zone.components.is_empty() && zone.min_height.is_none()
+}
 
 fn resolve_path<'a>(path: &str, data: &'a Value) -> Option<&'a Value> {
     let p = path.trim();
@@ -590,6 +680,9 @@ fn resolve_binding(expr: &str, data: &Value) -> String {
 }
 
 fn escape_typst(s: &str) -> String {
+    // If the content starts with '#' it might be Typst code. 
+    // For now, we still escape to be safe, but we'll stop escaping slashes
+    // as they are rarely needed to be escaped in markup and cause issues with paths.
     s.replace("#", "\\#")
      .replace("$", "\\$")
      .replace("*", "\\*")
@@ -604,13 +697,17 @@ fn escape_typst(s: &str) -> String {
      .replace(">", "\\>")
      .replace("@", "\\@")
      .replace("=", "\\=")
-     .replace("/", "\\/")
 }
 
 fn format_color(color: &str) -> String {
-    if color.starts_with('#') {
-        format!("rgb(\"{}\")", color)
+    let c = color.trim();
+    if c.is_empty() { return "none".to_string(); }
+    if c.starts_with('#') {
+        format!("rgb(\"{}\")", c)
+    } else if c.starts_with("rgb(") || c.starts_with("rgba(") || c.contains('.') {
+        // Already formatted or is a variable (e.g. gray.darken(20%))
+        c.to_string()
     } else {
-        color.to_string()
+        c.to_string()
     }
 }

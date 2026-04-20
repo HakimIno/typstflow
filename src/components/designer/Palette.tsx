@@ -17,7 +17,8 @@ import {
   X,
   LayoutDashboard,
   Box,
-  ListTree
+  ListTree,
+  FileDown,
 } from 'lucide-react';
 import { useEffect, useRef, useState, memo } from 'react';
 
@@ -54,6 +55,7 @@ const CATEGORIES = [
       { type: 'columns', label: 'Columns', icon: Columns },
       { type: 'spacer', label: 'Space', icon: Space },
       { type: 'repeater', label: 'Repeater', icon: ListTree },
+      { type: 'page-break-indicator', label: 'Page Break', icon: FileDown },
     ]
   }
 ];

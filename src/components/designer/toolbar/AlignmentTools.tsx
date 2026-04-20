@@ -1,0 +1,60 @@
+'use client';
+
+import { memo } from 'react';
+import { useDesignerStore } from '@/store/designer-store';
+import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react';
+import { ToolbarButton } from './ToolbarButton';
+
+export const AlignmentTools = memo(function AlignmentTools() {
+  const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
+  const updateComponent = useDesignerStore((state) => state.updateComponent);
+  const orientation = useDesignerStore((state) => state.schema.page.orientation);
+
+  const handleAlign = (type: 'left' | 'center' | 'right') => {
+    if (!selectedComponentId) return;
+
+    const A4_WIDTH_MM = orientation === 'landscape' ? 297 : 210;
+    const PAGE_CONTENT_WIDTH = A4_WIDTH_MM - 40; // Approx margin-aware
+
+    switch (type) {
+      case 'left':
+        updateComponent(selectedComponentId, { x: 0 });
+        break;
+      case 'center':
+        updateComponent(selectedComponentId, { x: PAGE_CONTENT_WIDTH / 2 - 50 });
+        break; 
+      case 'right':
+        updateComponent(selectedComponentId, { x: PAGE_CONTENT_WIDTH - 100 });
+        break;
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-0.5 bg-white border border-slate-300 rounded-none p-0.5 mr-3">
+      <ToolbarButton
+        icon={AlignLeft}
+        onClick={() => handleAlign('left')}
+        disabled={!selectedComponentId}
+        variant="ghost"
+        title="Align Left"
+        className="!border-none !bg-transparent h-7 w-7 !p-1"
+      />
+      <ToolbarButton
+        icon={AlignCenter}
+        onClick={() => handleAlign('center')}
+        disabled={!selectedComponentId}
+        variant="ghost"
+        title="Center Horizontally"
+        className="!border-none !bg-transparent h-7 w-7 !p-1"
+      />
+      <ToolbarButton
+        icon={AlignRight}
+        onClick={() => handleAlign('right')}
+        disabled={!selectedComponentId}
+        variant="ghost"
+        title="Align Right"
+        className="!border-none !bg-transparent h-7 w-7 !p-1"
+      />
+    </div>
+  );
+});

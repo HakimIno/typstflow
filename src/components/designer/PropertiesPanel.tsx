@@ -27,6 +27,8 @@ import {
   X,
   ImageIcon,
   Loader2,
+  FileText,
+  FileDown,
 } from 'lucide-react';
 import React, { useMemo, useRef, useState, useCallback, memo } from 'react';
 
@@ -225,18 +227,18 @@ function ImageUploader({
 }
 
 export const PropertiesPanel = memo(function PropertiesPanel() {
-
-
   // Select state with proper memoization - avoid selecting entire schema
   const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
   const zones = useDesignerStore((state) => state.schema.zones);
   const page = useDesignerStore((state) => state.schema.page);
+  const fullSchema = useDesignerStore((state) => state.schema);
+  const selectedZone = useDesignerStore((state) => state.selectedZone);
   const sampleData = useDesignerStore((state) => state.sampleData);
-
 
   // Select actions separately (they don't change)
   const updateSchema = useDesignerStore((state) => state.updateSchema);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
+  const updateZone = useDesignerStore((state) => state.updateZone);
   const removeComponent = useDesignerStore((state) => state.removeComponent);
 
   // Find selected component with memoization
@@ -248,9 +250,6 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
     }
     return null;
   }, [zones, selectedComponentId]);
-
-  // Create schema object for properties that need it
-  const schema = useMemo(() => ({ zones, page }), [zones, page]);
 
   if (!selectedComponent) {
     return (
@@ -270,9 +269,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               </div>
               <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">
                 <select
-                  value={schema.page.size}
+                  value={fullSchema.page.size}
                   onChange={(e) =>
-                    updateSchema({ page: { ...schema.page, size: e.target.value as any } })
+                    updateSchema({ page: { ...fullSchema.page, size: e.target.value as any } })
                   }
                   className="pro-input h-6 px-1 w-full bg-white text-[11px]"
                 >
@@ -289,9 +288,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               </div>
               <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">
                 <select
-                  value={schema.page.orientation}
+                  value={fullSchema.page.orientation}
                   onChange={(e) =>
-                    updateSchema({ page: { ...schema.page, orientation: e.target.value as any } })
+                    updateSchema({ page: { ...fullSchema.page, orientation: e.target.value as any } })
                   }
                   className="pro-input h-6 px-1 w-full bg-white text-[11px]"
                 >
@@ -316,12 +315,12 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">
                   <input
                     type="text"
-                    value={schema.page.margin[side]}
+                    value={fullSchema.page.margin[side]}
                     onChange={(e) =>
                       updateSchema({
                         page: {
-                          ...schema.page,
-                          margin: { ...schema.page.margin, [side]: e.target.value },
+                          ...fullSchema.page,
+                          margin: { ...fullSchema.page.margin, [side]: e.target.value },
                         },
                       })
                     }
@@ -336,7 +335,6 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
       </div>
     );
   }
-
 
   // Validation helpers
   const handleNumericUpdate = (key: keyof ComponentNode, value: string) => {
@@ -602,6 +600,73 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               />
             </PropertyRow>
           </div>
+        </section>
+
+        {/* Page Management Section */}
+        <section>
+          <SectionHeader label="Page Management" />
+          <PropertyRow label="Page Break Before">
+            <button
+              type="button"
+              onClick={() => updateComponent(selectedComponent.id, { pageBreakBefore: !selectedComponent.pageBreakBefore })}
+              className={clsx(
+                'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
+                selectedComponent.pageBreakBefore
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+              )}
+            >
+              <FileDown className="w-3 h-3" />
+              {selectedComponent.pageBreakBefore ? 'Enabled' : 'Disabled'}
+            </button>
+          </PropertyRow>
+        </section>
+
+        {/* Zone Settings Section */}
+        <section>
+          <SectionHeader label="Zone Settings" />
+          {selectedZone === 'header' && (
+            <PropertyRow label="Show on First Page Only">
+              <button
+                type="button"
+                onClick={() => {
+                  const headerZone = fullSchema.zones.header;
+                  const newValue = !headerZone.showOnFirstPageOnly;
+                  updateZone('header', { showOnFirstPageOnly: newValue });
+                }}
+                className={clsx(
+                  'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
+                  fullSchema.zones.header.showOnFirstPageOnly
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                  )}
+              >
+                <FileText className="w-3 h-3" />
+                {fullSchema.zones.header.showOnFirstPageOnly ? 'First Page Only' : 'Every Page'}
+              </button>
+            </PropertyRow>
+          )}
+          {selectedZone === 'footer' && (
+            <PropertyRow label="Show on Last Page Only">
+              <button
+                type="button"
+                onClick={() => {
+                  const footerZone = fullSchema.zones.footer;
+                  const newValue = !footerZone.showOnLastPageOnly;
+                  updateZone('footer', { showOnLastPageOnly: newValue });
+                }}
+                className={clsx(
+                  'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
+                  fullSchema.zones.footer.showOnLastPageOnly
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                  )}
+              >
+                <FileText className="w-3 h-3" />
+                {fullSchema.zones.footer.showOnLastPageOnly ? 'Last Page Only' : 'Every Page'}
+              </button>
+            </PropertyRow>
+          )}
         </section>
       </div>
 
