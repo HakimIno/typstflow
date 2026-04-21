@@ -51,6 +51,15 @@ export const InsertMenu = memo(function InsertMenu() {
         
         <button
           type="button"
+          onClick={() => handleLoad('tax-invoice' as any)}
+          className="w-full text-left px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-100 flex items-center gap-2.5 active:bg-slate-200"
+        >
+          <div className="w-3.5 h-3.5 flex items-center justify-center rounded-full bg-purple-100 text-purple-600 text-[10px] font-bold">T</div>
+          Tax Invoice (Blue Sky)
+        </button>
+        
+        <button
+          type="button"
           onClick={() => handleLoad('invoice-with-breaks')}
           className="w-full text-left px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-100 flex items-center gap-2.5 active:bg-slate-200"
         >

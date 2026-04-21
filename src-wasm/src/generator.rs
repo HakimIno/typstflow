@@ -9,6 +9,7 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     // Absolute Metadata
     let margin = &schema.page.margin;
     let h_height = schema.zones.header.min_height.clone().unwrap_or("0mm".to_string());
+    let b_height = schema.zones.body.min_height.clone().unwrap_or("0mm".to_string());
     let f_height = schema.zones.footer.min_height.clone().unwrap_or("0mm".to_string());
 
     t.push_str(&format!(
@@ -26,22 +27,19 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     t.push_str("    let last = counter(page).final().first()\n");
     t.push_str(&format!("    let is_visible = if {} {{ cur == 1 }} else if {} {{ cur == last }} else {{ true }}\n", h_first, h_last));
     t.push_str("    if is_visible { \n");
-    t.push_str("      place(top + left, ");
     render_zone(&mut t, &schema.zones.header, "HEADER", data, "0mm".to_string());
-    t.push_str(")\n    } else { none }\n  },\n");
-
+    t.push_str("    } else { none }\n  },\n");
     // Page Footer (Absolute Placement)
     let f_first = schema.zones.footer.show_on_first_page_only.unwrap_or(false);
     let f_last = schema.zones.footer.show_on_last_page_only.unwrap_or(false);
 
     t.push_str("  footer: context { \n");
-    t.push_str("    let cur = counter(page).get().first()\n");
+    t.push_str("    let cur = counter(page).at(here()).first()\n");
     t.push_str("    let last = counter(page).final().first()\n");
     t.push_str(&format!("    let is_visible = if {} {{ cur == 1 }} else if {} {{ cur == last }} else {{ true }}\n", f_first, f_last));
     t.push_str("    if is_visible { \n");
-    t.push_str("      place(top + left, "); 
     render_zone(&mut t, &schema.zones.footer, "FOOTER", data, "0mm".to_string());
-    t.push_str(")\n    } else { none }\n  },\n");
+    t.push_str("    } else { none }\n  },\n");
 
     t.push_str(")\n\n");
 
@@ -54,11 +52,12 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     }
     t.push_str("#set par(leading: 0.2em, justify: false)\n");
 
-    // Body Zone (Main Flow & Absolute Overlays)
     if !is_zone_empty(&schema.zones.body) {
         // 1. Absolute components in Body
-        t.push_str("#");
-        render_zone(&mut t, &schema.zones.body, "BODY", data, "0mm".to_string());
+        t.push_str("[ ");
+        // Body Offset = Header Height
+        render_zone(&mut t, &schema.zones.body, "BODY", data, h_height.clone());
+        t.push_str(" ]\n");
         
         // 2. The Flowing Logic (Table)
         t.push_str(&format!(
@@ -76,12 +75,10 @@ fn render_zone(t: &mut String, zone: &Zone, _label: &str, data: &Value, offset_y
         return;
     }
     
-    t.push_str("[\n"); 
     for comp in &zone.components {
         t.push_str("    ");
         t.push_str(&render_component(comp, data, &offset_y, "#"));
     }
-    t.push_str("  ]");
 }
 
 fn render_component(comp: &ComponentNode, data: &Value, offset_y: &str, prefix: &str) -> String {
@@ -494,7 +491,16 @@ fn render_vline(vl: &VLineConfig) -> String {
 fn render_line(c: &LineComponent, offset_y: &str, prefix: &str) -> String {
     let color = c.color.as_deref().unwrap_or("black");
     let thickness = c.thickness.as_deref().unwrap_or("1pt");
-    let body = format!("#line(length: 100%, stroke: {} + {})", thickness, format_color(color));
+    
+    // If thickness is > 2pt (likely a background bar), use a rectangle for better alignment
+    // Lines in Typst grow from center, while Rects grow from top-left.
+    let is_heavy = thickness.ends_with("mm") || thickness.ends_with("pt") && thickness.trim_end_matches("pt").parse::<f32>().unwrap_or(0.0) > 2.0;
+
+    let body = if is_heavy {
+        format!("#rect(width: 100%, height: 100%, fill: {}, stroke: none)", format_color(color))
+    } else {
+        format!("#line(length: 100%, stroke: {} + {})", thickness, format_color(color))
+    };
     wrap_placement(&c.base, &body, offset_y, prefix)
 }
 

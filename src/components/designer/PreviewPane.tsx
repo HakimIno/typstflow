@@ -63,18 +63,18 @@ export function PreviewPane() {
   return (
     <div className="flex-1 flex flex-col bg-slate-400/20 shadow-inner overflow-hidden relative transition-colors duration-500">
       {/* Precision Preview Area */}
-      <div 
+      <div
         className="flex-1 overflow-auto p-8 scrollbar-thin transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform"
       >
-        <div 
+        <div
           className={clsx(
-              "relative bg-white shadow-2xl overflow-hidden border border-slate-400 transition-transform duration-300 origin-top-left",
-              isLandscape ? 'w-[29.7cm] min-h-[21cm]' : 'w-[21cm] min-h-[29.7cm]'
+            "relative bg-white shadow-2xl overflow-hidden border border-slate-400 transition-transform duration-300 origin-top-left",
+            isLandscape ? 'w-[29.7cm] min-h-[21cm]' : 'w-[21cm] min-h-[29.7cm]'
           )}
-          style={{ 
-              width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
-              minHeight: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
-              transform: `scale(${zoom})` 
+          style={{
+            width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
+            minHeight: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
+            transform: `scale(${zoom})`
           }}
         >
           {svgContent ? (

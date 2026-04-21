@@ -25,6 +25,7 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
 
   const initialHeightMm = Number.parseFloat(minHeight || '50');
   const [localHeight, setLocalHeight] = useState(initialHeightMm);
+  const heightRef = useRef(initialHeightMm);
 
   const addComponent = useDesignerStore((state) => state.addComponent);
   const moveComponent = useDesignerStore((state) => state.moveComponent);
@@ -33,7 +34,9 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
 
   // Sync with store when minHeight changes externally
   useEffect(() => {
-    setLocalHeight(Number.parseFloat(minHeight || '50'));
+    const val = Number.parseFloat(minHeight || '50');
+    setLocalHeight(val);
+    heightRef.current = val;
   }, [minHeight]);
 
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -42,18 +45,35 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
     setIsResizing(true);
 
     const startY = e.clientY;
-    const startHeight = localHeight;
+    const startHeight = Number.parseFloat(minHeight || '50');
+
+    // Calculate the minimum allowed height based on the bottom-most component
+    // This prevents "eating" components by shrinking the zone too much.
+    const lowestPoint = components.reduce((max, comp) => {
+      const bottom = (comp.y || 0) + (comp.height || 0);
+      return Math.max(max, bottom);
+    }, 0);
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const deltaY = moveEvent.clientY - startY;
-      const deltaMm = LayoutEngine.pxToMm(deltaY);
-      const newHeight = Math.max(10, startHeight + deltaMm);
-      setLocalHeight(LayoutEngine.snap(newHeight));
+      const scale = useDesignerStore.getState().zoom;
+      const deltaMm = LayoutEngine.pxToMm(deltaY / scale);
+      
+      const safetyMargin = 5;
+      const minConstraint = Math.max(10, lowestPoint + safetyMargin);
+      
+      const newHeight = Math.max(minConstraint, startHeight + deltaMm);
+      const snappedHeight = LayoutEngine.snap(newHeight);
+      
+      setLocalHeight(snappedHeight);
+      heightRef.current = snappedHeight; // Always up to date for onMouseUp
+      updateZone(zoneKey, { minHeight: `${snappedHeight}mm` }, true);
     };
 
     const onMouseUp = () => {
       setIsResizing(false);
-      updateZone(zoneKey, { minHeight: `${localHeight}mm` });
+      // Use heightRef.current instead of localHeight to avoid stale closures
+      updateZone(zoneKey, { minHeight: `${heightRef.current}mm` }, false);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
@@ -134,29 +154,33 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
       style={{ minHeight: `${localHeight}mm` }}
       className={clsx(
         'relative border-b last:border-b-0 border-slate-300 transition-colors group/zone',
-        isDraggedOver ? 'bg-blue-50/50' : 'bg-transparent',
+        zoneKey === 'header' && 'bg-slate-100/40',
+        zoneKey === 'body' && 'bg-white/10',
+        zoneKey === 'footer' && 'bg-slate-100/60',
+        isDraggedOver ? 'bg-blue-50/50' : '',
         isResizing && 'ring-1 ring-blue-400 z-50 shadow-lg'
       )}
     >
-      {/* Horizontal Band Header (Floating/Absolute) */}
-      <div
-        className={clsx(
-          'absolute -top-6 left-0 right-0 h-6 px-3 flex items-center justify-between pointer-events-none select-none z-30 transition-all opacity-0 group-hover/zone:opacity-100',
-          isDraggedOver && 'opacity-100'
-        )}
-      >
-        <div className="flex items-center gap-2 bg-slate-100/80 backdrop-blur-sm px-2 py-0.5 rounded-tr rounded-br border border-slate-200 border-l-0">
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</span>
-          <div className="h-px w-8 bg-slate-300" />
-        </div>
+      {/* Vertical Side Label (External to Paper) */}
+      <div className="absolute -left-7 top-0 bottom-0 w-7 flex flex-col items-center pt-8 pointer-events-none select-none z-10 group-hover/zone:opacity-100 transition-opacity">
+        <div className="absolute inset-y-0 right-0 w-px bg-slate-300/30" />
+        <span className={clsx(
+          "text-[7px] font-black uppercase tracking-[0.3em] whitespace-nowrap rotate-90 origin-center text-slate-400 drop-shadow-sm",
+          zoneKey === 'header' && 'text-blue-600/70',
+          zoneKey === 'body' && 'text-slate-500/70',
+          zoneKey === 'footer' && 'text-purple-600/70'
+        )}>
+          {label}
+        </span>
       </div>
 
-      <div ref={contentRef} className="relative w-full h-full bg-white/10 overflow-visible min-h-[inherit]">
+      <div ref={contentRef} className="relative w-full h-full bg-transparent overflow-visible min-h-[inherit]">
         {components.length === 0 && !isDraggedOver ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 opacity-20 select-none pointer-events-none">
             <Layers className="w-6 h-6 mb-1" />
-            <p className="text-[9px] font-bold uppercase tracking-widest">
-              {label} EMPTY
+            <p className="text-[9px] font-bold uppercase tracking-widest text-center px-4">
+              {label} EMPTY<br/>
+              <span className="text-[7px] font-medium tracking-normal opacity-60">DRAG COMPONENTS HERE</span>
             </p>
           </div>
         ) : (
@@ -179,15 +203,20 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
       <div
         onMouseDown={handleResizeStart}
         className={clsx(
-          'absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize z-30 transition-colors',
-          'hover:bg-blue-400 hover:shadow-[0_0_8px_rgba(59,130,246,0.5)]',
-          isResizing && 'bg-blue-600'
+          'absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize z-40 transition-colors',
+          'hover:bg-blue-400 group-hover/zone:bg-slate-300',
+          isResizing && 'bg-blue-600 h-0.5'
         )}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover/zone:opacity-100">
-          <div className="w-1 h-1 rounded-full bg-slate-400" />
-          <div className="w-1 h-1 rounded-full bg-slate-400" />
-          <div className="w-1 h-1 rounded-full bg-slate-400" />
+        {/* Full-width Horizontal Guide Line during Resize */}
+        {isResizing && (
+          <div className="absolute top-0 -left-[2000px] -right-[2000px] border-b border-dashed border-blue-500 opacity-50" />
+        )}
+        
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover/zone:opacity-100 transition-opacity">
+          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm border border-white" />
+          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm border border-white" />
+          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm border border-white" />
         </div>
       </div>
     </div>

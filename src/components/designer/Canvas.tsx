@@ -24,7 +24,7 @@ export const Canvas = memo(function Canvas() {
     if (scrollRef.current && paperRef.current) {
       const scrollRect = scrollRef.current.getBoundingClientRect();
       const paperRect = paperRef.current.getBoundingClientRect();
-      
+
       setScrollPos({
         x: scrollRect.left - paperRect.left,
         y: scrollRect.top - paperRect.top,
@@ -67,80 +67,90 @@ export const Canvas = memo(function Canvas() {
         <div className="flex h-6 bg-slate-100 border-b border-slate-300 relative z-30">
           <div className="w-6 h-6 bg-slate-200 border-r border-slate-300 flex-shrink-0" />
           <div className="flex-1 relative overflow-hidden">
-             <Ruler 
-                orientation="horizontal" 
-                length={pageWidthMm} 
-                scrollPos={scrollPos.x} 
-                zoom={zoom}
-             />
+            <Ruler
+              orientation="horizontal"
+              length={pageWidthMm}
+              scrollPos={scrollPos.x}
+              zoom={zoom}
+            />
           </div>
         </div>
 
         <div className="flex flex-1 relative overflow-hidden">
           {/* Left Ruler Column */}
           <div className="w-6 bg-slate-100 border-r border-slate-300 flex-shrink-0 relative z-30 overflow-hidden">
-            <Ruler 
-                orientation="vertical" 
-                length={pageHeightMm} 
-                scrollPos={scrollPos.y} 
-                zoom={zoom}
+            <Ruler
+              orientation="vertical"
+              length={pageHeightMm}
+              scrollPos={scrollPos.y}
+              zoom={zoom}
             />
           </div>
 
           {/* Professional Drafting Area */}
-          <div 
+          <div
             ref={scrollRef}
             onScroll={handleScroll}
             className="flex-1 overflow-auto p-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform"
           >
             <div className="min-w-max min-h-max pl-12 pr-12 pb-12 pt-12">
-                <div
+              <div
                 ref={paperRef}
                 className={clsx(
-                    'bg-white pro-grid border border-slate-400 relative shadow-2xl transition-all duration-300 origin-top-left',
-                    isLandscape ? 'w-[29.7cm] min-h-[21cm]' : 'w-[21cm] min-h-[29.7cm]'
+                  'bg-white pro-grid border border-slate-400 relative shadow-2xl transition-all duration-300 origin-top-left overflow-visible',
+                  isLandscape ? 'w-[29.7cm] h-[21cm]' : 'w-[21cm] h-[29.7cm]'
                 )}
                 style={{
-                    width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
-                    minHeight: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
-                    transform: `scale(${zoom})`,
+                  width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
+                  height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
+                  transform: `scale(${zoom})`,
                 }}
+              >
+                {/* Page End Indicator (Red Dashed Line) */}
+                <div
+                  className="absolute left-0 right-0 border-b-2 border-red-500/40 border-dashed z-[35] pointer-events-none"
+                  style={{ top: `${LayoutEngine.mmToPx(pageHeightMm)}px` }}
                 >
+                  <div className="absolute right-2 top-0 -translate-y-full bg-red-500 text-white text-[7px] px-1.5 py-0.5 font-black uppercase tracking-widest rounded-t-sm shadow-sm opacity-80 backdrop-blur-sm">
+                    Physical Page Limit ({pageHeightMm}mm)
+                  </div>
+                </div>
+
                 {/* Margin Guides (Dashed) */}
-                <div 
-                    className="absolute border border-blue-400 border-dashed pointer-events-none z-10 opacity-50"
-                    style={{
-                        top: `${LayoutEngine.mmToPx(marginTop)}px`,
-                        bottom: `${LayoutEngine.mmToPx(marginBottom)}px`,
-                        left: `${LayoutEngine.mmToPx(marginLeft)}px`,
-                        right: `${LayoutEngine.mmToPx(marginRight)}px`,
-                    }}
+                <div
+                  className="absolute border border-blue-400 border-dashed pointer-events-none z-10 opacity-30"
+                  style={{
+                    top: `${LayoutEngine.mmToPx(marginTop)}px`,
+                    bottom: `${LayoutEngine.mmToPx(marginBottom)}px`,
+                    left: `${LayoutEngine.mmToPx(marginLeft)}px`,
+                    right: `${LayoutEngine.mmToPx(marginRight)}px`,
+                  }}
                 />
 
                 {/* Snapping Alignment Guides Overlay */}
                 <AlignmentGuides />
 
-                <div className="flex flex-col gap-0 min-h-full relative z-20">
-                    <Zone
+                <div className="flex flex-col gap-0 relative z-20">
+                  <Zone
                     zoneKey="header"
                     label="Report Header"
                     components={schema.zones.header.components}
                     minHeight={schema.zones.header.minHeight}
-                    />
-                    <Zone
+                  />
+                  <Zone
                     zoneKey="body"
                     label="Detail Band"
                     components={schema.zones.body.components}
                     minHeight={schema.zones.body.minHeight}
-                    />
-                    <Zone
+                  />
+                  <Zone
                     zoneKey="footer"
                     label="Page Footer"
                     components={schema.zones.footer.components}
                     minHeight={schema.zones.footer.minHeight}
-                    />
+                  />
                 </div>
-                </div>
+              </div>
             </div>
           </div>
         </div>

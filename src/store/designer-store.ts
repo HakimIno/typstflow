@@ -47,7 +47,7 @@ interface DesignerState {
 
   // Actions
   addComponent: (zoneKey: ZoneKey, component: ComponentNode) => void;
-  updateComponent: (id: string, updates: Partial<ComponentNode>) => void;
+  updateComponent: (id: string, updates: Partial<ComponentNode>, skipHistory?: boolean) => void;
   removeComponent: (id: string) => void;
   moveComponent: (
     id: string,
@@ -58,7 +58,7 @@ interface DesignerState {
     y?: number
   ) => void;
   selectComponent: (id: string | null) => void;
-  updateZone: (zoneKey: ZoneKey, updates: Partial<LayoutSchema['zones']['header']>) => void;
+  updateZone: (zoneKey: ZoneKey, updates: Partial<LayoutSchema['zones']['header']>, skipHistory?: boolean) => void;
   updateSchema: (updates: Partial<LayoutSchema>) => void;
   setDragState: (updates: Partial<DesignerState['dragState']>) => void;
   setSampleData: (data: Record<string, any>) => void;
@@ -101,8 +101,8 @@ const BLANK_SCHEMA: LayoutSchema = {
   fonts: [{ family: 'Sarabun', role: 'body', size: 10, embedded: true }],
   zones: {
     header: { id: 'header', minHeight: '30mm', components: [] },
-    body: { id: 'body', minHeight: '150mm', components: [] },
-    footer: { id: 'footer', minHeight: '20mm', components: [] },
+    body: { id: 'body', minHeight: '237mm', components: [] },
+    footer: { id: 'footer', minHeight: '30mm', components: [] },
   },
   variables: [],
   dataSchema: [],
@@ -163,6 +163,14 @@ export const useDesignerStore = create<DesignerState>((set) => ({
         history: [INVOICE_WITH_PAGE_BREAKS_TEMPLATE],
         historyIndex: 0,
       });
+    } else if (name === 'tax-invoice' as any) {
+      const { TAX_INVOICE_TEMPLATE, TAX_INVOICE_SAMPLE_DATA } = require('../lib/templates/tax-invoice');
+      set({
+        schema: TAX_INVOICE_TEMPLATE,
+        sampleData: TAX_INVOICE_SAMPLE_DATA,
+        history: [TAX_INVOICE_TEMPLATE],
+        historyIndex: 0,
+      });
     } else {
       set({
         schema: BLANK_SCHEMA,
@@ -197,7 +205,7 @@ export const useDesignerStore = create<DesignerState>((set) => ({
       return pushHistory(state, newSchema);
     }),
 
-  updateComponent: (id, updates) =>
+  updateComponent: (id, updates, skipHistory) =>
     set((state) => {
       const newZones = { ...state.schema.zones };
       for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
@@ -210,6 +218,7 @@ export const useDesignerStore = create<DesignerState>((set) => ({
         }
       }
       const newSchema = { ...state.schema, zones: newZones };
+      if (skipHistory) return { schema: newSchema };
       return pushHistory(state, newSchema);
     }),
 
@@ -254,7 +263,7 @@ export const useDesignerStore = create<DesignerState>((set) => ({
       return pushHistory(state, newSchema);
     }),
 
-  updateZone: (zoneKey: ZoneKey, updates: Partial<LayoutSchema['zones']['header']>) =>
+  updateZone: (zoneKey, updates, skipHistory) =>
     set((state) => {
       const newSchema = {
         ...state.schema,
@@ -266,6 +275,7 @@ export const useDesignerStore = create<DesignerState>((set) => ({
           },
         },
       };
+      if (skipHistory) return { schema: newSchema };
       return pushHistory(state, newSchema);
     }),
 
