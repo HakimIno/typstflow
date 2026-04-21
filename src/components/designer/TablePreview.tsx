@@ -116,7 +116,7 @@ export function TablePreview({ component }: Props) {
   const hasStructuredHeaders = headerRows.length > 0;
 
   return (
-    <div className="w-full h-full bg-white flex flex-col border border-slate-300 shadow-sm overflow-hidden select-none">
+    <div className="w-full h-full bg-white flex flex-col border border-slate-300 shadow-sm overflow-hidden select-none relative">
       {/* ---- HEADER SECTION ---- */}
       {hasStructuredHeaders ? (
         // Multi-row structured headers
@@ -136,7 +136,7 @@ export function TablePreview({ component }: Props) {
               {row.cells.map((cell, cellIdx) => (
                 <div
                   key={cell.id}
-                  className="relative flex items-center justify-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden"
+                  className="relative flex items-center justify-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell"
                   style={{
                     gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,
                     gridRow: cell.rowspan ? `span ${cell.rowspan}` : undefined,
@@ -145,9 +145,9 @@ export function TablePreview({ component }: Props) {
                   }}
                 >
                   <input
-                    className="w-full bg-transparent border-none focus:ring-0 text-center text-[10px] font-bold text-slate-700 outline-none placeholder:text-slate-400"
+                    className="w-full bg-transparent border-none focus:ring-0 text-center text-[10px] font-bold text-slate-700 outline-none placeholder:text-slate-400 opacity-80 group-hover/cell:opacity-100"
                     value={cell.content || ''}
-                    placeholder={component.columns[cellIdx]?.header || `Col ${cellIdx + 1}`}
+                    placeholder=""
                     onChange={(e) => {
                       const newRows = [...headerRows];
                       const newCells = [...newRows[rowIdx].cells];
@@ -181,7 +181,7 @@ export function TablePreview({ component }: Props) {
             return (
               <div
                 key={col.id}
-                className="relative flex items-center justify-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden"
+                className="relative flex items-center justify-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell"
                 style={{
                   gridColumn: `${x + 1} / span ${cs}`,
                   gridRow: `span ${rs}`,
@@ -190,9 +190,9 @@ export function TablePreview({ component }: Props) {
               >
                 {/* Inline Header Edit */}
                 <input
-                  className="w-full bg-transparent border-none focus:ring-0 text-center text-[10px] font-bold text-slate-700 outline-none placeholder:text-slate-400"
+                  className="w-full bg-transparent border-none focus:ring-0 text-center text-[10px] font-black uppercase tracking-tight text-slate-700 outline-none placeholder:text-slate-300 opacity-90"
                   value={col.header || ''}
-                  placeholder="Header"
+                  placeholder="COLUMN"
                   onChange={(e) => {
                     const newCols = [...component.columns];
                     newCols[x] = { ...col, header: e.target.value };
@@ -236,7 +236,7 @@ export function TablePreview({ component }: Props) {
                 return (
                   <div
                     key={`${row}-${col.id}`}
-                    className="p-2 border-r border-b flex items-center relative group"
+                    className="p-2 border-r border-b flex items-center relative group/cell"
                     style={{
                       gridColumn: `${x + 1} / span ${cs}`,
                       backgroundColor: cellBg || (col.background || 'white'),
@@ -250,30 +250,26 @@ export function TablePreview({ component }: Props) {
                     }}
                   >
                     {row === 1 ? (
-                      <div className="w-full flex items-center justify-center">
-                        <span className="text-[9px] text-slate-400 font-mono mr-1 opacity-0 group-hover:opacity-100 transition-opacity select-none flex-shrink-0">
-                          {`{`}
-                        </span>
+                      <div className="w-full flex items-center">
                         <input
-                          className="w-full bg-transparent border-b border-transparent focus:border-blue-300 text-[10px] text-slate-600 outline-none placeholder:text-slate-300 transition-colors"
+                          className="w-full bg-transparent border-none text-[10px] text-slate-500 outline-none placeholder:text-slate-200 transition-colors pointer-events-auto"
                           style={{
                             textAlign: col.align === 'center' ? 'center' : col.align === 'right' ? 'right' : 'left',
+                            fontFamily: 'monospace',
                           }}
-                          value={col.field || ''}
-                          placeholder="field"
-                          title="Data Field Mapping"
+                          value={col.field ? `{{${col.field}}}` : ''}
+                          placeholder="{...}"
+                          title="Data Binding"
                           onChange={(e) => {
+                            let val = e.target.value.replace(/[{}]/g, '');
                             const newCols = [...component.columns];
-                            newCols[x] = { ...col, field: e.target.value };
+                            newCols[x] = { ...col, field: val };
                             updateComponent(component.id, { columns: newCols } as any);
                           }}
                         />
-                        <span className="text-[9px] text-slate-400 font-mono ml-1 opacity-0 group-hover:opacity-100 transition-opacity select-none flex-shrink-0">
-                          {`}`}
-                        </span>
                       </div>
                     ) : (
-                      <div className="h-1.5 bg-slate-200 rounded-full w-2/3 opacity-40 mix-blend-multiply" />
+                      <div className="h-1.5 bg-slate-200 rounded-full w-2/3 opacity-30 mix-blend-multiply" />
                     )}
                   </div>
                 );
@@ -285,7 +281,7 @@ export function TablePreview({ component }: Props) {
 
       {/* ---- FOOTER SECTION ---- */}
       {footerRows.length > 0 && (
-        <div className="border-t-2 border-slate-400">
+        <div className="border-t border-slate-400">
           {footerRows.map((row, rowIdx) => (
             <div
               key={row.id}
@@ -301,17 +297,24 @@ export function TablePreview({ component }: Props) {
               {row.cells.map((cell, cellIdx) => (
                 <div
                   key={cell.id}
-                  className="relative flex items-center justify-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden"
+                  className="relative flex items-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell"
                   style={{
                     gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,
                     minHeight: '28px',
                     backgroundColor: cell.fill || undefined,
+                    justifyContent: cell.align === 'center' ? 'center' : cell.align === 'right' ? 'flex-end' : 'flex-start',
                   }}
                 >
                   <input
-                    className="w-full bg-transparent border-none focus:ring-0 text-center text-[10px] font-bold text-slate-600 outline-none placeholder:text-slate-400"
+                    className={clsx(
+                      "w-full bg-transparent border-none focus:ring-0 text-[10px] font-bold outline-none placeholder:text-slate-300",
+                      cell.fill ? "text-white" : "text-slate-600" // Simple logic for purple backgrounds
+                    )}
+                    style={{
+                      textAlign: cell.align === 'center' ? 'center' : cell.align === 'right' ? 'right' : 'left',
+                    }}
                     value={cell.content || ''}
-                    placeholder={`Footer ${cellIdx + 1}`}
+                    placeholder=""
                     onChange={(e) => {
                       const newRows = [...footerRows];
                       const newCells = [...newRows[rowIdx].cells];
@@ -328,18 +331,24 @@ export function TablePreview({ component }: Props) {
       )}
 
       {/* ---- HLINE / VLINE OVERLAY (visual indicators) ---- */}
-      {(component.hlines || []).length > 0 && (
-        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
-          {(component.hlines || []).map((hl) => (
+      <div className="absolute inset-0 pointer-events-none z-10">
+        {/* VLines Overlay */}
+        {(component.vlines || []).map((vl) => {
+          // Calculate X position based on column widths
+          let offsetMm = 0;
+          for(let i=0; i < vl.x; i++) {
+             const col = component.columns[i];
+             if (col) offsetMm += parseFloat(col.width || '20');
+          }
+          return (
             <div
-              key={hl.id}
-              className="absolute left-0 right-0 h-0 border-t-2 border-red-400 opacity-60"
-              style={{ top: `${(hl.y + 1) * 32}px` }}
-              title={`HLine y=${hl.y}`}
+              key={vl.id}
+              className="absolute top-0 bottom-0 w-px border-l border-blue-400 border-dashed opacity-40"
+              style={{ left: `${LayoutEngine.mmToPx(offsetMm)}px` }}
             />
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }
