@@ -23,10 +23,14 @@ import {
   Plus,
   Rows3,
   Trash2,
+  BoxSelect,
+  Merge,
+  Split,
+  Wand2,
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-type TableTab = 'columns' | 'rows' | 'style' | 'lines' | 'data';
+type TableTab = 'columns' | 'rows' | 'style' | 'lines' | 'data' | 'cell';
 
 const TAB_CONFIG: { id: TableTab; label: string; icon: React.ElementType }[] = [
   { id: 'columns', label: 'Col', icon: Columns3 },
@@ -34,6 +38,7 @@ const TAB_CONFIG: { id: TableTab; label: string; icon: React.ElementType }[] = [
   { id: 'style', label: 'Style', icon: Paintbrush },
   { id: 'lines', label: 'Lines', icon: Grid3X3 },
   { id: 'data', label: 'Data', icon: Database },
+  { id: 'cell', label: 'Cell', icon: BoxSelect },
 ];
 
 const FILL_PATTERNS: { id: FillPattern; label: string; preview: string }[] = [
@@ -98,8 +103,16 @@ const MiniInput = ({
 
 export function TablePropertiesPanel({ component }: Props) {
   const updateComponent = useDesignerStore((state) => state.updateComponent);
+  const selectedCell = useDesignerStore((state) => state.selectedCell);
+  const setSelectedCell = useDesignerStore((state) => state.setSelectedCell);
   const [activeTab, setActiveTab] = useState<TableTab>('columns');
   const [expandedColIndex, setExpandedColIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (selectedCell && selectedCell.tableId === component.id) {
+      setActiveTab('cell');
+    }
+  }, [selectedCell, component.id]);
 
   const handleStyleUpdate = (updates: Record<string, any>) => {
     const currentStyle = component.style || {};
@@ -392,12 +405,54 @@ export function TablePropertiesPanel({ component }: Props) {
               </div>
             </div>
           ))}
-          <button
-            className="w-full py-1 border border-dashed border-slate-300 text-[9px] font-bold uppercase text-slate-400 hover:border-green-400 hover:text-green-500 transition-all flex items-center justify-center gap-1"
-            onClick={addFooterRow}
-          >
-            <Plus className="w-3 h-3" /> Add Footer Row
-          </button>
+          <div className="flex gap-2 mt-2">
+            <button
+              className="flex-1 py-1.5 border border-dashed border-slate-300 text-[9px] font-bold uppercase text-slate-400 hover:border-green-400 hover:text-green-500 rounded transition-all flex items-center justify-center gap-1"
+              onClick={addFooterRow}
+            >
+              <Plus className="w-3 h-3" /> Add Standard Row
+            </button>
+            <button
+              className="flex-1 py-1.5 border border-purple-200 text-[9px] font-bold uppercase text-purple-600 bg-purple-50 hover:bg-purple-100 rounded transition-all flex items-center justify-center gap-1 shadow-sm"
+              onClick={() => {
+                const colCount = component.columns.length;
+                const cells = [];
+                if (colCount > 1) {
+                  cells.push({
+                    id: `fc-${Math.random().toString(36).substring(7)}`,
+                    content: 'Total Value:',
+                    colspan: colCount - 1,
+                    align: 'right',
+                    fill: '#c084fc', // professional purple
+                  });
+                  cells.push({
+                    id: `fc-${Math.random().toString(36).substring(7)}`,
+                    content: '0.00',
+                    colspan: 1,
+                    align: 'right',
+                    fill: '#c084fc',
+                  });
+                } else {
+                  cells.push({
+                    id: `fc-${Math.random().toString(36).substring(7)}`,
+                    content: 'Total',
+                    colspan: 1,
+                    align: 'center',
+                    fill: '#c084fc',
+                  });
+                }
+                const newRow = {
+                  id: `fr-${Math.random().toString(36).substring(7)}`,
+                  type: 'footer',
+                  cells,
+                  repeat: true,
+                };
+                updateComponent(component.id, { footerRows: [...footerRows, newRow] } as any);
+              }}
+            >
+              <Wand2 className="w-3 h-3" /> Smart Summary
+            </button>
+          </div>
         </div>
 
         {/* Row Heights */}
@@ -831,6 +886,158 @@ export function TablePropertiesPanel({ component }: Props) {
     </div>
   );
 
+  // ---- TAB 6: CELL ----
+  const renderCellTab = () => {
+    if (!selectedCell || selectedCell.tableId !== component.id) {
+      return (
+        <div className="p-4 flex flex-col items-center justify-center text-slate-400 gap-2 h-40">
+          <BoxSelect className="w-8 h-8 opacity-20" />
+          <p className="text-[10px] text-center">Select a cell in the header<br/>or footer to edit its properties.</p>
+        </div>
+      );
+    }
+
+    const { section, rowId, cellIdx } = selectedCell;
+    const isHeader = section === 'header';
+    const rows = isHeader ? component.headerRows || [] : component.footerRows || [];
+    const rowIndex = rows.findIndex((r) => r.id === rowId);
+
+    if (rowIndex === -1 || !rows[rowIndex].cells[cellIdx]) {
+      return null;
+    }
+
+    const cell = rows[rowIndex].cells[cellIdx];
+
+    const updateCurrentCell = (updates: any) => {
+      const newRows = [...rows];
+      const newCells = [...newRows[rowIndex].cells];
+      newCells[cellIdx] = { ...newCells[cellIdx], ...updates };
+      newRows[rowIndex] = { ...newRows[rowIndex], cells: newCells };
+      
+      updateComponent(component.id, {
+        [isHeader ? 'headerRows' : 'footerRows']: newRows,
+      } as any);
+    };
+
+    return (
+      <div className="space-y-0">
+        <SectionHeader label={`Selected Cell (${section == 'header' ? 'Header' : 'Footer'} R${rowIndex + 1} C${cellIdx + 1})`} />
+        
+        <div className="p-2 space-y-2 bg-slate-50/50 border-b border-slate-200">
+           {/* Header & Field */}
+           <div className="flex flex-col gap-0.5">
+             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Content</span>
+             <MiniInput value={cell.content || ''} onChange={(v) => updateCurrentCell({ content: v })} className="w-full" />
+           </div>
+        </div>
+
+        <SectionHeader label="Smart Merge" />
+        <div className="flex gap-2 p-2 border-b border-slate-200 bg-slate-50/50">
+          <button
+            title="Merge Right"
+            disabled={cellIdx >= rows[rowIndex].cells.length - 1} // Can't merge if it's the last cell
+            onClick={() => {
+              if (cellIdx >= rows[rowIndex].cells.length - 1) return;
+              const nextCell = rows[rowIndex].cells[cellIdx + 1];
+              const currentColspan = cell.colspan || 1;
+              const nextColspan = nextCell.colspan || 1;
+              
+              const newCols = [...rows[rowIndex].cells];
+              // Remove the adjacent cell from array to prevent table explosion
+              newCols.splice(cellIdx + 1, 1);
+              // Absorb its colspan
+              newCols[cellIdx] = { ...cell, colspan: currentColspan + nextColspan };
+              
+              const newRows = [...rows];
+              newRows[rowIndex] = { ...newRows[rowIndex], cells: newCols };
+              updateComponent(component.id, { [isHeader ? 'headerRows' : 'footerRows']: newRows } as any);
+            }}
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[9px] font-bold text-slate-600 bg-white border border-slate-300 rounded shadow-sm hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            <Merge className="w-3.5 h-3.5" /> Merge Right
+          </button>
+          
+          <button
+            title="Split Cell"
+            disabled={!cell.colspan || cell.colspan <= 1} // Can't split a basic cell
+            onClick={() => {
+              const currentColspan = cell.colspan || 1;
+              if (currentColspan <= 1) return;
+
+              const newCols = [...rows[rowIndex].cells];
+              newCols[cellIdx] = { ...cell, colspan: currentColspan - 1 };
+              
+              // Safely restore a new cell to the array
+              newCols.splice(cellIdx + 1, 0, {
+                 id: `cell-${Math.random().toString(36).substring(7)}`,
+                 content: '',
+                 colspan: 1
+              });
+
+              const newRows = [...rows];
+              newRows[rowIndex] = { ...newRows[rowIndex], cells: newCols };
+              updateComponent(component.id, { [isHeader ? 'headerRows' : 'footerRows']: newRows } as any);
+            }}
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[9px] font-bold text-slate-600 bg-white border border-slate-300 rounded shadow-sm hover:border-orange-400 hover:text-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            <Split className="w-3.5 h-3.5" /> Split 
+          </button>
+        </div>
+
+        <SectionHeader label="Cell Style" />
+        <PropertyRow label="Alignment">
+          <div className="flex border border-slate-200 rounded overflow-hidden">
+            {[
+              { id: 'left', Icon: AlignLeft },
+              { id: 'center', Icon: AlignCenter },
+              { id: 'right', Icon: AlignRight },
+            ].map(({ id, Icon }) => (
+              <button
+                key={id}
+                onClick={(e) => { e.stopPropagation(); updateCurrentCell({ align: id }); }}
+                className={clsx(
+                  'px-2 py-1 transition-all',
+                  (cell.align) === id ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 hover:text-slate-600'
+                )}
+              >
+                <Icon className="w-3 h-3" />
+              </button>
+            ))}
+          </div>
+        </PropertyRow>
+        
+        <PropertyRow label="Fill Color">
+          <input
+            type="color"
+            value={cell.fill || '#ffffff'}
+            onChange={(e) => updateCurrentCell({ fill: e.target.value })}
+            className="w-full h-6 rounded-sm cursor-pointer"
+          />
+        </PropertyRow>
+
+        <PropertyRow label="Clear Fill">
+          <button
+             onClick={() => updateCurrentCell({ fill: null })}
+             className="text-[10px] border border-slate-200 rounded px-2 hover:bg-slate-100"
+          >
+            Clear / Transparent
+          </button>
+        </PropertyRow>
+
+        <SectionHeader label="Cell Inset (Padding)" />
+        <PropertyRow label="Uniform Inset">
+          <MiniInput
+            value={cell.inset || ''}
+            onChange={(v) => updateCurrentCell({ inset: v })}
+            placeholder="e.g. 5pt"
+            mono
+            className="w-full"
+          />
+        </PropertyRow>
+      </div>
+    );
+  };
+
   return (
     <section>
       {/* Tab Bar */}
@@ -859,6 +1066,7 @@ export function TablePropertiesPanel({ component }: Props) {
         {activeTab === 'style' && renderStyleTab()}
         {activeTab === 'lines' && renderLinesTab()}
         {activeTab === 'data' && renderDataTab()}
+        {activeTab === 'cell' && renderCellTab()}
       </div>
     </section>
   );

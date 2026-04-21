@@ -50,6 +50,8 @@ function getCellFill(
 
 export function TablePreview({ component }: Props) {
   const updateComponent = useDesignerStore((state) => state.updateComponent);
+  const selectedCell = useDesignerStore((state) => state.selectedCell);
+  const setSelectedCell = useDesignerStore((state) => state.setSelectedCell);
   const [resizingColIndex, setResizingColIndex] = useState<number | null>(null);
 
   const handleResizeStart = (e: React.MouseEvent, index: number) => {
@@ -136,7 +138,16 @@ export function TablePreview({ component }: Props) {
               {row.cells.map((cell, cellIdx) => (
                 <div
                   key={cell.id}
-                  className="relative flex items-center justify-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCell({ tableId: component.id, section: 'header', rowId: row.id, cellIdx });
+                  }}
+                  className={clsx(
+                    "relative flex items-center justify-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell",
+                    selectedCell?.tableId === component.id && selectedCell?.rowId === row.id && selectedCell?.cellIdx === cellIdx
+                      ? "ring-2 ring-blue-500 ring-inset z-10"
+                      : ""
+                  )}
                   style={{
                     gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,
                     gridRow: cell.rowspan ? `span ${cell.rowspan}` : undefined,
@@ -297,7 +308,16 @@ export function TablePreview({ component }: Props) {
               {row.cells.map((cell, cellIdx) => (
                 <div
                   key={cell.id}
-                  className="relative flex items-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCell({ tableId: component.id, section: 'footer', rowId: row.id, cellIdx });
+                  }}
+                  className={clsx(
+                    "relative flex items-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell",
+                    selectedCell?.tableId === component.id && selectedCell?.rowId === row.id && selectedCell?.cellIdx === cellIdx
+                      ? "ring-2 ring-blue-500 ring-inset z-10"
+                      : ""
+                  )}
                   style={{
                     gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,
                     minHeight: '28px',

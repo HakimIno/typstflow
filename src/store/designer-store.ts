@@ -20,6 +20,12 @@ interface DesignerState {
   // Selection
   selectedComponentId: string | null;
   selectedZone: ZoneKey | null;
+  selectedCell: {
+    tableId: string;
+    section: 'header' | 'footer' | 'data';
+    rowId: string;
+    cellIdx: number;
+  } | null;
 
   // Preview / Data Binding
   sampleData: Record<string, any>;
@@ -58,6 +64,7 @@ interface DesignerState {
     y?: number
   ) => void;
   selectComponent: (id: string | null) => void;
+  setSelectedCell: (cell: DesignerState['selectedCell']) => void;
   updateZone: (zoneKey: ZoneKey, updates: Partial<LayoutSchema['zones']['header']>, skipHistory?: boolean) => void;
   updateSchema: (updates: Partial<LayoutSchema>) => void;
   setDragState: (updates: Partial<DesignerState['dragState']>) => void;
@@ -122,6 +129,7 @@ export const useDesignerStore = create<DesignerState>((set) => ({
   isRightSidebarOpen: true,
   selectedComponentId: null,
   selectedZone: null,
+  selectedCell: null,
   sampleData: {},
   previewPages: [],
   previewStatus: 'idle',
@@ -255,7 +263,9 @@ export const useDesignerStore = create<DesignerState>((set) => ({
       return pushHistory(state, newSchema);
     }),
 
-  selectComponent: (id: string | null) => set({ selectedComponentId: id }),
+  selectComponent: (id: string | null) => set({ selectedComponentId: id, selectedCell: null }),
+
+  setSelectedCell: (cell) => set({ selectedCell: cell }),
 
   updateSchema: (updates: Partial<LayoutSchema>) =>
     set((state) => {
