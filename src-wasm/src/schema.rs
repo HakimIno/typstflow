@@ -57,6 +57,8 @@ pub struct Zone {
     pub min_height: Option<String>,
     pub background: Option<String>,
     pub padding: Option<String>,
+    pub show_on_first_page_only: Option<bool>,
+    pub show_on_last_page_only: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

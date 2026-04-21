@@ -6,32 +6,42 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     t.push_str("// PHOENIX ENGINE (RUST/WASM) v2.0 — NATIVE PACKAGES\n");
     t.push_str("#import \"@preview/codetastic:0.2.2\": qrcode, ean13, ean8\n\n");
 
-    // Page Setup with Margins and Zones
+    // Absolute Metadata
     let margin = &schema.page.margin;
+    let h_height = schema.zones.header.min_height.clone().unwrap_or("0mm".to_string());
+    let f_height = schema.zones.footer.min_height.clone().unwrap_or("0mm".to_string());
+
     t.push_str(&format!(
-        "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: (top: {}, bottom: {}, left: {}, right: {}),\n",
+        "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: 0mm,\n",
         schema.page.size.to_lowercase(),
         schema.page.orientation == "landscape",
-        margin.top, margin.bottom, margin.left, margin.right,
     ));
 
-    // Page Header
-    t.push_str("  header: ");
-    if is_zone_empty(&schema.zones.header) {
-        t.push_str("none");
-    } else {
-        render_zone(&mut t, &schema.zones.header, "HEADER", data, false);
-    }
-    t.push_str(",\n");
+    // Page Header (Absolute Placement)
+    let h_first = schema.zones.header.show_on_first_page_only.unwrap_or(false);
+    let h_last = schema.zones.header.show_on_last_page_only.unwrap_or(false);
+    
+    t.push_str("  header: context { \n");
+    t.push_str("    let cur = counter(page).get().first()\n");
+    t.push_str("    let last = counter(page).final().first()\n");
+    t.push_str(&format!("    let is_visible = if {} {{ cur == 1 }} else if {} {{ cur == last }} else {{ true }}\n", h_first, h_last));
+    t.push_str("    if is_visible { \n");
+    t.push_str("      place(top + left, ");
+    render_zone(&mut t, &schema.zones.header, "HEADER", data, "0mm".to_string());
+    t.push_str(")\n    } else { none }\n  },\n");
 
-    // Page Footer
-    t.push_str("  footer: ");
-    if is_zone_empty(&schema.zones.footer) {
-        t.push_str("none");
-    } else {
-        render_zone(&mut t, &schema.zones.footer, "FOOTER", data, false);
-    }
-    t.push_str(",\n");
+    // Page Footer (Absolute Placement)
+    let f_first = schema.zones.footer.show_on_first_page_only.unwrap_or(false);
+    let f_last = schema.zones.footer.show_on_last_page_only.unwrap_or(false);
+
+    t.push_str("  footer: context { \n");
+    t.push_str("    let cur = counter(page).get().first()\n");
+    t.push_str("    let last = counter(page).final().first()\n");
+    t.push_str(&format!("    let is_visible = if {} {{ cur == 1 }} else if {} {{ cur == last }} else {{ true }}\n", f_first, f_last));
+    t.push_str("    if is_visible { \n");
+    t.push_str("      place(top + left, "); 
+    render_zone(&mut t, &schema.zones.footer, "FOOTER", data, "0mm".to_string());
+    t.push_str(")\n    } else { none }\n  },\n");
 
     t.push_str(")\n\n");
 
@@ -44,59 +54,49 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     }
     t.push_str("#set par(leading: 0.2em, justify: false)\n");
 
-    // Body Zone (Main Flow)
+    // Body Zone (Main Flow & Absolute Overlays)
     if !is_zone_empty(&schema.zones.body) {
-        render_zone(&mut t, &schema.zones.body, "BODY", data, true);
+        // 1. Absolute components in Body
+        t.push_str("#");
+        render_zone(&mut t, &schema.zones.body, "BODY", data, "0mm".to_string());
+        
+        // 2. The Flowing Logic (Table)
+        t.push_str(&format!(
+            "\n#pad(top: {} + {} + 2mm, bottom: {} + {} + 2mm, left: {}, right: {})[\n",
+             margin.top, h_height, margin.bottom, f_height, margin.left, margin.right
+        ));
+        t.push_str("]\n");
     }
 
     t
 }
 
-fn render_zone(t: &mut String, zone: &Zone, label: &str, data: &Value, use_hash: bool) {
+fn render_zone(t: &mut String, zone: &Zone, _label: &str, data: &Value, offset_y: String) {
     if is_zone_empty(zone) {
         return;
     }
     
-    if use_hash {
-        t.push_str(&format!("\n// ZONE: {}\n#", label));
-    } else {
-        // Inside an expression (like header/footer), we wrap markup in []
-        t.push_str("[");
-    }
-
-    let height = zone.min_height.as_deref().unwrap_or("auto");
-    let fill = zone.background.as_deref().map(|c| format_color(c)).unwrap_or("none".to_string());
-    let inset = zone.padding.as_deref().unwrap_or("0mm");
-
-    t.push_str(&format!(
-        "block(width: 100%, height: {}, fill: {}, inset: {})[\n",
-        height, fill, inset
-    ));
-
+    t.push_str("[\n"); 
     for comp in &zone.components {
-        t.push_str("  ");
-        t.push_str(&render_component(comp, data));
+        t.push_str("    ");
+        t.push_str(&render_component(comp, data, &offset_y, "#"));
     }
-    t.push_str("]");
-    if !use_hash {
-        t.push_str("]");
-    }
-    t.push_str("\n");
+    t.push_str("  ]");
 }
 
-fn render_component(comp: &ComponentNode, data: &Value) -> String {
+fn render_component(comp: &ComponentNode, data: &Value, offset_y: &str, prefix: &str) -> String {
     match comp {
-        ComponentNode::Text(c) => render_text(c, data),
-        ComponentNode::Table(c) => render_table(c, data),
-        ComponentNode::Line(c) => render_line(c),
-        ComponentNode::Image(c) => render_image(c),
-        ComponentNode::Spacer(c) => render_spacer(c),
-        ComponentNode::SummaryBox(c) => render_summary_box(c, data),
-        ComponentNode::Barcode(c) => render_barcode(c),
-        ComponentNode::Qr(c) => render_qr(c),
-        ComponentNode::PageBreakIndicator(c) => render_page_break_indicator(c),
-        ComponentNode::Repeater(_) => render_placeholder_box("REPEATER (NESTED)", &comp_base(comp), "", data),
-        ComponentNode::Columns(_) => render_placeholder_box("COLUMNS (LAYOUT)", &comp_base(comp), "", data),
+        ComponentNode::Text(c) => render_text(c, data, offset_y, prefix),
+        ComponentNode::Table(c) => render_table(c, data, offset_y, prefix),
+        ComponentNode::Line(c) => render_line(c, offset_y, prefix),
+        ComponentNode::Image(c) => render_image(c, offset_y, prefix),
+        ComponentNode::Spacer(c) => render_spacer(c, offset_y, prefix),
+        ComponentNode::SummaryBox(c) => render_summary_box(c, data, offset_y, prefix),
+        ComponentNode::Barcode(c) => render_barcode(c, offset_y, prefix),
+        ComponentNode::Qr(c) => render_qr(c, offset_y, prefix),
+        ComponentNode::PageBreakIndicator(c) => render_page_break_indicator(c, offset_y, prefix),
+        ComponentNode::Repeater(c) => render_placeholder_box("REPEATER (NESTED)", &c.base, "", data, offset_y, prefix),
+        ComponentNode::Columns(c) => render_placeholder_box("COLUMNS (LAYOUT)", &c.base, "", data, offset_y, prefix),
     }
 }
 
@@ -116,7 +116,7 @@ fn comp_base(comp: &ComponentNode) -> &BaseComponent {
     }
 }
 
-fn render_text(c: &TextComponent, data: &Value) -> String {
+fn render_text(c: &TextComponent, data: &Value, offset_y: &str, prefix: &str) -> String {
     let content = resolve_binding(&c.content, data);
     let s = c.style.as_ref();
     let size = s.and_then(|st| st.font_size).unwrap_or(10.0);
@@ -129,17 +129,15 @@ fn render_text(c: &TextComponent, data: &Value) -> String {
     let justify = s.and_then(|st| st.justify).unwrap_or(false);
 
     let body = if content.contains('#') && !content.contains("\\#") {
-        // Raw Typst Mode - detected presence of Typst function calls
         content
     } else {
-        // Standard Text Mode
         format!(
             "#set align({})\n#set par(leading: {}em, justify: {})\n#text(size: {}pt, weight: \"{}\", tracking: {})[{}]",
             align, leading, justify, size, weight, tracking, escape_typst(&content)
         )
     };
 
-    wrap_placement(&c.base, &body)
+    wrap_placement(&c.base, &body, offset_y, prefix)
 }
 
 // ─── ADVANCED TABLE RENDERER ────────────────────────────────────────────────
@@ -216,7 +214,7 @@ fn render_stroke(style_stroke: Option<&Value>, border_width: &str, border_color:
     }
 }
 
-fn render_table(c: &TableComponent, data: &Value) -> String {
+fn render_table(c: &TableComponent, data: &Value, offset_y: &str, prefix: &str) -> String {
     let style = c.style.as_ref();
     let cols = &c.columns;
 
@@ -470,8 +468,7 @@ fn render_table(c: &TableComponent, data: &Value) -> String {
     }
 
     t.push_str(")");
-    let _ = current_y; // suppress unused warning
-    wrap_placement(&c.base, &t)
+    wrap_placement(&c.base, &t, offset_y, prefix)
 }
 
 fn render_hline(hl: &HLineConfig) -> String {
@@ -494,14 +491,14 @@ fn render_vline(vl: &VLineConfig) -> String {
 
 // ─── OTHER COMPONENT RENDERERS ───────────────────────────────────────────────
 
-fn render_line(c: &LineComponent) -> String {
+fn render_line(c: &LineComponent, offset_y: &str, prefix: &str) -> String {
     let color = c.color.as_deref().unwrap_or("black");
     let thickness = c.thickness.as_deref().unwrap_or("1pt");
     let body = format!("#line(length: 100%, stroke: {} + {})", thickness, format_color(color));
-    wrap_placement(&c.base, &body)
+    wrap_placement(&c.base, &body, offset_y, prefix)
 }
 
-fn render_image(c: &ImageComponent) -> String {
+fn render_image(c: &ImageComponent, offset_y: &str, prefix: &str) -> String {
     let fit = c.fit.as_deref().unwrap_or("contain");
     // If srcData is present the image bytes are pre-registered in the WASM image
     // registry under the virtual path "img-{id}.png". Use that path so Typst
@@ -515,14 +512,15 @@ fn render_image(c: &ImageComponent) -> String {
         c.src.clone()
     };
     let body = format!("#image(\"{}\", width: 100%, height: 100%, fit: \"{}\")", path, fit);
-    wrap_placement(&c.base, &body)
+    wrap_placement(&c.base, &body, offset_y, prefix)
 }
 
-fn render_spacer(c: &SpacerComponent) -> String {
-    format!("#v({}mm, weak: true)\n", c.height)
+fn render_spacer(c: &SpacerComponent, offset_y: &str, prefix: &str) -> String {
+    let body = format!("#v({}mm, weak: true)", c.height);
+    wrap_placement(&c.base, &body, offset_y, prefix)
 }
 
-fn render_summary_box(c: &SummaryBoxComponent, data: &Value) -> String {
+fn render_summary_box(c: &SummaryBoxComponent, data: &Value, offset_y: &str, prefix: &str) -> String {
     let mut rows_typst = String::new();
     for row in &c.rows {
         if row.separator.unwrap_or(false) {
@@ -548,10 +546,10 @@ fn render_summary_box(c: &SummaryBoxComponent, data: &Value) -> String {
         ));
     }
     let body = format!("#table(columns: (1fr, auto), stroke: none, inset: 1pt,\n{})", rows_typst);
-    wrap_placement(&c.base, &body)
+    wrap_placement(&c.base, &body, offset_y, prefix)
 }
 
-fn render_barcode(c: &BarcodeComponent) -> String {
+fn render_barcode(c: &BarcodeComponent, offset_y: &str, prefix: &str) -> String {
     let val = resolve_binding(&c.value, &serde_json::Value::Null); // dummy resolve if static
     // Use codetastic native function based on format
     let func = match c.format.as_str() {
@@ -570,18 +568,18 @@ fn render_barcode(c: &BarcodeComponent) -> String {
     let scale_y = (base_h / 18.28) * 100.0;
     
     let body = format!("#scale(x: {:.2}%, y: {:.2}%, reflow: true)[#{}(\"{}\")]", scale_x, scale_y, func, escape_typst(&val));
-    wrap_placement(&c.base, &body)
+    wrap_placement(&c.base, &body, offset_y, prefix)
 }
 
-fn render_qr(c: &QRComponent) -> String {
+fn render_qr(c: &QRComponent, offset_y: &str, prefix: &str) -> String {
     let val = resolve_binding(&c.value, &serde_json::Value::Null);
     let width = c.base.width.unwrap_or(30.0);
     // qrcode in codetastic expects a length for width, not a ratio
     let body = format!("#qrcode(\"{}\", width: {}mm)", escape_typst(&val), width);
-    wrap_placement(&c.base, &body)
+    wrap_placement(&c.base, &body, offset_y, prefix)
 }
 
-fn render_page_break_indicator(c: &PageBreakIndicatorComponent) -> String {
+fn render_page_break_indicator(c: &PageBreakIndicatorComponent, offset_y: &str, prefix: &str) -> String {
     let label = c.label.as_ref().map(|s| s.as_str()).unwrap_or("Continued on next page...");
     let show_page_num = c.show_page_number.unwrap_or(true);
     let stroke_style = c.style.as_deref().unwrap_or("dashed");
@@ -605,24 +603,24 @@ fn render_page_break_indicator(c: &PageBreakIndicatorComponent) -> String {
         )
     };
 
-    wrap_placement(&c.base, &body)
+    wrap_placement(&c.base, &body, offset_y, prefix)
 }
 
-fn render_placeholder_box(label: &str, base: &BaseComponent, value: &str, data: &Value) -> String {
+fn render_placeholder_box(label: &str, base: &BaseComponent, value: &str, data: &Value, offset_y: &str, prefix: &str) -> String {
     let val = resolve_binding(value, data);
     let body = format!(
         "#rect(width: 100%, height: 100%, fill: gray.lighten(80%), stroke: 0.5pt + black)[\n    #set align(center + horizon)\n    #text(size: 8pt)[{}\\n{}]\n  ]",
         label, escape_typst(&val)
     );
-    wrap_placement(base, &body)
+    wrap_placement(base, &body, offset_y, prefix)
 }
 
-fn wrap_placement(base: &BaseComponent, body: &str) -> String {
+fn wrap_placement(base: &BaseComponent, body: &str, offset_y: &str, prefix: &str) -> String {
     let x = base.x.unwrap_or(0.0);
     let y = base.y.unwrap_or(0.0);
     let w = base.width.unwrap_or(100.0);
     let h = base.height.unwrap_or(20.0);
-    format!("#place(dx: {}mm, dy: {}mm)[#block(width: {}mm, height: {}mm, clip: false)[{}]]\n", x, y, w, h, body)
+    format!("{}place(dx: {}mm, dy: ({}) + {}mm)[#block(width: {}mm, height: {}mm, clip: false)[{}]]\n", prefix, x, offset_y, y, w, h, body)
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
