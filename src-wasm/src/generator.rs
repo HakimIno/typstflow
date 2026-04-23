@@ -26,9 +26,9 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     t.push_str("    let cur = counter(page).get().first()\n");
     t.push_str("    let last = counter(page).final().first()\n");
     t.push_str(&format!("    let is_visible = if {} {{ cur == 1 }} else if {} {{ cur == last }} else {{ true }}\n", h_first, h_last));
-    t.push_str("    if is_visible { \n");
+    t.push_str("    if is_visible [ \n");
     render_zone(&mut t, &schema.zones.header, "HEADER", data, "0mm".to_string());
-    t.push_str("    } else { none }\n  },\n");
+    t.push_str("    ] else { none }\n  },\n");
     // Page Footer (Absolute Placement)
     let f_first = schema.zones.footer.show_on_first_page_only.unwrap_or(false);
     let f_last = schema.zones.footer.show_on_last_page_only.unwrap_or(false);
@@ -37,9 +37,9 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     t.push_str("    let cur = counter(page).at(here()).first()\n");
     t.push_str("    let last = counter(page).final().first()\n");
     t.push_str(&format!("    let is_visible = if {} {{ cur == 1 }} else if {} {{ cur == last }} else {{ true }}\n", f_first, f_last));
-    t.push_str("    if is_visible { \n");
+    t.push_str("    if is_visible [ \n");
     render_zone(&mut t, &schema.zones.footer, "FOOTER", data, "0mm".to_string());
-    t.push_str("    } else { none }\n  },\n");
+    t.push_str("    ] else { none }\n  },\n");
 
     t.push_str(")\n\n");
 
@@ -53,11 +53,8 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     t.push_str("#set par(leading: 0.2em, justify: false)\n");
 
     if !is_zone_empty(&schema.zones.body) {
-        // 1. Absolute components in Body
-        t.push_str("[ ");
         // Body Offset = Header Height
         render_zone(&mut t, &schema.zones.body, "BODY", data, h_height.clone());
-        t.push_str(" ]\n");
         
         // 2. The Flowing Logic (Table)
         t.push_str(&format!(

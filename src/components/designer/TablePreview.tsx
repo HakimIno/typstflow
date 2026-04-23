@@ -1,10 +1,13 @@
 'use client';
 
-import type { TableComponent } from '@/types/schema';
+import type { TableComponent, TableRow, TableCell } from '@/types/schema';
 import { useDesignerStore } from '@/store/designer-store';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { clsx } from 'clsx';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { TableActionToolbar } from './TableActionToolbar';
+import { mergeStructuredCells } from '@/lib/utils/table-utils';
+import { Plus, Trash2 } from 'lucide-react';
 
 interface Props {
   component: TableComponent;
@@ -51,8 +54,13 @@ function getCellFill(
 export function TablePreview({ component }: Props) {
   const updateComponent = useDesignerStore((state) => state.updateComponent);
   const selectedCell = useDesignerStore((state) => state.selectedCell);
+  const selectedCells = useDesignerStore((state) => state.selectedCells);
   const setSelectedCell = useDesignerStore((state) => state.setSelectedCell);
+  const setSelectedCells = useDesignerStore((state) => state.setSelectedCells);
+  
   const [resizingColIndex, setResizingColIndex] = useState<number | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<{ rowId: string, cellIdx: number, section: any } | null>(null);
 
   const handleResizeStart = (e: React.MouseEvent, index: number) => {
     e.preventDefault();
@@ -117,8 +125,154 @@ export function TablePreview({ component }: Props) {
   const footerRows = component.footerRows || [];
   const hasStructuredHeaders = headerRows.length > 0;
 
+  // --- SELECTION HELPERS ---
+  const isCellSelected = (section: any, rowId: string, cellIdx: number) => {
+    if (!selectedCells || selectedCells.tableId !== component.id || selectedCells.section !== section) return false;
+    return selectedCells.rowIds.includes(rowId) && selectedCells.cellIndices.includes(cellIdx);
+  };
+
+  const handleCellMouseDown = (section: any, rowId: string, cellIdx: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsSelecting(true);
+    setSelectionStart({ rowId, cellIdx, section });
+    setSelectedCell({ tableId: component.id, section, rowId, cellIdx });
+  };
+
+  const handleCellMouseEnter = (section: any, rowId: string, cellIdx: number) => {
+    if (!isSelecting || !selectionStart || selectionStart.section !== section) return;
+
+    const sectionKey = section === 'header' ? 'headerRows' : 'footerRows';
+    const rows = component[sectionKey] || [];
+    
+    const startRowIdx = rows.findIndex(r => r.id === selectionStart.rowId);
+    const endRowIdx = rows.findIndex(r => r.id === rowId);
+    
+    const minRow = Math.min(startRowIdx, endRowIdx);
+    const maxRow = Math.max(startRowIdx, endRowIdx);
+    const minCol = Math.min(selectionStart.cellIdx, cellIdx);
+    const maxCol = Math.max(selectionStart.cellIdx, cellIdx);
+    
+    const rowIds: string[] = [];
+    for (let i = minRow; i <= maxRow; i++) rowIds.push(rows[i].id);
+    
+    const cellIndices: number[] = [];
+    for (let i = minCol; i <= maxCol; i++) cellIndices.push(i);
+    
+    setSelectedCells({
+      tableId: component.id,
+      section,
+      rowIds,
+      cellIndices
+    });
+  };
+
+  const handleMouseUp = useCallback(() => {
+    setIsSelecting(false);
+  }, []);
+
+  React.useEffect(() => {
+    if (isSelecting) {
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => window.removeEventListener('mouseup', handleMouseUp);
+    }
+  }, [isSelecting, handleMouseUp]);
+
+  const handleMerge = () => {
+    if (!selectedCells || selectedCells.section === 'data') return;
+    const sectionKey = selectedCells.section === 'header' ? 'headerRows' : 'footerRows';
+    const rows = component[sectionKey] || [];
+    
+    // Find numeric indices for rows
+    const rowIndices = selectedCells.rowIds.map(id => rows.findIndex(r => r.id === id)).sort((a,b) => a-b);
+    const colIndices = [...selectedCells.cellIndices].sort((a,b) => a-b);
+    
+    const newRows = mergeStructuredCells(
+      rows,
+      rowIndices[0],
+      rowIndices[rowIndices.length - 1],
+      colIndices[0],
+      colIndices[colIndices.length - 1]
+    );
+    
+    updateComponent(component.id, { [sectionKey]: newRows } as any);
+    setSelectedCell(null);
+  };
+
+  const handleSplit = () => {
+    if (!selectedCell || selectedCell.section === 'data') return;
+    const { section, rowId, cellIdx } = selectedCell;
+    const sectionKey = section === 'header' ? 'headerRows' : 'footerRows';
+    const rows = [...(component[sectionKey] || [])];
+    const rowIdx = rows.findIndex(r => r.id === rowId);
+    if (rowIdx === -1) return;
+    
+    const cell = rows[rowIdx].cells[cellIdx];
+    if (!cell || (!cell.colspan && !cell.rowspan)) return;
+    
+    // Restore cells (Simplified: just reset target cell and we might need to add missing cells)
+    // In a real implementation, we'd need to re-insert the removed TableCell objects.
+    const newCells = [...rows[rowIdx].cells];
+    const currentColspan = cell.colspan || 1;
+    newCells[cellIdx] = { ...cell, colspan: 1, rowspan: 1 };
+    
+    // Add dummy cells back
+    for (let i = 1; i < currentColspan; i++) {
+      newCells.splice(cellIdx + i, 0, { id: `restore-${Math.random()}`, content: '' });
+    }
+    
+    rows[rowIdx] = { ...rows[rowIdx], cells: newCells };
+    updateComponent(component.id, { [sectionKey]: rows } as any);
+  };
+
+  const handleDelete = () => {
+    if (!selectedCells) return;
+    const { section, rowIds, cellIndices } = selectedCells;
+    
+    if (section === 'data') {
+       // Delete columns
+       const newCols = component.columns.filter((_, idx) => !cellIndices.includes(idx));
+       updateComponent(component.id, { columns: newCols } as any);
+    } else {
+       const sectionKey = section === 'header' ? 'headerRows' : 'footerRows';
+       const rows = component[sectionKey] || [];
+       const newRows = rows.filter(r => !rowIds.includes(r.id));
+       updateComponent(component.id, { [sectionKey]: newRows } as any);
+    }
+    setSelectedCell(null);
+  };
+
+  const handleInsertRow = () => {
+    if (!selectedCells || selectedCells.section === 'data') return;
+    const sectionKey = selectedCells.section === 'header' ? 'headerRows' : 'footerRows';
+    const rows = component[sectionKey] || [];
+    const lastRowId = selectedCells.rowIds[selectedCells.rowIds.length - 1];
+    const index = rows.findIndex(r => r.id === lastRowId);
+    
+    const newRows = insertStructuredRow(rows, index, component.columns.length, selectedCells.section as any);
+    updateComponent(component.id, { [sectionKey]: newRows } as any);
+  };
+
+  const handleInsertCol = () => {
+    if (!selectedCells) return;
+    const lastColIdx = selectedCells.cellIndices[selectedCells.cellIndices.length - 1];
+    const updates = insertColumn(component, lastColIdx);
+    updateComponent(component.id, updates as any);
+  };
+
   return (
     <div className="w-full h-full bg-white flex flex-col border border-slate-300 shadow-sm overflow-hidden select-none relative">
+      {/* TOOLBAR */}
+      {selectedCells?.tableId === component.id && (
+        <TableActionToolbar 
+          component={component}
+          selectedCells={selectedCells}
+          onMerge={handleMerge}
+          onSplit={handleSplit}
+          onDelete={handleDelete}
+          onInsertRow={handleInsertRow}
+          onInsertCol={handleInsertCol}
+        />
+      )}
       {/* ---- HEADER SECTION ---- */}
       {hasStructuredHeaders ? (
         // Multi-row structured headers
@@ -138,15 +292,13 @@ export function TablePreview({ component }: Props) {
               {row.cells.map((cell, cellIdx) => (
                 <div
                   key={cell.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedCell({ tableId: component.id, section: 'header', rowId: row.id, cellIdx });
-                  }}
+                  onMouseDown={(e) => handleCellMouseDown('header', row.id, cellIdx, e)}
+                  onMouseEnter={() => handleCellMouseEnter('header', row.id, cellIdx)}
                   className={clsx(
-                    "relative flex items-center justify-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell",
-                    selectedCell?.tableId === component.id && selectedCell?.rowId === row.id && selectedCell?.cellIdx === cellIdx
-                      ? "ring-2 ring-blue-500 ring-inset z-10"
-                      : ""
+                    "relative flex items-center justify-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell transition-all cursor-cell",
+                    isCellSelected('header', row.id, cellIdx)
+                      ? "ring-2 ring-blue-500 ring-inset bg-blue-50/30 z-10"
+                      : "hover:bg-slate-50/50"
                   )}
                   style={{
                     gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,
@@ -308,15 +460,13 @@ export function TablePreview({ component }: Props) {
               {row.cells.map((cell, cellIdx) => (
                 <div
                   key={cell.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedCell({ tableId: component.id, section: 'footer', rowId: row.id, cellIdx });
-                  }}
+                  onMouseDown={(e) => handleCellMouseDown('footer', row.id, cellIdx, e)}
+                  onMouseEnter={() => handleCellMouseEnter('footer', row.id, cellIdx)}
                   className={clsx(
-                    "relative flex items-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell",
-                    selectedCell?.tableId === component.id && selectedCell?.rowId === row.id && selectedCell?.cellIdx === cellIdx
-                      ? "ring-2 ring-blue-500 ring-inset z-10"
-                      : ""
+                    "relative flex items-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell transition-all cursor-cell",
+                    isCellSelected('footer', row.id, cellIdx)
+                      ? "ring-2 ring-blue-500 ring-inset bg-blue-50/30 z-10"
+                      : "hover:bg-slate-50/20"
                   )}
                   style={{
                     gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,

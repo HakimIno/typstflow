@@ -26,6 +26,12 @@ interface DesignerState {
     rowId: string;
     cellIdx: number;
   } | null;
+  selectedCells: {
+    tableId: string;
+    section: 'header' | 'footer' | 'data';
+    rowIds: string[];
+    cellIndices: number[];
+  } | null;
 
   // Preview / Data Binding
   sampleData: Record<string, any>;
@@ -65,6 +71,7 @@ interface DesignerState {
   ) => void;
   selectComponent: (id: string | null) => void;
   setSelectedCell: (cell: DesignerState['selectedCell']) => void;
+  setSelectedCells: (cells: DesignerState['selectedCells']) => void;
   updateZone: (zoneKey: ZoneKey, updates: Partial<LayoutSchema['zones']['header']>, skipHistory?: boolean) => void;
   updateSchema: (updates: Partial<LayoutSchema>) => void;
   setDragState: (updates: Partial<DesignerState['dragState']>) => void;
@@ -130,6 +137,7 @@ export const useDesignerStore = create<DesignerState>((set) => ({
   selectedComponentId: null,
   selectedZone: null,
   selectedCell: null,
+  selectedCells: null,
   sampleData: {},
   previewPages: [],
   previewStatus: 'idle',
@@ -263,9 +271,16 @@ export const useDesignerStore = create<DesignerState>((set) => ({
       return pushHistory(state, newSchema);
     }),
 
-  selectComponent: (id: string | null) => set({ selectedComponentId: id, selectedCell: null }),
+  selectComponent: (id: string | null) => set({ selectedComponentId: id, selectedCell: null, selectedCells: null }),
 
-  setSelectedCell: (cell) => set({ selectedCell: cell }),
+  setSelectedCell: (cell) => set({ selectedCell: cell, selectedCells: cell ? { 
+    tableId: cell.tableId, 
+    section: cell.section, 
+    rowIds: [cell.rowId], 
+    cellIndices: [cell.cellIdx] 
+  } : null }),
+
+  setSelectedCells: (cells) => set({ selectedCells: cells }),
 
   updateSchema: (updates: Partial<LayoutSchema>) =>
     set((state) => {

@@ -17,17 +17,16 @@ export const SubToolbar = memo(function SubToolbar() {
   return (
     <div className="h-10 bg-slate-100 border-b border-slate-300 flex items-center justify-between px-4">
       <div className="flex items-center gap-1">
-        <PanelSwitcher />
         <UndoRedoTools />
-        
+
         <div className="h-6 w-px bg-slate-300 mx-1" />
         <AlignmentTools />
-        
+
         <div className="h-6 w-px bg-slate-300 mx-1" />
         <ZoomControls />
-        
+
         <div className="h-6 w-px bg-slate-300 mx-1" />
-        
+
         <div className="flex items-center gap-1 h-7 px-2 bg-white border border-slate-300 rounded-none mr-2 focus-within:border-slate-500">
           <FileText className="w-3.5 h-3.5 text-slate-400" />
           <input
@@ -42,7 +41,7 @@ export const SubToolbar = memo(function SubToolbar() {
         <ToolbarButton
           icon={Save}
           label="Save"
-          onClick={() => {}}
+          onClick={() => { }}
           title="Save Layout (Cmd+S)"
         />
       </div>
