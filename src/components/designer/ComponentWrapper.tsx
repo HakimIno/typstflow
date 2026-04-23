@@ -223,8 +223,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       className={clsx(
         'transition-none cursor-default select-none group focus:outline-none',
         isSelected
-          ? 'z-50 ring-2 ring-blue-500 ring-inset shadow-md bg-white'
-          : 'z-10 bg-white/50 hover:bg-white hover:ring-1 hover:ring-slate-300 ring-inset',
+          ? clsx(
+              'z-50 ring-2 ring-blue-500 ring-inset shadow-md',
+              component.type === 'text' ? 'bg-blue-50/5' : 'bg-white'
+            )
+          : clsx(
+              'z-10 ring-inset hover:ring-1 hover:ring-slate-300',
+              component.type === 'text' ? 'bg-transparent' : 'bg-white/50 hover:bg-white'
+            ),
         isDragging && 'opacity-0',
         isResizing && 'ring-2 ring-blue-600 shadow-lg z-[100]'
       )}
@@ -233,7 +239,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       {isEditing && component.type === 'text' && (
         <div
           ref={editorContainerRef}
-          className="absolute inset-0 w-full h-full bg-white z-[60] overflow-hidden"
+          className="absolute inset-0 w-full h-full bg-white/80 backdrop-blur-[2px] z-[60] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={handleKeyDown}
           style={{
@@ -309,9 +315,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       </div>
 
       {/* Content Preview */}
-      <div ref={previewRef} className="w-full h-full relative pointer-events-none">
-        <ComponentPreview component={component} />
-      </div>
+      {!isEditing && (
+        <div ref={previewRef} className="w-full h-full relative pointer-events-none">
+          <ComponentPreview component={component} />
+        </div>
+      )}
 
       {/* Resizing Handles */}
       {isSelected &&

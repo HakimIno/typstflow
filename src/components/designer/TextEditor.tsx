@@ -232,10 +232,10 @@ export function TextEditor({
   const sharedStyles: React.CSSProperties = {
     fontFamily: style.fontFamily || 'Sarabun, sans-serif',
     fontSize: style.fontSize || '11px',
-    lineHeight: 1.4, // Increased for better readability
-    letterSpacing: '0.01em',
+    lineHeight: style.lineHeight || 1.2,
+    letterSpacing: style.letterSpacing || 'normal',
     textAlign: (style as any).textAlign || 'left',
-    padding: '8px', 
+    padding: inline ? 0 : '8px', 
     margin: 0,
     boxSizing: 'border-box',
     width: '100%',
@@ -246,7 +246,7 @@ export function TextEditor({
   };
 
   return (
-    <div className={clsx('relative bg-white group select-text h-full overflow-hidden', className)} style={style}>
+    <div className={clsx('relative bg-transparent group select-text h-full overflow-hidden', className)} style={style}>
       {/* 
         CLEAN STRATEGY: 
         1. Mirror Div (Bottom Layer) -> Shows COLORS and TEXT.

@@ -132,7 +132,7 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: any) 
       const base = { id: '', x: 10, y: 10, width: 100, height: 20 };
       switch (type) {
         case 'text':
-          return { ...base, type: 'text', content: 'Double click to edit', style: { fontSize: 10 }, height: 10 };
+          return { ...base, type: 'text', content: 'Double click to edit', style: { fontSize: 10 }, width: 60, height: 6 };
         case 'table':
           return { ...base, type: 'table', dataSource: '{{items}}', columns: [{ id: '1', header: 'Header', field: 'field', width: '1fr' }], width: 180, height: 40 };
         case 'image':
