@@ -140,9 +140,29 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
           // Use persistent snapped coordinates from store
           const finalX = useDesignerStore.getState().dragState.lastSnappedX;
           const finalY = useDesignerStore.getState().dragState.lastSnappedY;
-          const zoneOffset = LayoutEngine.calculateZoneOffset(zoneKey, useDesignerStore.getState().schema);
+          const zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, useDesignerStore.getState().schema);
           
-          moveComponent(data.id, data.zoneKey, zoneKey, 0, finalX, finalY - zoneOffset);
+          if (data.group && data.group.length > 1) {
+            // Move entire group
+            data.group.forEach((item: any) => {
+              // Calculate the absolute Y position based on final drop + relative offset
+              // then subtract target zone offset to get local Y
+              const targetAbsY = finalY + item.offsetY;
+              const localY = targetAbsY - zoneOffsetMm;
+              
+              moveComponent(
+                item.id, 
+                item.sourceZoneKey as any, 
+                zoneKey, 
+                0, 
+                finalX + item.offsetX, 
+                localY
+              );
+            });
+          } else {
+            // Single item move
+            moveComponent(data.id, data.zoneKey, zoneKey, 0, finalX, finalY - zoneOffsetMm);
+          }
         }
       },
     });

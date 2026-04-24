@@ -32,58 +32,64 @@ export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEn
       element: el,
       getInitialData: ({ input }) => {
         const rect = el.getBoundingClientRect();
+        const state = useDesignerStore.getState();
+        const selectedIds = state.selectedComponentIds;
+        
+        // If the item being dragged is selected, we move the whole selection
+        const isPartOfSelection = selectedIds.includes(id);
+        const dragGroup = isPartOfSelection ? selectedIds : [id];
+        
+        // Calculate relative offsets for everyone in the group
+        const zones = state.schema.zones;
+        const groupInfo = dragGroup.map(gid => {
+          // Find component and its zone
+          for (const [zKey, zone] of Object.entries(zones)) {
+            const found = zone.components.find(c => c.id === gid);
+            if (found) {
+              return { 
+                id: gid, 
+                x: found.x || 0, 
+                y: found.y || 0, 
+                zoneKey: zKey as string,
+                // Calculate absolute Y for easier relative math across zones
+                absY: (found.y || 0) + LayoutEngine.pxToMm(LayoutEngine.calculateZoneOffset(zKey as any, state.schema))
+              };
+            }
+          }
+          return null;
+        }).filter((item): item is NonNullable<typeof item> => item !== null);
 
-        // ALWAYS read fresh dimensions from DOM to avoid stale data
-        const currentWidth = LayoutEngine.pxToMm(el.offsetWidth);
-        const currentHeight = LayoutEngine.pxToMm(el.offsetHeight);
+        const primaryComp = groupInfo.find(c => c.id === id);
+        const groupWithOffsets = groupInfo.map(c => ({
+          id: c.id,
+          sourceZoneKey: c.zoneKey,
+          offsetX: c.x - (primaryComp?.x || 0),
+          offsetY: c.absY - (primaryComp?.absY || 0)
+        }));
 
         return {
           type: 'canvas-item',
           id,
           zoneKey,
-          width: currentWidth,
-          height: currentHeight,
+          width: LayoutEngine.pxToMm(el.offsetWidth),
+          height: LayoutEngine.pxToMm(el.offsetHeight),
           dragOffsetX: input.clientX - rect.left,
           dragOffsetY: input.clientY - rect.top,
+          group: groupWithOffsets
         };
       },
       onGenerateDragPreview: ({ nativeSetDragImage, source }) => {
-        const sourceEl = ref.current;
         const data = source.data as any;
-        if (sourceEl && data.dragOffsetX !== undefined) {
+        if (data.dragOffsetX !== undefined) {
           setCustomNativeDragPreview({
             nativeSetDragImage,
             getOffset: () => ({ x: data.dragOffsetX, y: data.dragOffsetY }),
             render: ({ container }) => {
-              const clone = sourceEl.cloneNode(true) as HTMLDivElement;
-              clone.style.width = `${sourceEl.offsetWidth}px`;
-              clone.style.height = `${sourceEl.offsetHeight}px`;
-              clone.style.opacity = '0.7';
-              clone.style.backgroundColor = 'white';
-              clone.style.position = 'relative';
-              clone.style.top = '0';
-              clone.style.left = '0';
-              clone.style.margin = '0';
-              clone.style.pointerEvents = 'none';
-
-              // Apply the exact zoom level of the canvas to the drag clone!
-              const currentZoom = useDesignerStore.getState().zoom;
-              if (currentZoom !== 1) {
-                  clone.style.transform = `scale(${currentZoom})`;
-                  clone.style.transformOrigin = 'top left';
-              } else {
-                  clone.style.transform = 'none';
-              }
-
-              const actionBar = clone.querySelector('.absolute.-top-7');
-              if (actionBar) actionBar.remove();
-
-              const handles = clone.querySelectorAll('[class*="cursor-"]');
-              for (const h of handles) {
-                (h as HTMLElement).remove();
-              }
-
-              container.appendChild(clone);
+              const ghost = document.createElement('div');
+              ghost.style.width = '1px';
+              ghost.style.height = '1px';
+              ghost.style.opacity = '0';
+              container.appendChild(ghost);
             },
           });
         }

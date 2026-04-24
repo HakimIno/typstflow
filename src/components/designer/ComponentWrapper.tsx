@@ -35,12 +35,16 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
   const previewRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
-  const { selectedComponentId, selectComponent, removeComponent, addComponent, updateComponent, sampleData } =
+  const { selectedComponentIds, isDraggingGlobal, draggedComponentId, selectComponent, toggleComponentSelection, removeComponent, removeComponents, addComponent, updateComponent, sampleData } =
     useDesignerStore(
       useShallow((state) => ({
-        selectedComponentId: state.selectedComponentId,
+        selectedComponentIds: state.selectedComponentIds,
+        isDraggingGlobal: state.dragState.isDragging,
+        draggedComponentId: state.dragState.draggedComponentId,
         selectComponent: state.selectComponent,
+        toggleComponentSelection: state.toggleComponentSelection,
         removeComponent: state.removeComponent,
+        removeComponents: state.removeComponents,
         addComponent: state.addComponent,
         updateComponent: state.updateComponent,
         sampleData: state.sampleData,
@@ -48,7 +52,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
     );
 
   const [isEditing, setIsEditing] = useState(false);
-  const isSelected = selectedComponentId === component.id;
+  const isSelected = selectedComponentIds.includes(component.id);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     if (component.type === 'text') {
@@ -189,7 +193,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       case 'Delete':
       case 'Backspace':
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-        removeComponent(component.id);
+        if (selectedComponentIds.length > 1) {
+          removeComponents(selectedComponentIds);
+        } else {
+          removeComponent(component.id);
+        }
         break;
       default:
         return;
@@ -202,6 +210,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
     });
   };
 
+  const isMoving = isDraggingGlobal && (
+    draggedComponentId === component.id || 
+    (isSelected && selectedComponentIds.includes(draggedComponentId || ''))
+  );
+
   return (
     <div
       ref={ref}
@@ -209,7 +222,13 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       onDoubleClick={handleDoubleClick}
       onClick={(e) => {
         e.stopPropagation();
-        if (!isEditing) selectComponent(component.id);
+        if (!isEditing) {
+          if (e.shiftKey) {
+            toggleComponentSelection(component.id);
+          } else {
+            selectComponent(component.id);
+          }
+        }
       }}
       style={{
         position: 'absolute',
@@ -219,7 +238,13 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
         height: `${height}px`,
         outline: 'none',
         boxSizing: 'border-box',
+        willChange: 'transform',
+        transform: isMoving
+          ? 'translate(var(--drag-dx, 0px), var(--drag-dy, 0px))'
+          : 'none',
+        zIndex: isMoving ? 100 : 10,
       }}
+      data-designer-component
       className={clsx(
         'transition-none cursor-default select-none group focus:outline-none',
         isSelected
@@ -231,7 +256,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
               'z-10 ring-inset hover:ring-1 hover:ring-white/20',
               component.type === 'text' ? 'bg-transparent' : 'bg-white/5 hover:bg-white/10'
             ),
-        isDragging && 'opacity-0',
+        isMoving && 'z-[100] pointer-events-none is-moving ring-2 ring-[var(--accent)] shadow-lg', // Visual feedback during movement
         isResizing && 'ring-2 ring-[var(--accent)] shadow-lg z-[100]'
       )}
     >
@@ -239,7 +264,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       {isEditing && component.type === 'text' && (
         <div
           ref={editorContainerRef}
-          className="absolute inset-0 w-full h-full bg-black/80 backdrop-blur-[4px] z-[60] overflow-hidden"
+          className="absolute inset-0 w-full h-full bg-white shadow-2xl z-[60] overflow-hidden border-2 border-blue-600"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={handleKeyDown}
           style={{
@@ -264,7 +289,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
               letterSpacing: component.style?.letterSpacing || 'normal',
               textAlign: component.align === 'justify' ? 'left' : component.align || 'left',
               fontFamily: 'Sarabun, sans-serif',
-              color: component.style?.color || 'black',
+              color: '#1e293b', // Force readable dark color on white background
               fontWeight: component.style?.fontWeight === 'bold' ? 'bold' : 'normal',
               // Prevent layout shift
               minHeight: `${component.height || 20}px`,
@@ -305,7 +330,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            removeComponent(component.id);
+            if (selectedComponentIds.length > 1) {
+              removeComponents(selectedComponentIds);
+            } else {
+              removeComponent(component.id);
+            }
           }}
           className="p-1 hover:bg-red-600 text-white"
           title="Delete"
@@ -323,7 +352,6 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
 
       {/* Resizing Handles */}
       {isSelected &&
-        !isDragging &&
         RESIZE_HANDLES.map((handle) => (
           <div
             key={handle}

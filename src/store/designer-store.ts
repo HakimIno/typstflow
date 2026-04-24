@@ -21,7 +21,7 @@ interface DesignerState {
   primaryColor: string;
 
   // Selection
-  selectedComponentId: string | null;
+  selectedComponentIds: string[];
   selectedZone: ZoneKey | null;
   selectedCell: {
     tableId: string;
@@ -52,6 +52,8 @@ interface DesignerState {
     draggedComponentId: string | null;
     currentX: number; // mm
     currentY: number; // mm
+    startX: number; // mm
+    startY: number; // mm
     lastSnappedX: number; // For drop persistence
     lastSnappedY: number; // For drop persistence
     activeGuides: {
@@ -64,6 +66,7 @@ interface DesignerState {
   addComponent: (zoneKey: ZoneKey, component: ComponentNode) => void;
   updateComponent: (id: string, updates: Partial<ComponentNode>, skipHistory?: boolean) => void;
   removeComponent: (id: string) => void;
+  removeComponents: (ids: string[]) => void;
   moveComponent: (
     id: string,
     fromZone: ZoneKey,
@@ -72,7 +75,10 @@ interface DesignerState {
     x?: number,
     y?: number
   ) => void;
-  selectComponent: (id: string | null) => void;
+  selectComponent: (id: string | null, multi?: boolean) => void;
+  toggleComponentSelection: (id: string) => void;
+  clearSelection: () => void;
+  selectComponentsInRange: (rect: { x: number; y: number; width: number; height: number }, zoneKey: ZoneKey) => void;
   setSelectedCell: (cell: DesignerState['selectedCell']) => void;
   setSelectedCells: (cells: DesignerState['selectedCells']) => void;
   updateZone: (zoneKey: ZoneKey, updates: Partial<LayoutSchema['zones']['header']>, skipHistory?: boolean) => void;
@@ -143,7 +149,7 @@ export const useDesignerStore = create<DesignerState>()(
       isRightSidebarOpen: true,
       theme: 'dark',
       primaryColor: '#8B5CF6',
-      selectedComponentId: null,
+      selectedComponentIds: [],
       selectedZone: null,
       selectedCell: null,
       selectedCells: null,
@@ -158,6 +164,8 @@ export const useDesignerStore = create<DesignerState>()(
         draggedComponentId: null,
         currentX: 0,
         currentY: 0,
+        startX: 0,
+        startY: 0,
         lastSnappedX: 0,
         lastSnappedY: 0,
         activeGuides: {
@@ -285,7 +293,31 @@ export const useDesignerStore = create<DesignerState>()(
           if (!changed) return state;
 
           const newSchema = { ...state.schema, zones };
-          return { ...pushHistory(state, newSchema), selectedComponentId: null };
+          return { ...pushHistory(state, newSchema), selectedComponentIds: [] };
+        }),
+
+      removeComponents: (ids) =>
+        set((state) => {
+          const zones = { ...state.schema.zones };
+          let changed = false;
+
+          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
+            const originalComponents = zones[key].components;
+            const newComponents = originalComponents.filter((c) => !ids.includes(c.id));
+            
+            if (newComponents.length !== originalComponents.length) {
+              zones[key] = {
+                ...zones[key],
+                components: newComponents,
+              };
+              changed = true;
+            }
+          }
+
+          if (!changed) return state;
+
+          const newSchema = { ...state.schema, zones };
+          return { ...pushHistory(state, newSchema), selectedComponentIds: [] };
         }),
 
       moveComponent: (id, fromZone, toZone, newIndex, x?: number, y?: number) =>
@@ -332,7 +364,59 @@ export const useDesignerStore = create<DesignerState>()(
           return pushHistory(state, newSchema);
         }),
 
-      selectComponent: (id: string | null) => set({ selectedComponentId: id, selectedCell: null, selectedCells: null }),
+      selectComponent: (id, multi) =>
+        set((state) => {
+          if (!id) return { selectedComponentIds: [], selectedCell: null, selectedCells: null };
+          
+          if (multi) {
+            // Add to selection if not already there
+            if (state.selectedComponentIds.includes(id)) return state;
+            return { selectedComponentIds: [...state.selectedComponentIds, id], selectedCell: null, selectedCells: null };
+          }
+          
+          return { selectedComponentIds: [id], selectedCell: null, selectedCells: null };
+        }),
+
+      toggleComponentSelection: (id) =>
+        set((state) => {
+          const ids = state.selectedComponentIds.includes(id)
+            ? state.selectedComponentIds.filter((i) => i !== id)
+            : [...state.selectedComponentIds, id];
+          return { selectedComponentIds: ids, selectedCell: null, selectedCells: null };
+        }),
+
+      clearSelection: () => set({ selectedComponentIds: [], selectedCell: null, selectedCells: null, selectedZone: null }),
+
+      selectComponentsInRange: (rect, zoneKey) =>
+        set((state) => {
+          const zone = state.schema.zones[zoneKey];
+          const foundIds = zone.components
+            .filter((comp) => {
+              const compX = comp.x || 0;
+              const compY = comp.y || 0;
+              const compW = comp.width || 0;
+              const compH = comp.height || 0;
+
+              return (
+                compX < rect.x + rect.width &&
+                compX + compW > rect.x &&
+                compY < rect.y + rect.height &&
+                compY + compH > rect.y
+              );
+            })
+            .map((comp) => comp.id);
+
+          // For range selection, we usually want to ADD to existing selection if we are looping through zones
+          // but we'll handle the clearing at the start of the marquee drag.
+          const newIds = [...new Set([...state.selectedComponentIds, ...foundIds])];
+
+          return { 
+            selectedComponentIds: newIds, 
+            selectedZone: zoneKey, 
+            selectedCell: null, 
+            selectedCells: null 
+          };
+        }),
 
       setSelectedCell: (cell) => set({ selectedCell: cell, selectedCells: cell ? { 
         tableId: cell.tableId, 

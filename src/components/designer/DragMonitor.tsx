@@ -17,12 +17,25 @@ import { useEffect } from 'react';
 export function DragMonitor() {
   useEffect(() => {
     return monitorForElements({
-      onDragStart: ({ source }) => {
+      onDragStart: ({ source, location }) => {
         const data = source.data as any;
         if (data.type === 'canvas-item' || data.type === 'new-component') {
+          const pos = LayoutEngine.calculateAbsolutePosition(
+            location.initial.input.clientX,
+            location.initial.input.clientY,
+            data.dragOffsetX || 0,
+            data.dragOffsetY || 0
+          );
+
+          document.body.classList.add('is-dragging-components');
+          
           useDesignerStore.getState().setDragState({
             isDragging: true,
             draggedComponentId: data.id || 'new',
+            startX: pos.rawX,
+            startY: pos.rawY,
+            currentX: pos.rawX,
+            currentY: pos.rawY,
             activeGuides: { vertical: [], horizontal: [] }
           });
         }
@@ -65,6 +78,7 @@ export function DragMonitor() {
         );
 
         // 4. Update Global State
+        // 4. Update Global State - ONLY for guides and drop coordinates (throttled/optimized)
         useDesignerStore.getState().setDragState({
           currentX: snap.snappedX,
           currentY: snap.snappedY,
@@ -75,8 +89,28 @@ export function DragMonitor() {
             horizontal: snap.activeGuidesY
           }
         });
+
+        // 5. Direct DOM Update on documentElement for maximum reliability
+        requestAnimationFrame(() => {
+          const root = document.documentElement;
+          const ds = useDesignerStore.getState().dragState;
+          const dx = LayoutEngine.mmToPx(snap.snappedX - ds.startX);
+          const dy = LayoutEngine.mmToPx(snap.snappedY - ds.startY);
+          root.style.setProperty('--drag-dx', `${dx}px`);
+          root.style.setProperty('--drag-dy', `${dy}px`);
+        });
       },
       onDrop: () => {
+        document.body.classList.remove('is-dragging-components');
+        const root = document.documentElement;
+        
+        // Use a tiny delay before removing variables to prevent flicker 
+        // while React updates the store positions
+        requestAnimationFrame(() => {
+          root.style.removeProperty('--drag-dx');
+          root.style.removeProperty('--drag-dy');
+        });
+        
         // Reset state but preserve lastSnapped coordinates for the drop handler
         useDesignerStore.getState().setDragState({
           isDragging: false,

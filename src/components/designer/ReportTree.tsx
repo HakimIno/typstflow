@@ -6,7 +6,7 @@ import { AlertCircle, Braces, CheckCircle2, ChevronDown, Image, Layers, ListTree
 import { memo } from 'react';
 
 export const ReportTree = memo(function ReportTree() {
-  const { schema, selectedComponentId, selectComponent, setSidebarOpen } = useDesignerStore();
+  const { schema, selectedComponentIds, selectComponent, toggleComponentSelection, setSidebarOpen } = useDesignerStore();
 
   const zones: (keyof typeof schema.zones)[] = ['header', 'body', 'footer'];
 
@@ -42,8 +42,14 @@ export const ReportTree = memo(function ReportTree() {
                   <TreeItem
                     key={comp.id}
                     component={comp}
-                    isSelected={selectedComponentId === comp.id}
-                    onClick={() => selectComponent(comp.id)}
+                    isSelected={selectedComponentIds.includes(comp.id)}
+                    onClick={(e: React.MouseEvent) => {
+                      if (e.shiftKey) {
+                        toggleComponentSelection(comp.id);
+                      } else {
+                        selectComponent(comp.id);
+                      }
+                    }}
                   />
                 ))
               )}

@@ -9,6 +9,7 @@ import React, { useEffect, useRef, useState, memo, useCallback } from 'react';
 import { Zone } from './Zone';
 import { Ruler } from './Ruler';
 import { AlignmentGuides } from './AlignmentGuides';
+import { SelectionMarquee } from './SelectionMarquee';
 import { DragMonitor } from './DragMonitor';
 
 export const Canvas = memo(function Canvas() {
@@ -16,6 +17,7 @@ export const Canvas = memo(function Canvas() {
   const isSidebarOpen = useDesignerStore((state) => state.isSidebarOpen);
   const viewMode = useDesignerStore((state) => state.viewMode);
   const zoom = useDesignerStore((state) => state.zoom);
+  const isDraggingGlobal = useDesignerStore((state) => state.dragState.isDragging);
   const [mounted, setMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
@@ -98,7 +100,8 @@ export const Canvas = memo(function Canvas() {
                 data-paper-container
                 data-zoom={zoom}
                 className={clsx(
-                  'bg-white pro-grid border border-[var(--border-subtle)] relative shadow-2xl transition-all duration-300 origin-top-left overflow-visible rounded-[4px]'
+                  'bg-white pro-grid border border-[var(--border-subtle)] relative shadow-2xl origin-top-left overflow-visible rounded-[4px]',
+                  !isDraggingGlobal && 'transition-all duration-300'
                 )}
                 style={{
                   width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
@@ -129,6 +132,7 @@ export const Canvas = memo(function Canvas() {
 
                 {/* Snapping Alignment Guides Overlay */}
                 <AlignmentGuides />
+                <SelectionMarquee />
 
                 <div className="flex flex-col gap-0 relative z-20">
                   <Zone

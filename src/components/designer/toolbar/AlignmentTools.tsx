@@ -7,28 +7,30 @@ import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react';
 import { ToolbarButton } from './ToolbarButton';
 
 export const AlignmentTools = memo(function AlignmentTools() {
-  const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
+  const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
   const pageSize = useDesignerStore((state) => state.schema.page.size);
   const orientation = useDesignerStore((state) => state.schema.page.orientation);
 
   const handleAlign = (type: 'left' | 'center' | 'right') => {
-    if (!selectedComponentId) return;
+    if (selectedComponentIds.length === 0) return;
 
     const PAGE_WIDTH_MM = getPaperWidth(pageSize, orientation);
     const PAGE_CONTENT_WIDTH = PAGE_WIDTH_MM - 40; // Approx margin-aware
 
-    switch (type) {
-      case 'left':
-        updateComponent(selectedComponentId, { x: 0 });
-        break;
-      case 'center':
-        updateComponent(selectedComponentId, { x: PAGE_CONTENT_WIDTH / 2 - 50 });
-        break; 
-      case 'right':
-        updateComponent(selectedComponentId, { x: PAGE_CONTENT_WIDTH - 100 });
-        break;
-    }
+    selectedComponentIds.forEach(id => {
+      switch (type) {
+        case 'left':
+          updateComponent(id, { x: 0 });
+          break;
+        case 'center':
+          updateComponent(id, { x: PAGE_CONTENT_WIDTH / 2 - 50 });
+          break; 
+        case 'right':
+          updateComponent(id, { x: PAGE_CONTENT_WIDTH - 100 });
+          break;
+      }
+    });
   };
 
   return (
@@ -36,7 +38,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
       <ToolbarButton
         icon={AlignLeft}
         onClick={() => handleAlign('left')}
-        disabled={!selectedComponentId}
+        disabled={selectedComponentIds.length === 0}
         variant="ghost"
         title="Align Left"
         className="!border-none !bg-transparent h-7 w-7 !p-1"
@@ -44,7 +46,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
       <ToolbarButton
         icon={AlignCenter}
         onClick={() => handleAlign('center')}
-        disabled={!selectedComponentId}
+        disabled={selectedComponentIds.length === 0}
         variant="ghost"
         title="Center Horizontally"
         className="!border-none !bg-transparent h-7 w-7 !p-1"
@@ -52,7 +54,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
       <ToolbarButton
         icon={AlignRight}
         onClick={() => handleAlign('right')}
-        disabled={!selectedComponentId}
+        disabled={selectedComponentIds.length === 0}
         variant="ghost"
         title="Align Right"
         className="!border-none !bg-transparent h-7 w-7 !p-1"

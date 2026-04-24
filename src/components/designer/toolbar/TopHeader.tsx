@@ -15,7 +15,7 @@ export const TopHeader = memo(function TopHeader() {
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full" />
-          <span className="text-[11px] font-bold text-white tracking-tight">
+          <span className="text-[11px] font-bold  tracking-tight">
             TypstFlow
           </span>
         </div>

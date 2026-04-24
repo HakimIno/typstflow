@@ -228,7 +228,7 @@ function ImageUploader({
 
 export const PropertiesPanel = memo(function PropertiesPanel() {
   // Select state with proper memoization - avoid selecting entire schema
-  const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
+  const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
   const zones = useDesignerStore((state) => state.schema.zones);
   const page = useDesignerStore((state) => state.schema.page);
   const fullSchema = useDesignerStore((state) => state.schema);
@@ -241,15 +241,16 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
   const updateZone = useDesignerStore((state) => state.updateZone);
   const removeComponent = useDesignerStore((state) => state.removeComponent);
 
-  // Find selected component with memoization
+  // Find first selected component with memoization
   const selectedComponent = useMemo(() => {
-    if (!selectedComponentId) return null;
+    if (selectedComponentIds.length === 0) return null;
+    const firstId = selectedComponentIds[0];
     for (const zone of Object.values(zones)) {
-      const found = zone.components.find((c) => c.id === selectedComponentId);
+      const found = zone.components.find((c) => c.id === firstId);
       if (found) return found;
     }
     return null;
-  }, [zones, selectedComponentId]);
+  }, [selectedComponentIds, zones]);
 
   if (!selectedComponent) {
     return (
@@ -331,6 +332,40 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               </div>
             ))}
           </section>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle Multiple Selection View
+  if (selectedComponentIds.length > 1) {
+    return (
+      <div className="h-full flex flex-col bg-[var(--bg-surface)]">
+        <div className="h-8 bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
+          <Layers className="w-3 h-3 text-[var(--text-muted)]" />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Group Selection</span>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-[var(--accent-glow)] flex items-center justify-center mb-4 border border-[var(--border-accent)]">
+            <Layers className="w-6 h-6 text-[var(--accent)]" />
+          </div>
+          <h3 className="text-[13px] font-bold text-[var(--text-primary)] mb-1">
+            {selectedComponentIds.length} objects selected
+          </h3>
+          <p className="text-[10px] text-[var(--text-muted)] mb-6">
+            Multiple items are currently selected. Actions will apply to all items in the selection.
+          </p>
+          
+          <button
+            type="button"
+            onClick={() => {
+              selectedComponentIds.forEach(id => removeComponent(id));
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/20 rounded transition-all text-[11px] font-bold uppercase tracking-wider"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete All Selected
+          </button>
         </div>
       </div>
     );
