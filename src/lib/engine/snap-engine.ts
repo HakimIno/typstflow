@@ -1,4 +1,5 @@
 import { LayoutSchema, ComponentNode } from '@/types/schema';
+import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 
 export interface SnapPoint {
   value: number; // mm
@@ -33,9 +34,7 @@ export const SnapEngine = {
     const pointsY: SnapPoint[] = [];
 
     // 1. Page Points
-    const isLandscape = schema.page.orientation === 'landscape';
-    const pageWidth = isLandscape ? 297 : 210;
-    const pageHeight = isLandscape ? 210 : 297;
+    const { width: pageWidth, height: pageHeight } = getPaperDimensions(schema.page.size, schema.page.orientation);
 
     pointsX.push({ value: 0, type: 'edge', originId: 'page' });
     pointsX.push({ value: pageWidth, type: 'edge', originId: 'page' });

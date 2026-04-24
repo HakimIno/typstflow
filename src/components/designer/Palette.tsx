@@ -176,11 +176,14 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: any) 
       getInitialData: ({ input }) => {
         const rect = el.getBoundingClientRect();
         const comp = getTemplate();
+        // Offset must be in viewport pixels (compensated for zoom)
+        // so that calculateDropPosition divides correctly
+        const zoom = useDesignerStore.getState().zoom;
         return {
           type: 'new-component',
           component: comp,
-          dragOffsetX: LayoutEngine.mmToPx(comp.width || 100) * 0.5,
-          dragOffsetY: LayoutEngine.mmToPx(comp.height || 20) * 0.5,
+          dragOffsetX: LayoutEngine.mmToPx(comp.width || 100) * 0.5 * zoom,
+          dragOffsetY: LayoutEngine.mmToPx(comp.height || 20) * 0.5 * zoom,
         };
       },
     });

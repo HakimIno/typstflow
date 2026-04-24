@@ -2,6 +2,7 @@
 
 import { useDesignerStore } from '@/store/designer-store';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { clsx } from 'clsx';
 import React, { useEffect, useRef, useState, memo, useCallback } from 'react';
@@ -49,9 +50,7 @@ export const Canvas = memo(function Canvas() {
 
   if (!mounted) return <div className="flex-1 flex flex-col bg-slate-200" />;
 
-  const isLandscape = schema.page.orientation === 'landscape';
-  const pageWidthMm = isLandscape ? 297 : 210;
-  const pageHeightMm = isLandscape ? 210 : 297;
+  const { width: pageWidthMm, height: pageHeightMm } = getPaperDimensions(schema.page.size, schema.page.orientation);
 
   // Calculate Margin Guides
   const marginTop = parseTypstUnit(schema.page.margin.top);
@@ -96,9 +95,10 @@ export const Canvas = memo(function Canvas() {
             <div className="min-w-max min-h-max pl-12 pr-12 pb-12 pt-12">
               <div
                 ref={paperRef}
+                data-paper-container
+                data-zoom={zoom}
                 className={clsx(
-                  'bg-white pro-grid border border-slate-400 relative shadow-2xl transition-all duration-300 origin-top-left overflow-visible',
-                  isLandscape ? 'w-[29.7cm] h-[21cm]' : 'w-[21cm] h-[29.7cm]'
+                  'bg-white pro-grid border border-slate-400 relative shadow-2xl transition-all duration-300 origin-top-left overflow-visible'
                 )}
                 style={{
                   width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,

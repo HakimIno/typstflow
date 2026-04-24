@@ -217,15 +217,18 @@ export const LayoutEngine = {
     dragOffsetX = 0,
     dragOffsetY = 0
   ): PositionResult {
-    // 1. Find the pro-grid (the real page container)
-    const container = document.querySelector('[class*="pro-grid"]') as HTMLElement;
+    // 1. Find the paper container via stable data attribute
+    const container = document.querySelector('[data-paper-container]') as HTMLElement;
     if (!container) return { x: 0, y: 0, rawX: 0, rawY: 0 };
 
     // 2. Find the scrollable parent
     const scrollParent = container.closest('.overflow-auto') as HTMLElement;
     
-    // 3. Create context using the robust element detection
-    const context = this.createContextFromElement(container);
+    // 3. Read zoom scale explicitly from data attribute (set by Canvas.tsx)
+    const explicitZoom = parseFloat(container.dataset.zoom || '1');
+    
+    // 4. Create context with explicit scale
+    const context = this.createContextFromElement(container, explicitZoom);
     
     // Add scroll info from parent if needed (createContextFromElement uses element's own scroll)
     if (scrollParent) {
@@ -233,7 +236,7 @@ export const LayoutEngine = {
       context.scrollTop = scrollParent.scrollTop;
     }
 
-    // 4. Use base drop calculation
+    // 5. Use base drop calculation
     return this.calculateDropPosition(clientX, clientY, context, dragOffsetX, dragOffsetY);
   },
 

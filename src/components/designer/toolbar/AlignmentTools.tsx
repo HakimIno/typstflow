@@ -2,19 +2,21 @@
 
 import { memo } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
+import { getPaperWidth } from '@/lib/utils/paper-sizes';
 import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react';
 import { ToolbarButton } from './ToolbarButton';
 
 export const AlignmentTools = memo(function AlignmentTools() {
   const selectedComponentId = useDesignerStore((state) => state.selectedComponentId);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
+  const pageSize = useDesignerStore((state) => state.schema.page.size);
   const orientation = useDesignerStore((state) => state.schema.page.orientation);
 
   const handleAlign = (type: 'left' | 'center' | 'right') => {
     if (!selectedComponentId) return;
 
-    const A4_WIDTH_MM = orientation === 'landscape' ? 297 : 210;
-    const PAGE_CONTENT_WIDTH = A4_WIDTH_MM - 40; // Approx margin-aware
+    const PAGE_WIDTH_MM = getPaperWidth(pageSize, orientation);
+    const PAGE_CONTENT_WIDTH = PAGE_WIDTH_MM - 40; // Approx margin-aware
 
     switch (type) {
       case 'left':

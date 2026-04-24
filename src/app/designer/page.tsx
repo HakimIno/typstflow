@@ -9,19 +9,14 @@ import { ReportTree as ReportTreeComponent } from '@/components/designer/ReportT
 import { SidebarNav } from '@/components/designer/SidebarNav';
 import { Toolbar } from '@/components/designer/Toolbar';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
-import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import type { ComponentNode } from '@/types/schema';
-import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function DesignerPage() {
   const [mounted, setMounted] = useState(false);
 
   // Granular Selectors - Optimized for high performance
-  const addComponent = useDesignerStore((state) => state.addComponent);
-  const moveComponent = useDesignerStore((state) => state.moveComponent);
   const schema = useDesignerStore((state) => state.schema);
   const viewMode = useDesignerStore((state) => state.viewMode);
   const activeTab = useDesignerStore((state) => state.activeTab);
@@ -38,69 +33,7 @@ export default function DesignerPage() {
 
   useEffect(() => {
     setMounted(true);
-    const cleanupDpiMonitoring = LayoutEngine.setupDpiMonitoring();
-    return () => cleanupDpiMonitoring();
   }, []);
-
-  const createComponent = useCallback((type: string): ComponentNode => {
-    const id = Math.random().toString(36).substring(7);
-    const base: any = {
-      id,
-      type,
-      style: { fontSize: 10, fontWeight: 'regular' },
-      align: 'left',
-    };
-
-    switch (type) {
-      case 'text':
-        return { ...base, content: 'Text Block' };
-      case 'table':
-        return {
-          ...base,
-          content: '',
-          dataSource: 'items',
-          showHeader: true,
-          columns: [
-            { header: 'Item', field: 'description', width: '2fr' },
-            { header: 'Qty', field: 'qty', width: '1fr' },
-            { header: 'Price', field: 'price', width: '1fr' },
-          ],
-        } as any;
-      case 'line':
-        return { ...base, thickness: '1pt', color: 'black' } as any;
-      case 'spacer':
-        return { ...base, height: '1cm' } as any;
-      case 'image':
-        return { ...base, src: '', width: '4cm' } as any;
-      case 'page-break-indicator':
-        return { ...base, label: 'Continued on next page...', style: 'dashed', showPageNumber: true } as any;
-      default:
-        return base;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-
-    return monitorForElements({
-      onDrop({ source, location }) {
-        const destination = location.current.dropTargets[0];
-        if (!destination) return;
-
-        const zoneKey = destination.data.zoneKey as 'header' | 'body' | 'footer';
-        const sourceData = source.data;
-
-        if (sourceData.type === 'palette-item') {
-          const newComponent = createComponent(sourceData.componentType as string);
-          addComponent(zoneKey, newComponent);
-        } else if (sourceData.type === 'canvas-item') {
-          const itemId = sourceData.id as string;
-          const fromZone = sourceData.zoneKey as any;
-          moveComponent(itemId, fromZone, zoneKey, useDesignerStore.getState().schema.zones[zoneKey].components.length);
-        }
-      },
-    });
-  }, [mounted, addComponent, moveComponent, createComponent]);
 
   if (!mounted) return null;
 

@@ -113,15 +113,6 @@ pub struct TextStyle {
     pub justify: Option<bool>,
 }
 
-// --- Per-cell stroke config (maps to Typst stroke dictionary) ---
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StrokeConfig {
-    pub top: Option<String>,
-    pub bottom: Option<String>,
-    pub left: Option<String>,
-    pub right: Option<String>,
-}
 
 // --- Individual table cell (maps to Typst table.cell) ---
 #[derive(Debug, Serialize, Deserialize)]

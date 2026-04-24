@@ -3,6 +3,7 @@
 import { renderReportToSvg } from '@/lib/typst-wasm';
 import { useDesignerStore } from '@/store/designer-store';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { clsx } from 'clsx';
 import { AlertTriangle, Cpu, Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -56,9 +57,7 @@ export function PreviewPane() {
     };
   }, [schema, sampleData]);
 
-  const isLandscape = schema.page.orientation === 'landscape';
-  const pageWidthMm = isLandscape ? 297 : 210;
-  const pageHeightMm = isLandscape ? 210 : 297;
+  const { width: pageWidthMm, height: pageHeightMm } = getPaperDimensions(schema.page.size, schema.page.orientation);
 
   return (
     <div className="flex-1 flex flex-col bg-slate-400/20 shadow-inner overflow-hidden relative transition-colors duration-500">
@@ -68,8 +67,7 @@ export function PreviewPane() {
       >
         <div
           className={clsx(
-            "relative bg-white shadow-2xl overflow-hidden border border-slate-400 transition-transform duration-300 origin-top-left",
-            isLandscape ? 'w-[29.7cm] min-h-[21cm]' : 'w-[21cm] min-h-[29.7cm]'
+            "relative bg-white shadow-2xl overflow-hidden border border-slate-400 transition-transform duration-300 origin-top-left"
           )}
           style={{
             width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,

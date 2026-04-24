@@ -1,47 +1,39 @@
 use crate::schema::*;
 use serde_json::Value;
 
+/// Maps internal paper names to Typst-recognized paper names.
+fn get_typst_paper_name(size: &str) -> String {
+    match size.to_lowercase().as_str() {
+        "letter" => "us-letter".to_string(),
+        "legal" => "us-legal".to_string(),
+        "tabloid" => "us-tabloid".to_string(),
+        "b4" => "iso-b4".to_string(),
+        "b5" => "iso-b5".to_string(),
+        other => other.to_string(),
+    }
+}
+
 pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     let mut t = String::new();
-    t.push_str("// PHOENIX ENGINE (RUST/WASM) v2.0 — NATIVE PACKAGES\n");
+    t.push_str("// PHOENIX ENGINE (RUST/WASM) v3.0 — UNIFIED ABSOLUTE PLACEMENT\n");
     t.push_str("#import \"@preview/codetastic:0.2.2\": qrcode, ean13, ean8\n\n");
 
-    // Absolute Metadata
+    // Page dimensions
     let margin = &schema.page.margin;
     let h_height = schema.zones.header.min_height.clone().unwrap_or("0mm".to_string());
-    let b_height = schema.zones.body.min_height.clone().unwrap_or("0mm".to_string());
+    let _b_height = schema.zones.body.min_height.clone().unwrap_or("0mm".to_string());
     let f_height = schema.zones.footer.min_height.clone().unwrap_or("0mm".to_string());
 
+    let is_landscape = schema.page.orientation == "landscape";
+    // page_dimensions is still needed for paper_dimensions call but we can prefix unused with _
+    let (_page_width_mm, page_height_mm) = paper_dimensions(&schema.page.size, is_landscape);
+
+    // Page setup — NO header/footer callbacks, pure absolute placement
     t.push_str(&format!(
-        "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: 0mm,\n",
-        schema.page.size.to_lowercase(),
-        schema.page.orientation == "landscape",
+        "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: 0mm,\n)\n\n",
+        get_typst_paper_name(&schema.page.size),
+        is_landscape,
     ));
-
-    // Page Header (Absolute Placement)
-    let h_first = schema.zones.header.show_on_first_page_only.unwrap_or(false);
-    let h_last = schema.zones.header.show_on_last_page_only.unwrap_or(false);
-    
-    t.push_str("  header: context { \n");
-    t.push_str("    let cur = counter(page).get().first()\n");
-    t.push_str("    let last = counter(page).final().first()\n");
-    t.push_str(&format!("    let is_visible = if {} {{ cur == 1 }} else if {} {{ cur == last }} else {{ true }}\n", h_first, h_last));
-    t.push_str("    if is_visible [ \n");
-    render_zone(&mut t, &schema.zones.header, "HEADER", data, "0mm".to_string());
-    t.push_str("    ] else { none }\n  },\n");
-    // Page Footer (Absolute Placement)
-    let f_first = schema.zones.footer.show_on_first_page_only.unwrap_or(false);
-    let f_last = schema.zones.footer.show_on_last_page_only.unwrap_or(false);
-
-    t.push_str("  footer: context { \n");
-    t.push_str("    let cur = counter(page).at(here()).first()\n");
-    t.push_str("    let last = counter(page).final().first()\n");
-    t.push_str(&format!("    let is_visible = if {} {{ cur == 1 }} else if {} {{ cur == last }} else {{ true }}\n", f_first, f_last));
-    t.push_str("    if is_visible [ \n");
-    render_zone(&mut t, &schema.zones.footer, "FOOTER", data, "0mm".to_string());
-    t.push_str("    ] else { none }\n  },\n");
-
-    t.push_str(")\n\n");
 
     // Fonts
     if let Some(font) = schema.fonts.first() {
@@ -50,67 +42,121 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
             font.family, font.size
         ));
     }
-    t.push_str("#set par(leading: 0.2em, justify: false)\n");
+    t.push_str("#set par(leading: 0.2em, justify: false)\n\n");
 
-    if !is_zone_empty(&schema.zones.body) {
-        // Body Offset = Header Height
-        render_zone(&mut t, &schema.zones.body, "BODY", data, h_height.clone());
-        
-        // 2. The Flowing Logic (Table)
-        t.push_str(&format!(
-            "\n#pad(top: {} + {} + 2mm, bottom: {} + {} + 2mm, left: {}, right: {})[\n",
-             margin.top, h_height, margin.bottom, f_height, margin.left, margin.right
-        ));
-        t.push_str("]\n");
+
+
+    // ── UNIFIED ABSOLUTE PLACEMENT FOR ALL ZONES ────────────────────────────
+    // All zones are rendered with #place() using absolute Y offsets from page top.
+    // This ensures consistent 1:1 mapping between designer canvas and PDF output.
+    
+    let offset_x = "0mm";
+
+    // 1. HEADER starts at 0mm (absolute from top)
+    let header_offset_y = "0mm";
+    if !is_zone_empty(&schema.zones.header) {
+        render_zone(&mut t, &schema.zones.header, "HEADER", data, offset_x, header_offset_y);
     }
+
+    // 2. BODY starts after header
+    // We use the min_height or 0mm as the base offset for body
+    let body_offset_y = h_height.clone();
+    if !is_zone_empty(&schema.zones.body) {
+        render_zone(&mut t, &schema.zones.body, "BODY", data, offset_x, &body_offset_y);
+    }
+
+    // 3. FOOTER anchored to the bottom of the page
+    // Position = Page Height - Footer Height
+    let footer_pos = page_height_mm - parse_mm_value(&f_height);
+    let footer_offset_y = format!("{}mm", footer_pos);
+    if !is_zone_empty(&schema.zones.footer) {
+        render_zone(&mut t, &schema.zones.footer, "FOOTER", data, offset_x, &footer_offset_y);
+    }
+
+    // 4. Empty content block to establish page flow (prevents blank page issues)
+    t.push_str(&format!(
+        "\n#pad(top: {} + {} + 2mm, bottom: {} + {} + 2mm, left: {}, right: {})[]\n",
+        margin.top, h_height, margin.bottom, f_height, margin.left, margin.right
+    ));
 
     t
 }
 
-fn render_zone(t: &mut String, zone: &Zone, _label: &str, data: &Value, offset_y: String) {
+/// Parses a Typst unit string like "15mm" or "2cm" into millimeters.
+fn parse_mm_value(s: &str) -> f64 {
+    let s = s.trim();
+    if s.ends_with("mm") {
+        s.trim_end_matches("mm").trim().parse::<f64>().unwrap_or(0.0)
+    } else if s.ends_with("cm") {
+        s.trim_end_matches("cm").trim().parse::<f64>().unwrap_or(0.0) * 10.0
+    } else if s.ends_with("in") {
+        s.trim_end_matches("in").trim().parse::<f64>().unwrap_or(0.0) * 25.4
+    } else if s.ends_with("pt") {
+        s.trim_end_matches("pt").trim().parse::<f64>().unwrap_or(0.0) * 0.3528
+    } else {
+        s.parse::<f64>().unwrap_or(0.0)
+    }
+}
+
+/// Returns (width_mm, height_mm) for a given paper size and orientation.
+/// Supports all standard Typst paper sizes. Falls back to A4 for unknown sizes.
+fn paper_dimensions(size: &str, landscape: bool) -> (f64, f64) {
+    let (w, h) = match size.to_lowercase().as_str() {
+        // ISO A Series
+        "a0" => (841.0, 1189.0),
+        "a1" => (594.0, 841.0),
+        "a2" => (420.0, 594.0),
+        "a3" => (297.0, 420.0),
+        "a4" => (210.0, 297.0),
+        "a5" => (148.0, 210.0),
+        "a6" => (105.0, 148.0),
+        // ISO B Series
+        "b4" => (250.0, 353.0),
+        "b5" => (176.0, 250.0),
+        // North American
+        "letter" => (215.9, 279.4),
+        "legal" => (215.9, 355.6),
+        "tabloid" => (279.4, 431.8),
+        // JIS (Japan)
+        "jis-b4" => (257.0, 364.0),
+        "jis-b5" => (182.0, 257.0),
+        // Fallback
+        _ => (210.0, 297.0), // A4
+    };
+    if landscape { (h, w) } else { (w, h) }
+}
+
+
+fn render_zone(t: &mut String, zone: &Zone, _label: &str, data: &Value, offset_x: &str, offset_y: &str) {
     if is_zone_empty(zone) {
         return;
     }
     
     for comp in &zone.components {
         t.push_str("    ");
-        t.push_str(&render_component(comp, data, &offset_y, "#"));
+        t.push_str(&render_component(comp, data, offset_x, offset_y, "#"));
     }
 }
 
-fn render_component(comp: &ComponentNode, data: &Value, offset_y: &str, prefix: &str) -> String {
+fn render_component(comp: &ComponentNode, data: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     match comp {
-        ComponentNode::Text(c) => render_text(c, data, offset_y, prefix),
-        ComponentNode::Table(c) => render_table(c, data, offset_y, prefix),
-        ComponentNode::Line(c) => render_line(c, offset_y, prefix),
-        ComponentNode::Image(c) => render_image(c, offset_y, prefix),
-        ComponentNode::Spacer(c) => render_spacer(c, offset_y, prefix),
-        ComponentNode::SummaryBox(c) => render_summary_box(c, data, offset_y, prefix),
-        ComponentNode::Barcode(c) => render_barcode(c, offset_y, prefix),
-        ComponentNode::Qr(c) => render_qr(c, offset_y, prefix),
-        ComponentNode::PageBreakIndicator(c) => render_page_break_indicator(c, offset_y, prefix),
-        ComponentNode::Repeater(c) => render_placeholder_box("REPEATER (NESTED)", &c.base, "", data, offset_y, prefix),
-        ComponentNode::Columns(c) => render_placeholder_box("COLUMNS (LAYOUT)", &c.base, "", data, offset_y, prefix),
+        ComponentNode::Text(c) => render_text(c, data, offset_x, offset_y, prefix),
+        ComponentNode::Table(c) => render_table(c, data, offset_x, offset_y, prefix),
+        ComponentNode::Line(c) => render_line(c, offset_x, offset_y, prefix),
+        ComponentNode::Image(c) => render_image(c, offset_x, offset_y, prefix),
+        ComponentNode::Spacer(c) => render_spacer(c, offset_x, offset_y, prefix),
+        ComponentNode::SummaryBox(c) => render_summary_box(c, data, offset_x, offset_y, prefix),
+        ComponentNode::Barcode(c) => render_barcode(c, offset_x, offset_y, prefix),
+        ComponentNode::Qr(c) => render_qr(c, offset_x, offset_y, prefix),
+        ComponentNode::PageBreakIndicator(c) => render_page_break_indicator(c, offset_x, offset_y, prefix),
+        ComponentNode::Repeater(c) => render_placeholder_box("REPEATER (NESTED)", &c.base, "", data, offset_x, offset_y, prefix),
+        ComponentNode::Columns(c) => render_placeholder_box("COLUMNS (LAYOUT)", &c.base, "", data, offset_x, offset_y, prefix),
     }
 }
 
-fn comp_base(comp: &ComponentNode) -> &BaseComponent {
-    match comp {
-        ComponentNode::Text(c) => &c.base,
-        ComponentNode::Table(c) => &c.base,
-        ComponentNode::Image(c) => &c.base,
-        ComponentNode::Line(c) => &c.base,
-        ComponentNode::Spacer(c) => &c.base,
-        ComponentNode::SummaryBox(c) => &c.base,
-        ComponentNode::Barcode(c) => &c.base,
-        ComponentNode::Qr(c) => &c.base,
-        ComponentNode::PageBreakIndicator(c) => &c.base,
-        ComponentNode::Repeater(c) => &c.base,
-        ComponentNode::Columns(c) => &c.base,
-    }
-}
 
-fn render_text(c: &TextComponent, data: &Value, offset_y: &str, prefix: &str) -> String {
+
+fn render_text(c: &TextComponent, data: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let content = resolve_binding(&c.content, data);
     let s = c.style.as_ref();
     let size = s.and_then(|st| st.font_size).unwrap_or(10.0);
@@ -131,7 +177,7 @@ fn render_text(c: &TextComponent, data: &Value, offset_y: &str, prefix: &str) ->
         )
     };
 
-    wrap_placement(&c.base, &body, offset_y, prefix)
+    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
 // ─── ADVANCED TABLE RENDERER ────────────────────────────────────────────────
@@ -208,7 +254,7 @@ fn render_stroke(style_stroke: Option<&Value>, border_width: &str, border_color:
     }
 }
 
-fn render_table(c: &TableComponent, data: &Value, offset_y: &str, prefix: &str) -> String {
+fn render_table(c: &TableComponent, data: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let style = c.style.as_ref();
     let cols = &c.columns;
 
@@ -359,8 +405,6 @@ fn render_table(c: &TableComponent, data: &Value, offset_y: &str, prefix: &str) 
 
     // ── 10. DATA ROWS ─────────────────────────────────────────────────────────
     let path = c.data_source.replace("{{", "").replace("}}", "").trim().to_string();
-    let mut current_y = header_end_y;
-
     if let Some(Value::Array(items)) = resolve_path(&path, data) {
         for item in items {
             let mut covered = std::collections::HashSet::new();
@@ -395,7 +439,6 @@ fn render_table(c: &TableComponent, data: &Value, offset_y: &str, prefix: &str) 
                 }
                 for i in 1..(cs as usize) { covered.insert(x + i); }
             }
-            current_y += 1;
         }
     }
 
@@ -462,7 +505,7 @@ fn render_table(c: &TableComponent, data: &Value, offset_y: &str, prefix: &str) 
     }
 
     t.push_str(")");
-    wrap_placement(&c.base, &t, offset_y, prefix)
+    wrap_placement(&c.base, &t, offset_x, offset_y, prefix)
 }
 
 fn render_hline(hl: &HLineConfig) -> String {
@@ -485,7 +528,7 @@ fn render_vline(vl: &VLineConfig) -> String {
 
 // ─── OTHER COMPONENT RENDERERS ───────────────────────────────────────────────
 
-fn render_line(c: &LineComponent, offset_y: &str, prefix: &str) -> String {
+fn render_line(c: &LineComponent, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let color = c.color.as_deref().unwrap_or("black");
     let thickness = c.thickness.as_deref().unwrap_or("1pt");
     
@@ -498,10 +541,10 @@ fn render_line(c: &LineComponent, offset_y: &str, prefix: &str) -> String {
     } else {
         format!("#line(length: 100%, stroke: {} + {})", thickness, format_color(color))
     };
-    wrap_placement(&c.base, &body, offset_y, prefix)
+    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
-fn render_image(c: &ImageComponent, offset_y: &str, prefix: &str) -> String {
+fn render_image(c: &ImageComponent, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let fit = c.fit.as_deref().unwrap_or("contain");
     // If srcData is present the image bytes are pre-registered in the WASM image
     // registry under the virtual path "img-{id}.png". Use that path so Typst
@@ -515,15 +558,15 @@ fn render_image(c: &ImageComponent, offset_y: &str, prefix: &str) -> String {
         c.src.clone()
     };
     let body = format!("#image(\"{}\", width: 100%, height: 100%, fit: \"{}\")", path, fit);
-    wrap_placement(&c.base, &body, offset_y, prefix)
+    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
-fn render_spacer(c: &SpacerComponent, offset_y: &str, prefix: &str) -> String {
+fn render_spacer(c: &SpacerComponent, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let body = format!("#v({}mm, weak: true)", c.height);
-    wrap_placement(&c.base, &body, offset_y, prefix)
+    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
-fn render_summary_box(c: &SummaryBoxComponent, data: &Value, offset_y: &str, prefix: &str) -> String {
+fn render_summary_box(c: &SummaryBoxComponent, data: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let mut rows_typst = String::new();
     for row in &c.rows {
         if row.separator.unwrap_or(false) {
@@ -549,10 +592,10 @@ fn render_summary_box(c: &SummaryBoxComponent, data: &Value, offset_y: &str, pre
         ));
     }
     let body = format!("#table(columns: (1fr, auto), stroke: none, inset: 1pt,\n{})", rows_typst);
-    wrap_placement(&c.base, &body, offset_y, prefix)
+    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
-fn render_barcode(c: &BarcodeComponent, offset_y: &str, prefix: &str) -> String {
+fn render_barcode(c: &BarcodeComponent, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let val = resolve_binding(&c.value, &serde_json::Value::Null); // dummy resolve if static
     // Use codetastic native function based on format
     let func = match c.format.as_str() {
@@ -571,18 +614,18 @@ fn render_barcode(c: &BarcodeComponent, offset_y: &str, prefix: &str) -> String 
     let scale_y = (base_h / 18.28) * 100.0;
     
     let body = format!("#scale(x: {:.2}%, y: {:.2}%, reflow: true)[#{}(\"{}\")]", scale_x, scale_y, func, escape_typst(&val));
-    wrap_placement(&c.base, &body, offset_y, prefix)
+    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
-fn render_qr(c: &QRComponent, offset_y: &str, prefix: &str) -> String {
+fn render_qr(c: &QRComponent, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let val = resolve_binding(&c.value, &serde_json::Value::Null);
     let width = c.base.width.unwrap_or(30.0);
     // qrcode in codetastic expects a length for width, not a ratio
     let body = format!("#qrcode(\"{}\", width: {}mm)", escape_typst(&val), width);
-    wrap_placement(&c.base, &body, offset_y, prefix)
+    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
-fn render_page_break_indicator(c: &PageBreakIndicatorComponent, offset_y: &str, prefix: &str) -> String {
+fn render_page_break_indicator(c: &PageBreakIndicatorComponent, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let label = c.label.as_ref().map(|s| s.as_str()).unwrap_or("Continued on next page...");
     let show_page_num = c.show_page_number.unwrap_or(true);
     let stroke_style = c.style.as_deref().unwrap_or("dashed");
@@ -606,24 +649,24 @@ fn render_page_break_indicator(c: &PageBreakIndicatorComponent, offset_y: &str, 
         )
     };
 
-    wrap_placement(&c.base, &body, offset_y, prefix)
+    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
-fn render_placeholder_box(label: &str, base: &BaseComponent, value: &str, data: &Value, offset_y: &str, prefix: &str) -> String {
+fn render_placeholder_box(label: &str, base: &BaseComponent, value: &str, data: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let val = resolve_binding(value, data);
     let body = format!(
         "#rect(width: 100%, height: 100%, fill: gray.lighten(80%), stroke: 0.5pt + black)[\n    #set align(center + horizon)\n    #text(size: 8pt)[{}\\n{}]\n  ]",
         label, escape_typst(&val)
     );
-    wrap_placement(base, &body, offset_y, prefix)
+    wrap_placement(base, &body, offset_x, offset_y, prefix)
 }
 
-fn wrap_placement(base: &BaseComponent, body: &str, offset_y: &str, prefix: &str) -> String {
+fn wrap_placement(base: &BaseComponent, body: &str, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let x = base.x.unwrap_or(0.0);
     let y = base.y.unwrap_or(0.0);
     let w = base.width.unwrap_or(100.0);
     let h = base.height.unwrap_or(20.0);
-    format!("{}place(dx: {}mm, dy: ({}) + {}mm)[#block(width: {}mm, height: {}mm, clip: false)[{}]]\n", prefix, x, offset_y, y, w, h, body)
+    format!("{}place(dx: {} + {}mm, dy: {} + {}mm)[#block(width: {}mm, height: {}mm, clip: false)[{}]]\n", prefix, offset_x, x, offset_y, y, w, h, body)
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
