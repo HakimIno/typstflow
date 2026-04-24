@@ -174,9 +174,11 @@ pub struct TableComponent {
     pub style: Option<TableStyle>,
     pub show_header: Option<bool>,
     pub repeat_header_on_page: Option<bool>,
+    pub is_static: Option<bool>,
     pub summary_rows: Option<Vec<SummaryRow>>,
     // --- New: Structured header/footer rows ---
     pub header_rows: Option<Vec<TableRow>>,
+    pub detail_rows: Option<Vec<TableRow>>,
     pub footer_rows: Option<Vec<TableRow>>,
     // --- New: Manual lines ---
     pub hlines: Option<Vec<HLineConfig>>,

@@ -782,16 +782,47 @@ export function TablePropertiesPanel({ component }: Props) {
   // ---- TAB 5: DATA BINDING ----
   const renderDataTab = () => (
     <div className="space-y-0">
-      <SectionHeader label="Data Source" />
-      <PropertyRow label="Data Source">
-        <MiniInput
-          value={component.dataSource || ''}
-          onChange={(v) => updateComponent(component.id, { dataSource: v } as any)}
-          placeholder="{{items}}"
-          mono
-          className="w-full"
-        />
+      <SectionHeader label="Table Behavior" />
+      <PropertyRow label="Table Mode">
+        <div className="flex gap-1 w-full">
+          <button
+            onClick={() => updateComponent(component.id, { isStatic: false } as any)}
+            className={clsx(
+              "flex-1 py-1 text-[9px] font-bold rounded uppercase border transition-all",
+              !component.isStatic
+                ? "bg-blue-50 border-blue-400 text-blue-700"
+                : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
+            )}
+          >
+            Data Loop
+          </button>
+          <button
+            onClick={() => updateComponent(component.id, { isStatic: true } as any)}
+            className={clsx(
+              "flex-1 py-1 text-[9px] font-bold rounded uppercase border transition-all",
+              component.isStatic
+                ? "bg-purple-50 border-purple-400 text-purple-700"
+                : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
+            )}
+          >
+            Static Grid
+          </button>
+        </div>
       </PropertyRow>
+      {!component.isStatic && (
+        <>
+          <SectionHeader label="Data Source" />
+          <PropertyRow label="Data Binding">
+            <MiniInput
+              value={component.dataSource || ''}
+              onChange={(v) => updateComponent(component.id, { dataSource: v } as any)}
+              placeholder="{{items}}"
+              mono
+              className="w-full"
+            />
+          </PropertyRow>
+        </>
+      )}
       <PropertyRow label="Header Rows">
         <MiniInput
           type="number"

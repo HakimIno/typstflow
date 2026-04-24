@@ -6,8 +6,52 @@ import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { clsx } from 'clsx';
 import React, { useState, useMemo, useCallback } from 'react';
 import { TableActionToolbar } from './TableActionToolbar';
-import { mergeStructuredCells } from '@/lib/utils/table-utils';
+import { mergeStructuredCells, insertStructuredRow, insertColumn } from '@/lib/utils/table-utils';
 import { Plus, Trash2 } from 'lucide-react';
+
+/** 
+ * A specialized input component that uses local state for typing (to prevent lag)
+ * and only saves to the global store onBlur or Enter.
+ */
+function InlineCellInput({
+  initialValue,
+  onSave,
+  className,
+  style,
+  placeholder,
+  title
+}: {
+  initialValue: string;
+  onSave: (val: string) => void;
+  className?: string;
+  style?: React.CSSProperties;
+  placeholder?: string;
+  title?: string;
+}) {
+  const [val, setVal] = useState(initialValue);
+
+  // Sync state if initialValue changes externally (e.g. undo/redo)
+  React.useEffect(() => {
+    setVal(initialValue);
+  }, [initialValue]);
+
+  return (
+    <input
+      className={className}
+      style={style}
+      value={val}
+      placeholder={placeholder}
+      title={title}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={() => onSave(val)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
 
 interface Props {
   component: TableComponent;
@@ -141,7 +185,7 @@ export function TablePreview({ component }: Props) {
   const handleCellMouseEnter = (section: any, rowId: string, cellIdx: number) => {
     if (!isSelecting || !selectionStart || selectionStart.section !== section) return;
 
-    const sectionKey = section === 'header' ? 'headerRows' : 'footerRows';
+    const sectionKey = section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
     const rows = component[sectionKey] || [];
     
     const startRowIdx = rows.findIndex(r => r.id === selectionStart.rowId);
@@ -178,8 +222,8 @@ export function TablePreview({ component }: Props) {
   }, [isSelecting, handleMouseUp]);
 
   const handleMerge = () => {
-    if (!selectedCells || selectedCells.section === 'data') return;
-    const sectionKey = selectedCells.section === 'header' ? 'headerRows' : 'footerRows';
+    if (!selectedCells) return;
+    const sectionKey = selectedCells.section === 'header' ? 'headerRows' : selectedCells.section === 'footer' ? 'footerRows' : 'detailRows';
     const rows = component[sectionKey] || [];
     
     // Find numeric indices for rows
@@ -199,9 +243,9 @@ export function TablePreview({ component }: Props) {
   };
 
   const handleSplit = () => {
-    if (!selectedCell || selectedCell.section === 'data') return;
+    if (!selectedCell) return;
     const { section, rowId, cellIdx } = selectedCell;
-    const sectionKey = section === 'header' ? 'headerRows' : 'footerRows';
+    const sectionKey = section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
     const rows = [...(component[sectionKey] || [])];
     const rowIdx = rows.findIndex(r => r.id === rowId);
     if (rowIdx === -1) return;
@@ -228,12 +272,12 @@ export function TablePreview({ component }: Props) {
     if (!selectedCells) return;
     const { section, rowIds, cellIndices } = selectedCells;
     
-    if (section === 'data') {
-       // Delete columns
+    if (section === 'data' && !component.detailRows) {
+       // Legacy: Delete columns
        const newCols = component.columns.filter((_, idx) => !cellIndices.includes(idx));
        updateComponent(component.id, { columns: newCols } as any);
     } else {
-       const sectionKey = section === 'header' ? 'headerRows' : 'footerRows';
+       const sectionKey = section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
        const rows = component[sectionKey] || [];
        const newRows = rows.filter(r => !rowIds.includes(r.id));
        updateComponent(component.id, { [sectionKey]: newRows } as any);
@@ -242,8 +286,8 @@ export function TablePreview({ component }: Props) {
   };
 
   const handleInsertRow = () => {
-    if (!selectedCells || selectedCells.section === 'data') return;
-    const sectionKey = selectedCells.section === 'header' ? 'headerRows' : 'footerRows';
+    if (!selectedCells) return;
+    const sectionKey = selectedCells.section === 'header' ? 'headerRows' : selectedCells.section === 'footer' ? 'footerRows' : 'detailRows';
     const rows = component[sectionKey] || [];
     const lastRowId = selectedCells.rowIds[selectedCells.rowIds.length - 1];
     const index = rows.findIndex(r => r.id === lastRowId);
@@ -307,14 +351,15 @@ export function TablePreview({ component }: Props) {
                     backgroundColor: cell.fill || undefined,
                   }}
                 >
-                  <input
+                  <InlineCellInput
                     className="w-full bg-transparent border-none focus:ring-0 text-center text-[10px] font-bold text-slate-700 outline-none placeholder:text-slate-400 opacity-80 group-hover/cell:opacity-100"
-                    value={cell.content || ''}
+                    initialValue={cell.content || ''}
                     placeholder=""
-                    onChange={(e) => {
+                    onSave={(newVal) => {
+                      if (newVal === cell.content) return;
                       const newRows = [...headerRows];
                       const newCells = [...newRows[rowIdx].cells];
-                      newCells[cellIdx] = { ...cell, content: e.target.value };
+                      newCells[cellIdx] = { ...cell, content: newVal };
                       newRows[rowIdx] = { ...newRows[rowIdx], cells: newCells };
                       updateComponent(component.id, { headerRows: newRows } as any);
                     }}
@@ -352,13 +397,14 @@ export function TablePreview({ component }: Props) {
                 }}
               >
                 {/* Inline Header Edit */}
-                <input
+                <InlineCellInput
                   className="w-full bg-transparent border-none focus:ring-0 text-center text-[10px] font-black uppercase tracking-tight text-slate-700 outline-none placeholder:text-slate-300 opacity-90"
-                  value={col.header || ''}
+                  initialValue={col.header || ''}
                   placeholder="COLUMN"
-                  onChange={(e) => {
+                  onSave={(newVal) => {
+                    if (newVal === col.header) return;
                     const newCols = [...component.columns];
-                    newCols[x] = { ...col, header: e.target.value };
+                    newCols[x] = { ...col, header: newVal };
                     updateComponent(component.id, { columns: newCols } as any);
                   }}
                 />
@@ -378,69 +424,147 @@ export function TablePreview({ component }: Props) {
       )}
 
       {/* ---- DATA ROWS ---- */}
-      <div
-        className="grid flex-1 overflow-hidden"
-        style={{ display: 'grid', gridTemplateColumns, columnGap: colGap, rowGap }}
-      >
-        {[1, 2, 3].map((row) => {
-          const coveredRow = new Set<number>();
-          return (
-            <div
-              key={row}
-              className="contents"
-            >
-              {component.columns.map((col, x) => {
-                if (coveredRow.has(x)) return null;
-                const cs = col.colspan || 1;
-                for (let i = 1; i < cs; i++) coveredRow.add(x + i);
-
-                const cellBg = getCellFill(component, x, row, false, false);
-
-                return (
+      {component.detailRows && component.detailRows.length > 0 ? (
+        <div className="flex-1 overflow-hidden" style={{ backgroundColor: 'white' }}>
+          <div className={clsx(
+            "relative group/template",
+            !component.isStatic && "border-b border-slate-300 border-dashed mb-0.5"
+          )}>
+            {/* Label to indicate this is a template */}
+            {!component.isStatic && (
+              <div className="absolute -left-5 top-2 -rotate-90 text-[8px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none opacity-50 group-hover/template:opacity-100 whitespace-nowrap">
+                 Template
+              </div>
+            )}
+            {component.detailRows.map((row, rowIdx) => (
+              <div
+                key={row.id}
+                className="grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns,
+                  columnGap: colGap,
+                  backgroundColor: getCellFill(component, 0, 0, false, false) || 'white',
+                  borderBottom: rowIdx < component.detailRows!.length - 1 ? `1px solid ${borderColor}` : undefined,
+                }}
+              >
+                {row.cells.map((cell, cellIdx) => (
                   <div
-                    key={`${row}-${col.id}`}
-                    className="p-2 border-r border-b flex items-center relative group/cell"
+                    key={cell.id}
+                    onMouseDown={(e) => handleCellMouseDown('data', row.id, cellIdx, e)}
+                    onMouseEnter={() => handleCellMouseEnter('data', row.id, cellIdx)}
+                    className={clsx(
+                      "relative flex items-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell transition-all cursor-cell",
+                      isCellSelected('data', row.id, cellIdx)
+                        ? "ring-2 ring-blue-500 ring-inset bg-blue-50/30 z-10"
+                        : "hover:bg-slate-50/20"
+                    )}
                     style={{
-                      gridColumn: `${x + 1} / span ${cs}`,
-                      backgroundColor: cellBg || (col.background || 'white'),
-                      borderColor,
-                      justifyContent:
-                        col.align === 'center'
-                          ? 'center'
-                          : col.align === 'right'
-                            ? 'flex-end'
-                            : 'flex-start',
+                      gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,
+                      gridRow: cell.rowspan ? `span ${cell.rowspan}` : undefined,
+                      minHeight: '28px',
+                      backgroundColor: cell.fill || undefined,
+                      justifyContent: cell.align === 'center' ? 'center' : cell.align === 'right' ? 'flex-end' : 'flex-start',
                     }}
                   >
-                    {row === 1 ? (
-                      <div className="w-full flex items-center">
-                        <input
-                          className="w-full bg-transparent border-none text-[10px] text-slate-500 outline-none placeholder:text-slate-200 transition-colors pointer-events-auto"
-                          style={{
-                            textAlign: col.align === 'center' ? 'center' : col.align === 'right' ? 'right' : 'left',
-                            fontFamily: 'monospace',
-                          }}
-                          value={col.field ? `{{${col.field}}}` : ''}
-                          placeholder="{...}"
-                          title="Data Binding"
-                          onChange={(e) => {
-                            let val = e.target.value.replace(/[{}]/g, '');
-                            const newCols = [...component.columns];
-                            newCols[x] = { ...col, field: val };
-                            updateComponent(component.id, { columns: newCols } as any);
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-1.5 bg-slate-200 rounded-full w-2/3 opacity-30 mix-blend-multiply" />
-                    )}
+                    <InlineCellInput
+                      className={clsx(
+                        "w-full bg-transparent border-none focus:ring-0 text-[10px] font-mono outline-none placeholder:text-slate-300",
+                        cell.fill ? "text-white" : "text-slate-600"
+                      )}
+                      style={{
+                        textAlign: cell.align === 'center' ? 'center' : cell.align === 'right' ? 'right' : 'left',
+                      }}
+                      initialValue={cell.content || ''}
+                      placeholder="{{binding}}"
+                      onSave={(newVal) => {
+                        if (newVal === cell.content) return;
+                        const newRows = [...component.detailRows!];
+                        const newCells = [...newRows[rowIdx].cells];
+                        newCells[cellIdx] = { ...cell, content: newVal };
+                        newRows[rowIdx] = { ...newRows[rowIdx], cells: newCells };
+                        updateComponent(component.id, { detailRows: newRows } as any);
+                      }}
+                    />
                   </div>
-                );
-              })}
+                ))}
+              </div>
+            ))}
+          </div>
+          {/* Skeleton to indicate loop */}
+          {!component.isStatic && (
+            <div className="h-6 flex flex-col gap-1.5 mt-2 ml-4">
+               <div className="w-2/3 h-1.5 bg-slate-200 rounded-full opacity-50 mix-blend-multiply" />
+               <div className="w-1/2 h-1.5 bg-slate-200 rounded-full opacity-30 mix-blend-multiply" />
             </div>
-          );
-        })}
-      </div>
+          )}
+        </div>
+      ) : (
+        <div
+          className="grid flex-1 overflow-hidden"
+          style={{ display: 'grid', gridTemplateColumns, columnGap: colGap, rowGap }}
+        >
+          {[1, 2, 3].map((row) => {
+            const coveredRow = new Set<number>();
+            return (
+              <div
+                key={row}
+                className="contents"
+              >
+                {component.columns.map((col, x) => {
+                  if (coveredRow.has(x)) return null;
+                  const cs = col.colspan || 1;
+                  for (let i = 1; i < cs; i++) coveredRow.add(x + i);
+  
+                  const cellBg = getCellFill(component, x, row, false, false);
+  
+                  return (
+                    <div
+                      key={`${row}-${col.id}`}
+                      className="p-2 border-r border-b flex items-center relative group/cell"
+                      style={{
+                        gridColumn: `${x + 1} / span ${cs}`,
+                        backgroundColor: cellBg || (col.background || 'white'),
+                        borderColor,
+                        justifyContent:
+                          col.align === 'center'
+                            ? 'center'
+                            : col.align === 'right'
+                              ? 'flex-end'
+                              : 'flex-start',
+                      }}
+                    >
+                      {row === 1 ? (
+                        <div className="w-full flex items-center">
+                          <InlineCellInput
+                            className="w-full bg-transparent border-none text-[10px] text-slate-500 outline-none placeholder:text-slate-200 transition-colors pointer-events-auto"
+                            style={{
+                              textAlign: col.align === 'center' ? 'center' : col.align === 'right' ? 'right' : 'left',
+                              fontFamily: 'monospace',
+                            }}
+                            initialValue={col.field ? `{{${col.field}}}` : ''}
+                            placeholder="{...}"
+                            title="Data Binding"
+                            onSave={(newVal) => {
+                              let val = newVal.replace(/[{}]/g, '');
+                              if (val === col.field) return;
+                              const newCols = [...component.columns];
+                              newCols[x] = { ...col, field: val };
+                              updateComponent(component.id, { columns: newCols } as any);
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-1.5 bg-slate-200 rounded-full w-2/3 opacity-30 mix-blend-multiply" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ---- FOOTER SECTION ---- */}
       {footerRows.length > 0 && (
@@ -475,20 +599,21 @@ export function TablePreview({ component }: Props) {
                     justifyContent: cell.align === 'center' ? 'center' : cell.align === 'right' ? 'flex-end' : 'flex-start',
                   }}
                 >
-                  <input
+                  <InlineCellInput
                     className={clsx(
                       "w-full bg-transparent border-none focus:ring-0 text-[10px] font-bold outline-none placeholder:text-slate-300",
-                      cell.fill ? "text-white" : "text-slate-600" // Simple logic for purple backgrounds
+                      cell.fill ? "text-white" : "text-slate-600"
                     )}
                     style={{
                       textAlign: cell.align === 'center' ? 'center' : cell.align === 'right' ? 'right' : 'left',
                     }}
-                    value={cell.content || ''}
+                    initialValue={cell.content || ''}
                     placeholder=""
-                    onChange={(e) => {
+                    onSave={(newVal) => {
+                      if (newVal === cell.content) return;
                       const newRows = [...footerRows];
                       const newCells = [...newRows[rowIdx].cells];
-                      newCells[cellIdx] = { ...cell, content: e.target.value };
+                      newCells[cellIdx] = { ...cell, content: newVal };
                       newRows[rowIdx] = { ...newRows[rowIdx], cells: newCells };
                       updateComponent(component.id, { footerRows: newRows } as any);
                     }}

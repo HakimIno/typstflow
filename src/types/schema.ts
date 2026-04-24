@@ -159,9 +159,11 @@ export interface TableComponent extends BaseComponent {
   style: TableStyle;
   showHeader: boolean;
   repeatHeaderOnPage: boolean;
+  isStatic?: boolean; // If true, the table does NOT loop over dataSource
   summaryRows?: SummaryRow[];
   // --- New: Structured rows for multi-row header/footer ---
   headerRows?: TableRow[];   // structured header rows
+  detailRows?: TableRow[];   // structured data rows for loops (replaces strict column looping)
   footerRows?: TableRow[];   // structured footer rows
   // --- New: Manual lines ---
   hlines?: HLineConfig[];    // manual horizontal lines

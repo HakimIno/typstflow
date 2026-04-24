@@ -404,9 +404,34 @@ fn render_table(c: &TableComponent, data: &Value, offset_x: &str, offset_y: &str
     }
 
     // ── 10. DATA ROWS ─────────────────────────────────────────────────────────
-    let path = c.data_source.replace("{{", "").replace("}}", "").trim().to_string();
-    if let Some(Value::Array(items)) = resolve_path(&path, data) {
-        for item in items {
+    let is_static = c.is_static.unwrap_or(false);
+
+    let mut render_item = |item: &Value, t_out: &mut String| {
+        // Check for modern detailRows template
+        if let Some(detail_rows) = &c.detail_rows {
+            for row in detail_rows {
+                for cell in &row.cells {
+                    let val = resolve_binding_scoped(&cell.content, item, data);
+                    let content = escape_typst(&val);
+                    let cs = cell.colspan.unwrap_or(1);
+                    let rs = cell.rowspan.unwrap_or(1);
+                    let has_overrides = cs > 1 || rs > 1 || cell.fill.is_some() || cell.align.is_some() || cell.inset.is_some();
+                    
+                    if !has_overrides {
+                        t_out.push_str(&format!("  [{}],\n", content));
+                    } else {
+                        let mut args = Vec::new();
+                        if cs > 1 { args.push(format!("colspan: {}", cs)); }
+                        if rs > 1 { args.push(format!("rowspan: {}", rs)); }
+                        if let Some(f) = &cell.fill { args.push(format!("fill: {}", format_color(f))); }
+                        if let Some(a) = &cell.align { args.push(format!("align: {}", a)); }
+                        if let Some(i) = &cell.inset { args.push(format!("inset: {}", i)); }
+                        t_out.push_str(&format!("  table.cell({})[{}],\n", args.join(", "), content));
+                    }
+                }
+            }
+        } else {
+            // Legacy: fallback to iterating over columns
             let mut covered = std::collections::HashSet::new();
             for (x, col) in cols.iter().enumerate() {
                 if covered.contains(&x) { continue; }
@@ -421,7 +446,7 @@ fn render_table(c: &TableComponent, data: &Value, offset_x: &str, offset_y: &str
                 let has_overrides = cs > 1 || rs > 1 || col.background.is_some();
 
                 if !has_overrides {
-                    t.push_str(&format!(
+                    t_out.push_str(&format!(
                         "  [#set align({}); {}],\n",
                         col_align, escape_typst(&val)
                     ));
@@ -432,12 +457,23 @@ fn render_table(c: &TableComponent, data: &Value, offset_x: &str, offset_y: &str
                     if let Some(bg) = &col.background {
                         args.push(format!("fill: {}", format_color(bg)));
                     }
-                    t.push_str(&format!(
+                    t_out.push_str(&format!(
                         "  table.cell({})[#set align({}); {}],\n",
                         args.join(", "), col_align, escape_typst(&val)
                     ));
                 }
                 for i in 1..(cs as usize) { covered.insert(x + i); }
+            }
+        }
+    };
+
+    if is_static {
+        render_item(&Value::Null, &mut t);
+    } else {
+        let path = c.data_source.replace("{{", "").replace("}}", "").trim().to_string();
+        if let Some(Value::Array(items)) = resolve_path(&path, data) {
+            for item in items {
+                render_item(item, &mut t);
             }
         }
     }
@@ -689,6 +725,10 @@ fn resolve_path<'a>(path: &str, data: &'a Value) -> Option<&'a Value> {
 }
 
 fn resolve_binding(expr: &str, data: &Value) -> String {
+    resolve_binding_scoped(expr, data, data)
+}
+
+fn resolve_binding_scoped(expr: &str, local_data: &Value, global_data: &Value) -> String {
     let mut result = String::new();
     let mut last_end = 0;
     
@@ -702,7 +742,18 @@ fn resolve_binding(expr: &str, data: &Value) -> String {
             result.push_str(&expr[last_end..start]);
             
             let path = expr[start + 2..end].trim().to_string();
-            let value = resolve_path(&path, data)
+            
+            // Try local first
+            let mut val_opt = resolve_path(&path, local_data);
+            
+            // If not found in local, and local != global, try global
+            // Note: Since we don't have object reference equality, 
+            // if val_opt is None we just try resolving against global_data.
+            if val_opt.is_none() {
+                val_opt = resolve_path(&path, global_data);
+            }
+
+            let value = val_opt
                 .map(|v| {
                     match v {
                         Value::String(s) => s.clone(),
