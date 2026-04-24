@@ -232,49 +232,101 @@ export const useDesignerStore = create<DesignerState>()(
 
       updateComponent: (id, updates, skipHistory) =>
         set((state) => {
-          const newZones = { ...state.schema.zones };
+          const zones = state.schema.zones;
+          let foundKey: ZoneKey | null = null;
+          let newComponents: ComponentNode[] | null = null;
+
           for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-            const components = [...newZones[key].components];
+            const components = zones[key].components;
             const index = components.findIndex((c) => c.id === id);
             if (index !== -1) {
-              components[index] = { ...components[index], ...updates } as ComponentNode;
-              newZones[key].components = components;
+              foundKey = key;
+              newComponents = [...components];
+              newComponents[index] = { ...newComponents[index], ...updates } as ComponentNode;
               break;
             }
           }
-          const newSchema = { ...state.schema, zones: newZones };
+
+          if (!foundKey || !newComponents) return state;
+
+          const newSchema = {
+            ...state.schema,
+            zones: {
+              ...zones,
+              [foundKey]: {
+                ...zones[foundKey],
+                components: newComponents,
+              },
+            },
+          };
+
           if (skipHistory) return { schema: newSchema };
           return pushHistory(state, newSchema);
         }),
 
       removeComponent: (id) =>
         set((state) => {
-          const newZones = { ...state.schema.zones };
+          const zones = { ...state.schema.zones };
+          let changed = false;
+
           for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-            newZones[key].components = newZones[key].components.filter((c) => c.id !== id);
+            const originalComponents = zones[key].components;
+            const newComponents = originalComponents.filter((c) => c.id !== id);
+            
+            if (newComponents.length !== originalComponents.length) {
+              zones[key] = {
+                ...zones[key],
+                components: newComponents,
+              };
+              changed = true;
+            }
           }
-          const newSchema = { ...state.schema, zones: newZones };
+
+          if (!changed) return state;
+
+          const newSchema = { ...state.schema, zones };
           return { ...pushHistory(state, newSchema), selectedComponentId: null };
         }),
 
       moveComponent: (id, fromZone, toZone, newIndex, x?: number, y?: number) =>
         set((state) => {
-          const newZones = { ...state.schema.zones };
-          const component = newZones[fromZone].components.find((c) => c.id === id);
+          const zones = state.schema.zones;
+          const component = zones[fromZone].components.find((c) => c.id === id);
           if (!component) return state;
 
-          // Remove from source
-          newZones[fromZone].components = newZones[fromZone].components.filter((c) => c.id !== id);
-
-          // Update coordinates if provided
+          // Create new component with updated position
           const updatedComponent = {
             ...component,
             ...(x !== undefined ? { x } : {}),
             ...(y !== undefined ? { y } : {}),
           };
 
-          // Add to target
-          newZones[toZone].components.splice(newIndex, 0, updatedComponent);
+          // Prepare new zones object
+          const newZones = { ...zones };
+
+          if (fromZone === toZone) {
+            // Move within same zone
+            const components = [...zones[fromZone].components].filter((c) => c.id !== id);
+            components.splice(newIndex, 0, updatedComponent);
+            newZones[fromZone] = {
+              ...zones[fromZone],
+              components,
+            };
+          } else {
+            // Move between zones
+            const fromComponents = [...zones[fromZone].components].filter((c) => c.id !== id);
+            const toComponents = [...zones[toZone].components];
+            toComponents.splice(newIndex, 0, updatedComponent);
+
+            newZones[fromZone] = {
+              ...zones[fromZone],
+              components: fromComponents,
+            };
+            newZones[toZone] = {
+              ...zones[toZone],
+              components: toComponents,
+            };
+          }
 
           const newSchema = { ...state.schema, zones: newZones };
           return pushHistory(state, newSchema);
