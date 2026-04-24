@@ -546,18 +546,20 @@ fn render_line(c: &LineComponent, offset_x: &str, offset_y: &str, prefix: &str) 
 
 fn render_image(c: &ImageComponent, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let fit = c.fit.as_deref().unwrap_or("contain");
-    // If srcData is present the image bytes are pre-registered in the WASM image
-    // registry under the virtual path "img-{id}.png". Use that path so Typst
-    // resolves from the registry instead of trying to fetch a URL (which would
-    // fail in the sandboxed Web Worker environment).
-    let path = if c.src_data.is_some() {
-        // Trust the src field provided in JSON, as the Worker has already 
-        // swapped it to the correct virtual path (e.g. img-123.webp)
-        c.src.clone()
+    let path = c.src.trim();
+
+    // Check if the image is actually available/uploaded
+    // In our system, uploaded images have virtual paths starting with "img-"
+    // or they have src_data present.
+    let is_placeholder = path.is_empty() || (c.src_data.is_none() && !path.starts_with("img-") && !path.starts_with("http"));
+
+    let body = if !is_placeholder {
+        format!("#image(\"{}\", width: 100%, height: 100%, fit: \"{}\")", path, fit)
     } else {
-        c.src.clone()
+        format!(
+            "#rect(width: 100%, height: 100%, fill: gray.lighten(90%), stroke: 0.5pt + gray.lighten(50%), radius: 2pt)[\n    #set align(center + horizon)\n    #text(size: 8pt, fill: gray.darken(20%))[No Image]\n  ]"
+        )
     };
-    let body = format!("#image(\"{}\", width: 100%, height: 100%, fit: \"{}\")", path, fit);
     wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
