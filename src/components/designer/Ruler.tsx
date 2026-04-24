@@ -26,7 +26,7 @@ export const Ruler = memo(({ orientation, length, scrollPos = 0, zoom = 1.0, uni
         result.push(
             <div
                 key={i}
-                className="absolute bg-slate-400"
+                className="absolute bg-[var(--text-muted)]"
                 style={{
                     [isHorizontal ? 'left' : 'top']: `${i * pxPerMm}px`,
                     [isHorizontal ? 'bottom' : 'right']: 0,
@@ -37,7 +37,7 @@ export const Ruler = memo(({ orientation, length, scrollPos = 0, zoom = 1.0, uni
             >
                 {isMajor && (
                     <span 
-                        className="absolute text-[8px] font-medium text-slate-500"
+                        className="absolute text-[8px] font-medium text-[var(--text-muted)]"
                         style={{
                             [isHorizontal ? 'left' : 'top']: '2px',
                             [isHorizontal ? 'bottom' : 'right']: '14px',
@@ -56,7 +56,7 @@ export const Ruler = memo(({ orientation, length, scrollPos = 0, zoom = 1.0, uni
 
   return (
     <div 
-      className="relative bg-slate-50 overflow-hidden"
+      className="relative bg-[var(--bg-surface)] overflow-hidden"
       style={{
         width: isHorizontal ? '100%' : '24px',
         height: isHorizontal ? '24px' : '100%',

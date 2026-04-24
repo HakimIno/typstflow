@@ -23,6 +23,22 @@ export default function DesignerPage() {
   const isSidebarOpen = useDesignerStore((state) => state.isSidebarOpen);
   const isRightSidebarOpen = useDesignerStore((state) => state.isRightSidebarOpen);
   const setRightSidebarOpen = useDesignerStore((state) => state.setRightSidebarOpen);
+  const theme = useDesignerStore((state) => state.theme);
+  const primaryColor = useDesignerStore((state) => state.primaryColor);
+
+  // Apply Theme & Primary Color
+  // Theme & Accent styles
+  const themeStyles = {
+    '--accent': primaryColor,
+    '--accent-glow': primaryColor.startsWith('#') ? `${primaryColor}15` : 'rgba(139, 92, 246, 0.15)',
+  } as React.CSSProperties;
+
+  // Apply Theme to HTML root for global effects (portals, browser UI, etc)
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+  }, [theme]);
 
   // Auto-hide Properties in Preview Mode
   useEffect(() => {
@@ -51,7 +67,10 @@ export default function DesignerPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-200 overflow-hidden font-sans">
+    <div 
+      className={clsx("flex flex-col h-screen bg-[var(--bg-app)] overflow-hidden font-sans", theme)}
+      style={themeStyles}
+    >
       <ErrorBoundary componentName="Toolbar">
         <Toolbar />
       </ErrorBoundary>
@@ -61,12 +80,12 @@ export default function DesignerPage() {
         <SidebarNav />
 
         {/* The Detail Drawer and Workspace are synced in a relative container */}
-        <div className="flex-1 relative flex overflow-hidden bg-slate-200">
+        <div className="flex-1 relative flex overflow-hidden bg-[var(--bg-app)]">
 
           {/* Stage 2: Detail Drawer (Hardware-Accelerated Slide-out) */}
           <aside
             className={clsx(
-              "absolute left-0 top-0 bottom-0 w-80 bg-white border-r border-slate-300 shadow-xl z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform",
+              "absolute left-0 top-0 bottom-0 w-80 bg-[var(--bg-surface)] border-r border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform",
               isSidebarOpen ? "translate-x-0" : "-translate-x-full"
             )}
           >
@@ -87,8 +106,8 @@ export default function DesignerPage() {
           >
             {(viewMode === 'design' || viewMode === 'split') && (
               <main className={clsx(
-                "flex-1 overflow-auto bg-slate-300 shadow-inner flex justify-center p-0 transition-all duration-300",
-                viewMode === 'split' && "border-r-2 border-slate-400/50 shadow-2xl z-10"
+                "flex-1 overflow-auto bg-[var(--bg-canvas)] flex justify-center p-0 transition-all duration-300",
+                viewMode === 'split' && "border-r-2 border-[var(--border-default)] shadow-2xl z-10"
               )}>
                 <ErrorBoundary componentName="Designer Canvas">
                   <Canvas />
@@ -97,7 +116,7 @@ export default function DesignerPage() {
             )}
 
             {(viewMode === 'preview' || viewMode === 'split') && (
-              <div className="flex-1 flex overflow-hidden transition-all duration-300 bg-slate-200">
+              <div className="flex-1 flex overflow-hidden transition-all duration-300 bg-[var(--bg-app)]">
                 <ErrorBoundary componentName="Preview Engine">
                   <PreviewPane />
                 </ErrorBoundary>
@@ -109,7 +128,7 @@ export default function DesignerPage() {
         {/* Right Sidebar: Properties - Professional Slide-out (Hardware Accelerated) */}
         <aside
           className={clsx(
-            "absolute right-0 top-0 bottom-0 w-64 bg-white pro-panel overflow-hidden border-l border-slate-300 shadow-xl z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform",
+            "absolute right-0 top-0 bottom-0 w-64 bg-[var(--bg-surface)] overflow-hidden border-l border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform",
             isRightSidebarOpen ? "translate-x-0" : "translate-x-full"
           )}
         >
@@ -122,19 +141,20 @@ export default function DesignerPage() {
       </div>
 
       {/* Status Bar */}
-      <footer className="h-6 bg-slate-700 text-slate-300 px-3 flex items-center justify-between text-[10px] uppercase tracking-wider font-bold shrink-0 z-50">
+      <footer className="h-[26px] bg-[var(--bg-surface)] border-t border-[var(--border-default)] text-[var(--text-muted)] px-3 flex items-center justify-between text-[9px] uppercase tracking-[0.06em] font-medium shrink-0 z-50">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 border-r border-slate-600 pr-4">
-            <div className="w-2 h-2 bg-green-500 rounded-full" />
-            <span>Status: Ready</span>
+          <div className="flex items-center gap-1.5 pr-4 border-r border-[var(--border-default)]">
+            <div className="w-[5px] h-[5px] bg-[var(--green)] rounded-full" />
+            <span>STATUS: READY</span>
           </div>
-          <span className="opacity-50 text-[9px]">Report: {schema.name}</span>
+          <span className="text-[9px]">REPORT: {schema.name}</span>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
           <span className="text-[9px]">
             {schema.page.size} {schema.page.orientation}
           </span>
-          <span className="opacity-50 text-[9px]">v{schema.version}</span>
+          <div className="w-px h-2.5 border-r border-[var(--border-default)]" />
+          <span className="text-[9px]">V{schema.version}</span>
         </div>
       </footer>
     </div>

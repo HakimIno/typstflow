@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { INVOICE_SAMPLE_DATA, INVOICE_TEMPLATE } from '../lib/templates/invoice';
 import { COMPLEX_SAMPLE_DATA, COMPLEX_TABLE_TEMPLATE } from '../lib/templates/complex-table';
 import { INVOICE_WITH_MANY_ITEMS_SAMPLE_DATA, INVOICE_WITH_PAGE_BREAKS_TEMPLATE } from '../lib/templates/invoice-with-page-breaks';
@@ -16,6 +17,8 @@ interface DesignerState {
   activeTab: 'palette' | 'outline' | 'data';
   isSidebarOpen: boolean;
   isRightSidebarOpen: boolean;
+  theme: 'dark' | 'light';
+  primaryColor: string;
 
   // Selection
   selectedComponentId: string | null;
@@ -86,6 +89,8 @@ interface DesignerState {
   undo: () => void;
   redo: () => void;
   loadTemplate: (name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks') => void;
+  setTheme: (theme: 'dark' | 'light') => void;
+  setPrimaryColor: (color: string) => void;
 }
 
 const MAX_HISTORY = 50;
@@ -127,215 +132,230 @@ const BLANK_SCHEMA: LayoutSchema = {
   },
 };
 
-export const useDesignerStore = create<DesignerState>((set) => ({
-  schema: BLANK_SCHEMA,
-  viewMode: 'design',
-  zoom: 1.0,
-  activeTab: 'palette',
-  isSidebarOpen: true,
-  isRightSidebarOpen: true,
-  selectedComponentId: null,
-  selectedZone: null,
-  selectedCell: null,
-  selectedCells: null,
-  sampleData: {},
-  previewPages: [],
-  previewStatus: 'idle',
-  previewError: null,
-  history: [BLANK_SCHEMA],
-  historyIndex: 0,
-  dragState: {
-    isDragging: false,
-    draggedComponentId: null,
-    currentX: 0,
-    currentY: 0,
-    lastSnappedX: 0,
-    lastSnappedY: 0,
-    activeGuides: {
-      vertical: [],
-      horizontal: [],
-    },
-  },
-
-  loadTemplate: (name) => {
-    if (name === 'invoice') {
-      set({
-        schema: INVOICE_TEMPLATE,
-        sampleData: INVOICE_SAMPLE_DATA,
-        history: [INVOICE_TEMPLATE],
-        historyIndex: 0,
-      });
-    } else if (name === 'complex') {
-      set({
-        schema: COMPLEX_TABLE_TEMPLATE,
-        sampleData: COMPLEX_SAMPLE_DATA,
-        history: [COMPLEX_TABLE_TEMPLATE],
-        historyIndex: 0,
-      });
-    } else if (name === 'invoice-with-breaks') {
-      set({
-        schema: INVOICE_WITH_PAGE_BREAKS_TEMPLATE,
-        sampleData: INVOICE_WITH_MANY_ITEMS_SAMPLE_DATA,
-        history: [INVOICE_WITH_PAGE_BREAKS_TEMPLATE],
-        historyIndex: 0,
-      });
-    } else if (name === 'tax-invoice' as any) {
-      const { TAX_INVOICE_TEMPLATE, TAX_INVOICE_SAMPLE_DATA } = require('../lib/templates/tax-invoice');
-      set({
-        schema: TAX_INVOICE_TEMPLATE,
-        sampleData: TAX_INVOICE_SAMPLE_DATA,
-        history: [TAX_INVOICE_TEMPLATE],
-        historyIndex: 0,
-      });
-    } else {
-      set({
-        schema: BLANK_SCHEMA,
-        sampleData: {},
-        history: [BLANK_SCHEMA],
-        historyIndex: 0,
-      });
-    }
-  },
-
-  addComponent: (zoneKey, component) =>
-    set((state) => {
-      const id = `${component.type}-${Math.random().toString(36).substring(2, 9)}`;
-      const newComponent = {
-        ...component,
-        id,
-        x: component.x ?? 10,
-        y: component.y ?? 10,
-        width: component.width ?? 100,
-        height: component.height ?? 20,
-      };
-      const newSchema = {
-        ...state.schema,
-        zones: {
-          ...state.schema.zones,
-          [zoneKey]: {
-            ...state.schema.zones[zoneKey],
-            components: [...state.schema.zones[zoneKey].components, newComponent],
-          },
+export const useDesignerStore = create<DesignerState>()(
+  persist(
+    (set) => ({
+      schema: BLANK_SCHEMA,
+      viewMode: 'design',
+      zoom: 1.0,
+      activeTab: 'palette',
+      isSidebarOpen: true,
+      isRightSidebarOpen: true,
+      theme: 'dark',
+      primaryColor: '#8B5CF6',
+      selectedComponentId: null,
+      selectedZone: null,
+      selectedCell: null,
+      selectedCells: null,
+      sampleData: {},
+      previewPages: [],
+      previewStatus: 'idle',
+      previewError: null,
+      history: [BLANK_SCHEMA],
+      historyIndex: 0,
+      dragState: {
+        isDragging: false,
+        draggedComponentId: null,
+        currentX: 0,
+        currentY: 0,
+        lastSnappedX: 0,
+        lastSnappedY: 0,
+        activeGuides: {
+          vertical: [],
+          horizontal: [],
         },
-      };
-      return pushHistory(state, newSchema);
-    }),
+      },
 
-  updateComponent: (id, updates, skipHistory) =>
-    set((state) => {
-      const newZones = { ...state.schema.zones };
-      for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-        const components = [...newZones[key].components];
-        const index = components.findIndex((c) => c.id === id);
-        if (index !== -1) {
-          components[index] = { ...components[index], ...updates } as ComponentNode;
-          newZones[key].components = components;
-          break;
+      loadTemplate: (name) => {
+        if (name === 'invoice') {
+          set({
+            schema: INVOICE_TEMPLATE,
+            sampleData: INVOICE_SAMPLE_DATA,
+            history: [INVOICE_TEMPLATE],
+            historyIndex: 0,
+          });
+        } else if (name === 'complex') {
+          set({
+            schema: COMPLEX_TABLE_TEMPLATE,
+            sampleData: COMPLEX_SAMPLE_DATA,
+            history: [COMPLEX_TABLE_TEMPLATE],
+            historyIndex: 0,
+          });
+        } else if (name === 'invoice-with-breaks') {
+          set({
+            schema: INVOICE_WITH_PAGE_BREAKS_TEMPLATE,
+            sampleData: INVOICE_WITH_MANY_ITEMS_SAMPLE_DATA,
+            history: [INVOICE_WITH_PAGE_BREAKS_TEMPLATE],
+            historyIndex: 0,
+          });
+        } else if (name === 'tax-invoice' as any) {
+          const { TAX_INVOICE_TEMPLATE, TAX_INVOICE_SAMPLE_DATA } = require('../lib/templates/tax-invoice');
+          set({
+            schema: TAX_INVOICE_TEMPLATE,
+            sampleData: TAX_INVOICE_SAMPLE_DATA,
+            history: [TAX_INVOICE_TEMPLATE],
+            historyIndex: 0,
+          });
+        } else {
+          set({
+            schema: BLANK_SCHEMA,
+            sampleData: {},
+            history: [BLANK_SCHEMA],
+            historyIndex: 0,
+          });
         }
-      }
-      const newSchema = { ...state.schema, zones: newZones };
-      if (skipHistory) return { schema: newSchema };
-      return pushHistory(state, newSchema);
+      },
+
+      addComponent: (zoneKey, component) =>
+        set((state) => {
+          const id = `${component.type}-${Math.random().toString(36).substring(2, 9)}`;
+          const newComponent = {
+            ...component,
+            id,
+            x: component.x ?? 10,
+            y: component.y ?? 10,
+            width: component.width ?? 100,
+            height: component.height ?? 20,
+          };
+          const newSchema = {
+            ...state.schema,
+            zones: {
+              ...state.schema.zones,
+              [zoneKey]: {
+                ...state.schema.zones[zoneKey],
+                components: [...state.schema.zones[zoneKey].components, newComponent],
+              },
+            },
+          };
+          return pushHistory(state, newSchema);
+        }),
+
+      updateComponent: (id, updates, skipHistory) =>
+        set((state) => {
+          const newZones = { ...state.schema.zones };
+          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
+            const components = [...newZones[key].components];
+            const index = components.findIndex((c) => c.id === id);
+            if (index !== -1) {
+              components[index] = { ...components[index], ...updates } as ComponentNode;
+              newZones[key].components = components;
+              break;
+            }
+          }
+          const newSchema = { ...state.schema, zones: newZones };
+          if (skipHistory) return { schema: newSchema };
+          return pushHistory(state, newSchema);
+        }),
+
+      removeComponent: (id) =>
+        set((state) => {
+          const newZones = { ...state.schema.zones };
+          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
+            newZones[key].components = newZones[key].components.filter((c) => c.id !== id);
+          }
+          const newSchema = { ...state.schema, zones: newZones };
+          return { ...pushHistory(state, newSchema), selectedComponentId: null };
+        }),
+
+      moveComponent: (id, fromZone, toZone, newIndex, x?: number, y?: number) =>
+        set((state) => {
+          const newZones = { ...state.schema.zones };
+          const component = newZones[fromZone].components.find((c) => c.id === id);
+          if (!component) return state;
+
+          // Remove from source
+          newZones[fromZone].components = newZones[fromZone].components.filter((c) => c.id !== id);
+
+          // Update coordinates if provided
+          const updatedComponent = {
+            ...component,
+            ...(x !== undefined ? { x } : {}),
+            ...(y !== undefined ? { y } : {}),
+          };
+
+          // Add to target
+          newZones[toZone].components.splice(newIndex, 0, updatedComponent);
+
+          const newSchema = { ...state.schema, zones: newZones };
+          return pushHistory(state, newSchema);
+        }),
+
+      selectComponent: (id: string | null) => set({ selectedComponentId: id, selectedCell: null, selectedCells: null }),
+
+      setSelectedCell: (cell) => set({ selectedCell: cell, selectedCells: cell ? { 
+        tableId: cell.tableId, 
+        section: cell.section, 
+        rowIds: [cell.rowId], 
+        cellIndices: [cell.cellIdx] 
+      } : null }),
+
+      setSelectedCells: (cells) => set({ selectedCells: cells }),
+
+      updateSchema: (updates: Partial<LayoutSchema>) =>
+        set((state) => {
+          const newSchema = { ...state.schema, ...updates };
+          return pushHistory(state, newSchema);
+        }),
+
+      updateZone: (zoneKey, updates, skipHistory) =>
+        set((state) => {
+          const newSchema = {
+            ...state.schema,
+            zones: {
+              ...state.schema.zones,
+              [zoneKey]: {
+                ...state.schema.zones[zoneKey],
+                ...updates,
+              },
+            },
+          };
+          if (skipHistory) return { schema: newSchema };
+          return pushHistory(state, newSchema);
+        }),
+
+      undo: () =>
+        set((state) => {
+          if (state.historyIndex <= 0) return state;
+          const newIndex = state.historyIndex - 1;
+          return {
+            schema: state.history[newIndex],
+            historyIndex: newIndex,
+          };
+        }),
+
+      redo: () =>
+        set((state) => {
+          if (state.historyIndex >= state.history.length - 1) return state;
+          const newIndex = state.historyIndex + 1;
+          return {
+            schema: state.history[newIndex],
+            historyIndex: newIndex,
+          };
+        }),
+
+      setSampleData: (data) => set({ sampleData: data }),
+      setZoom: (zoom) => set({ zoom: Math.max(0.2, Math.min(zoom, 3.0)) }),
+      setViewMode: (mode) => set({ 
+        viewMode: mode,
+        zoom: mode === 'split' ? 0.65 : 1.0 
+      }),
+      setActiveTab: (tab) => set({ activeTab: tab, isSidebarOpen: true }),
+      setSidebarOpen: (open) => set({ isSidebarOpen: open }),
+      toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+      setRightSidebarOpen: (open) => set({ isRightSidebarOpen: open }),
+      toggleRightSidebar: () => set((state) => ({ isRightSidebarOpen: !state.isRightSidebarOpen })),
+      setDragState: (updates) => set((state) => ({ 
+        dragState: { ...state.dragState, ...updates } 
+      })),
+      setTheme: (theme) => set({ theme }),
+      setPrimaryColor: (color) => set({ primaryColor: color }),
     }),
-
-  removeComponent: (id) =>
-    set((state) => {
-      const newZones = { ...state.schema.zones };
-      for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-        newZones[key].components = newZones[key].components.filter((c) => c.id !== id);
-      }
-      const newSchema = { ...state.schema, zones: newZones };
-      return { ...pushHistory(state, newSchema), selectedComponentId: null };
-    }),
-
-  moveComponent: (id, fromZone, toZone, newIndex, x?: number, y?: number) =>
-    set((state) => {
-      const newZones = { ...state.schema.zones };
-      const component = newZones[fromZone].components.find((c) => c.id === id);
-      if (!component) return state;
-
-      // Remove from source
-      newZones[fromZone].components = newZones[fromZone].components.filter((c) => c.id !== id);
-
-      // Update coordinates if provided
-      const updatedComponent = {
-        ...component,
-        ...(x !== undefined ? { x } : {}),
-        ...(y !== undefined ? { y } : {}),
-      };
-
-      // Add to target
-      newZones[toZone].components.splice(newIndex, 0, updatedComponent);
-
-      const newSchema = { ...state.schema, zones: newZones };
-      return pushHistory(state, newSchema);
-    }),
-
-  selectComponent: (id: string | null) => set({ selectedComponentId: id, selectedCell: null, selectedCells: null }),
-
-  setSelectedCell: (cell) => set({ selectedCell: cell, selectedCells: cell ? { 
-    tableId: cell.tableId, 
-    section: cell.section, 
-    rowIds: [cell.rowId], 
-    cellIndices: [cell.cellIdx] 
-  } : null }),
-
-  setSelectedCells: (cells) => set({ selectedCells: cells }),
-
-  updateSchema: (updates: Partial<LayoutSchema>) =>
-    set((state) => {
-      const newSchema = { ...state.schema, ...updates };
-      return pushHistory(state, newSchema);
-    }),
-
-  updateZone: (zoneKey, updates, skipHistory) =>
-    set((state) => {
-      const newSchema = {
-        ...state.schema,
-        zones: {
-          ...state.schema.zones,
-          [zoneKey]: {
-            ...state.schema.zones[zoneKey],
-            ...updates,
-          },
-        },
-      };
-      if (skipHistory) return { schema: newSchema };
-      return pushHistory(state, newSchema);
-    }),
-
-  undo: () =>
-    set((state) => {
-      if (state.historyIndex <= 0) return state;
-      const newIndex = state.historyIndex - 1;
-      return {
-        schema: state.history[newIndex],
-        historyIndex: newIndex,
-      };
-    }),
-
-  redo: () =>
-    set((state) => {
-      if (state.historyIndex >= state.history.length - 1) return state;
-      const newIndex = state.historyIndex + 1;
-      return {
-        schema: state.history[newIndex],
-        historyIndex: newIndex,
-      };
-    }),
-
-  setSampleData: (data) => set({ sampleData: data }),
-  setZoom: (zoom) => set({ zoom: Math.max(0.2, Math.min(zoom, 3.0)) }),
-  setViewMode: (mode) => set({ 
-    viewMode: mode,
-    zoom: mode === 'split' ? 0.65 : 1.0 
-  }),
-  setActiveTab: (tab) => set({ activeTab: tab, isSidebarOpen: true }),
-  setSidebarOpen: (open) => set({ isSidebarOpen: open }),
-  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
-  setRightSidebarOpen: (open) => set({ isRightSidebarOpen: open }),
-  toggleRightSidebar: () => set((state) => ({ isRightSidebarOpen: !state.isRightSidebarOpen })),
-  setDragState: (updates) => set((state) => ({ 
-    dragState: { ...state.dragState, ...updates } 
-  })),
-}));
+    {
+      name: 'typstflow-settings',
+      partialize: (state) => ({ 
+        theme: state.theme, 
+        primaryColor: state.primaryColor 
+      }),
+    }
+  )
+);

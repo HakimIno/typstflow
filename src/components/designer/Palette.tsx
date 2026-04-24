@@ -73,29 +73,29 @@ export const Palette = memo(function Palette() {
   })).filter(cat => cat.items.length > 0);
 
   return (
-    <div className="h-full flex flex-col bg-white overflow-hidden font-sans border-r border-slate-200">
+    <div className="h-full flex flex-col bg-[var(--bg-surface)] overflow-hidden font-sans border-r border-[var(--border-default)]">
       {/* Utility Header */}
-      <div className="px-3 py-2 bg-slate-50 flex items-center justify-between border-b border-slate-200 shrink-0">
-        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">Element Library</span>
+      <div className="px-3 py-2.5 bg-[var(--bg-widget)] flex items-center justify-between border-b border-[var(--border-default)] shrink-0">
+        <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">Element Library</span>
         <button
           onClick={() => setSidebarOpen(false)}
-          className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400 hover:text-slate-600"
+          className="p-1 hover:bg-[var(--bg-hover)] rounded transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
         >
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
 
       {/* Search Bar - Compact */}
-      <div className="p-2 border-b border-slate-100 shrink-0">
+      <div className="p-2 border-b border-[var(--border-default)] shrink-0">
         <div className="relative group">
           <input
             type="text"
             placeholder="Search tools..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-sm py-1.5 px-3 pr-8 text-[12px] focus:ring-1 focus:ring-slate-400 focus:border-slate-400 transition-all outline-none text-slate-700 placeholder:text-slate-400"
+            className="w-full bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-[6px] py-1.5 px-3 pr-8 text-[11px] focus:border-[var(--accent)] transition-all outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
           />
-          <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-slate-500 transition-colors" />
+          <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
         </div>
       </div>
 
@@ -103,8 +103,8 @@ export const Palette = memo(function Palette() {
       <div className="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-4">
         {filteredCategories.map((cat) => (
           <div key={cat.id} className="space-y-1.5">
-            <div className="px-1 py-0.5 border-b border-slate-100 flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <div className="px-1 py-1 border-b border-[var(--border-default)] flex items-center justify-between">
+              <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">
                 {cat.label}
               </span>
             </div>
@@ -193,14 +193,14 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: any) 
     <div
       ref={ref}
       className={clsx(
-        'group flex flex-col items-center gap-2 px-2 py-2 rounded-md bg-slate-50 border border-slate-200 transition-colors cursor-grab active:cursor-grabbing hover:bg-white hover:border-slate-400 hover:shadow-sm'
+        'group flex flex-col items-center gap-2 px-2 py-2 rounded-[6px] bg-[var(--bg-widget)] border border-[var(--border-default)] transition-all cursor-grab active:cursor-grabbing hover:bg-[var(--bg-hover)] hover:border-[var(--border-accent)]'
       )}
     >
       <div className="w-6 h-6 flex  items-center justify-center shrink-0">
-        <Icon className="w-6 h-6 text-slate-500 group-hover:text-slate-800 transition-colors" />
+        <Icon className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" />
       </div>
 
-      <span className="text-[11px] text-slate-600 font-medium truncate group-hover:text-slate-900">
+      <span className="text-[9px] text-[var(--text-muted)] font-medium truncate group-hover:text-[var(--text-secondary)] text-center w-full uppercase tracking-wider">
         {label}
       </span>
     </div>

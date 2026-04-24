@@ -68,8 +68,8 @@ function getCellFill(
   const style = component.style || {};
   const pattern = style.fillPattern || 'header-only';
 
-  if (isHeader) return style.headerBackground || '#e2e8f0';
-  if (isFooter) return style.headerBackground ? `${style.headerBackground}22` : '#f1f5f920';
+  if (isHeader) return style.headerBackground || '#f1f5f9';
+  if (isFooter) return style.headerBackground ? `${style.headerBackground}22` : '#f1f5f944';
 
   switch (pattern) {
     case 'none':
@@ -304,7 +304,7 @@ export function TablePreview({ component }: Props) {
   };
 
   return (
-    <div className="w-full h-full bg-white flex flex-col border border-slate-300 shadow-sm overflow-hidden select-none relative">
+    <div className="w-full h-full bg-white flex flex-col border border-slate-200 shadow-sm overflow-hidden select-none relative">
       {/* TOOLBAR */}
       {selectedCells?.tableId === component.id && (
         <TableActionToolbar 
@@ -320,7 +320,7 @@ export function TablePreview({ component }: Props) {
       {/* ---- HEADER SECTION ---- */}
       {hasStructuredHeaders ? (
         // Multi-row structured headers
-        <div className="border-b border-slate-300">
+        <div className="border-b border-slate-200">
           {headerRows.map((row, rowIdx) => (
             <div
               key={row.id}
@@ -329,7 +329,7 @@ export function TablePreview({ component }: Props) {
                 display: 'grid',
                 gridTemplateColumns,
                 columnGap: colGap,
-                backgroundColor: component.style?.headerBackground || '#e2e8f0',
+                backgroundColor: component.style?.headerBackground || '#f1f5f9',
                 borderBottom: rowIdx < headerRows.length - 1 ? `1px solid ${borderColor}` : undefined,
               }}
             >
@@ -339,9 +339,9 @@ export function TablePreview({ component }: Props) {
                   onMouseDown={(e) => handleCellMouseDown('header', row.id, cellIdx, e)}
                   onMouseEnter={() => handleCellMouseEnter('header', row.id, cellIdx)}
                   className={clsx(
-                    "relative flex items-center justify-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell transition-all cursor-cell",
+                    "relative flex items-center justify-center p-2 border-r border-slate-200 last:border-r-0 overflow-hidden group/cell transition-all cursor-cell",
                     isCellSelected('header', row.id, cellIdx)
-                      ? "ring-2 ring-blue-500 ring-inset bg-blue-50/30 z-10"
+                      ? "ring-2 ring-[var(--accent)] ring-inset bg-blue-50/50 z-10"
                       : "hover:bg-slate-50/50"
                   )}
                   style={{
@@ -389,7 +389,7 @@ export function TablePreview({ component }: Props) {
             return (
               <div
                 key={col.id}
-                className="relative flex items-center justify-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell"
+                className="relative flex items-center justify-center p-2 border-r border-slate-200 last:border-r-0 overflow-hidden group/cell"
                 style={{
                   gridColumn: `${x + 1} / span ${cs}`,
                   gridRow: `span ${rs}`,
@@ -414,7 +414,7 @@ export function TablePreview({ component }: Props) {
                   onMouseDown={(e) => handleResizeStart(e, x)}
                   className={clsx(
                     'absolute top-0 right-0 w-1 h-full cursor-col-resize z-10 transition-colors',
-                    resizingColIndex === x ? 'bg-blue-500' : 'hover:bg-blue-300'
+                    resizingColIndex === x ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent-glow)]'
                   )}
                 />
               </div>
@@ -425,14 +425,14 @@ export function TablePreview({ component }: Props) {
 
       {/* ---- DATA ROWS ---- */}
       {component.detailRows && component.detailRows.length > 0 ? (
-        <div className="flex-1 overflow-hidden" style={{ backgroundColor: 'white' }}>
+        <div className="flex-1 overflow-hidden" style={{ backgroundColor: 'transparent' }}>
           <div className={clsx(
             "relative group/template",
-            !component.isStatic && "border-b border-slate-300 border-dashed mb-0.5"
+            !component.isStatic && "border-b border-slate-200 border-dashed mb-0.5"
           )}>
             {/* Label to indicate this is a template */}
             {!component.isStatic && (
-              <div className="absolute -left-5 top-2 -rotate-90 text-[8px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none opacity-50 group-hover/template:opacity-100 whitespace-nowrap">
+              <div className="absolute -left-5 top-2 -rotate-90 text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest pointer-events-none opacity-50 group-hover/template:opacity-100 whitespace-nowrap">
                  Template
               </div>
             )}
@@ -444,7 +444,7 @@ export function TablePreview({ component }: Props) {
                   display: 'grid',
                   gridTemplateColumns,
                   columnGap: colGap,
-                  backgroundColor: getCellFill(component, 0, 0, false, false) || 'white',
+                  backgroundColor: getCellFill(component, 0, 0, false, false) || 'transparent',
                   borderBottom: rowIdx < component.detailRows!.length - 1 ? `1px solid ${borderColor}` : undefined,
                 }}
               >
@@ -454,10 +454,10 @@ export function TablePreview({ component }: Props) {
                     onMouseDown={(e) => handleCellMouseDown('data', row.id, cellIdx, e)}
                     onMouseEnter={() => handleCellMouseEnter('data', row.id, cellIdx)}
                     className={clsx(
-                      "relative flex items-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell transition-all cursor-cell",
+                      "relative flex items-center p-2 border-r border-slate-200 last:border-r-0 overflow-hidden group/cell transition-all cursor-cell",
                       isCellSelected('data', row.id, cellIdx)
-                        ? "ring-2 ring-blue-500 ring-inset bg-blue-50/30 z-10"
-                        : "hover:bg-slate-50/20"
+                        ? "ring-2 ring-[var(--accent)] ring-inset bg-blue-50/50 z-10"
+                        : "hover:bg-slate-50/50"
                     )}
                     style={{
                       gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,
@@ -525,7 +525,7 @@ export function TablePreview({ component }: Props) {
                       style={{
                         gridColumn: `${x + 1} / span ${cs}`,
                         backgroundColor: cellBg || (col.background || 'white'),
-                        borderColor,
+                        borderColor: '#e2e8f0',
                         justifyContent:
                           col.align === 'center'
                             ? 'center'
@@ -568,7 +568,7 @@ export function TablePreview({ component }: Props) {
 
       {/* ---- FOOTER SECTION ---- */}
       {footerRows.length > 0 && (
-        <div className="border-t border-slate-400">
+        <div className="border-t border-slate-300">
           {footerRows.map((row, rowIdx) => (
             <div
               key={row.id}
@@ -587,10 +587,10 @@ export function TablePreview({ component }: Props) {
                   onMouseDown={(e) => handleCellMouseDown('footer', row.id, cellIdx, e)}
                   onMouseEnter={() => handleCellMouseEnter('footer', row.id, cellIdx)}
                   className={clsx(
-                    "relative flex items-center p-2 border-r border-slate-300 last:border-r-0 overflow-hidden group/cell transition-all cursor-cell",
+                    "relative flex items-center p-2 border-r border-slate-200 last:border-r-0 overflow-hidden group/cell transition-all cursor-cell",
                     isCellSelected('footer', row.id, cellIdx)
-                      ? "ring-2 ring-blue-500 ring-inset bg-blue-50/30 z-10"
-                      : "hover:bg-slate-50/20"
+                      ? "ring-2 ring-[var(--accent)] ring-inset bg-blue-50/50 z-10"
+                      : "hover:bg-slate-50/50"
                   )}
                   style={{
                     gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,
@@ -638,7 +638,7 @@ export function TablePreview({ component }: Props) {
           return (
             <div
               key={vl.id}
-              className="absolute top-0 bottom-0 w-px border-l border-blue-400 border-dashed opacity-40"
+              className="absolute top-0 bottom-0 w-px border-l border-[var(--accent)] border-dashed opacity-40"
               style={{ left: `${LayoutEngine.mmToPx(offsetMm)}px` }}
             />
           );

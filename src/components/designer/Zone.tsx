@@ -153,30 +153,30 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
       ref={containerRef}
       style={{ minHeight: `${localHeight}mm` }}
       className={clsx(
-        'relative border-b last:border-b-0 border-slate-300 transition-colors group/zone',
-        zoneKey === 'header' && 'bg-slate-100/40',
-        zoneKey === 'body' && 'bg-white/10',
-        zoneKey === 'footer' && 'bg-slate-100/60',
-        isDraggedOver ? 'bg-blue-50/50' : '',
-        isResizing && 'ring-1 ring-blue-400 z-50 shadow-lg'
+        'relative border-b last:border-b-0 border-dashed border-[var(--border-default)] transition-colors group/zone',
+        zoneKey === 'header' && 'bg-[var(--bg-widget)]',
+        zoneKey === 'body' && 'bg-transparent',
+        zoneKey === 'footer' && 'bg-[var(--bg-widget)] opacity-90',
+        isDraggedOver ? 'bg-[var(--accent-glow)]/50' : '',
+        isResizing && 'ring-1 ring-[var(--accent)] z-50 shadow-lg'
       )}
     >
       {/* Vertical Side Label (External to Paper) */}
-      <div className="absolute -left-7 top-0 bottom-0 w-7 flex flex-col items-center pt-8 pointer-events-none select-none z-10 group-hover/zone:opacity-100 transition-opacity">
-        <div className="absolute inset-y-0 right-0 w-px bg-slate-300/30" />
-        <span className={clsx(
-          "text-[7px] font-black uppercase tracking-[0.3em] whitespace-nowrap rotate-90 origin-center text-slate-400 drop-shadow-sm",
-          zoneKey === 'header' && 'text-blue-600/70',
-          zoneKey === 'body' && 'text-slate-500/70',
-          zoneKey === 'footer' && 'text-purple-600/70'
-        )}>
+      <div className="absolute -left-10 top-0 bottom-0 w-10 flex flex-col items-center justify-center pointer-events-none select-none z-10 opacity-60 group-hover/zone:opacity-100 transition-opacity">
+        <div className="absolute inset-y-0 right-0 w-px bg-[var(--border-default)]" />
+        <span 
+          className={clsx(
+            "text-[8px] font-medium uppercase tracking-[0.1em] text-[var(--text-muted)] whitespace-nowrap",
+          )}
+          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+        >
           {label}
         </span>
       </div>
 
       <div ref={contentRef} className="relative w-full h-full bg-transparent overflow-visible min-h-[inherit]">
         {components.length === 0 && !isDraggedOver ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 opacity-20 select-none pointer-events-none">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--text-muted)] opacity-30 select-none pointer-events-none">
             <Layers className="w-6 h-6 mb-1" />
             <p className="text-[9px] font-bold uppercase tracking-widest text-center px-4">
               {label} EMPTY<br/>
@@ -194,7 +194,7 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
 
       {/* Height Indicator Label */}
       {isResizing && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] px-2 py-1 rounded shadow-lg z-[60] font-mono">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[var(--accent)] text-white text-[10px] px-2 py-1 rounded shadow-lg z-[60] font-mono">
           HEIGHT: {localHeight.toFixed(1)}mm
         </div>
       )}
@@ -204,19 +204,19 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
         onMouseDown={handleResizeStart}
         className={clsx(
           'absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize z-40 transition-colors',
-          'hover:bg-blue-400 group-hover/zone:bg-slate-300',
-          isResizing && 'bg-blue-600 h-0.5'
+          'hover:bg-[var(--accent)] group-hover/zone:bg-[var(--border-default)]',
+          isResizing && 'bg-[var(--accent)] h-0.5'
         )}
       >
         {/* Full-width Horizontal Guide Line during Resize */}
         {isResizing && (
-          <div className="absolute top-0 -left-[2000px] -right-[2000px] border-b border-dashed border-blue-500 opacity-50" />
+          <div className="absolute top-0 -left-[2000px] -right-[2000px] border-b border-dashed border-[var(--accent)] opacity-50" />
         )}
         
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover/zone:opacity-100 transition-opacity">
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm border border-white" />
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm border border-white" />
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm border border-white" />
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-sm" />
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-sm" />
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-sm" />
         </div>
       </div>
     </div>

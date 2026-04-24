@@ -1,73 +1,123 @@
 @import "tailwindcss";
 
 @theme {
-  --color-industrial-bg: #f8fafc;
-  --color-industrial-panel: #ffffff;
-  --color-industrial-border: #cbd5e1;
-  --color-industrial-text: #334155;
-  --color-industrial-accent: #005fb8; /* Windows Blue */
-  --color-industrial-hover: #f1f5f9;
-
   --shadow-none: none;
   --radius-none: 0;
-  --radius-sm: 0.125rem;
+  --radius-sm: 5px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 }
 
 :root {
-  --background: #f1f5f9;
-  --foreground: #334155;
+  /* Light Theme (Default) */
+  --bg-app: #F1F5F9;
+  --bg-surface: #FFFFFF;
+  --bg-canvas: #E2E8F0;
+  --bg-widget: rgba(0, 0, 0, 0.03);
+  --bg-hover: rgba(0, 0, 0, 0.05);
+  --border-default: #E2E8F0;
+  --border-subtle: #F1F5F9;
+  --border-accent: rgba(0, 0, 0, 0.1);
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  --accent: #8B5CF6;
+  --accent-glow: rgba(139, 92, 246, 0.1);
+  --green: #10B981;
+  --grid-dot: rgba(0, 0, 0, 0.06);
+}
+
+.dark {
+  /* Dark Theme (Manus.im) */
+  --bg-app: #09090F;
+  --bg-surface: #0D0D16;
+  --bg-canvas: #0A0A12;
+  --bg-widget: rgba(255, 255, 255, 0.03);
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.06);
+  --border-subtle: rgba(255, 255, 255, 0.10);
+  --border-accent: rgba(255, 255, 255, 0.15);
+  --text-primary: rgba(255, 255, 255, 0.85);
+  --text-secondary: rgba(255, 255, 255, 0.45);
+  --text-muted: rgba(255, 255, 255, 0.22);
+  --accent: #8B5CF6;
+  --accent-glow: rgba(139, 92, 246, 0.20);
+  --green: #34D399;
+  --grid-dot: rgba(255, 255, 255, 0.04);
+}
+
+.light {
+  /* Explicit Light Theme Overrides */
+  --bg-app: #F1F5F9;
+  --bg-surface: #FFFFFF;
+  --bg-canvas: #E2E8F0;
+  --bg-widget: rgba(0, 0, 0, 0.03);
+  --bg-hover: rgba(0, 0, 0, 0.05);
+  --border-default: #E2E8F0;
+  --border-subtle: #F1F5F9;
+  --border-accent: rgba(0, 0, 0, 0.1);
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  --accent: #8B5CF6;
+  --accent-glow: rgba(139, 92, 246, 0.1);
+  --green: #10B981;
+  --grid-dot: rgba(0, 0, 0, 0.06);
 }
 
 @layer base {
   body {
-    @apply bg-[var(--background)] text-[var(--foreground)] antialiased font-sans;
+    @apply bg-[var(--bg-app)] text-[var(--text-primary)] antialiased transition-colors duration-300;
+    font-family: 'Inter', system-ui, sans-serif;
     font-size: 12px;
+    font-weight: 400;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { 
+    background: var(--text-muted); 
+    border-radius: 2px; 
+    opacity: 0.3;
   }
 }
 
 @layer components {
   .pro-panel {
-    @apply bg-white border border-slate-300 shadow-none;
+    @apply bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-none rounded-[6px] transition-colors;
   }
 
   .pro-button {
-    @apply px-3 py-1.5 border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors disabled:opacity-50 text-[11px] font-medium;
+    @apply px-3 py-1.5 border border-[var(--border-default)] bg-[var(--bg-widget)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-accent)] transition-all disabled:opacity-50 text-[11px] font-medium rounded-[5px];
   }
 
   .pro-input {
-    @apply w-full px-2 py-1 border border-slate-300 text-[12px] focus:border-blue-500 focus:outline-none bg-white;
+    @apply w-full px-2 py-1 border border-[var(--border-default)] text-[11px] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none bg-[var(--bg-widget)] rounded-[5px] transition-colors;
   }
 
   .pro-label {
-    @apply text-[10px] font-bold text-slate-500 uppercase tracking-tight mb-1 block;
+    @apply text-[10px] font-medium text-[var(--text-secondary)] uppercase tracking-tight mb-1 block;
   }
 
-  /* Compact Rulers */
   .ruler-container {
-    @apply relative bg-slate-200 overflow-hidden select-none;
+    @apply relative bg-[var(--bg-surface)] overflow-hidden select-none border-[var(--border-default)] transition-colors;
   }
 
-  /* Engineering Grid Pattern for Canvas */
   .pro-grid {
-    background-color: #ffffff;
-    background-image: linear-gradient(#f1f5f9 1px, transparent 1px),
-      linear-gradient(90deg, #f1f5f9 1px, transparent 1px),
-      linear-gradient(#cbd5e1 1px, transparent 1px),
-      linear-gradient(90deg, #cbd5e1 1px, transparent 1px);
-    background-size: 2mm 2mm, 2mm 2mm, 10mm 10mm, 10mm 10mm;
-    background-position: -1px -1px;
+    background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1px);
+    background-size: 12px 12px;
+    background-position: 0 0;
   }
 
-  /* Natural Drag Preview (Simple & Direct) */
   .natural-preview {
-    @apply bg-white ring-1 ring-slate-400 shadow-xl pointer-events-none opacity-90;
+    @apply bg-[var(--bg-surface)] ring-1 ring-[var(--border-accent)] shadow-xl pointer-events-none opacity-90 rounded-[4px];
   }
 
   .snap-guide {
-    @apply outline-1 outline-dashed outline-blue-400 opacity-40 pointer-events-none;
+    @apply outline-1 outline-dashed outline-[var(--accent)] opacity-40 pointer-events-none;
   }
 
   .coord-pill {
-    @apply bg-slate-800 text-white text-[9px] font-medium px-1.5 py-0.5 shadow-sm flex items-center gap-1 leading-none rounded-none;
+    @apply bg-[var(--bg-surface)] text-[var(--text-primary)] text-[9px] font-medium px-1.5 py-0.5 shadow-sm flex items-center gap-1 leading-none rounded-none border border-[var(--border-default)];
   }
 }

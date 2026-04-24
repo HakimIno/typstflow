@@ -34,7 +34,7 @@ export const SidebarNav = memo(function SidebarNav() {
   };
 
   return (
-    <aside className="w-14 flex flex-col items-center py-4 bg-slate-100 border-r border-slate-300 shrink-0 z-40">
+    <aside className="w-[36px] flex flex-col items-center py-4 bg-[var(--bg-surface)] border-r border-[var(--border-default)] shrink-0 z-40">
       {/* Nav Group */}
       <div className="flex-1 flex flex-col items-center gap-2 w-full px-1.5">
         {navItems.map((item) => (
@@ -42,22 +42,22 @@ export const SidebarNav = memo(function SidebarNav() {
             key={item.id}
             onClick={() => handleTabClick(item.id)}
             className={clsx(
-              "group relative flex flex-col items-center transition-none w-full py-2.5 rounded-none",
+              "group relative flex flex-col items-center transition-all duration-150 w-7 h-7 justify-center rounded-[5px]",
               activeTab === item.id && isSidebarOpen
-                ? "bg-white text-slate-800 border border-slate-300"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"
+                ? "bg-[var(--accent-glow)] text-[var(--accent)]"
+                : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
             )}
             title={item.label}
           >
-            <item.icon className="w-5 h-5" />
+            <item.icon className="w-[14px] h-[14px]" />
           </button>
         ))}
       </div>
 
       {/* Settings Action */}
-      <div className="flex flex-col items-center gap-4 w-full px-1.5 pt-4 border-t border-slate-200">
-        <button className="p-2.5 text-slate-400 hover:text-slate-600 transition-colors rounded-sm hover:bg-slate-200" title="Settings">
-          <Settings2 className="w-5 h-5" />
+      <div className="flex flex-col items-center gap-4 w-full px-1.5 pt-4 border-t border-[var(--border-default)]">
+        <button className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors rounded-[5px] hover:bg-[var(--bg-hover)]" title="Settings">
+          <Settings2 className="w-[14px] h-[14px]" />
         </button>
       </div>
     </aside>

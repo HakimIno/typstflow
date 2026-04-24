@@ -32,7 +32,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
   };
 
   return (
-    <div className="flex items-center gap-0.5 bg-white border border-slate-300 rounded-none p-0.5 mr-3">
+    <div className="flex items-center gap-0.5 bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-[4px] p-0.5 mr-2">
       <ToolbarButton
         icon={AlignLeft}
         onClick={() => handleAlign('left')}

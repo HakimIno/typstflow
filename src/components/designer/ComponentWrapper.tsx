@@ -224,22 +224,22 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
         'transition-none cursor-default select-none group focus:outline-none',
         isSelected
           ? clsx(
-              'z-50 ring-2 ring-blue-500 ring-inset shadow-md',
-              component.type === 'text' ? 'bg-blue-50/5' : 'bg-white'
+              'z-50 ring-2 ring-[var(--accent)] ring-inset shadow-md',
+              component.type === 'text' ? 'bg-white/[0.02]' : 'bg-white/10'
             )
           : clsx(
-              'z-10 ring-inset hover:ring-1 hover:ring-slate-300',
-              component.type === 'text' ? 'bg-transparent' : 'bg-white/50 hover:bg-white'
+              'z-10 ring-inset hover:ring-1 hover:ring-white/20',
+              component.type === 'text' ? 'bg-transparent' : 'bg-white/5 hover:bg-white/10'
             ),
         isDragging && 'opacity-0',
-        isResizing && 'ring-2 ring-blue-600 shadow-lg z-[100]'
+        isResizing && 'ring-2 ring-[var(--accent)] shadow-lg z-[100]'
       )}
     >
       {/* Inline Editor */}
       {isEditing && component.type === 'text' && (
         <div
           ref={editorContainerRef}
-          className="absolute inset-0 w-full h-full bg-white/80 backdrop-blur-[2px] z-[60] overflow-hidden"
+          className="absolute inset-0 w-full h-full bg-black/80 backdrop-blur-[4px] z-[60] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={handleKeyDown}
           style={{
@@ -279,7 +279,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       <div
         key={`action-bar-${component.id}`}
         className={clsx(
-          'absolute -top-7 right-0 flex items-center bg-blue-600 border border-blue-700 rounded-md px-0.5 h-6.5 shadow-sm transition-opacity duration-200',
+          'absolute -top-7 right-0 flex items-center bg-[var(--accent)] border border-[var(--border-accent)] rounded-md px-0.5 h-6.5 shadow-sm transition-opacity duration-200',
           !isSelected || isDragging ? 'opacity-0 pointer-events-none' : 'opacity-100'
         )}
       >
@@ -287,7 +287,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
           key="drag-handle"
           ref={dragHandleRef}
           data-drag-handle="true"
-          className="p-1 hover:bg-blue-500 text-white cursor-grab active:cursor-grabbing border-r border-blue-700/50"
+          className="p-1 hover:bg-white/10 text-white cursor-grab active:cursor-grabbing border-r border-white/10"
         >
           <GripVertical className="w-3 h-3" />
         </div>
@@ -295,7 +295,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
           key="duplicate-btn"
           type="button"
           onClick={handleDuplicate}
-          className="p-1 hover:bg-blue-500 text-white border-r border-blue-700/50"
+          className="p-1 hover:bg-white/10 text-white border-r border-white/10"
           title="Duplicate"
         >
           <Copy className="w-3 h-3" />
@@ -307,7 +307,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
             e.stopPropagation();
             removeComponent(component.id);
           }}
-          className="p-1 hover:bg-red-500 text-white"
+          className="p-1 hover:bg-red-600 text-white"
           title="Delete"
         >
           <Trash2 className="w-3 h-3" />
@@ -329,7 +329,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
             key={handle}
             onMouseDown={(e) => handleResizeStart(e, handle)}
             className={clsx(
-              'absolute w-1.5 h-1.5 bg-white border border-blue-600 z-50 shadow-sm',
+              'absolute w-1.5 h-1.5 bg-white border border-[var(--accent)] z-50 shadow-sm',
               handle === 'top-left' &&
                 'top-0 left-0 -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize',
               handle === 'top-center' &&

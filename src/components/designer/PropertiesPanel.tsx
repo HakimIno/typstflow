@@ -36,8 +36,8 @@ import React, { useMemo, useRef, useState, useCallback, memo } from 'react';
 // Shared UI Primitives (Defined outside to prevent focus loss)
 // ---------------------------------------------------------------------------
 const PropertyRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="flex border-b border-slate-100 last:border-0 hover:bg-slate-50 group">
-    <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-50/50 border-r border-slate-100 flex items-center shrink-0">
+  <div className="flex border-b border-[var(--border-default)] last:border-0 hover:bg-white/[0.02] group transition-colors">
+    <div className="w-1/3 px-3 py-2 text-[10px] font-medium text-[var(--text-secondary)] bg-white/[0.01] border-r border-[var(--border-default)] flex items-center shrink-0">
       {label}
     </div>
     <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">{children}</div>
@@ -45,7 +45,7 @@ const PropertyRow = ({ label, children }: { label: string; children: React.React
 );
 
 const SectionHeader = ({ label }: { label: string }) => (
-  <div className="px-3 py-1.5 bg-slate-200 border-b border-slate-300 text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+  <div className="px-3 py-1.5 bg-white/[0.03] border-b border-[var(--border-default)] text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">
     {label}
   </div>
 );
@@ -135,9 +135,9 @@ function ImageUploader({
   }, [onUpdate]);
 
   return (
-    <div className="border-b border-slate-100">
+    <div className="border-b border-[var(--border-default)]">
       {/* Tab switcher */}
-      <div className="flex border-b border-slate-100">
+      <div className="flex border-b border-[var(--border-default)]">
         {(['upload', 'url'] as const).map((t) => (
           <button
             key={t}
@@ -146,8 +146,8 @@ function ImageUploader({
             className={clsx(
               'flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all',
               tab === t
-                ? 'bg-blue-600 text-white'
-                : 'bg-slate-50 text-slate-400 hover:text-slate-600'
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-white/[0.02] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
             )}
           >
             {t === 'upload' ? <Upload className="w-2.5 h-2.5" /> : <Link className="w-2.5 h-2.5" />}
@@ -158,7 +158,7 @@ function ImageUploader({
 
       {/* Preview */}
       {previewSrc ? (
-        <div className="relative mx-3 my-2 rounded border border-slate-200 overflow-hidden bg-slate-50" style={{ height: 80 }}>
+        <div className="relative mx-3 my-2 rounded border border-[var(--border-default)] overflow-hidden bg-white/[0.02]" style={{ height: 80 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={previewSrc} alt="preview" className="w-full h-full object-contain" />
           <button
@@ -171,14 +171,14 @@ function ImageUploader({
         </div>
       ) : (
         <div
-          className="mx-3 my-2 rounded border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all"
+          className="mx-3 my-2 rounded border-2 border-dashed border-[var(--border-default)] flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-[var(--border-accent)] hover:bg-[var(--accent-glow)] transition-all"
           style={{ height: 64 }}
           onClick={() => tab === 'upload' && fileRef.current?.click()}
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
         >
-          <ImageIcon className="w-4 h-4 text-slate-300" />
-          <span className="text-[8px] text-slate-300 font-bold uppercase tracking-widest">No Image</span>
+          <ImageIcon className="w-4 h-4 text-[var(--text-muted)]" />
+          <span className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-widest">No Image</span>
         </div>
       )}
 
@@ -189,7 +189,7 @@ function ImageUploader({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded text-[9px] font-bold text-slate-600 uppercase tracking-wider transition-all"
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-[var(--border-default)] rounded text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider transition-all"
           >
             <Upload className="w-3 h-3" />
             Browse file…
@@ -214,7 +214,7 @@ function ImageUploader({
               type="button"
               onClick={handleUrlLoad}
               disabled={loading || !urlInput.trim()}
-              className="flex items-center gap-1 px-2 h-6 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-[9px] font-bold rounded transition-all"
+              className="flex items-center gap-1 px-2 h-6 bg-[var(--accent)] hover:bg-[var(--accent)]/80 disabled:opacity-40 text-white text-[9px] font-bold rounded transition-all"
             >
               {loading ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : 'Load'}
             </button>
@@ -253,18 +253,18 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
   if (!selectedComponent) {
     return (
-      <div className="h-full flex flex-col bg-white">
-        <div className="h-8 min-h-[32px] bg-slate-700 text-white flex items-center px-3 gap-2">
-          <Layers className="w-3 h-3 text-slate-400" />
+      <div className="h-full flex flex-col bg-[var(--bg-surface)]">
+        <div className="h-8 min-h-[32px] bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
+          <Layers className="w-3 h-3 text-[var(--text-muted)]" />
           <span className="text-[10px] font-bold uppercase tracking-wider">Report Settings</span>
         </div>
-        <div className="flex-1 overflow-auto border-l border-slate-200">
+        <div className="flex-1 overflow-auto border-l border-[var(--border-default)]">
           <section>
-            <div className="px-3 py-1.5 bg-slate-200 border-b border-slate-300 text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+            <div className="px-3 py-1.5 bg-[var(--bg-widget)] border-b border-[var(--border-default)] text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
               Page Configuration
             </div>
-            <div className="flex border-b border-slate-100 last:border-0 hover:bg-slate-50 group">
-              <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-50/50 border-r border-slate-100 flex items-center shrink-0">
+            <div className="flex border-b border-[var(--border-default)] last:border-0 hover:bg-[var(--bg-hover)] group transition-colors">
+              <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-[var(--text-secondary)] bg-[var(--bg-widget)] border-r border-[var(--border-default)] flex items-center shrink-0">
                 Paper Size
               </div>
               <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">
@@ -273,17 +273,17 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   onChange={(e) =>
                     updateSchema({ page: { ...fullSchema.page, size: e.target.value as any } })
                   }
-                  className="pro-input h-6 px-1 w-full bg-white text-[11px]"
+                  className="pro-input h-6 px-1 w-full text-[11px] outline-none"
                 >
-                  <option value="A4">A4</option>
-                  <option value="A5">A5</option>
-                  <option value="Letter">Letter</option>
-                  <option value="Legal">Legal</option>
+                  <option value="A4" className="bg-[var(--bg-surface)]">A4</option>
+                  <option value="A5" className="bg-[var(--bg-surface)]">A5</option>
+                  <option value="Letter" className="bg-[var(--bg-surface)]">Letter</option>
+                  <option value="Legal" className="bg-[var(--bg-surface)]">Legal</option>
                 </select>
               </div>
             </div>
-            <div className="flex border-b border-slate-100 last:border-0 hover:bg-slate-50 group">
-              <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-50/50 border-r border-slate-100 flex items-center shrink-0">
+            <div className="flex border-b border-[var(--border-default)] last:border-0 hover:bg-[var(--bg-hover)] group transition-colors">
+              <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-[var(--text-secondary)] bg-[var(--bg-widget)] border-r border-[var(--border-default)] flex items-center shrink-0">
                 Orientation
               </div>
               <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">
@@ -292,24 +292,24 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   onChange={(e) =>
                     updateSchema({ page: { ...fullSchema.page, orientation: e.target.value as any } })
                   }
-                  className="pro-input h-6 px-1 w-full bg-white text-[11px]"
+                  className="pro-input h-6 px-1 w-full text-[11px] outline-none"
                 >
-                  <option value="portrait">Portrait</option>
-                  <option value="landscape">Landscape</option>
+                  <option value="portrait" className="bg-[var(--bg-surface)]">Portrait</option>
+                  <option value="landscape" className="bg-[var(--bg-surface)]">Landscape</option>
                 </select>
               </div>
             </div>
           </section>
           <section>
-            <div className="px-3 py-1.5 bg-slate-200 border-b border-slate-300 text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+            <div className="px-3 py-1.5 bg-[var(--bg-widget)] border-b border-[var(--border-default)] text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
               Margins
             </div>
             {(['top', 'bottom', 'left', 'right'] as const).map((side) => (
               <div
                 key={side}
-                className="flex border-b border-slate-100 last:border-0 hover:bg-slate-50 group"
+                className="flex border-b border-[var(--border-default)] last:border-0 hover:bg-[var(--bg-hover)] group transition-colors"
               >
-                <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-slate-500 bg-slate-50/50 border-r border-slate-100 flex items-center shrink-0 capitalize">
+                <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-[var(--text-secondary)] bg-[var(--bg-widget)] border-r border-[var(--border-default)] flex items-center shrink-0 capitalize">
                   {side}
                 </div>
                 <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">
@@ -324,7 +324,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                         },
                       })
                     }
-                    className="pro-input h-6 px-1 w-full bg-white text-[11px] font-mono"
+                    className="pro-input h-6 px-1 w-full text-[11px] font-mono outline-none"
                     placeholder="15mm"
                   />
                 </div>
@@ -352,22 +352,22 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <div className="h-8 min-h-[32px] bg-slate-700 text-white flex items-center px-3 gap-2">
-        <Sliders className="w-3 h-3 text-slate-400" />
+    <div className="h-full flex flex-col bg-[var(--bg-surface)]">
+      <div className="h-8 min-h-[32px] bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
+        <Sliders className="w-3 h-3 text-[var(--text-muted)]" />
         <span className="text-[10px] font-bold uppercase tracking-wider">Properties Inspector</span>
       </div>
 
-      <div className="flex-1 overflow-auto border-l border-slate-200">
+      <div className="flex-1 overflow-auto border-l border-[var(--border-default)]">
         <section>
           <SectionHeader label="Identification" />
           <PropertyRow label="Object ID">
-            <span className="text-[11px] font-mono text-slate-400 truncate">
+            <span className="text-[11px] font-mono text-[var(--text-muted)] truncate">
               {selectedComponent.id}
             </span>
           </PropertyRow>
           <PropertyRow label="Type">
-            <span className="text-[11px] font-bold text-blue-600 uppercase">
+            <span className="text-[11px] font-bold text-[var(--accent)] uppercase">
               {selectedComponent.type}
             </span>
           </PropertyRow>
@@ -376,9 +376,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         <section>
           <SectionHeader label="Content & Binding" />
           {isText(selectedComponent) && (
-            <div className="flex flex-col border-b border-slate-100">
-              <div className="px-3 py-1 flex items-center justify-between text-[10px] bg-slate-50/50">
-                <span className="font-bold text-slate-500 uppercase tracking-tighter">Text Content</span>
+            <div className="flex flex-col border-b border-[var(--border-default)]">
+              <div className="px-3 py-1 flex items-center justify-between text-[10px] bg-white/[0.01]">
+                <span className="font-bold text-[var(--text-secondary)] uppercase tracking-tighter">Text Content</span>
                 <VariablePicker
                   sampleData={sampleData}
                   onSelect={(path, binding) => {
@@ -392,7 +392,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 onChange={(value) => updateComponent(selectedComponent.id, { content: value })}
                 sampleData={sampleData}
                 placeholder="Type static text or {{binding}}..."
-                className="bg-white"
+                className="bg-transparent"
               />
             </div>
           )}
@@ -490,8 +490,8 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 className={clsx(
                   'px-2 py-0.5 border text-[10px] font-bold transition-all',
                   selectedComponent.style?.fontWeight === 'bold'
-                    ? 'bg-slate-800 text-white border-slate-800'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                    : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
                 )}
               >
                 <Bold className="w-3 h-3" />
@@ -504,17 +504,17 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           <section>
             <SectionHeader label="Image Settings" />
             <PropertyRow label="Fit Mode">
-              <select
-                value={selectedComponent.fit || 'contain'}
-                onChange={(e) =>
-                  updateComponent(selectedComponent.id, { fit: e.target.value as any })
-                }
-                className="pro-input h-6 px-1 w-full bg-white text-[11px]"
-              >
-                <option value="contain">Contain</option>
-                <option value="cover">Cover</option>
-                <option value="stretch">Stretch</option>
-              </select>
+                <select
+                  value={selectedComponent.fit || 'contain'}
+                  onChange={(e) =>
+                    updateComponent(selectedComponent.id, { fit: e.target.value as any })
+                  }
+                  className="pro-input h-6 px-1 w-full text-[11px] outline-none"
+                >
+                  <option value="contain" className="bg-[var(--bg-surface)]">Contain</option>
+                  <option value="cover" className="bg-[var(--bg-surface)]">Cover</option>
+                  <option value="stretch" className="bg-[var(--bg-surface)]">Stretch</option>
+                </select>
             </PropertyRow>
           </section>
         )}
@@ -526,7 +526,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         <section>
           <SectionHeader label="Alignment" />
           <PropertyRow label="Horizontal">
-            <div className="flex border border-slate-200 rounded-sm overflow-hidden w-full">
+            <div className="flex border border-[var(--border-default)] rounded-[4px] overflow-hidden w-full bg-white/[0.02]">
               {[
                 { id: 'left', icon: AlignLeft },
                 { id: 'center', icon: AlignCenter },
@@ -547,8 +547,8 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   className={clsx(
                     'flex-1 py-1 flex items-center justify-center transition-all',
                     selectedComponent.align === align.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-slate-400 hover:text-slate-600'
+                      ? 'bg-[var(--accent)] text-white'
+                      : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                   )}
                 >
                   <align.icon className="w-3 h-3" />
@@ -612,8 +612,8 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               className={clsx(
                 'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
                 selectedComponent.pageBreakBefore
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                  ? 'bg-[var(--accent)] text-white'
+                  : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
               )}
             >
               <FileDown className="w-3 h-3" />
@@ -637,8 +637,8 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 className={clsx(
                   'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
                   fullSchema.zones.header.showOnFirstPageOnly
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
                   )}
               >
                 <FileText className="w-3 h-3" />
@@ -658,8 +658,8 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 className={clsx(
                   'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
                   fullSchema.zones.footer.showOnLastPageOnly
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
                   )}
               >
                 <FileText className="w-3 h-3" />
@@ -670,7 +670,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         </section>
       </div>
 
-      <div className="p-2 border-t border-slate-300 bg-slate-100">
+      <div className="p-2 border-t border-[var(--border-default)] bg-white/[0.01]">
         <button
           type="button"
           onClick={() => removeComponent(selectedComponent.id)}

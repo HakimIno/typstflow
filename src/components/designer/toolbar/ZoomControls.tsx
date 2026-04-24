@@ -10,7 +10,7 @@ export const ZoomControls = memo(function ZoomControls() {
   const setZoom = useDesignerStore((state) => state.setZoom);
 
   return (
-    <div className="flex items-center bg-white border border-slate-300 rounded-none mr-3 h-7 overflow-hidden">
+    <div className="flex items-center bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-[4px] mr-3 h-7 overflow-hidden">
       <ToolbarButton
         icon={ZoomOut}
         onClick={() => setZoom(zoom - 0.1)}
@@ -19,7 +19,7 @@ export const ZoomControls = memo(function ZoomControls() {
         className="!border-none !bg-transparent h-full w-8 !p-1.5"
       />
       <div 
-        className="flex items-center justify-center px-2 h-full text-[10px] font-mono text-slate-600 font-bold w-12 border-x border-slate-200 cursor-default bg-slate-50"
+        className="flex items-center justify-center px-2 h-full text-[10px] font-mono text-[var(--text-secondary)] font-bold w-12 border-x border-[var(--border-default)] cursor-default bg-[var(--bg-surface)]"
         title="Current Zoom"
       >
         {Math.round(zoom * 100)}%

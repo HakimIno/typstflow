@@ -9,17 +9,17 @@ export const ViewSwitcher = memo(function ViewSwitcher() {
   const setViewMode = useDesignerStore((state) => state.setViewMode);
 
   return (
-    <div className="flex items-center bg-slate-900/50 rounded-sm p-0.5 border border-slate-700">
+    <div className="flex items-center bg-white/5 rounded-full p-0.5 border border-[var(--border-default)]">
       {(['design', 'preview', 'split'] as const).map((mode) => (
         <button
           key={mode}
           type="button"
           onClick={() => setViewMode(mode)}
           className={clsx(
-            'px-3 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider',
+            'px-3 py-1 rounded-full text-[11px] font-medium uppercase tracking-[0.04em] transition-all',
             viewMode === mode
-              ? 'bg-slate-700 text-white'
-              : 'text-slate-500 hover:text-slate-300'
+              ? 'bg-[var(--accent-glow)] text-[#A78BFA]'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5'
           )}
         >
           {mode}

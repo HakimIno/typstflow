@@ -5,17 +5,18 @@ import { useDesignerStore } from '@/store/designer-store';
 import { Cpu } from 'lucide-react';
 import { InsertMenu } from './InsertMenu';
 import { ViewSwitcher } from './ViewSwitcher';
+import { SettingsMenu } from './SettingsMenu';
 
 export const TopHeader = memo(function TopHeader() {
   const version = useDesignerStore((state) => state.schema.version);
 
   return (
-    <header className="h-8 bg-slate-800 flex items-center justify-between px-3 border-b border-slate-900">
+    <header className="h-[40px] bg-[var(--bg-surface)] flex items-center justify-between px-3 border-b border-[var(--border-default)]">
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-700">
-          <Cpu className="w-3.5 h-3.5 text-white" />
-          <span className="text-[10px] font-black text-white uppercase tracking-tighter">
-            TypstFlow Pro
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full" />
+          <span className="text-[11px] font-bold text-white tracking-tight">
+            TypstFlow
           </span>
         </div>
 
@@ -24,7 +25,7 @@ export const TopHeader = memo(function TopHeader() {
             <button
               key={item}
               type="button"
-              className="px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700 hover:text-white transition-none"
+              className="px-2 py-1 text-[11px] text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)] transition-none"
             >
               {item}
             </button>
@@ -34,7 +35,7 @@ export const TopHeader = memo(function TopHeader() {
             <button
               key={item}
               type="button"
-              className="px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700 hover:text-white transition-none"
+              className="px-2 py-1 text-[11px] text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)] transition-none"
             >
               {item}
             </button>
@@ -44,12 +45,11 @@ export const TopHeader = memo(function TopHeader() {
 
       <ViewSwitcher />
 
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] text-slate-500 font-mono">v{version}</span>
-        <div className="w-px h-4 bg-slate-700 mx-1" />
-        <div className="flex items-center gap-1.5 px-2 py-0.5 border border-slate-700">
-          <div className="w-1.5 h-1.5 bg-green-500 rounded-none" />
-          <span className="text-[9px] text-slate-400 font-bold uppercase">
+      <div className="flex items-center gap-4">
+        <SettingsMenu />
+        <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase tracking-wider">v{version}</span>
+        <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#34D399]/10 border border-[#34D399]/20 rounded-none">
+          <span className="text-[9px] text-[#34D399] font-bold uppercase tracking-wide">
             Live Mode
           </span>
         </div>

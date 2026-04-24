@@ -71,12 +71,12 @@ export function TableActionToolbar({ component, selectedCells, onMerge, onSplit,
   };
 
   return (
-    <div className="absolute -top-10 left-0 flex items-center gap-1 bg-white border border-slate-300 shadow-xl rounded-lg p-1 z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
-      <div className="flex items-center gap-0.5 border-r border-slate-200 pr-1 mr-1">
+    <div className="absolute -top-10 left-0 flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-xl rounded-[6px] p-1 z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
+      <div className="flex items-center gap-0.5 border-r border-white/10 pr-1 mr-1">
         <button
           onClick={onMerge}
           disabled={!isMulti}
-          className="p-1.5 hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-md disabled:opacity-30 transition-colors flex flex-col items-center"
+          className="p-1.5 hover:bg-[var(--accent-glow)] text-[var(--text-secondary)] hover:text-[#A78BFA] rounded-[4px] disabled:opacity-30 transition-colors flex flex-col items-center"
           title="Merge Selected Cells"
         >
           <Merge className="w-3.5 h-3.5" />
@@ -85,7 +85,7 @@ export function TableActionToolbar({ component, selectedCells, onMerge, onSplit,
         <button
           onClick={onSplit}
           disabled={isMulti}
-          className="p-1.5 hover:bg-orange-50 text-slate-600 hover:text-orange-600 rounded-md disabled:opacity-30 transition-colors flex flex-col items-center"
+          className="p-1.5 hover:bg-white/5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-[4px] disabled:opacity-30 transition-colors flex flex-col items-center"
           title="Split Merged Cell"
         >
           <Split className="w-3.5 h-3.5" />
@@ -93,22 +93,22 @@ export function TableActionToolbar({ component, selectedCells, onMerge, onSplit,
         </button>
       </div>
 
-      <div className="flex items-center gap-0.5 border-r border-slate-200 pr-1 mr-1">
-        <button onClick={() => handleAlign('left')} className="p-1.5 hover:bg-slate-100 text-slate-500 rounded-md">
+      <div className="flex items-center gap-0.5 border-r border-white/10 pr-1 mr-1">
+        <button onClick={() => handleAlign('left')} className="p-1.5 hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-[4px]">
           <AlignLeft className="w-3.5 h-3.5" />
         </button>
-        <button onClick={() => handleAlign('center')} className="p-1.5 hover:bg-slate-100 text-slate-500 rounded-md">
+        <button onClick={() => handleAlign('center')} className="p-1.5 hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-[4px]">
           <AlignCenter className="w-3.5 h-3.5" />
         </button>
-        <button onClick={() => handleAlign('right')} className="p-1.5 hover:bg-slate-100 text-slate-500 rounded-md">
+        <button onClick={() => handleAlign('right')} className="p-1.5 hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-[4px]">
           <AlignRight className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      <div className="flex items-center gap-0.5 border-r border-slate-200 pr-1 mr-1">
+      <div className="flex items-center gap-0.5 border-r border-white/10 pr-1 mr-1">
         <button 
            onClick={onInsertRow}
-           className="p-1.5 hover:bg-green-50 text-green-600 rounded-md flex flex-col items-center"
+           className="p-1.5 hover:bg-[var(--green)]/10 text-[var(--green)] rounded-[4px] flex flex-col items-center"
            title="Insert Row Below"
         >
           <Rows className="w-3.5 h-3.5" />
@@ -117,7 +117,7 @@ export function TableActionToolbar({ component, selectedCells, onMerge, onSplit,
         </button>
         <button 
           onClick={onInsertCol}
-          className="p-1.5 hover:bg-green-50 text-green-600 rounded-md flex flex-col items-center"
+          className="p-1.5 hover:bg-[var(--green)]/10 text-[var(--green)] rounded-[4px] flex flex-col items-center"
           title="Insert Column Right"
         >
           <Columns className="w-3.5 h-3.5" />
@@ -128,7 +128,7 @@ export function TableActionToolbar({ component, selectedCells, onMerge, onSplit,
 
       <button
         onClick={onDelete}
-        className="p-1.5 hover:bg-red-50 text-red-500 rounded-md flex flex-col items-center"
+        className="p-1.5 hover:bg-red-500/10 text-red-400 rounded-[4px] flex flex-col items-center"
         title="Delete Selection"
       >
         <Trash2 className="w-3.5 h-3.5" />

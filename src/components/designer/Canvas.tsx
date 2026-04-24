@@ -48,7 +48,7 @@ export const Canvas = memo(function Canvas() {
     };
   }, [updateScrollPos, schema, zoom, isSidebarOpen, viewMode]);
 
-  if (!mounted) return <div className="flex-1 flex flex-col bg-slate-200" />;
+  if (!mounted) return <div className="flex-1 flex flex-col bg-[var(--bg-canvas)]" />;
 
   const { width: pageWidthMm, height: pageHeightMm } = getPaperDimensions(schema.page.size, schema.page.orientation);
 
@@ -59,12 +59,12 @@ export const Canvas = memo(function Canvas() {
   const marginRight = parseTypstUnit(schema.page.margin.right);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden relative bg-slate-200 contain-layout">
+    <div className="flex-1 flex flex-col overflow-hidden relative bg-[var(--bg-canvas)] contain-layout">
       <DragMonitor />
       <div className="flex-1 flex flex-col relative overflow-hidden transform-gpu">
         {/* Top Ruler Row */}
-        <div className="flex h-6 bg-slate-100 border-b border-slate-300 relative z-30">
-          <div className="w-6 h-6 bg-slate-200 border-r border-slate-300 flex-shrink-0" />
+        <div className="flex h-6 bg-[var(--bg-surface)] border-b border-[var(--border-default)] relative z-30">
+          <div className="w-6 h-6 bg-[var(--bg-surface)] border-r border-[var(--border-default)] flex-shrink-0" />
           <div className="flex-1 relative overflow-hidden">
             <Ruler
               orientation="horizontal"
@@ -77,7 +77,7 @@ export const Canvas = memo(function Canvas() {
 
         <div className="flex flex-1 relative overflow-hidden">
           {/* Left Ruler Column */}
-          <div className="w-6 bg-slate-100 border-r border-slate-300 flex-shrink-0 relative z-30 overflow-hidden">
+          <div className="w-6 bg-[var(--bg-surface)] border-r border-[var(--border-default)] flex-shrink-0 relative z-30 overflow-hidden">
             <Ruler
               orientation="vertical"
               length={pageHeightMm}
@@ -98,7 +98,7 @@ export const Canvas = memo(function Canvas() {
                 data-paper-container
                 data-zoom={zoom}
                 className={clsx(
-                  'bg-white pro-grid border border-slate-400 relative shadow-2xl transition-all duration-300 origin-top-left overflow-visible'
+                  'bg-white pro-grid border border-[var(--border-subtle)] relative shadow-2xl transition-all duration-300 origin-top-left overflow-visible rounded-[4px]'
                 )}
                 style={{
                   width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
@@ -118,7 +118,7 @@ export const Canvas = memo(function Canvas() {
 
                 {/* Margin Guides (Dashed) */}
                 <div
-                  className="absolute border border-blue-400 border-dashed pointer-events-none z-10 opacity-30"
+                  className="absolute border border-[var(--accent)] border-dashed pointer-events-none z-10 opacity-30"
                   style={{
                     top: `${LayoutEngine.mmToPx(marginTop)}px`,
                     bottom: `${LayoutEngine.mmToPx(marginBottom)}px`,
