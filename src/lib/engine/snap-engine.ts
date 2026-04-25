@@ -14,7 +14,7 @@ export interface SnapResult {
   activeGuidesY: number[];
 }
 
-const SNAP_THRESHOLD = 2; // mm
+const SNAP_THRESHOLD = 1; // mm - Tighter feel like Figma
 
 export const SnapEngine = {
   calculateSnap(
@@ -24,45 +24,48 @@ export const SnapEngine = {
     height: number,
     draggedId: string,
     schema: LayoutSchema,
-    isAltKeyPressed: boolean
+    isAltKeyPressed: boolean,
+    cachedPoints?: { x: SnapPoint[]; y: SnapPoint[] }
   ): SnapResult {
     if (isAltKeyPressed) {
       return { snappedX: x, snappedY: y, activeGuidesX: [], activeGuidesY: [] };
     }
 
-    const pointsX: SnapPoint[] = [];
-    const pointsY: SnapPoint[] = [];
+    const pointsX = cachedPoints?.x || [];
+    const pointsY = cachedPoints?.y || [];
 
-    // 1. Page Points
-    const { width: pageWidth, height: pageHeight } = getPaperDimensions(schema.page.size, schema.page.orientation);
+    if (!cachedPoints) {
+      // 1. Page Points
+      const { width: pageWidth, height: pageHeight } = getPaperDimensions(schema.page.size, schema.page.orientation);
 
-    pointsX.push({ value: 0, type: 'edge', originId: 'page' });
-    pointsX.push({ value: pageWidth, type: 'edge', originId: 'page' });
-    pointsX.push({ value: pageWidth / 2, type: 'center', originId: 'page' });
+      pointsX.push({ value: 0, type: 'edge', originId: 'page' });
+      pointsX.push({ value: pageWidth, type: 'edge', originId: 'page' });
+      pointsX.push({ value: pageWidth / 2, type: 'center', originId: 'page' });
 
-    pointsY.push({ value: 0, type: 'edge', originId: 'page' });
-    pointsY.push({ value: pageHeight, type: 'edge', originId: 'page' });
-    pointsY.push({ value: pageHeight / 2, type: 'center', originId: 'page' });
+      pointsY.push({ value: 0, type: 'edge', originId: 'page' });
+      pointsY.push({ value: pageHeight, type: 'edge', originId: 'page' });
+      pointsY.push({ value: pageHeight / 2, type: 'center', originId: 'page' });
 
-    // 2. Component Points (from all zones)
-    Object.values(schema.zones).forEach((zone) => {
-      zone.components.forEach((c) => {
-        if (c.id === draggedId) return;
-        
-        const cx = c.x || 0;
-        const cy = c.y || 0;
-        const cw = c.width || 0;
-        const ch = c.height || 0;
+      // 2. Component Points (from all zones)
+      Object.values(schema.zones).forEach((zone) => {
+        zone.components.forEach((c) => {
+          if (c.id === draggedId) return;
+          
+          const cx = c.x || 0;
+          const cy = c.y || 0;
+          const cw = c.width || 0;
+          const ch = c.height || 0;
 
-        pointsX.push({ value: cx, type: 'edge', originId: c.id });
-        pointsX.push({ value: cx + cw, type: 'edge', originId: c.id });
-        pointsX.push({ value: cx + cw / 2, type: 'center', originId: c.id });
+          pointsX.push({ value: cx, type: 'edge', originId: c.id });
+          pointsX.push({ value: cx + cw, type: 'edge', originId: c.id });
+          pointsX.push({ value: cx + cw / 2, type: 'center', originId: c.id });
 
-        pointsY.push({ value: cy, type: 'edge', originId: c.id });
-        pointsY.push({ value: cy + ch, type: 'edge', originId: c.id });
-        pointsY.push({ value: cy + ch / 2, type: 'center', originId: c.id });
+          pointsY.push({ value: cy, type: 'edge', originId: c.id });
+          pointsY.push({ value: cy + ch, type: 'edge', originId: c.id });
+          pointsY.push({ value: cy + ch / 2, type: 'center', originId: c.id });
+        });
       });
-    });
+    }
 
     let snappedX = x;
     let snappedY = y;
