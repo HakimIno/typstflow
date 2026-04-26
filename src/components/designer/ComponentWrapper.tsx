@@ -3,7 +3,7 @@
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
-import { Copy, GripVertical, Trash2 } from 'lucide-react';
+import { Copy, GripVertical, Trash2, Lock } from 'lucide-react';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -35,7 +35,20 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
   const previewRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
-  const { selectedComponentIds, isDraggingGlobal, draggedComponentId, selectComponent, toggleComponentSelection, removeComponent, removeComponents, addComponent, updateComponent, sampleData } =
+  const { 
+    selectedComponentIds, 
+    isDraggingGlobal, 
+    draggedComponentId, 
+    selectComponent, 
+    toggleComponentSelection, 
+    removeComponent, 
+    removeComponents, 
+    addComponent, 
+    updateComponent, 
+    sampleData,
+    hiddenComponentIds,
+    lockedComponentIds
+  } =
     useDesignerStore(
       useShallow((state) => ({
         selectedComponentIds: state.selectedComponentIds,
@@ -48,8 +61,13 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
         addComponent: state.addComponent,
         updateComponent: state.updateComponent,
         sampleData: state.sampleData,
+        hiddenComponentIds: state.hiddenComponentIds,
+        lockedComponentIds: state.lockedComponentIds,
       }))
     );
+
+  const isHidden = hiddenComponentIds.includes(component.id);
+  const isLocked = lockedComponentIds.includes(component.id);
 
   const [isEditing, setIsEditing] = useState(false);
   const isSelected = selectedComponentIds.includes(component.id);
@@ -171,7 +189,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       return;
     }
 
-    if (!isSelected) return;
+    if (!isSelected || isLocked) return;
 
     const step = e.shiftKey ? 5 : 1;
     let newX = component.x || 0;
@@ -243,6 +261,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
           ? 'translate(var(--drag-dx, 0px), var(--drag-dy, 0px))'
           : 'none',
         zIndex: isMoving ? 100 : 10,
+        opacity: isHidden ? 0 : 1,
+        pointerEvents: isHidden || isLocked && !isMoving ? 'none' : 'auto',
       }}
       data-designer-component
       className={clsx(
@@ -256,10 +276,17 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
               'z-10 ring-inset hover:ring-1 hover:ring-white/20',
               component.type === 'text' ? 'bg-transparent' : 'bg-white/5 hover:bg-white/10'
             ),
+        isSelected && !isLocked && 'z-[100] pointer-events-none is-moving', // Add class for CSS targeting
         isMoving && 'z-[100] pointer-events-none is-moving ring-2 ring-[var(--accent)] shadow-lg', // Visual feedback during movement
         isResizing && 'ring-2 ring-[var(--accent)] shadow-lg z-[100]'
       )}
     >
+      {/* Lock Indicator */}
+      {isLocked && (
+        <div className="absolute -top-2 -left-2 z-[70] bg-orange-500 text-white p-1 rounded-full shadow-lg border-2 border-white">
+          <Lock className="w-2.5 h-2.5" />
+        </div>
+      )}
       {/* Inline Editor */}
       {isEditing && component.type === 'text' && (
         <div
@@ -300,9 +327,10 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
           />
         </div>
       )}
-      {/* Precision Action Bar - Always mounted, visibility controlled by CSS */}
-      <div
-        key={`action-bar-${component.id}`}
+      {/* Precision Action Bar */}
+      {!isLocked && (
+        <div
+          key={`action-bar-${component.id}`}
         className={clsx(
           'absolute -top-7 right-0 flex items-center bg-[var(--accent)] border border-[var(--border-accent)] rounded-md px-0.5 h-6.5 shadow-sm transition-opacity duration-200',
           !isSelected || isDragging ? 'opacity-0 pointer-events-none' : 'opacity-100'
@@ -342,6 +370,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
           <Trash2 className="w-3 h-3" />
         </button>
       </div>
+      )}
 
       {/* Content Preview */}
       {!isEditing && (
@@ -351,7 +380,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       )}
 
       {/* Resizing Handles */}
-      {isSelected &&
+      {isSelected && !isLocked &&
         RESIZE_HANDLES.map((handle) => (
           <div
             key={handle}

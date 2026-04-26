@@ -5,7 +5,7 @@ import { DataPanel } from '@/components/designer/DataPanel';
 import { Palette } from '@/components/designer/Palette';
 import { PreviewPane } from '@/components/designer/PreviewPane';
 import { PropertiesPanel } from '@/components/designer/PropertiesPanel';
-import { ReportTree as ReportTreeComponent } from '@/components/designer/ReportTree';
+import { LayersPanel } from '@/components/designer/LayersPanel';
 import { SidebarNav } from '@/components/designer/SidebarNav';
 import { Toolbar } from '@/components/designer/Toolbar';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
@@ -58,7 +58,7 @@ export default function DesignerPage() {
       case 'palette':
         return <Palette />;
       case 'outline':
-        return <ReportTreeComponent />;
+        return <LayersPanel />;
       case 'data':
         return <DataPanel />;
       default:

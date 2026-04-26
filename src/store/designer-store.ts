@@ -36,6 +36,10 @@ interface DesignerState {
     cellIndices: number[];
   } | null;
 
+  // Layers
+  hiddenComponentIds: string[];
+  lockedComponentIds: string[];
+
   // Preview / Data Binding
   sampleData: Record<string, any>;
   previewPages: string[];
@@ -97,6 +101,11 @@ interface DesignerState {
   loadTemplate: (name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks') => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setPrimaryColor: (color: string) => void;
+
+  // Layer Actions
+  toggleComponentVisibility: (id: string) => void;
+  toggleComponentLock: (id: string) => void;
+  renameComponent: (id: string, name: string) => void;
 }
 
 const MAX_HISTORY = 50;
@@ -153,6 +162,8 @@ export const useDesignerStore = create<DesignerState>()(
       selectedZone: null,
       selectedCell: null,
       selectedCells: null,
+      hiddenComponentIds: [],
+      lockedComponentIds: [],
       sampleData: {},
       previewPages: [],
       previewStatus: 'idle',
@@ -392,6 +403,8 @@ export const useDesignerStore = create<DesignerState>()(
           const zone = state.schema.zones[zoneKey];
           const foundIds = zone.components
             .filter((comp) => {
+              if (state.lockedComponentIds.includes(comp.id)) return false;
+
               const compX = comp.x || 0;
               const compY = comp.y || 0;
               const compW = comp.width || 0;
@@ -485,6 +498,57 @@ export const useDesignerStore = create<DesignerState>()(
       })),
       setTheme: (theme) => set({ theme }),
       setPrimaryColor: (color) => set({ primaryColor: color }),
+
+      toggleComponentVisibility: (id) =>
+        set((state) => {
+          const isHidden = state.hiddenComponentIds.includes(id);
+          const newHidden = isHidden
+            ? state.hiddenComponentIds.filter((i) => i !== id)
+            : [...state.hiddenComponentIds, id];
+          return { hiddenComponentIds: newHidden };
+        }),
+
+      toggleComponentLock: (id) =>
+        set((state) => {
+          const isLocked = state.lockedComponentIds.includes(id);
+          const newLocked = isLocked
+            ? state.lockedComponentIds.filter((i) => i !== id)
+            : [...state.lockedComponentIds, id];
+          return { lockedComponentIds: newLocked };
+        }),
+
+      renameComponent: (id, name) =>
+        set((state) => {
+          const zones = state.schema.zones;
+          let foundKey: ZoneKey | null = null;
+          let newComponents: ComponentNode[] | null = null;
+
+          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
+            const components = zones[key].components;
+            const index = components.findIndex((c) => c.id === id);
+            if (index !== -1) {
+              foundKey = key;
+              newComponents = [...components];
+              newComponents[index] = { ...newComponents[index], name } as ComponentNode;
+              break;
+            }
+          }
+
+          if (!foundKey || !newComponents) return state;
+
+          const newSchema = {
+            ...state.schema,
+            zones: {
+              ...zones,
+              [foundKey]: {
+                ...zones[foundKey],
+                components: newComponents,
+              },
+            },
+          };
+
+          return pushHistory(state, newSchema);
+        }),
     }),
     {
       name: 'typstflow-settings',

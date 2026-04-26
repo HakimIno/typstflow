@@ -3,12 +3,10 @@
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import {
-  Database,
-  ListTree,
-  Monitor,
-  Settings2,
   Cpu,
   Layout,
+  Layers,
+  Settings2,
 } from 'lucide-react';
 
 import { memo } from 'react';
@@ -21,11 +19,11 @@ export const SidebarNav = memo(function SidebarNav() {
 
   const navItems = [
     { id: 'palette', icon: Layout, label: 'Elements' },
-    { id: 'outline', icon: ListTree, label: 'Outline' },
+    { id: 'outline', icon: Layers, label: 'Layers' },
     { id: 'data', icon: Cpu, label: 'Data' },
   ];
 
-  const handleTabClick = (tabId: any) => {
+  const handleTabClick = (tabId: 'palette' | 'outline' | 'data') => {
     if (activeTab === tabId && isSidebarOpen) {
       setSidebarOpen(false);
     } else {
