@@ -12,14 +12,14 @@ export const UndoRedoTools = memo(function UndoRedoTools() {
   const historyLength = useDesignerStore((state) => state.history.length);
 
   return (
-    <div className="flex items-center gap-0.5 bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-[4px] p-0.5 mr-2">
+    <div className="flex items-center bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-md p-0.5 shadow-sm mr-2">
       <ToolbarButton
         icon={Undo}
         onClick={undo}
         disabled={historyIndex <= 0}
         variant="ghost"
         title="Undo (Cmd+Z)"
-        className="!border-none !bg-transparent h-7 w-7 !p-1"
+        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />
       <ToolbarButton
         icon={Redo}
@@ -27,7 +27,7 @@ export const UndoRedoTools = memo(function UndoRedoTools() {
         disabled={historyIndex >= historyLength - 1}
         variant="ghost"
         title="Redo (Cmd+Shift+Z)"
-        className="!border-none !bg-transparent h-7 w-7 !p-1"
+        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />
     </div>
   );

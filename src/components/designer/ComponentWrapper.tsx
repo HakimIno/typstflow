@@ -3,7 +3,18 @@
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
-import { Copy, GripVertical, Trash2, Lock } from 'lucide-react';
+import { 
+  Copy, 
+  GripVertical, 
+  Trash2, 
+  Lock, 
+  ArrowUp, 
+  ArrowDown, 
+  ChevronUp, 
+  ChevronDown,
+  ChevronLast,
+  ChevronFirst
+} from 'lucide-react';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -47,7 +58,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
     updateComponent, 
     sampleData,
     hiddenComponentIds,
-    lockedComponentIds
+    lockedComponentIds,
+    bringToFront,
+    sendToBack,
+    moveUp,
+    moveDown,
   } =
     useDesignerStore(
       useShallow((state) => ({
@@ -63,6 +78,10 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
         sampleData: state.sampleData,
         hiddenComponentIds: state.hiddenComponentIds,
         lockedComponentIds: state.lockedComponentIds,
+        bringToFront: state.bringToFront,
+        sendToBack: state.sendToBack,
+        moveUp: state.moveUp,
+        moveDown: state.moveDown,
       }))
     );
 
@@ -344,6 +363,41 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
         >
           <GripVertical className="w-3 h-3" />
         </div>
+        
+        {/* Arrangement Actions */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); bringToFront(component.id); }}
+          className="p-1 hover:bg-white/10 text-white border-r border-white/10"
+          title="Bring to Front"
+        >
+          <ChevronLast className="w-3 h-3" />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); moveUp(component.id); }}
+          className="p-1 hover:bg-white/10 text-white border-r border-white/10"
+          title="Bring Forward"
+        >
+          <ChevronUp className="w-3 h-3" />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); moveDown(component.id); }}
+          className="p-1 hover:bg-white/10 text-white border-r border-white/10"
+          title="Send Backward"
+        >
+          <ChevronDown className="w-3 h-3" />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); sendToBack(component.id); }}
+          className="p-1 hover:bg-white/10 text-white border-r border-white/10"
+          title="Send to Back"
+        >
+          <ChevronFirst className="w-3 h-3" />
+        </button>
+
         <button
           key="duplicate-btn"
           type="button"

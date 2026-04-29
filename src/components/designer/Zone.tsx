@@ -1,14 +1,13 @@
 'use client';
 
 import type { ComponentNode } from '@/types/schema';
-import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { clsx } from 'clsx';
 import { Layers } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { ComponentWrapper } from './ComponentWrapper';
 
-import { LayoutEngine } from '@/lib/engine/layout-engine';
-import { useDesignerStore } from '@/store/designer-store';
+import { useZoneResize } from '@/hooks/use-zone-resize';
+import { useZoneDropTarget } from '@/hooks/use-zone-drop-target';
 
 interface ZoneProps {
   zoneKey: 'header' | 'body' | 'footer';
@@ -20,153 +19,9 @@ interface ZoneProps {
 export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [isDraggedOver, setIsDraggedOver] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-
-  const initialHeightMm = Number.parseFloat(minHeight || '50');
-  const [localHeight, setLocalHeight] = useState(initialHeightMm);
-  const heightRef = useRef(initialHeightMm);
-
-  const addComponent = useDesignerStore((state) => state.addComponent);
-  const moveComponent = useDesignerStore((state) => state.moveComponent);
-  const updateZone = useDesignerStore((state) => state.updateZone);
-  const viewMode = useDesignerStore((state) => state.viewMode);
-
-  // Sync with store when minHeight changes externally
-  useEffect(() => {
-    const val = Number.parseFloat(minHeight || '50');
-    setLocalHeight(val);
-    heightRef.current = val;
-  }, [minHeight]);
-
-  const handleResizeStart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizing(true);
-
-    const startY = e.clientY;
-    const startHeight = Number.parseFloat(minHeight || '50');
-
-    // Calculate the minimum allowed height based on the bottom-most component
-    // This prevents "eating" components by shrinking the zone too much.
-    const lowestPoint = components.reduce((max, comp) => {
-      const bottom = (comp.y || 0) + (comp.height || 0);
-      return Math.max(max, bottom);
-    }, 0);
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const deltaY = moveEvent.clientY - startY;
-      const scale = useDesignerStore.getState().zoom;
-      const deltaMm = LayoutEngine.pxToMm(deltaY / scale);
-      
-      const safetyMargin = 5;
-      const minConstraint = Math.max(10, lowestPoint + safetyMargin);
-      
-      const newHeight = Math.max(minConstraint, startHeight + deltaMm);
-      const snappedHeight = LayoutEngine.snap(newHeight);
-      
-      setLocalHeight(snappedHeight);
-      heightRef.current = snappedHeight; // Always up to date for onMouseUp
-      updateZone(zoneKey, { minHeight: `${snappedHeight}mm` }, true);
-    };
-
-    const onMouseUp = () => {
-      setIsResizing(false);
-      // Use heightRef.current instead of localHeight to avoid stale closures
-      updateZone(zoneKey, { minHeight: `${heightRef.current}mm` }, false);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  };
-
-  const contentRectRef = useRef<DOMRect | null>(null);
-
-  useEffect(() => {
-    const el = contentRef.current;
-    if (!el) return;
-
-    const requestRef: number | null = null;
-
-    return dropTargetForElements({
-      element: el,
-      getData: () => ({ zoneKey }),
-      onDragEnter: () => {
-        setIsDraggedOver(true);
-        contentRectRef.current = el.getBoundingClientRect();
-      },
-      onDragLeave: () => {
-        setIsDraggedOver(false);
-        contentRectRef.current = null;
-        if (requestRef) cancelAnimationFrame(requestRef);
-      },
-      onDrag: ({ location }) => {
-        if (!location.current) return;
-        // The global DragOverlay now handles all visual feedback to ensure a unified, high-performance experience.
-      },
-      onDrop: ({ location, source }) => {
-        setIsDraggedOver(false);
-        if (requestRef) cancelAnimationFrame(requestRef);
-
-        if (!location.current) return;
-
-        // Use enhanced LayoutEngine with scroll compensation and scale awareness
-        const scale = useDesignerStore.getState().zoom;
-        const context = LayoutEngine.createContextFromElement(el, scale);
-        const data = source.data as any;
-
-        const { x, y } = LayoutEngine.calculateDropPosition(
-          location.current.input.clientX,
-          location.current.input.clientY,
-          context,
-          data.dragOffsetX || 0,
-          data.dragOffsetY || 0
-        );
-
-        if (data.type === 'new-component') {
-          const snappedX = useDesignerStore.getState().dragState.lastSnappedX;
-          const snappedY = useDesignerStore.getState().dragState.lastSnappedY;
-          const zoneOffset = LayoutEngine.calculateZoneOffset(zoneKey, useDesignerStore.getState().schema);
-
-          addComponent(zoneKey, {
-            ...data.component,
-            id: Math.random().toString(36).substring(7),
-            x: snappedX,
-            y: snappedY - zoneOffset,
-          });
-        } else if (data.id) {
-          // Use persistent snapped coordinates from store
-          const finalX = useDesignerStore.getState().dragState.lastSnappedX;
-          const finalY = useDesignerStore.getState().dragState.lastSnappedY;
-          const zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, useDesignerStore.getState().schema);
-          
-          if (data.group && data.group.length > 1) {
-            // Move entire group
-            data.group.forEach((item: any) => {
-              // Calculate the absolute Y position based on final drop + relative offset
-              // then subtract target zone offset to get local Y
-              const targetAbsY = finalY + item.offsetY;
-              const localY = targetAbsY - zoneOffsetMm;
-              
-              moveComponent(
-                item.id, 
-                item.sourceZoneKey as any, 
-                zoneKey, 
-                0, 
-                finalX + item.offsetX, 
-                localY
-              );
-            });
-          } else {
-            // Single item move
-            moveComponent(data.id, data.zoneKey, zoneKey, 0, finalX, finalY - zoneOffsetMm);
-          }
-        }
-      },
-    });
-  }, [zoneKey, addComponent, moveComponent]);
+  
+  const { isResizing, localHeight, handleResizeStart } = useZoneResize(zoneKey, minHeight || '50', components);
+  const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef);
 
   return (
     <div

@@ -15,7 +15,7 @@ export const SubToolbar = memo(function SubToolbar() {
   const updateSchema = useDesignerStore((state) => state.updateSchema);
 
   return (
-    <div className="h-10 bg-[var(--bg-surface)] border-b border-[var(--border-default)] flex items-center justify-between px-4">
+    <div className="h-[44px] bg-[var(--bg-surface)] border-b border-[var(--border-default)] flex items-center justify-between px-4">
       <div className="flex items-center gap-1">
         <UndoRedoTools />
 
@@ -27,14 +27,14 @@ export const SubToolbar = memo(function SubToolbar() {
 
         <div className="h-6 w-px bg-white/5 mx-1" />
 
-        <div className="flex items-center gap-1 h-7 px-2 bg-white/5 border border-[var(--border-default)] rounded-[4px] mr-2 focus-within:border-[var(--border-accent)]">
+        <div className="flex items-center gap-1.5 h-8 px-2.5 bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-md shadow-sm mr-2 focus-within:border-[var(--accent)] transition-all duration-200">
           <FileText className="w-3.5 h-3.5 text-[var(--text-muted)]" />
           <input
             type="text"
             value={schemaName}
             onChange={(e) => updateSchema({ name: e.target.value })}
-            className="text-[11px] font-medium text-[var(--text-primary)] bg-transparent border-none focus:ring-0 w-32 outline-none placeholder:text-[var(--text-muted)]"
-            placeholder="Report name"
+            className="text-[11px] font-semibold text-[var(--text-primary)] bg-transparent border-none focus:ring-0 w-36 outline-none placeholder:text-[var(--text-muted)]"
+            placeholder="Untitled Report"
           />
         </div>
 
@@ -43,6 +43,7 @@ export const SubToolbar = memo(function SubToolbar() {
           label="Save"
           onClick={() => { }}
           title="Save Layout (Cmd+S)"
+          className="!h-8 !px-3 !bg-[var(--accent)] !text-white !border-none hover:!brightness-110 shadow-sm"
         />
       </div>
 

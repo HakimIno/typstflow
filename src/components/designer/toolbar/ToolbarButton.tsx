@@ -29,13 +29,13 @@ export const ToolbarButton = memo(function ToolbarButton({
   title,
   showChevron,
 }: ToolbarButtonProps) {
-  const baseStyles = "flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium border rounded-[4px] disabled:opacity-30 disabled:cursor-not-allowed select-none transition-all duration-150";
+  const baseStyles = "flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold border rounded-md disabled:opacity-20 disabled:cursor-not-allowed select-none transition-all duration-200 active:scale-95";
   
   const variants = {
-    default: "bg-[var(--bg-widget)] border-[var(--border-default)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-accent)]",
-    primary: "bg-[var(--accent)] border-[var(--accent)] text-[var(--bg-app)] hover:opacity-90 active:scale-95",
+    default: "bg-[var(--bg-widget)] border-[var(--border-default)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-accent)] shadow-sm",
+    primary: "bg-[var(--accent)] border-none text-white hover:brightness-110 shadow-sm",
     danger: "bg-[var(--color-danger-subtle)] border-[var(--color-danger-border)] text-[var(--color-danger)] hover:bg-[var(--color-danger-hover)]",
-    ghost: "bg-transparent border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]",
+    ghost: "bg-transparent border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/10",
     'toolbar-item': "border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
   };
 

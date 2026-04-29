@@ -10,6 +10,7 @@ import { Zone } from './Zone';
 import { Ruler } from './Ruler';
 import { AlignmentGuides } from './AlignmentGuides';
 import { SelectionMarquee } from './SelectionMarquee';
+import { SelectionToolbar } from './SelectionToolbar';
 import { DragMonitor } from './DragMonitor';
 
 export const Canvas = memo(function Canvas() {
@@ -133,6 +134,7 @@ export const Canvas = memo(function Canvas() {
                 {/* Snapping Alignment Guides Overlay */}
                 <AlignmentGuides />
                 <SelectionMarquee />
+                <SelectionToolbar />
 
                 <div className="flex flex-col gap-0 relative z-20">
                   <Zone

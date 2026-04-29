@@ -10,26 +10,26 @@ export const ZoomControls = memo(function ZoomControls() {
   const setZoom = useDesignerStore((state) => state.setZoom);
 
   return (
-    <div className="flex items-center bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-[4px] mr-3 h-7 overflow-hidden">
+    <div className="flex items-center bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-md shadow-sm mr-3 h-8 overflow-hidden p-0.5">
       <ToolbarButton
         icon={ZoomOut}
-        onClick={() => setZoom(zoom - 0.1)}
+        onClick={() => setZoom(Math.max(0.1, zoom - 0.1))}
         variant="ghost"
         title="Zoom Out"
-        className="!border-none !bg-transparent h-full w-8 !p-1.5"
+        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />
       <div 
-        className="flex items-center justify-center px-2 h-full text-[10px] font-mono text-[var(--text-secondary)] font-bold w-12 border-x border-[var(--border-default)] cursor-default bg-[var(--bg-surface)]"
+        className="flex items-center justify-center h-full text-[10px] font-mono text-[var(--text-secondary)] font-bold px-2 cursor-default"
         title="Current Zoom"
       >
         {Math.round(zoom * 100)}%
       </div>
       <ToolbarButton
         icon={ZoomIn}
-        onClick={() => setZoom(zoom + 0.1)}
+        onClick={() => setZoom(Math.min(5, zoom + 0.1))}
         variant="ghost"
         title="Zoom In"
-        className="!border-none !bg-transparent h-full w-8 !p-1.5"
+        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />
     </div>
   );

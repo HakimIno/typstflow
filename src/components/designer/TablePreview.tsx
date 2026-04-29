@@ -103,10 +103,11 @@ export function TablePreview({ component }: Props) {
   const setSelectedCells = useDesignerStore((state) => state.setSelectedCells);
   
   const [resizingColIndex, setResizingColIndex] = useState<number | null>(null);
+  const [resizingRowInfo, setResizingRowInfo] = useState<{ section: string, index: number } | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionStart, setSelectionStart] = useState<{ rowId: string, cellIdx: number, section: any } | null>(null);
 
-  const handleResizeStart = (e: React.MouseEvent, index: number) => {
+  const handleColResizeStart = (e: React.MouseEvent, index: number) => {
     e.preventDefault();
     e.stopPropagation();
     setResizingColIndex(index);
@@ -115,13 +116,14 @@ export function TablePreview({ component }: Props) {
     const columns = [...component.columns];
     const initialWidths = columns.map((col) => {
       if (col.width.endsWith('mm')) return parseFloat(col.width);
-      return 40;
+      return LayoutEngine.pxToMm(40);
     });
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       if (resizingColIndex === null) return;
       const deltaX = moveEvent.clientX - startX;
-      const deltaMm = LayoutEngine.pxToMm(deltaX);
+      const zoom = parseFloat(document.querySelector('[data-paper-container]')?.getAttribute('data-zoom') || '1');
+      const deltaMm = LayoutEngine.pxToMm(deltaX / zoom);
 
       const newWidths = [...initialWidths];
       newWidths[index] = Math.max(5, initialWidths[index] + deltaMm);
@@ -136,6 +138,46 @@ export function TablePreview({ component }: Props) {
 
     const onMouseUp = () => {
       setResizingColIndex(null);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  const handleRowResizeStart = (e: React.MouseEvent, sectionKey: string, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingRowInfo({ section: sectionKey, index });
+
+    const startY = e.clientY;
+    const rows = [...(component[sectionKey as keyof TableComponent] as TableRow[] || [])];
+    
+    let initialHeightMm = LayoutEngine.pxToMm(28); 
+    const initialHeightStr = rows[index].height;
+    if (initialHeightStr && initialHeightStr.endsWith('mm')) {
+        initialHeightMm = parseFloat(initialHeightStr);
+    }
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      const zoom = parseFloat(document.querySelector('[data-paper-container]')?.getAttribute('data-zoom') || '1');
+      const deltaMm = LayoutEngine.pxToMm(deltaY / zoom);
+
+      const newHeightMm = Math.max(2, initialHeightMm + deltaMm);
+      
+      const newRows = [...rows];
+      newRows[index] = {
+          ...newRows[index],
+          height: `${newHeightMm}mm`,
+      };
+
+      updateComponent(component.id, { [sectionKey]: newRows } as any);
+    };
+
+    const onMouseUp = () => {
+      setResizingRowInfo(null);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
@@ -160,6 +202,12 @@ export function TablePreview({ component }: Props) {
   // Border style
   const borderColor = component.style?.borderColor || '#cbd5e1';
   const borderWidth = '1px';
+
+  const getRowHeightPx = (row: TableRow) => {
+    if (!row.height) return undefined;
+    if (row.height.endsWith('mm')) return `${LayoutEngine.mmToPx(parseFloat(row.height))}px`;
+    return row.height;
+  };
 
   // Tracks for span tracking
   const coveredHeader = new Set<number>();
@@ -331,9 +379,16 @@ export function TablePreview({ component }: Props) {
                 columnGap: colGap,
                 backgroundColor: component.style?.headerBackground || '#f1f5f9',
                 borderBottom: rowIdx < headerRows.length - 1 ? `1px solid ${borderColor}` : undefined,
+                height: getRowHeightPx(row),
               }}
             >
-              {row.cells.map((cell, cellIdx) => (
+              {row.cells.map((cell, cellIdx) => {
+                let absoluteColIdx = 0;
+                for (let i = 0; i < cellIdx; i++) absoluteColIdx += (row.cells[i].colspan || 1);
+                const isResizingCol = resizingColIndex === absoluteColIdx + (cell.colspan || 1) - 1;
+                const isResizingRow = resizingRowInfo?.section === 'headerRows' && resizingRowInfo?.index === rowIdx;
+
+                return (
                 <div
                   key={cell.id}
                   onMouseDown={(e) => handleCellMouseDown('header', row.id, cellIdx, e)}
@@ -347,7 +402,8 @@ export function TablePreview({ component }: Props) {
                   style={{
                     gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,
                     gridRow: cell.rowspan ? `span ${cell.rowspan}` : undefined,
-                    minHeight: '28px',
+                    minHeight: row.height ? undefined : '28px',
+                    height: '100%',
                     backgroundColor: cell.fill || undefined,
                   }}
                 >
@@ -364,8 +420,26 @@ export function TablePreview({ component }: Props) {
                       updateComponent(component.id, { headerRows: newRows } as any);
                     }}
                   />
+                  
+                  {/* Right Resize Handle */}
+                  <div
+                    onMouseDown={(e) => handleColResizeStart(e, absoluteColIdx + (cell.colspan || 1) - 1)}
+                    className={clsx(
+                      'absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-20 transition-colors',
+                      isResizingCol ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent)] opacity-0 hover:opacity-100'
+                    )}
+                  />
+                  
+                  {/* Bottom Resize Handle */}
+                  <div
+                    onMouseDown={(e) => handleRowResizeStart(e, 'headerRows', rowIdx)}
+                    className={clsx(
+                      'absolute bottom-0 left-0 w-full h-1.5 cursor-row-resize z-20 transition-colors',
+                      isResizingRow ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent)] opacity-0 hover:opacity-100'
+                    )}
+                  />
                 </div>
-              ))}
+              )})}
             </div>
           ))}
         </div>
@@ -411,10 +485,10 @@ export function TablePreview({ component }: Props) {
 
                 {/* Resize Handle */}
                 <div
-                  onMouseDown={(e) => handleResizeStart(e, x)}
+                  onMouseDown={(e) => handleColResizeStart(e, x)}
                   className={clsx(
-                    'absolute top-0 right-0 w-1 h-full cursor-col-resize z-10 transition-colors',
-                    resizingColIndex === x ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent-glow)]'
+                    'absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-10 transition-colors',
+                    resizingColIndex === x ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent)] opacity-0 hover:opacity-100'
                   )}
                 />
               </div>
@@ -446,9 +520,16 @@ export function TablePreview({ component }: Props) {
                   columnGap: colGap,
                   backgroundColor: getCellFill(component, 0, 0, false, false) || 'transparent',
                   borderBottom: rowIdx < component.detailRows!.length - 1 ? `1px solid ${borderColor}` : undefined,
+                  height: getRowHeightPx(row),
                 }}
               >
-                {row.cells.map((cell, cellIdx) => (
+                {row.cells.map((cell, cellIdx) => {
+                  let absoluteColIdx = 0;
+                  for (let i = 0; i < cellIdx; i++) absoluteColIdx += (row.cells[i].colspan || 1);
+                  const isResizingCol = resizingColIndex === absoluteColIdx + (cell.colspan || 1) - 1;
+                  const isResizingRow = resizingRowInfo?.section === 'detailRows' && resizingRowInfo?.index === rowIdx;
+
+                  return (
                   <div
                     key={cell.id}
                     onMouseDown={(e) => handleCellMouseDown('data', row.id, cellIdx, e)}
@@ -462,7 +543,8 @@ export function TablePreview({ component }: Props) {
                     style={{
                       gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,
                       gridRow: cell.rowspan ? `span ${cell.rowspan}` : undefined,
-                      minHeight: '28px',
+                      minHeight: row.height ? undefined : '28px',
+                      height: '100%',
                       backgroundColor: cell.fill || undefined,
                       justifyContent: cell.align === 'center' ? 'center' : cell.align === 'right' ? 'flex-end' : 'flex-start',
                     }}
@@ -486,8 +568,26 @@ export function TablePreview({ component }: Props) {
                         updateComponent(component.id, { detailRows: newRows } as any);
                       }}
                     />
+                    
+                    {/* Right Resize Handle */}
+                    <div
+                      onMouseDown={(e) => handleColResizeStart(e, absoluteColIdx + (cell.colspan || 1) - 1)}
+                      className={clsx(
+                        'absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-20 transition-colors',
+                        isResizingCol ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent)] opacity-0 hover:opacity-100'
+                      )}
+                    />
+                    
+                    {/* Bottom Resize Handle */}
+                    <div
+                      onMouseDown={(e) => handleRowResizeStart(e, 'detailRows', rowIdx)}
+                      className={clsx(
+                        'absolute bottom-0 left-0 w-full h-1.5 cursor-row-resize z-20 transition-colors',
+                        isResizingRow ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent)] opacity-0 hover:opacity-100'
+                      )}
+                    />
                   </div>
-                ))}
+                )})}
               </div>
             ))}
           </div>
@@ -579,9 +679,16 @@ export function TablePreview({ component }: Props) {
                 columnGap: colGap,
                 backgroundColor: getCellFill(component, 0, 0, false, true) || '#f8fafc',
                 borderBottom: rowIdx < footerRows.length - 1 ? `1px solid ${borderColor}` : undefined,
+                height: getRowHeightPx(row),
               }}
             >
-              {row.cells.map((cell, cellIdx) => (
+              {row.cells.map((cell, cellIdx) => {
+                let absoluteColIdx = 0;
+                for (let i = 0; i < cellIdx; i++) absoluteColIdx += (row.cells[i].colspan || 1);
+                const isResizingCol = resizingColIndex === absoluteColIdx + (cell.colspan || 1) - 1;
+                const isResizingRow = resizingRowInfo?.section === 'footerRows' && resizingRowInfo?.index === rowIdx;
+
+                return (
                 <div
                   key={cell.id}
                   onMouseDown={(e) => handleCellMouseDown('footer', row.id, cellIdx, e)}
@@ -594,7 +701,8 @@ export function TablePreview({ component }: Props) {
                   )}
                   style={{
                     gridColumn: cell.colspan ? `span ${cell.colspan}` : undefined,
-                    minHeight: '28px',
+                    minHeight: row.height ? undefined : '28px',
+                    height: '100%',
                     backgroundColor: cell.fill || undefined,
                     justifyContent: cell.align === 'center' ? 'center' : cell.align === 'right' ? 'flex-end' : 'flex-start',
                   }}
@@ -618,8 +726,26 @@ export function TablePreview({ component }: Props) {
                       updateComponent(component.id, { footerRows: newRows } as any);
                     }}
                   />
+
+                  {/* Right Resize Handle */}
+                  <div
+                    onMouseDown={(e) => handleColResizeStart(e, absoluteColIdx + (cell.colspan || 1) - 1)}
+                    className={clsx(
+                      'absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-20 transition-colors',
+                      isResizingCol ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent)] opacity-0 hover:opacity-100'
+                    )}
+                  />
+                  
+                  {/* Bottom Resize Handle */}
+                  <div
+                    onMouseDown={(e) => handleRowResizeStart(e, 'footerRows', rowIdx)}
+                    className={clsx(
+                      'absolute bottom-0 left-0 w-full h-1.5 cursor-row-resize z-20 transition-colors',
+                      isResizingRow ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent)] opacity-0 hover:opacity-100'
+                    )}
+                  />
                 </div>
-              ))}
+              )})}
             </div>
           ))}
         </div>

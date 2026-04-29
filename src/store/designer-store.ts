@@ -77,7 +77,8 @@ interface DesignerState {
     toZone: ZoneKey,
     newIndex: number,
     x?: number,
-    y?: number
+    y?: number,
+    skipHistory?: boolean
   ) => void;
   selectComponent: (id: string | null, multi?: boolean) => void;
   toggleComponentSelection: (id: string) => void;
@@ -106,6 +107,10 @@ interface DesignerState {
   toggleComponentVisibility: (id: string) => void;
   toggleComponentLock: (id: string) => void;
   renameComponent: (id: string, name: string) => void;
+  bringToFront: (id: string) => void;
+  sendToBack: (id: string) => void;
+  moveUp: (id: string) => void;
+  moveDown: (id: string) => void;
 }
 
 const MAX_HISTORY = 50;
@@ -331,7 +336,7 @@ export const useDesignerStore = create<DesignerState>()(
           return { ...pushHistory(state, newSchema), selectedComponentIds: [] };
         }),
 
-      moveComponent: (id, fromZone, toZone, newIndex, x?: number, y?: number) =>
+      moveComponent: (id, fromZone, toZone, newIndex, x, y, skipHistory) =>
         set((state) => {
           const zones = state.schema.zones;
           const component = zones[fromZone].components.find((c) => c.id === id);
@@ -349,29 +354,39 @@ export const useDesignerStore = create<DesignerState>()(
 
           if (fromZone === toZone) {
             // Move within same zone
-            const components = [...zones[fromZone].components].filter((c) => c.id !== id);
-            components.splice(newIndex, 0, updatedComponent);
-            newZones[fromZone] = {
-              ...zones[fromZone],
-              components,
-            };
+            const originalComponents = zones[fromZone].components;
+            const currentIndex = originalComponents.findIndex(c => c.id === id);
+            
+            // If newIndex is not provided or same as current, and position changed, just update position
+            if (newIndex === currentIndex || newIndex === undefined) {
+              const components = [...originalComponents];
+              components[currentIndex] = updatedComponent;
+              newZones[fromZone] = { ...zones[fromZone], components };
+            } else {
+              const components = originalComponents.filter((c) => c.id !== id);
+              // Handle out of bounds or "top-most" request
+              const targetIndex = newIndex === -1 ? components.length : Math.max(0, Math.min(newIndex, components.length));
+              components.splice(targetIndex, 0, updatedComponent);
+              newZones[fromZone] = { ...zones[fromZone], components };
+            }
           } else {
             // Move between zones
             const fromComponents = [...zones[fromZone].components].filter((c) => c.id !== id);
             const toComponents = [...zones[toZone].components];
-            toComponents.splice(newIndex, 0, updatedComponent);
+            
+            // Default to top if newIndex is -1 or undefined
+            const targetIndex = (newIndex === -1 || newIndex === undefined) 
+              ? toComponents.length 
+              : Math.max(0, Math.min(newIndex, toComponents.length));
+              
+            toComponents.splice(targetIndex, 0, updatedComponent);
 
-            newZones[fromZone] = {
-              ...zones[fromZone],
-              components: fromComponents,
-            };
-            newZones[toZone] = {
-              ...zones[toZone],
-              components: toComponents,
-            };
+            newZones[fromZone] = { ...zones[fromZone], components: fromComponents };
+            newZones[toZone] = { ...zones[toZone], components: toComponents };
           }
 
           const newSchema = { ...state.schema, zones: newZones };
+          if (skipHistory) return { schema: newSchema };
           return pushHistory(state, newSchema);
         }),
 
@@ -548,6 +563,80 @@ export const useDesignerStore = create<DesignerState>()(
           };
 
           return pushHistory(state, newSchema);
+        }),
+
+      bringToFront: (id) =>
+        set((state) => {
+          const zones = state.schema.zones;
+          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
+            const index = zones[key].components.findIndex((c) => c.id === id);
+            if (index !== -1) {
+              const components = [...zones[key].components];
+              const [component] = components.splice(index, 1);
+              components.push(component);
+              const newSchema = {
+                ...state.schema,
+                zones: { ...zones, [key]: { ...zones[key], components } },
+              };
+              return pushHistory(state, newSchema);
+            }
+          }
+          return state;
+        }),
+
+      sendToBack: (id) =>
+        set((state) => {
+          const zones = state.schema.zones;
+          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
+            const index = zones[key].components.findIndex((c) => c.id === id);
+            if (index !== -1) {
+              const components = [...zones[key].components];
+              const [component] = components.splice(index, 1);
+              components.unshift(component);
+              const newSchema = {
+                ...state.schema,
+                zones: { ...zones, [key]: { ...zones[key], components } },
+              };
+              return pushHistory(state, newSchema);
+            }
+          }
+          return state;
+        }),
+
+      moveUp: (id) =>
+        set((state) => {
+          const zones = state.schema.zones;
+          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
+            const index = zones[key].components.findIndex((c) => c.id === id);
+            if (index !== -1 && index < zones[key].components.length - 1) {
+              const components = [...zones[key].components];
+              [components[index], components[index + 1]] = [components[index + 1], components[index]];
+              const newSchema = {
+                ...state.schema,
+                zones: { ...zones, [key]: { ...zones[key], components } },
+              };
+              return pushHistory(state, newSchema);
+            }
+          }
+          return state;
+        }),
+
+      moveDown: (id) =>
+        set((state) => {
+          const zones = state.schema.zones;
+          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
+            const index = zones[key].components.findIndex((c) => c.id === id);
+            if (index !== -1 && index > 0) {
+              const components = [...zones[key].components];
+              [components[index], components[index - 1]] = [components[index - 1], components[index]];
+              const newSchema = {
+                ...state.schema,
+                zones: { ...zones, [key]: { ...zones[key], components } },
+              };
+              return pushHistory(state, newSchema);
+            }
+          }
+          return state;
         }),
     }),
     {

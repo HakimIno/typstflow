@@ -63,6 +63,7 @@ export type ComponentNode =
 export interface BaseComponent {
   id: string;
   type: ComponentNode['type'];
+  name?: string; // Custom display name for layers panel
   visible?: BindingExpression; // "{{invoice.show_discount}}"
   x?: number; // Absolute X in mm
   y?: number; // Absolute Y in mm

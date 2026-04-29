@@ -5,6 +5,7 @@ import {
   pxToMmAtCurrentDpi,
   updateDpiRatio,
 } from '../constants';
+import { parseTypstUnit } from '../utils/units';
 
 /**
  * Enhanced coordinate system information for accurate position calculations.
@@ -244,7 +245,6 @@ export const LayoutEngine = {
    * Calculates the cumulative Y offset (mm) from the top of the page to the start of a specific zone.
    */
   calculateZoneOffset(zoneKey: string, schema: any): number {
-    const { parseTypstUnit } = require('@/lib/utils/units');
     let offset = 0;
     
     // Order: Header -> Body -> Footer
