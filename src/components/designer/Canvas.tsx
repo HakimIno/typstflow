@@ -105,7 +105,7 @@ export const Canvas = memo(function Canvas() {
                 data-paper-container
                 data-zoom={zoom}
                 className={clsx(
-                  'bg-[var(--bg-surface-solid)] pro-grid border border-[var(--border-subtle)] relative shadow-2xl origin-top-left overflow-visible rounded-[4px]',
+                  'bg-white pro-grid border border-slate-300 relative shadow-2xl origin-top-left overflow-visible rounded-[4px]',
                   !isDraggingGlobal && 'transition-all duration-300'
                 )}
                 style={{

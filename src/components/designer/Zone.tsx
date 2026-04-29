@@ -34,7 +34,7 @@ export function Zone({ zoneKey, label, components, minHeight, resizeEdge = 'bott
       ref={containerRef}
       style={resizeEdge === 'none' ? { flex: 1 } : { height: `${localHeight}mm` }}
       className={clsx(
-        'relative border-b last:border-b-0 border-dashed border-[var(--border-default)] transition-colors group/zone bg-transparent',
+        'relative border-b last:border-b-0 border-dashed border-slate-200 transition-colors group/zone bg-transparent',
         isDraggedOver && 'bg-[var(--accent-glow)]/50',
         isResizing && 'ring-1 ring-[var(--accent)] z-50 shadow-lg'
       )}
@@ -57,7 +57,7 @@ export function Zone({ zoneKey, label, components, minHeight, resizeEdge = 'bott
         className="relative w-full h-full bg-transparent overflow-visible min-h-[inherit]"
       >
         {components.length === 0 && !isDraggedOver ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--text-muted)] opacity-30 select-none pointer-events-none">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 opacity-40 select-none pointer-events-none">
             <Layers className="w-6 h-6 mb-1" />
             <p className="text-[9px] font-bold uppercase tracking-widest text-center px-4">
               {label} EMPTY
