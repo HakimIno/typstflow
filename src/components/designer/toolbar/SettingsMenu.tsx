@@ -28,14 +28,13 @@ export const SettingsMenu = memo(function SettingsMenu() {
         onClick={() => setIsOpen(!isOpen)}
         className={clsx(
           "p-1.5 rounded-md transition-all flex items-center gap-1.5 border",
-          isOpen 
-            ? "bg-[var(--bg-widget-hover)] border-[var(--border-accent)] text-[var(--accent)]" 
+          isOpen
+            ? "bg-[var(--bg-widget-hover)] border-[var(--border-accent)] text-[var(--accent)]"
             : "border-transparent text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)]"
         )}
         title="Settings"
       >
         <Settings className="w-4 h-4" />
-        <span className="text-[11px] font-medium">Settings</span>
       </button>
 
       {isOpen && (
@@ -45,7 +44,7 @@ export const SettingsMenu = memo(function SettingsMenu() {
               Application Settings
             </span>
           </div>
-          
+
           <div className="p-3 flex flex-col gap-4">
             {/* Theme Section */}
             <div className="flex flex-col gap-2">

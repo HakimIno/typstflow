@@ -1,53 +1,31 @@
 'use client';
 
 import { memo } from 'react';
-import { useDesignerStore } from '@/store/designer-store';
-import { FileText, Save } from 'lucide-react';
-import { PanelSwitcher } from './PanelSwitcher';
 import { UndoRedoTools } from './UndoRedoTools';
 import { AlignmentTools } from './AlignmentTools';
 import { ZoomControls } from './ZoomControls';
 import { ToolbarActions } from './ToolbarActions';
-import { ToolbarButton } from './ToolbarButton';
 
 export const SubToolbar = memo(function SubToolbar() {
-  const schemaName = useDesignerStore((state) => state.schema.name);
-  const updateSchema = useDesignerStore((state) => state.updateSchema);
-
   return (
-    <div className="h-[44px] bg-[var(--bg-surface)] border-b border-[var(--border-default)] flex items-center justify-between px-4">
-      <div className="flex items-center gap-1">
-        <UndoRedoTools />
-
-        <div className="h-6 w-px bg-white/5 mx-1" />
-        <AlignmentTools />
-
-        <div className="h-6 w-px bg-white/5 mx-1" />
-        <ZoomControls />
-
-        <div className="h-6 w-px bg-white/5 mx-1" />
-
-        <div className="flex items-center gap-1.5 h-8 px-2.5 bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-md shadow-sm mr-2 focus-within:border-[var(--accent)] transition-all duration-200">
-          <FileText className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-          <input
-            type="text"
-            value={schemaName}
-            onChange={(e) => updateSchema({ name: e.target.value })}
-            className="text-[11px] font-semibold text-[var(--text-primary)] bg-transparent border-none focus:ring-0 w-36 outline-none placeholder:text-[var(--text-muted)]"
-            placeholder="Untitled Report"
-          />
+    <div className="h-[48px] bg-transparent border-b border-[var(--border-default)] flex items-center justify-between px-4">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-0.5  bg-[var(--bg-widget)]  rounded-[var(--radius-md)]">
+          <UndoRedoTools />
         </div>
 
-        <ToolbarButton
-          icon={Save}
-          label="Save"
-          onClick={() => { }}
-          title="Save Layout (Cmd+S)"
-          className="!h-8 !px-3 !bg-[var(--accent)] !text-white !border-none hover:!brightness-110 shadow-sm"
-        />
+        <div className="flex items-center gap-0.5  bg-[var(--bg-widget)]  rounded-[var(--radius-md)]">
+          <AlignmentTools />
+        </div>
+
+        <div className="flex items-center gap-0.5  bg-[var(--bg-widget)]  rounded-[var(--radius-md)]">
+          <ZoomControls />
+        </div>
       </div>
 
-      <ToolbarActions />
+      <div className="flex items-center gap-0.5  bg-[var(--bg-widget)]  rounded-[var(--radius-md)]">
+        <ToolbarActions />
+      </div>
     </div>
   );
 });

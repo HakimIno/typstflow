@@ -18,9 +18,9 @@ export const SidebarNav = memo(function SidebarNav() {
   const setSidebarOpen = useDesignerStore((state) => state.setSidebarOpen);
 
   const navItems = [
-    { id: 'palette', icon: Layout, label: 'Elements' },
-    { id: 'outline', icon: Layers, label: 'Layers' },
-    { id: 'data', icon: Cpu, label: 'Data' },
+    { id: 'palette' as const, icon: Layout, label: 'Elements' },
+    { id: 'outline' as const, icon: Layers, label: 'Layers' },
+    { id: 'data' as const, icon: Cpu, label: 'Data' },
   ];
 
   const handleTabClick = (tabId: 'palette' | 'outline' | 'data') => {
@@ -32,7 +32,7 @@ export const SidebarNav = memo(function SidebarNav() {
   };
 
   return (
-    <aside className="w-[36px] flex flex-col items-center py-4 bg-[var(--bg-surface)] border-r border-[var(--border-default)] shrink-0 z-40">
+    <aside className="w-[36px] flex flex-col items-center py-4 bg-[var(--bg-surface)] backdrop-blur-2xl border-r border-[var(--border-default)] shrink-0 z-40">
       {/* Nav Group */}
       <div className="flex-1 flex flex-col items-center gap-2 w-full px-1.5">
         {navItems.map((item) => (

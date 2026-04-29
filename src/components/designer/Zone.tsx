@@ -14,25 +14,23 @@ interface ZoneProps {
   label: string;
   components: ComponentNode[];
   minHeight?: string;
+  resizeEdge?: 'top' | 'bottom' | 'none';
 }
 
-export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
+export function Zone({ zoneKey, label, components, minHeight, resizeEdge = 'bottom' }: ZoneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   
-  const { isResizing, localHeight, handleResizeStart } = useZoneResize(zoneKey, minHeight || '50', components);
+  const { isResizing, localHeight, handleResizeStart } = useZoneResize(zoneKey, minHeight || '50', components, resizeEdge);
   const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef);
 
   return (
     <div
       ref={containerRef}
-      style={{ minHeight: `${localHeight}mm` }}
+      style={resizeEdge === 'none' ? { flex: 1 } : { height: `${localHeight}mm` }}
       className={clsx(
-        'relative border-b last:border-b-0 border-dashed border-[var(--border-default)] transition-colors group/zone',
-        zoneKey === 'header' && 'bg-[var(--bg-widget)]',
-        zoneKey === 'body' && 'bg-transparent',
-        zoneKey === 'footer' && 'bg-[var(--bg-widget)] opacity-90',
-        isDraggedOver ? 'bg-[var(--accent-glow)]/50' : '',
+        'relative border-b last:border-b-0 border-dashed border-[var(--border-default)] transition-colors group/zone bg-transparent',
+        isDraggedOver && 'bg-[var(--accent-glow)]/50',
         isResizing && 'ring-1 ring-[var(--accent)] z-50 shadow-lg'
       )}
     >
@@ -74,26 +72,36 @@ export function Zone({ zoneKey, label, components, minHeight }: ZoneProps) {
         </div>
       )}
 
-      {/* Resize Handle (Bottom Edge) */}
-      <div
-        onMouseDown={handleResizeStart}
-        className={clsx(
-          'absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize z-40 transition-colors',
-          'hover:bg-[var(--accent)] group-hover/zone:bg-[var(--border-default)]',
-          isResizing && 'bg-[var(--accent)] h-0.5'
-        )}
-      >
-        {/* Full-width Horizontal Guide Line during Resize */}
-        {isResizing && (
-          <div className="absolute top-0 -left-[2000px] -right-[2000px] border-b border-dashed border-[var(--accent)] opacity-50" />
-        )}
-        
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover/zone:opacity-100 transition-opacity">
-          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-sm" />
-          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-sm" />
-          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-sm" />
+      {/* Resize Handle */}
+      {resizeEdge !== 'none' && (
+        <div
+          onMouseDown={handleResizeStart}
+          className={clsx(
+            "absolute left-0 right-0 h-2 cursor-ns-resize z-40 group/resize flex items-center justify-center",
+            resizeEdge === 'top' ? "-top-1" : "-bottom-1"
+          )}
+        >
+          {/* Visual Line */}
+          <div className={clsx(
+            "absolute left-0 right-0 h-[1.5px] transition-colors",
+            isResizing 
+              ? "bg-[var(--accent)]" 
+              : "group-hover/resize:bg-[var(--accent)] group-hover/zone:bg-[var(--border-default)] bg-transparent"
+          )} />
+
+          {/* Full-width Horizontal Guide Line during Resize */}
+          {isResizing && (
+            <div className="absolute top-1/2 -translate-y-1/2 -left-[2000px] -right-[2000px] border-b border-dashed border-[var(--accent)] opacity-50 pointer-events-none" />
+          )}
+          
+          {/* Drag Dots (Smaller) */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover/zone:opacity-100 transition-opacity z-10">
+            <div className="w-1 h-1 rounded-full bg-[var(--accent)] shadow-sm" />
+            <div className="w-1 h-1 rounded-full bg-[var(--accent)] shadow-sm" />
+            <div className="w-1 h-1 rounded-full bg-[var(--accent)] shadow-sm" />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

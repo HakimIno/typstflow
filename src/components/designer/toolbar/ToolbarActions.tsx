@@ -43,21 +43,22 @@ export const ToolbarActions = memo(function ToolbarActions() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       <ToolbarButton
         icon={PanelRight}
         onClick={toggleRightSidebar}
         active={isRightSidebarOpen}
+        variant="toolbar-item"
         title="Toggle Properties Panel"
+        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />
-
-      <div className="h-6 w-px bg-slate-200 mx-1" />
 
       <ToolbarButton
         icon={Download}
-        label="Source"
         onClick={handleDownloadSource}
+        variant="toolbar-item"
         title="Download Typst Source (.typ)"
+        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />
       
       <ToolbarButton
@@ -67,6 +68,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
         disabled={isExporting}
         variant="primary"
         title="Generate Final PDF"
+        className="!h-7 !px-3 shadow-sm shadow-[var(--accent-glow)]"
       >
         {isExporting && (
           <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />

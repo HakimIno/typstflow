@@ -101,7 +101,7 @@ export const Canvas = memo(function Canvas() {
                 data-paper-container
                 data-zoom={zoom}
                 className={clsx(
-                  'bg-white pro-grid border border-[var(--border-subtle)] relative shadow-2xl origin-top-left overflow-visible rounded-[4px]',
+                  'bg-[var(--bg-surface-solid)] pro-grid border border-[var(--border-subtle)] relative shadow-2xl origin-top-left overflow-visible rounded-[4px]',
                   !isDraggingGlobal && 'transition-all duration-300'
                 )}
                 style={{
@@ -136,24 +136,27 @@ export const Canvas = memo(function Canvas() {
                 <SelectionMarquee />
                 <SelectionToolbar />
 
-                <div className="flex flex-col gap-0 relative z-20">
+                <div className="flex flex-col gap-0 absolute inset-0 z-20">
                   <Zone
                     zoneKey="header"
                     label="Report Header"
                     components={schema.zones.header.components}
                     minHeight={schema.zones.header.minHeight}
+                    resizeEdge="bottom"
                   />
                   <Zone
                     zoneKey="body"
                     label="Detail Band"
                     components={schema.zones.body.components}
                     minHeight={schema.zones.body.minHeight}
+                    resizeEdge="none"
                   />
                   <Zone
                     zoneKey="footer"
                     label="Page Footer"
                     components={schema.zones.footer.components}
                     minHeight={schema.zones.footer.minHeight}
+                    resizeEdge="top"
                   />
                 </div>
               </div>

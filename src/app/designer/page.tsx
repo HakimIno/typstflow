@@ -87,7 +87,7 @@ export default function DesignerPage() {
           {/* Stage 2: Detail Drawer (Hardware-Accelerated Slide-out) */}
           <aside
             className={clsx(
-              "absolute left-0 top-0 bottom-0 w-80 bg-[var(--bg-surface)] border-r border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform",
+              "absolute left-0 top-0 bottom-0 w-80 bg-[var(--bg-surface)] backdrop-blur-2xl border-r border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform shadow-[var(--shadow-premium)]",
               isSidebarOpen ? "translate-x-0" : "-translate-x-full"
             )}
           >
@@ -130,7 +130,7 @@ export default function DesignerPage() {
         {/* Right Sidebar: Properties - Professional Slide-out (Hardware Accelerated) */}
         <aside
           className={clsx(
-            "absolute right-0 top-0 bottom-0 w-64 bg-[var(--bg-surface)] overflow-hidden border-l border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform",
+            "absolute right-0 top-0 bottom-0 w-64 bg-[var(--bg-surface)] backdrop-blur-2xl overflow-hidden border-l border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform shadow-[var(--shadow-premium)]",
             isRightSidebarOpen ? "translate-x-0" : "translate-x-full"
           )}
         >
@@ -143,7 +143,7 @@ export default function DesignerPage() {
       </div>
 
       {/* Status Bar */}
-      <footer className="h-[26px] bg-[var(--bg-surface)] border-t border-[var(--border-default)] text-[var(--text-muted)] px-3 flex items-center justify-between text-[9px] uppercase tracking-[0.06em] font-medium shrink-0 z-50">
+      <footer className="h-[26px] bg-[var(--bg-surface)] backdrop-blur-md border-t border-[var(--border-default)] text-[var(--text-muted)] px-3 flex items-center justify-between text-[9px] uppercase tracking-[0.06em] font-medium shrink-0 z-50">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 pr-4 border-r border-[var(--border-default)]">
             <div className="w-[5px] h-[5px] bg-[var(--green)] rounded-full" />

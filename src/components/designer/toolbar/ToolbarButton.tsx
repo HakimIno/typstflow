@@ -36,12 +36,12 @@ export const ToolbarButton = memo(function ToolbarButton({
     primary: "bg-[var(--accent)] border-none text-white hover:brightness-110 shadow-sm",
     danger: "bg-[var(--color-danger-subtle)] border-[var(--color-danger-border)] text-[var(--color-danger)] hover:bg-[var(--color-danger-hover)]",
     ghost: "bg-transparent border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/10",
-    'toolbar-item': "border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
+    'toolbar-item': "bg-transparent border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
   };
 
   const activeStyles = active ? (
     variant === 'toolbar-item' 
-      ? "bg-[var(--bg-hover)] text-[var(--text-primary)]" 
+      ? "bg-[var(--bg-hover)] text-[var(--text-primary)] shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]" 
       : "bg-[var(--accent-glow)] border-[var(--accent)] text-[var(--accent)]"
   ) : "";
 

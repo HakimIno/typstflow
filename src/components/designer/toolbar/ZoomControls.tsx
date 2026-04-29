@@ -10,11 +10,11 @@ export const ZoomControls = memo(function ZoomControls() {
   const setZoom = useDesignerStore((state) => state.setZoom);
 
   return (
-    <div className="flex items-center bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-md shadow-sm mr-3 h-8 overflow-hidden p-0.5">
+    <div className="flex items-center h-7 overflow-hidden">
       <ToolbarButton
         icon={ZoomOut}
         onClick={() => setZoom(Math.max(0.1, zoom - 0.1))}
-        variant="ghost"
+        variant="toolbar-item"
         title="Zoom Out"
         className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />
@@ -27,7 +27,7 @@ export const ZoomControls = memo(function ZoomControls() {
       <ToolbarButton
         icon={ZoomIn}
         onClick={() => setZoom(Math.min(5, zoom + 0.1))}
-        variant="ghost"
+        variant="toolbar-item"
         title="Zoom In"
         className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />

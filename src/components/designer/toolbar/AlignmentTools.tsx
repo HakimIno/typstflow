@@ -109,14 +109,14 @@ export const AlignmentTools = memo(function AlignmentTools() {
   const isSingleSelect = selectedComponentIds.length === 1;
 
   return (
-    <div className="flex items-center bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-md p-0.5 shadow-sm">
+    <div className="flex items-center">
       {/* Group: Arrangement */}
       <div className="flex items-center gap-0.5 px-0.5">
         <ToolbarButton
           icon={ChevronLast}
           onClick={() => bringToFront(selectedComponentIds[0])}
           disabled={!isSingleSelect}
-          variant="ghost"
+          variant="toolbar-item"
           title="Bring to Front"
           className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
         />
@@ -124,7 +124,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           icon={ChevronUp}
           onClick={() => moveUp(selectedComponentIds[0])}
           disabled={!isSingleSelect}
-          variant="ghost"
+          variant="toolbar-item"
           title="Bring Forward"
           className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
         />
@@ -132,7 +132,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           icon={ChevronDown}
           onClick={() => moveDown(selectedComponentIds[0])}
           disabled={!isSingleSelect}
-          variant="ghost"
+          variant="toolbar-item"
           title="Send Backward"
           className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
         />
@@ -140,7 +140,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           icon={ChevronFirst}
           onClick={() => sendToBack(selectedComponentIds[0])}
           disabled={!isSingleSelect}
-          variant="ghost"
+          variant="toolbar-item"
           title="Send to Back"
           className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
         />
@@ -150,26 +150,26 @@ export const AlignmentTools = memo(function AlignmentTools() {
 
       {/* Group: Horizontal */}
       <div className="flex items-center gap-0.5 px-0.5">
-        <ToolbarButton icon={AlignStartHorizontal} onClick={() => handleAlign('left')} disabled={!hasSelection} variant="ghost" title="Align Left" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
-        <ToolbarButton icon={AlignCenterHorizontal} onClick={() => handleAlign('center')} disabled={!hasSelection} variant="ghost" title="Align Center" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
-        <ToolbarButton icon={AlignEndHorizontal} onClick={() => handleAlign('right')} disabled={!hasSelection} variant="ghost" title="Align Right" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
+        <ToolbarButton icon={AlignStartHorizontal} onClick={() => handleAlign('left')} disabled={!hasSelection} variant="toolbar-item" title="Align Left" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
+        <ToolbarButton icon={AlignCenterHorizontal} onClick={() => handleAlign('center')} disabled={!hasSelection} variant="toolbar-item" title="Align Center" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
+        <ToolbarButton icon={AlignEndHorizontal} onClick={() => handleAlign('right')} disabled={!hasSelection} variant="toolbar-item" title="Align Right" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
       </div>
 
       <div className="w-px h-4 bg-[var(--border-default)] mx-1" />
 
       {/* Group: Vertical */}
       <div className="flex items-center gap-0.5 px-0.5">
-        <ToolbarButton icon={AlignStartVertical} onClick={() => handleAlign('top')} disabled={!hasSelection} variant="ghost" title="Align Top" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
-        <ToolbarButton icon={AlignCenterVertical} onClick={() => handleAlign('middle')} disabled={!hasSelection} variant="ghost" title="Align Middle" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
-        <ToolbarButton icon={AlignEndVertical} onClick={() => handleAlign('bottom')} disabled={!hasSelection} variant="ghost" title="Align Bottom" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
+        <ToolbarButton icon={AlignStartVertical} onClick={() => handleAlign('top')} disabled={!hasSelection} variant="toolbar-item" title="Align Top" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
+        <ToolbarButton icon={AlignCenterVertical} onClick={() => handleAlign('middle')} disabled={!hasSelection} variant="toolbar-item" title="Align Middle" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
+        <ToolbarButton icon={AlignEndVertical} onClick={() => handleAlign('bottom')} disabled={!hasSelection} variant="toolbar-item" title="Align Bottom" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
       </div>
 
       <div className="w-px h-4 bg-[var(--border-default)] mx-1" />
 
       {/* Group: Distribute */}
       <div className="flex items-center gap-0.5 px-0.5">
-        <ToolbarButton icon={AlignHorizontalDistributeCenter} onClick={() => handleAlign('dist-h')} disabled={selectedComponentIds.length < 3} variant="ghost" title="Distribute Horizontally" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
-        <ToolbarButton icon={AlignVerticalDistributeCenter} onClick={() => handleAlign('dist-v')} disabled={selectedComponentIds.length < 3} variant="ghost" title="Distribute Vertically" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
+        <ToolbarButton icon={AlignHorizontalDistributeCenter} onClick={() => handleAlign('dist-h')} disabled={selectedComponentIds.length < 3} variant="toolbar-item" title="Distribute Horizontally" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
+        <ToolbarButton icon={AlignVerticalDistributeCenter} onClick={() => handleAlign('dist-v')} disabled={selectedComponentIds.length < 3} variant="toolbar-item" title="Distribute Vertically" className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100" />
       </div>
     </div>
   );

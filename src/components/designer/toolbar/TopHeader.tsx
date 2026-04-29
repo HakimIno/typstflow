@@ -2,16 +2,19 @@
 
 import { memo } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
-import { Cpu } from 'lucide-react';
+import { Cpu, FileText, Save } from 'lucide-react';
 import { InsertMenu } from './InsertMenu';
 import { ViewSwitcher } from './ViewSwitcher';
 import { SettingsMenu } from './SettingsMenu';
+import { ToolbarButton } from './ToolbarButton';
 
 export const TopHeader = memo(function TopHeader() {
   const version = useDesignerStore((state) => state.schema.version);
+  const schemaName = useDesignerStore((state) => state.schema.name);
+  const updateSchema = useDesignerStore((state) => state.updateSchema);
 
   return (
-    <header className="h-[40px] bg-[var(--bg-surface)] flex items-center justify-between px-3 border-b border-[var(--border-default)]">
+    <header className="h-[40px] bg-[var(--bg-surface)] backdrop-blur-2xl flex items-center justify-between px-3 border-b border-[var(--border-default)]">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full" />
@@ -43,16 +46,12 @@ export const TopHeader = memo(function TopHeader() {
         </nav>
       </div>
 
-      <ViewSwitcher />
+      <div className="flex items-center gap-4">
+        <ViewSwitcher />
+      </div>
 
       <div className="flex items-center gap-4">
         <SettingsMenu />
-        <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase tracking-wider">v{version}</span>
-        <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#34D399]/10 border border-[#34D399]/20 rounded-none">
-          <span className="text-[9px] text-[#34D399] font-bold uppercase tracking-wide">
-            Live Mode
-          </span>
-        </div>
       </div>
     </header>
   );
