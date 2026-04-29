@@ -13,6 +13,7 @@ use wasm_bindgen::prelude::*;
 mod schema;
 mod generator;
 pub mod layout_engine;
+pub mod table_engine;
 
 /// Shared image registry — maps virtual path (e.g. "img-abc.png") → raw bytes
 type ImageRegistry = Arc<RwLock<HashMap<String, Bytes>>>;

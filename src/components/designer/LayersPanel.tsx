@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ComponentNode } from '@/types/schema';
+import { DesignerInput } from '../shared/DesignerInput';
 
 const ComponentIcon = ({ type }: { type: string }) => {
   switch (type) {
@@ -125,11 +126,12 @@ const LayerItem = memo(({
 
       <div className="flex-1 min-w-0 overflow-hidden">
         {isEditing ? (
-          <input
+          <DesignerInput
             autoFocus
-            className="w-full bg-transparent border-none outline-none text-[11.5px] font-medium focus:ring-0 p-0 text-slate-200"
+            variant="ghost"
+            className="text-[11.5px] font-medium p-0"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(v) => setName(v)}
             onBlur={handleRename}
             onKeyDown={(e) => e.key === 'Enter' && handleRename()}
           />

@@ -4,6 +4,7 @@ import { extractJsonPaths, formatBinding, getValueType, groupPathsByParent, type
 import { ChevronDown, FileText, Hash, Box, List, Braces, Search, X } from 'lucide-react';
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { clsx } from 'clsx';
+import { DesignerInput } from '../shared/DesignerInput';
 
 interface VariablePickerProps {
   sampleData: Record<string, any>;
@@ -84,10 +85,10 @@ export function VariablePicker({ sampleData, onSelect, placeholder = 'Select var
         onClick={() => setIsOpen(!isOpen)}
         className={clsx(
           'inline-flex items-center gap-1 px-2 py-1',
-          'text-[10px] font-medium text-slate-600',
-          'bg-white border border-slate-300 rounded-sm',
-          'hover:bg-slate-50 hover:border-slate-400',
-          'focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500',
+          'text-[10px] font-medium text-[var(--text-secondary)]',
+          'bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-sm',
+          'hover:bg-[var(--bg-hover)] hover:border-[var(--border-subtle)]',
+          'focus:outline-none focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]',
           'transition-colors',
           'disabled:opacity-50 disabled:cursor-not-allowed'
         )}
@@ -108,23 +109,18 @@ export function VariablePicker({ sampleData, onSelect, placeholder = 'Select var
           />
 
           {/* Popover */}
-          <div className="absolute z-50 right-0 mt-1 w-72 bg-white rounded-md shadow-lg border border-slate-200 max-h-96 flex flex-col">
+          <div className="absolute z-50 right-0 mt-1 w-72 bg-[var(--bg-surface)] rounded-md shadow-lg border border-[var(--border-default)] max-h-96 flex flex-col">
             {/* Header */}
-            <div className="p-2 border-b border-slate-200">
+            <div className="p-2 border-b border-[var(--border-default)]">
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
-                <input
+                <DesignerInput
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(v) => setSearchQuery(v)}
                   placeholder="Search fields..."
-                  className={clsx(
-                    'w-full pl-7 pr-7 py-1.5',
-                    'text-[10px] border border-slate-300 rounded-sm',
-                    'focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500',
-                    'placeholder:text-slate-400'
-                  )}
+                  className="w-full pl-7 pr-7 py-1.5"
                 />
                 {searchQuery && (
                   <button
@@ -168,7 +164,7 @@ export function VariablePicker({ sampleData, onSelect, placeholder = 'Select var
 
             {/* Footer */}
             {allPaths.length > 0 && (
-              <div className="p-2 border-t border-slate-200 bg-slate-50">
+              <div className="p-2 border-t border-[var(--border-default)] bg-[var(--bg-widget)]">
                 <p className="text-[9px] text-slate-500">
                   {allPaths.length} field{allPaths.length !== 1 ? 's' : ''} available
                 </p>
@@ -208,14 +204,14 @@ function PathGroup({ group, sampleData, onSelect }: PathGroupProps) {
 
   // Nested group
   return (
-    <div className="border border-slate-200 rounded-sm overflow-hidden">
+    <div className="border border-[var(--border-default)] rounded-sm overflow-hidden">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         className={clsx(
           'w-full flex items-center gap-1.5 px-2 py-1',
-          'text-[10px] font-semibold text-slate-700',
-          'bg-slate-100 hover:bg-slate-200',
+          'text-[10px] font-semibold text-[var(--text-secondary)]',
+          'bg-[var(--bg-widget)] hover:bg-[var(--bg-hover)]',
           'transition-colors'
         )}
       >
@@ -229,7 +225,7 @@ function PathGroup({ group, sampleData, onSelect }: PathGroupProps) {
         </span>
       </button>
       {isExpanded && (
-        <div className="p-1 space-y-0.5 bg-white">
+        <div className="p-1 space-y-0.5 bg-[var(--bg-surface)]">
           {group.paths.map((path) => (
             <PathItem
               key={path}

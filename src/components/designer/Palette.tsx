@@ -21,6 +21,7 @@ import {
   FileDown,
 } from 'lucide-react';
 import { useEffect, useRef, useState, memo } from 'react';
+import { DesignerInput } from '../shared/DesignerInput';
 
 const CATEGORIES = [
   {
@@ -88,12 +89,12 @@ export const Palette = memo(function Palette() {
       {/* Search Bar - Compact */}
       <div className="p-2 border-b border-[var(--border-default)] shrink-0">
         <div className="relative group">
-          <input
+          <DesignerInput
             type="text"
             placeholder="Search tools..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-[6px] py-1.5 px-3 pr-8 text-[11px] focus:border-[var(--accent)] transition-all outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+            onChange={(v) => setSearchQuery(v)}
+            className="pr-8"
           />
           <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
         </div>

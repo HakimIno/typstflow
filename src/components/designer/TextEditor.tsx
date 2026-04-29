@@ -308,7 +308,7 @@ export function TextEditor({
               minWidth: '220px',
               zIndex: 9999,
             }}
-            className="bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden flex flex-col animate-in fade-in zoom-in duration-100"
+            className="bg-[var(--bg-surface)] rounded-lg shadow-xl border border-[var(--border-default)] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-100"
             data-variable-dropdown="true"
           >
             <div className="p-1.5 overflow-y-auto max-h-48 space-y-0.5">
@@ -332,12 +332,12 @@ export function TextEditor({
                         className={clsx(
                           'w-full flex items-center gap-2 px-2 py-1.5',
                           'text-[10.5px] text-left rounded-md transition-all',
-                          isSelected ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-50 text-slate-600'
+                          isSelected ? 'bg-[var(--accent)] text-white shadow-sm' : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
                         )}
                       >
                         <TypeIcon type={type} />
                         <span className="flex-1 font-mono truncate">{path}</span>
-                        <span className={clsx("text-[8px] px-1 rounded border", isSelected ? "border-blue-400 text-blue-100" : "border-slate-200 text-slate-400")}>
+                        <span className={clsx("text-[8px] px-1 rounded border", isSelected ? "border-[var(--accent-glow)] text-white/90" : "border-[var(--border-default)] text-[var(--text-muted)]")}>
                           {type}
                         </span>
                       </button>
@@ -346,13 +346,13 @@ export function TextEditor({
                 </div>
               ))}
             </div>
-            <div className="px-2 py-1.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+            <div className="px-2 py-1.5 bg-[var(--bg-widget)] border-t border-[var(--border-default)] flex items-center justify-between">
               <span className="text-[9px] font-medium text-slate-400 uppercase tracking-tighter">
                 {filteredPaths.length} Results
               </span>
               <div className="flex gap-2">
-                <kbd className="px-1 text-[8px] bg-white border border-slate-200 rounded text-slate-400">↑↓</kbd>
-                <kbd className="px-1 text-[8px] bg-white border border-slate-200 rounded text-slate-400">Enter</kbd>
+                <kbd className="px-1 text-[8px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[var(--text-muted)]">↑↓</kbd>
+                <kbd className="px-1 text-[8px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[var(--text-muted)]">Enter</kbd>
               </div>
             </div>
           </div>

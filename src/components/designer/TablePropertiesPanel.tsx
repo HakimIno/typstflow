@@ -28,6 +28,7 @@ import {
   Split,
   Wand2,
 } from 'lucide-react';
+import { DesignerInput, type DesignerInputProps } from '../shared/DesignerInput';
 import React, { useState, useEffect } from 'react';
 
 type TableTab = 'columns' | 'rows' | 'style' | 'lines' | 'data' | 'cell';
@@ -69,37 +70,7 @@ const SectionHeader = ({ label }: { label: string }) => (
   </div>
 );
 
-const MiniInput = ({
-  value,
-  onChange,
-  type = 'text',
-  placeholder,
-  className = '',
-  mono = false,
-  ...rest
-}: {
-  value: string | number;
-  onChange: (val: string) => void;
-  type?: string;
-  placeholder?: string;
-  className?: string;
-  mono?: boolean;
-  [key: string]: any;
-}) => (
-  <input
-    type={type}
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    onClick={(e) => e.stopPropagation()}
-    className={clsx(
-      'text-[10px] bg-white border border-[var(--border-default)] rounded px-1.5 h-5 focus:border-[var(--accent)] outline-none',
-      mono && 'font-mono',
-      className
-    )}
-    placeholder={placeholder}
-    {...rest}
-  />
-);
+const MiniInput = (props: Omit<DesignerInputProps, 'variant'>) => <DesignerInput variant="mini" {...props} />;
 
 export function TablePropertiesPanel({ component }: Props) {
   const updateComponent = useDesignerStore((state) => state.updateComponent);
@@ -186,11 +157,11 @@ export function TablePropertiesPanel({ component }: Props) {
               {/* Width, Colspan, Rowspan, Align */}
               <div className="flex flex-wrap items-end gap-2">
                 <div className="flex flex-col gap-0.5 min-w-[60px]">
-                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Width</span>
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Width</span>
                   <MiniInput value={col.width} onChange={(v) => updateColumn(idx, { width: v })} className="w-full" />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Colspan</span>
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Colspan</span>
                   <MiniInput
                     type="number"
                     value={col.colspan || 1}
@@ -199,7 +170,7 @@ export function TablePropertiesPanel({ component }: Props) {
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Rowspan</span>
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Rowspan</span>
                   <MiniInput
                     type="number"
                     value={col.rowspan || 1}
@@ -647,7 +618,7 @@ export function TablePropertiesPanel({ component }: Props) {
                     }}
                     className="w-8 text-center"
                   />
-                  <span className="text-[8px] text-slate-400">Start:</span>
+                  <span className="text-[8px] text-[var(--text-muted)]">Start:</span>
                   <MiniInput
                     type="number"
                     value={line.start ?? 0}
@@ -658,7 +629,7 @@ export function TablePropertiesPanel({ component }: Props) {
                     }}
                     className="w-8 text-center"
                   />
-                  <span className="text-[8px] text-slate-400">End:</span>
+                  <span className="text-[8px] text-[var(--text-muted)]">End:</span>
                   <MiniInput
                     type="number"
                     value={line.end ?? component.columns.length}
@@ -671,7 +642,7 @@ export function TablePropertiesPanel({ component }: Props) {
                   />
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[8px] text-slate-400">Stroke:</span>
+                  <span className="text-[8px] text-[var(--text-muted)]">Stroke:</span>
                   <MiniInput
                     value={line.stroke || '1pt + black'}
                     onChange={(v) => {
@@ -721,7 +692,7 @@ export function TablePropertiesPanel({ component }: Props) {
                     }}
                     className="w-8 text-center"
                   />
-                  <span className="text-[8px] text-slate-400">Start:</span>
+                  <span className="text-[8px] text-[var(--text-muted)]">Start:</span>
                   <MiniInput
                     type="number"
                     value={line.start ?? 0}
@@ -732,7 +703,7 @@ export function TablePropertiesPanel({ component }: Props) {
                     }}
                     className="w-8 text-center"
                   />
-                  <span className="text-[8px] text-slate-400">End:</span>
+                  <span className="text-[8px] text-[var(--text-muted)]">End:</span>
                   <MiniInput
                     type="number"
                     value={line.end ?? ''}
@@ -745,7 +716,7 @@ export function TablePropertiesPanel({ component }: Props) {
                   />
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[8px] text-slate-400">Stroke:</span>
+                  <span className="text-[8px] text-[var(--text-muted)]">Stroke:</span>
                   <MiniInput
                     value={line.stroke || '1pt + black'}
                     onChange={(v) => {
@@ -954,10 +925,10 @@ export function TablePropertiesPanel({ component }: Props) {
       <div className="space-y-0">
         <SectionHeader label={`Selected Cell (${section == 'header' ? 'Header' : 'Footer'} R${rowIndex + 1} C${cellIdx + 1})`} />
         
-        <div className="p-2 space-y-2 bg-slate-50/50 border-b border-slate-200">
+        <div className="p-2 space-y-2 bg-[var(--bg-widget)] border-b border-[var(--border-default)]">
            {/* Header & Field */}
            <div className="flex flex-col gap-0.5">
-             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Content</span>
+             <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Content</span>
              <MiniInput value={cell.content || ''} onChange={(v) => updateCurrentCell({ content: v })} className="w-full" />
            </div>
         </div>
@@ -1048,7 +1019,7 @@ export function TablePropertiesPanel({ component }: Props) {
 
         <PropertyRow label="Clear Fill">
           <button
-             onClick={() => updateCurrentCell({ fill: null })}
+             onClick={() => updateCurrentCell({ fill: undefined })}
              className="text-[10px] border border-[var(--border-default)] rounded px-2 hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]"
           >
             Clear / Transparent

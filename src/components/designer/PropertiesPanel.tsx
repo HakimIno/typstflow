@@ -12,6 +12,7 @@ import type {
 import { TablePropertiesPanel } from './TablePropertiesPanel';
 import { TextEditor } from './TextEditor';
 import { VariablePicker } from './VariablePicker';
+import { DesignerInput } from '../shared/DesignerInput';
 import { clsx } from 'clsx';
 import {
   AlignCenter,
@@ -202,13 +203,13 @@ function ImageUploader({
       {tab === 'url' && (
         <div className="px-3 pb-2 space-y-1.5">
           <div className="flex gap-1">
-            <input
+            <DesignerInput
               type="url"
               value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
+              onChange={(v) => setUrlInput(v)}
               onKeyDown={(e) => e.key === 'Enter' && handleUrlLoad()}
               placeholder="https://example.com/logo.png"
-              className="pro-input flex-1 h-6 px-1 font-mono text-[9px]"
+              className="flex-1 font-mono text-[9px]"
             />
             <button
               type="button"
@@ -314,18 +315,18 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   {side}
                 </div>
                 <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">
-                  <input
+                  <DesignerInput
                     type="text"
                     value={fullSchema.page.margin[side]}
-                    onChange={(e) =>
+                    onChange={(v) =>
                       updateSchema({
                         page: {
                           ...fullSchema.page,
-                          margin: { ...fullSchema.page.margin, [side]: e.target.value },
+                          margin: { ...fullSchema.page.margin, [side]: v },
                         },
                       })
                     }
-                    className="pro-input h-6 px-1 w-full text-[11px] font-mono outline-none"
+                    mono
                     placeholder="15mm"
                   />
                 </div>
@@ -434,37 +435,36 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           {isTable(selectedComponent) && (
             <div className="space-y-0 text-[10px]">
               <PropertyRow label="Data Source">
-                <input
+                <DesignerInput
                   type="text"
                   value={selectedComponent.dataSource || ''}
-                  onChange={(e) =>
-                    updateComponent(selectedComponent.id, { dataSource: e.target.value })
+                  onChange={(v) =>
+                    updateComponent(selectedComponent.id, { dataSource: v })
                   }
-                  className="pro-input h-6 px-1 font-mono"
+                  mono
                   placeholder="{{path.to.array}}"
                 />
               </PropertyRow>
               <PropertyRow label="Header Rows">
-                <input
+                <DesignerInput
                   type="number"
-                  min="0"
-                  max="5"
+                  min={0}
+                  max={5}
                   value={selectedComponent.style?.headerRows ?? 1}
-                  onChange={(e) =>
-                    handleStyleUpdate({ headerRows: parseInt(e.target.value) || 0 })
+                  onChange={(v) =>
+                    handleStyleUpdate({ headerRows: parseInt(v) || 0 })
                   }
-                  className="pro-input h-6 px-1"
                 />
               </PropertyRow>
             </div>
           )}
           {isBarcode(selectedComponent) && (
             <PropertyRow label="Value">
-              <input
+              <DesignerInput
                 type="text"
                 value={(selectedComponent as BarcodeComponent | QRComponent).value || ''}
-                onChange={(e) => updateComponent(selectedComponent.id, { value: e.target.value })}
-                className="pro-input h-6 px-1 font-mono"
+                onChange={(v) => updateComponent(selectedComponent.id, { value: v })}
+                mono
                 placeholder="{{item.id}}"
               />
             </PropertyRow>
@@ -481,36 +481,34 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           <section>
             <SectionHeader label="Typography" />
             <PropertyRow label="Font Size (pt)">
-              <input
+              <DesignerInput
                 type="number"
-                min="1"
-                max="200"
+                min={1}
+                max={200}
                 value={selectedComponent.style?.fontSize || 10}
-                onChange={(e) =>
-                  handleStyleUpdate({ fontSize: Number.parseInt(e.target.value) || 10 })
+                onChange={(v) =>
+                  handleStyleUpdate({ fontSize: Number.parseInt(v) || 10 })
                 }
-                className="pro-input h-6 px-1"
               />
             </PropertyRow>
             <PropertyRow label="Line Height">
-              <input
+              <DesignerInput
                 type="number"
                 step="0.1"
-                min="0.5"
-                max="3"
+                min={0.5}
+                max={3}
                 value={selectedComponent.style?.lineHeight || 1.2}
-                onChange={(e) =>
-                  handleStyleUpdate({ lineHeight: Number.parseFloat(e.target.value) || 1.2 })
+                onChange={(v) =>
+                  handleStyleUpdate({ lineHeight: Number.parseFloat(v) || 1.2 })
                 }
-                className="pro-input h-6 px-1"
               />
             </PropertyRow>
             <PropertyRow label="Spacing (em)">
-              <input
+              <DesignerInput
                 type="text"
                 value={selectedComponent.style?.letterSpacing || '0pt'}
-                onChange={(e) => handleStyleUpdate({ letterSpacing: e.target.value })}
-                className="pro-input h-6 px-1 font-mono"
+                onChange={(v) => handleStyleUpdate({ letterSpacing: v })}
+                mono
                 placeholder="0.05em"
               />
             </PropertyRow>
@@ -597,41 +595,37 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           <SectionHeader label="Geometry (mm)" />
           <div className="grid grid-cols-2">
             <PropertyRow label="X Pos">
-              <input
+              <DesignerInput
                 type="number"
                 step="1"
                 value={selectedComponent.x || 0}
-                onChange={(e) => handleNumericUpdate('x', e.target.value)}
-                className="pro-input h-6 px-1 w-full"
+                onChange={(v) => handleNumericUpdate('x', v)}
               />
             </PropertyRow>
             <PropertyRow label="Y Pos">
-              <input
+              <DesignerInput
                 type="number"
                 step="1"
                 value={selectedComponent.y || 0}
-                onChange={(e) => handleNumericUpdate('y', e.target.value)}
-                className="pro-input h-6 px-1 w-full"
+                onChange={(v) => handleNumericUpdate('y', v)}
               />
             </PropertyRow>
             <PropertyRow label="Width">
-              <input
+              <DesignerInput
                 type="number"
                 step="1"
-                min="1"
+                min={1}
                 value={selectedComponent.width || 0}
-                onChange={(e) => handleNumericUpdate('width', e.target.value)}
-                className="pro-input h-6 px-1 w-full"
+                onChange={(v) => handleNumericUpdate('width', v)}
               />
             </PropertyRow>
             <PropertyRow label="Height">
-              <input
+              <DesignerInput
                 type="number"
                 step="1"
-                min="1"
+                min={1}
                 value={selectedComponent.height || 0}
-                onChange={(e) => handleNumericUpdate('height', e.target.value)}
-                className="pro-input h-6 px-1 w-full"
+                onChange={(v) => handleNumericUpdate('height', v)}
               />
             </PropertyRow>
           </div>
