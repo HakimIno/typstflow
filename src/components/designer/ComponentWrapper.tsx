@@ -352,7 +352,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
           key={`action-bar-${component.id}`}
         className={clsx(
           'absolute -top-7 right-0 flex items-center bg-[var(--accent)] border border-[var(--border-accent)] rounded-md px-0.5 h-6.5 shadow-sm transition-opacity duration-200',
-          !isSelected || isDragging ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          !isSelected || isDragging || selectedComponentIds.length > 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'
         )}
       >
         <div

@@ -102,6 +102,7 @@ export const SelectionToolbar = memo(function SelectionToolbar() {
 
   return (
     <div 
+      data-toolbar="true"
       className="absolute z-[1000] flex items-center gap-1 bg-[var(--accent)] border border-[var(--border-accent)] rounded-lg p-1 shadow-2xl transition-all duration-200"
       style={{
         top: `${toolbarTop}px`,

@@ -416,23 +416,47 @@ export const useDesignerStore = create<DesignerState>()(
       selectComponentsInRange: (rect, zoneKey) =>
         set((state) => {
           const zone = state.schema.zones[zoneKey];
-          const foundIds = zone.components
-            .filter((comp) => {
-              if (state.lockedComponentIds.includes(comp.id)) return false;
+          // Use WASM Layout Engine if initialized
+          let foundIds: string[] = [];
+          
+          try {
+            // Because this is synchronous and we don't have async in Zustand reducers easily,
+            // we assume LayoutEngine is loaded with nodes. If not, fallback to JS filter.
+            const { layoutEngine } = require('@/lib/wasm-layout-engine');
+            
+            // Temporary sync to ensure accuracy for marquee
+            const nodes: any[] = [];
+            Object.values(state.schema.zones).forEach((z: any) => {
+              z.components.forEach((c: any) => {
+                nodes.push({ id: c.id, zone: z.id, x: c.x || 0, y: c.y || 0, width: c.width || 0, height: c.height || 0 });
+              });
+            });
+            layoutEngine.loadNodes(nodes);
 
-              const compX = comp.x || 0;
-              const compY = comp.y || 0;
-              const compW = comp.width || 0;
-              const compH = comp.height || 0;
+            const result = layoutEngine.queryRect(rect.x, rect.y, rect.width, rect.height, zoneKey);
+            if (result && result.ids) {
+              foundIds = result.ids.filter((id: string) => !state.lockedComponentIds.includes(id));
+            }
+          } catch (e) {
+            // Fallback
+            foundIds = zone.components
+              .filter((comp) => {
+                if (state.lockedComponentIds.includes(comp.id)) return false;
 
-              return (
-                compX < rect.x + rect.width &&
-                compX + compW > rect.x &&
-                compY < rect.y + rect.height &&
-                compY + compH > rect.y
-              );
-            })
-            .map((comp) => comp.id);
+                const compX = comp.x || 0;
+                const compY = comp.y || 0;
+                const compW = comp.width || 0;
+                const compH = comp.height || 0;
+
+                return (
+                  compX < rect.x + rect.width &&
+                  compX + compW > rect.x &&
+                  compY < rect.y + rect.height &&
+                  compY + compH > rect.y
+                );
+              })
+              .map((comp) => comp.id);
+          }
 
           // For range selection, we usually want to ADD to existing selection if we are looping through zones
           // but we'll handle the clearing at the start of the marquee drag.

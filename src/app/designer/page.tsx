@@ -12,6 +12,7 @@ import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { useEffect, useState } from 'react';
+import { layoutEngine } from '@/lib/wasm-layout-engine';
 
 export default function DesignerPage() {
   const [mounted, setMounted] = useState(false);
@@ -48,6 +49,7 @@ export default function DesignerPage() {
   }, [viewMode, setRightSidebarOpen]);
 
   useEffect(() => {
+    layoutEngine.initWasm();
     setMounted(true);
   }, []);
 

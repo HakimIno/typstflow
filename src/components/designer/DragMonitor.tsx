@@ -58,23 +58,23 @@ export function DragMonitor() {
           pointsY.push({ value: pH, type: 'edge', originId: 'page' });
           pointsY.push({ value: pH / 2, type: 'center', originId: 'page' });
 
-          // Add all other components as snap targets
-          Object.values(schema.zones).forEach((zone: any) => {
-            zone.components.forEach((c: any) => {
-              if (c.id === data.id) return;
-              const cx = c.x || 0;
-              const cy = c.y || 0;
-              const cw = c.width || 0;
-              const ch = c.height || 0;
-
-              pointsX.push({ value: cx, type: 'edge', originId: c.id });
-              pointsX.push({ value: cx + cw, type: 'edge', originId: c.id });
-              pointsX.push({ value: cx + cw / 2, type: 'center', originId: c.id });
-
-              pointsY.push({ value: cy, type: 'edge', originId: c.id });
-              pointsY.push({ value: cy + ch, type: 'edge', originId: c.id });
-              pointsY.push({ value: cy + ch / 2, type: 'center', originId: c.id });
+          // Instead of looping in JS, we load the Rust WASM Layout Engine
+          import('@/lib/wasm-layout-engine').then(({ layoutEngine }) => {
+            const nodes: any[] = [];
+            Object.values(schema.zones).forEach((zone: any) => {
+              zone.components.forEach((c: any) => {
+                if (c.id === data.id) return;
+                nodes.push({
+                  id: c.id,
+                  zone: zone.id,
+                  x: c.x || 0,
+                  y: c.y || 0,
+                  width: c.width || 0,
+                  height: c.height || 0
+                });
+              });
             });
+            layoutEngine.loadNodes(nodes);
           });
 
           dragRef.current = {
@@ -123,34 +123,55 @@ export function DragMonitor() {
         const width = data.width || data.component?.width || 0;
         const height = data.height || data.component?.height || 0;
         
-        const snap = SnapEngine.calculateSnap(
-          rawX, rawY, width, height, data.id || 'new', schema, false,
-          { x: cache.snapPointsX, y: cache.snapPointsY }
-        );
+        // Use Rust WASM layout engine first, fallback to basic page snap
+        let snapX = rawX;
+        let snapY = rawY;
+        let activeGuidesX: number[] = [];
+        let activeGuidesY: number[] = [];
+        
+        import('@/lib/wasm-layout-engine').then(({ layoutEngine }) => {
+          const wasmSnap = layoutEngine.findSnaps(data.id || 'new', rawX, rawY, width, height, 5);
+          if (wasmSnap) {
+            snapX = rawX + wasmSnap.dx;
+            snapY = rawY + wasmSnap.dy;
+            activeGuidesX = wasmSnap.guides.filter((g: any) => g.is_vertical).map((g: any) => g.position);
+            activeGuidesY = wasmSnap.guides.filter((g: any) => !g.is_vertical).map((g: any) => g.position);
+          } else {
+            // Fallback to old SnapEngine for page bounds if WASM fails
+            const snap = SnapEngine.calculateSnap(
+              rawX, rawY, width, height, data.id || 'new', schema, false,
+              { x: cache.snapPointsX, y: cache.snapPointsY }
+            );
+            snapX = snap.snappedX;
+            snapY = snap.snappedY;
+            activeGuidesX = snap.activeGuidesX;
+            activeGuidesY = snap.activeGuidesY;
+          }
 
-        // 3. Throttle Store Update (Only if snapped position changed)
-        if (snap.snappedX !== cache.lastSentX || snap.snappedY !== cache.lastSentY) {
-          useDesignerStore.getState().setDragState({
-            currentX: snap.snappedX,
-            currentY: snap.snappedY,
-            lastSnappedX: snap.snappedX,
-            lastSnappedY: snap.snappedY,
-            activeGuides: {
-              vertical: snap.activeGuidesX,
-              horizontal: snap.activeGuidesY
-            }
-          });
-          cache.lastSentX = snap.snappedX;
-          cache.lastSentY = snap.snappedY;
-        }
+          // 3. Throttle Store Update (Only if snapped position changed)
+          if (snapX !== cache.lastSentX || snapY !== cache.lastSentY) {
+            useDesignerStore.getState().setDragState({
+              currentX: snapX,
+              currentY: snapY,
+              lastSnappedX: snapX,
+              lastSnappedY: snapY,
+              activeGuides: {
+                vertical: activeGuidesX,
+                horizontal: activeGuidesY
+              }
+            });
+            cache.lastSentX = snapX;
+            cache.lastSentY = snapY;
+          }
 
-        // 4. Ultra-fast CSS Update
-        const root = document.documentElement;
-        const ds = useDesignerStore.getState().dragState;
-        const dx = LayoutEngine.mmToPx(snap.snappedX - ds.startX);
-        const dy = LayoutEngine.mmToPx(snap.snappedY - ds.startY);
-        root.style.setProperty('--drag-dx', `${dx}px`);
-        root.style.setProperty('--drag-dy', `${dy}px`);
+          // 4. Ultra-fast CSS Update
+          const root = document.documentElement;
+          const ds = useDesignerStore.getState().dragState;
+          const dx = LayoutEngine.mmToPx(snapX - ds.startX);
+          const dy = LayoutEngine.mmToPx(snapY - ds.startY);
+          root.style.setProperty('--drag-dx', `${dx}px`);
+          root.style.setProperty('--drag-dy', `${dy}px`);
+        });
       },
       onDrop: () => {
         dragRef.current.containerRect = null;

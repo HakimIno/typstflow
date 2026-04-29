@@ -23,8 +23,9 @@ export const SelectionMarquee = memo(function SelectionMarquee() {
 
       const isInsidePaper = paper.contains(target);
       const isComponent = target.closest('[data-designer-component]') || target.closest('[data-drag-handle]');
+      const isToolbar = target.closest('[data-toolbar]');
       
-      if (!isInsidePaper || isComponent || e.button !== 0) return;
+      if (!isInsidePaper || isComponent || isToolbar || e.button !== 0) return;
 
       const rect = paper.getBoundingClientRect();
       const x = (e.clientX - rect.left) / zoom;
