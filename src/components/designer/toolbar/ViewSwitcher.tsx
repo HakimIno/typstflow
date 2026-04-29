@@ -1,8 +1,8 @@
 'use client';
 
-import { memo } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
+import { memo } from 'react';
 
 export const ViewSwitcher = memo(function ViewSwitcher() {
   const viewMode = useDesignerStore((state) => state.viewMode);

@@ -1,5 +1,3 @@
-'use client';
-
 import { useDesignerStore } from '@/store/designer-store';
 import type {
   BarcodeComponent,
@@ -9,10 +7,6 @@ import type {
   TableComponent,
   TextComponent,
 } from '@/types/schema';
-import { TablePropertiesPanel } from './TablePropertiesPanel';
-import { TextEditor } from './TextEditor';
-import { VariablePicker } from './VariablePicker';
-import { DesignerInput } from '../shared/DesignerInput';
 import { clsx } from 'clsx';
 import {
   AlignCenter,
@@ -20,18 +14,23 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  FileDown,
+  FileText,
+  ImageIcon,
   Layers,
+  Link,
+  Loader2,
   Sliders,
   Trash2,
   Upload,
-  Link,
   X,
-  ImageIcon,
-  Loader2,
-  FileText,
-  FileDown,
 } from 'lucide-react';
-import React, { useMemo, useRef, useState, useCallback, memo } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import type React from 'react';
+import { DesignerInput } from '../shared/DesignerInput';
+import { TablePropertiesPanel } from './TablePropertiesPanel';
+import { TextEditor } from './TextEditor';
+import { VariablePicker } from './VariablePicker';
 
 // ---------------------------------------------------------------------------
 // Shared UI Primitives (Defined outside to prevent focus loss)
@@ -76,33 +75,42 @@ function ImageUploader({
 
   const previewSrc = component.srcData || (component.src?.startsWith('http') ? '' : '');
 
-  const handleFile = useCallback((file: File) => {
-    setError(null);
-    if (file.size > 8 * 1024 * 1024) {
-      setError('File too large (max 8 MB)');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      const mimeType = file.type || 'image/png';
-      onUpdate({ src: file.name, srcData: dataUrl, mimeType });
-    };
-    reader.onerror = () => setError('Failed to read file');
-    reader.readAsDataURL(file);
-  }, [onUpdate]);
+  const handleFile = useCallback(
+    (file: File) => {
+      setError(null);
+      if (file.size > 8 * 1024 * 1024) {
+        setError('File too large (max 8 MB)');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const mimeType = file.type || 'image/png';
+        onUpdate({ src: file.name, srcData: dataUrl, mimeType });
+      };
+      reader.onerror = () => setError('Failed to read file');
+      reader.readAsDataURL(file);
+    },
+    [onUpdate]
+  );
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
-    e.target.value = '';
-  }, [handleFile]);
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) handleFile(file);
+      e.target.value = '';
+    },
+    [handleFile]
+  );
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file?.type.startsWith('image/')) handleFile(file);
-  }, [handleFile]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file?.type.startsWith('image/')) handleFile(file);
+    },
+    [handleFile]
+  );
 
   const handleUrlLoad = useCallback(async () => {
     const url = urlInput.trim();
@@ -121,7 +129,10 @@ function ImageUploader({
         onUpdate({ src: url, srcData: dataUrl, mimeType: blob.type });
         setLoading(false);
       };
-      reader.onerror = () => { setError('Failed to decode image'); setLoading(false); };
+      reader.onerror = () => {
+        setError('Failed to decode image');
+        setLoading(false);
+      };
       reader.readAsDataURL(blob);
     } catch (err: any) {
       setError(err.message || 'Failed to load URL');
@@ -159,7 +170,10 @@ function ImageUploader({
 
       {/* Preview */}
       {previewSrc ? (
-        <div className="relative mx-3 my-2 rounded border border-[var(--border-default)] overflow-hidden bg-white/[0.02]" style={{ height: 80 }}>
+        <div
+          className="relative mx-3 my-2 rounded border border-[var(--border-default)] overflow-hidden bg-white/[0.02]"
+          style={{ height: 80 }}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={previewSrc} alt="preview" className="w-full h-full object-contain" />
           <button
@@ -171,22 +185,32 @@ function ImageUploader({
           </button>
         </div>
       ) : (
-        <div
+        <button
+          type="button"
           className="mx-3 my-2 rounded border-2 border-dashed border-[var(--border-default)] flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-[var(--border-accent)] hover:bg-[var(--accent-glow)] transition-all"
           style={{ height: 64 }}
           onClick={() => tab === 'upload' && fileRef.current?.click()}
+          onKeyDown={(e) => e.key === 'Enter' && tab === 'upload' && fileRef.current?.click()}
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
         >
           <ImageIcon className="w-4 h-4 text-[var(--text-muted)]" />
-          <span className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-widest">No Image</span>
-        </div>
+          <span className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-widest">
+            No Image
+          </span>
+        </button>
       )}
 
       {/* Upload tab */}
       {tab === 'upload' && (
         <div className="px-3 pb-2">
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileInput} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileInput}
+          />
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
@@ -231,7 +255,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
   // Select state with proper memoization - avoid selecting entire schema
   const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
   const zones = useDesignerStore((state) => state.schema.zones);
-  const page = useDesignerStore((state) => state.schema.page);
+  const _page = useDesignerStore((state) => state.schema.page);
   const fullSchema = useDesignerStore((state) => state.schema);
   const selectedZone = useDesignerStore((state) => state.selectedZone);
   const sampleData = useDesignerStore((state) => state.sampleData);
@@ -277,10 +301,18 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   }
                   className="pro-input h-6 px-1 w-full text-[11px] outline-none"
                 >
-                  <option value="A4" className="bg-[var(--bg-surface)]">A4</option>
-                  <option value="A5" className="bg-[var(--bg-surface)]">A5</option>
-                  <option value="Letter" className="bg-[var(--bg-surface)]">Letter</option>
-                  <option value="Legal" className="bg-[var(--bg-surface)]">Legal</option>
+                  <option value="A4" className="bg-[var(--bg-surface)]">
+                    A4
+                  </option>
+                  <option value="A5" className="bg-[var(--bg-surface)]">
+                    A5
+                  </option>
+                  <option value="Letter" className="bg-[var(--bg-surface)]">
+                    Letter
+                  </option>
+                  <option value="Legal" className="bg-[var(--bg-surface)]">
+                    Legal
+                  </option>
                 </select>
               </div>
             </div>
@@ -292,12 +324,18 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 <select
                   value={fullSchema.page.orientation}
                   onChange={(e) =>
-                    updateSchema({ page: { ...fullSchema.page, orientation: e.target.value as any } })
+                    updateSchema({
+                      page: { ...fullSchema.page, orientation: e.target.value as any },
+                    })
                   }
                   className="pro-input h-6 px-1 w-full text-[11px] outline-none"
                 >
-                  <option value="portrait" className="bg-[var(--bg-surface)]">Portrait</option>
-                  <option value="landscape" className="bg-[var(--bg-surface)]">Landscape</option>
+                  <option value="portrait" className="bg-[var(--bg-surface)]">
+                    Portrait
+                  </option>
+                  <option value="landscape" className="bg-[var(--bg-surface)]">
+                    Landscape
+                  </option>
                 </select>
               </div>
             </div>
@@ -356,11 +394,11 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           <p className="text-[10px] text-[var(--text-muted)] mb-6">
             Multiple items are currently selected. Actions will apply to all items in the selection.
           </p>
-          
+
           <button
             type="button"
             onClick={() => {
-              selectedComponentIds.forEach(id => removeComponent(id));
+              for (const id of selectedComponentIds) removeComponent(id);
             }}
             className="flex items-center gap-2 px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/20 rounded transition-all text-[11px] font-bold uppercase tracking-wider"
           >
@@ -414,10 +452,12 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           {isText(selectedComponent) && (
             <div className="flex flex-col border-b border-[var(--border-default)]">
               <div className="px-3 py-1 flex items-center justify-between text-[10px] bg-white/[0.01]">
-                <span className="font-bold text-[var(--text-secondary)] uppercase tracking-tighter">Text Content</span>
+                <span className="font-bold text-[var(--text-secondary)] uppercase tracking-tighter">
+                  Text Content
+                </span>
                 <VariablePicker
                   sampleData={sampleData}
-                  onSelect={(path, binding) => {
+                  onSelect={(_path, binding) => {
                     const currentContent = selectedComponent.content || '';
                     updateComponent(selectedComponent.id, { content: currentContent + binding });
                   }}
@@ -438,9 +478,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 <DesignerInput
                   type="text"
                   value={selectedComponent.dataSource || ''}
-                  onChange={(v) =>
-                    updateComponent(selectedComponent.id, { dataSource: v })
-                  }
+                  onChange={(v) => updateComponent(selectedComponent.id, { dataSource: v })}
                   mono
                   placeholder="{{path.to.array}}"
                 />
@@ -451,9 +489,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   min={0}
                   max={5}
                   value={selectedComponent.style?.headerRows ?? 1}
-                  onChange={(v) =>
-                    handleStyleUpdate({ headerRows: parseInt(v) || 0 })
-                  }
+                  onChange={(v) => handleStyleUpdate({ headerRows: Number.parseInt(v) || 0 })}
                 />
               </PropertyRow>
             </div>
@@ -486,9 +522,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 min={1}
                 max={200}
                 value={selectedComponent.style?.fontSize || 10}
-                onChange={(v) =>
-                  handleStyleUpdate({ fontSize: Number.parseInt(v) || 10 })
-                }
+                onChange={(v) => handleStyleUpdate({ fontSize: Number.parseInt(v) || 10 })}
               />
             </PropertyRow>
             <PropertyRow label="Line Height">
@@ -498,9 +532,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 min={0.5}
                 max={3}
                 value={selectedComponent.style?.lineHeight || 1.2}
-                onChange={(v) =>
-                  handleStyleUpdate({ lineHeight: Number.parseFloat(v) || 1.2 })
-                }
+                onChange={(v) => handleStyleUpdate({ lineHeight: Number.parseFloat(v) || 1.2 })}
               />
             </PropertyRow>
             <PropertyRow label="Spacing (em)">
@@ -537,24 +569,28 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           <section>
             <SectionHeader label="Image Settings" />
             <PropertyRow label="Fit Mode">
-                <select
-                  value={selectedComponent.fit || 'contain'}
-                  onChange={(e) =>
-                    updateComponent(selectedComponent.id, { fit: e.target.value as any })
-                  }
-                  className="pro-input h-6 px-1 w-full text-[11px] outline-none"
-                >
-                  <option value="contain" className="bg-[var(--bg-surface)]">Contain</option>
-                  <option value="cover" className="bg-[var(--bg-surface)]">Cover</option>
-                  <option value="stretch" className="bg-[var(--bg-surface)]">Stretch</option>
-                </select>
+              <select
+                value={selectedComponent.fit || 'contain'}
+                onChange={(e) =>
+                  updateComponent(selectedComponent.id, { fit: e.target.value as any })
+                }
+                className="pro-input h-6 px-1 w-full text-[11px] outline-none"
+              >
+                <option value="contain" className="bg-[var(--bg-surface)]">
+                  Contain
+                </option>
+                <option value="cover" className="bg-[var(--bg-surface)]">
+                  Cover
+                </option>
+                <option value="stretch" className="bg-[var(--bg-surface)]">
+                  Stretch
+                </option>
+              </select>
             </PropertyRow>
           </section>
         )}
 
-        {isTable(selectedComponent) && (
-          <TablePropertiesPanel component={selectedComponent} />
-        )}
+        {isTable(selectedComponent) && <TablePropertiesPanel component={selectedComponent} />}
 
         <section>
           <SectionHeader label="Alignment" />
@@ -637,7 +673,11 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           <PropertyRow label="Page Break Before">
             <button
               type="button"
-              onClick={() => updateComponent(selectedComponent.id, { pageBreakBefore: !selectedComponent.pageBreakBefore })}
+              onClick={() =>
+                updateComponent(selectedComponent.id, {
+                  pageBreakBefore: !selectedComponent.pageBreakBefore,
+                })
+              }
               className={clsx(
                 'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
                 selectedComponent.pageBreakBefore
@@ -668,7 +708,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   fullSchema.zones.header.showOnFirstPageOnly
                     ? 'bg-[var(--accent)] text-white'
                     : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                  )}
+                )}
               >
                 <FileText className="w-3 h-3" />
                 {fullSchema.zones.header.showOnFirstPageOnly ? 'First Page Only' : 'Every Page'}
@@ -689,7 +729,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   fullSchema.zones.footer.showOnLastPageOnly
                     ? 'bg-[var(--accent)] text-white'
                     : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                  )}
+                )}
               >
                 <FileText className="w-3 h-3" />
                 {fullSchema.zones.footer.showOnLastPageOnly ? 'Last Page Only' : 'Every Page'}

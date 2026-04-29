@@ -114,12 +114,16 @@ function renderComponent(comp: ComponentNode, data: Record<string, any>, yOffset
         const style = row.style || 'normal';
         const isTotal = style === 'total';
         const isHighlight = style === 'highlight';
-        
-        const weight = (isTotal || isHighlight) ? 'bold' : 'regular';
+
+        const weight = isTotal || isHighlight ? 'bold' : 'regular';
         const size = isTotal ? '12pt' : '10pt';
-        const color = isTotal ? formatColor('#2563eb') : isHighlight ? formatColor('#3b82f6') : formatColor('#1e293b');
+        const color = isTotal
+          ? formatColor('#2563eb')
+          : isHighlight
+            ? formatColor('#3b82f6')
+            : formatColor('#1e293b');
         const bg = isTotal ? formatColor('#eff6ff') : 'none';
-        
+
         rowsHtml += `  table.cell(inset: 5pt, fill: ${bg})[#text(size: 9pt, fill: gray.darken(20%))[${escapeTypst(row.label)}]],\n`;
         rowsHtml += `  table.cell(inset: 5pt, align: right, fill: ${bg})[#text(weight: "${weight}", size: ${size}, fill: ${color})[${escapeTypst(val)}]],\n`;
       }
@@ -306,7 +310,7 @@ function renderTable(table: TableComponent, data: Record<string, any>): string {
         const cellVal = val !== undefined ? escapeTypst(String(val)) : '';
 
         // Check for per-column cell style overrides
-        const hasOverrides = col.background || (cs > 1) || (rs > 1);
+        const hasOverrides = col.background || cs > 1 || rs > 1;
 
         if (!hasOverrides) {
           t += `  [${cellVal}],\n`;
@@ -378,7 +382,7 @@ function renderTable(table: TableComponent, data: Record<string, any>): string {
   if (table.summaryRows && table.summaryRows.length > 0) {
     for (const row of table.summaryRows) {
       if (row.separator) {
-        t += `  table.hline(stroke: 1pt + black),\n`;
+        t += '  table.hline(stroke: 1pt + black),\n';
       }
       const val = resolveBinding(row.value || '', data);
       const escapedLabel = escapeTypst(row.label || '');
@@ -442,8 +446,8 @@ export function schemaToTypst(schema: LayoutSchema, data: Record<string, any>): 
   paper: "${page.size.toLowerCase()}",
   flipped: ${page.orientation === 'landscape'},
   margin: (top: ${page.margin.top}, bottom: ${page.margin.bottom}, left: ${page.margin.left}, right: ${page.margin.right}),
-  header: ${headerContent ? '[#place(dx: 0mm, dy: 2mm)[' + headerContent + ']]' : 'none'},
-  footer: ${footerContent ? '[#place(dx: 0mm, dy: -2mm)[' + footerContent + ']]' : 'none'},
+  header: ${headerContent ? `[#place(dx: 0mm, dy: 2mm)[${headerContent}]]` : 'none'},
+  footer: ${footerContent ? `[#place(dx: 0mm, dy: -2mm)[${footerContent}]]` : 'none'},
 )\n`;
 
   // Fonts & Paragraph Setup

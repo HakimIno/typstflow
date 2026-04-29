@@ -1,12 +1,9 @@
-import { TableComponent, TableRow, TableCell } from '@/types/schema';
+import type { TableCell, TableComponent, TableRow } from '@/types/schema';
 
 /**
  * Normalizes a selection into a rectangular range of row and column indices.
  */
-export function getSelectionRange(
-  rowIndices: number[],
-  colIndices: number[]
-) {
+export function getSelectionRange(rowIndices: number[], colIndices: number[]) {
   return {
     startRow: Math.min(...rowIndices),
     endRow: Math.max(...rowIndices),
@@ -42,14 +39,14 @@ export function mergeStructuredCells(
   endColIdx: number
 ): TableRow[] {
   const newRows = [...rows];
-  
+
   // The "main" cell that will absorb others (top-left)
   const targetRow = newRows[startRowIdx];
-  const targetCell = targetRow.cells[startColIdx];
-  
+  const _targetCell = targetRow.cells[startColIdx];
+
   const colspan = endColIdx - startColIdx + 1;
   const rowspan = endRowIdx - startRowIdx + 1;
-  
+
   // Update the target cell
   newRows[startRowIdx] = {
     ...targetRow,
@@ -60,19 +57,19 @@ export function mergeStructuredCells(
       return cell;
     }),
   };
-  
+
   // Remove or mark for deletion other cells in the range
-  // This is tricky because we use simple arrays. 
+  // This is tricky because we use simple arrays.
   // We should actually remove the elements that are now covered by the span.
-  
+
   for (let r = startRowIdx; r <= endRowIdx; r++) {
     const row = newRows[r];
     const cellsToKeep: TableCell[] = [];
-    
+
     for (let c = 0; c < row.cells.length; c++) {
       const isTarget = r === startRowIdx && c === startColIdx;
       const isInRange = r >= startRowIdx && r <= endRowIdx && c >= startColIdx && c <= endColIdx;
-      
+
       if (isTarget) {
         cellsToKeep.push(newRows[startRowIdx].cells[startColIdx]);
       } else if (!isInRange) {
@@ -81,17 +78,14 @@ export function mergeStructuredCells(
     }
     newRows[r] = { ...row, cells: cellsToKeep };
   }
-  
+
   return newRows;
 }
 
 /**
  * Inserts a column into the table.
  */
-export function insertColumn(
-  component: TableComponent,
-  index: number
-): Partial<TableComponent> {
+export function insertColumn(component: TableComponent, index: number): Partial<TableComponent> {
   const newCols = [...component.columns];
   const newColId = Math.random().toString(36).substring(7);
   newCols.splice(index + 1, 0, {

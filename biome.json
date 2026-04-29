@@ -7,7 +7,15 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": [".next", "node_modules", "dist", "public", ".gemini", "src/lib/wasm-bridge"]
+    "ignore": [
+      ".next",
+      "node_modules",
+      "dist",
+      "public",
+      ".gemini",
+      "src/lib/wasm-bridge",
+      "src/lib/wasm"
+    ]
   },
   "formatter": {
     "enabled": true,

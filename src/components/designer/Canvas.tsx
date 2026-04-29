@@ -1,22 +1,20 @@
 'use client';
 
-import { useDesignerStore } from '@/store/designer-store';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { parseTypstUnit } from '@/lib/utils/units';
+import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import React, { useEffect, useRef, useState, memo, useCallback } from 'react';
-import { Zone } from './Zone';
-import { Ruler } from './Ruler';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { AlignmentGuides } from './AlignmentGuides';
+import { DragMonitor } from './DragMonitor';
+import { Ruler } from './Ruler';
 import { SelectionMarquee } from './SelectionMarquee';
 import { SelectionToolbar } from './SelectionToolbar';
-import { DragMonitor } from './DragMonitor';
+import { Zone } from './Zone';
 
 export const Canvas = memo(function Canvas() {
   const schema = useDesignerStore((state) => state.schema);
-  const isSidebarOpen = useDesignerStore((state) => state.isSidebarOpen);
-  const viewMode = useDesignerStore((state) => state.viewMode);
   const zoom = useDesignerStore((state) => state.zoom);
   const isDraggingGlobal = useDesignerStore((state) => state.dragState.isDragging);
   const [mounted, setMounted] = useState(false);
@@ -42,18 +40,24 @@ export const Canvas = memo(function Canvas() {
 
   useEffect(() => {
     setMounted(true);
-    // Initial measurement after a short delay to ensure layout is done
-    const t = setTimeout(updateScrollPos, 50);
     window.addEventListener('resize', updateScrollPos);
     return () => {
-      clearTimeout(t);
       window.removeEventListener('resize', updateScrollPos);
     };
-  }, [updateScrollPos, schema, zoom, isSidebarOpen, viewMode]);
+  }, [updateScrollPos]);
+
+  useEffect(() => {
+    // Initial measurement and re-measurement after state changes
+    const t = setTimeout(updateScrollPos, 50);
+    return () => clearTimeout(t);
+  }, [updateScrollPos]);
 
   if (!mounted) return <div className="flex-1 flex flex-col bg-[var(--bg-canvas)]" />;
 
-  const { width: pageWidthMm, height: pageHeightMm } = getPaperDimensions(schema.page.size, schema.page.orientation);
+  const { width: pageWidthMm, height: pageHeightMm } = getPaperDimensions(
+    schema.page.size,
+    schema.page.orientation
+  );
 
   // Calculate Margin Guides
   const marginTop = parseTypstUnit(schema.page.margin.top);

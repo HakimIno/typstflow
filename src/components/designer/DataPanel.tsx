@@ -3,7 +3,7 @@
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { AlertCircle, Braces, CheckCircle2, X } from 'lucide-react';
-import { useEffect, useState, memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 
 export const DataPanel = memo(function DataPanel() {
   const { sampleData, setSampleData } = useDesignerStore();
@@ -66,7 +66,8 @@ export const DataPanel = memo(function DataPanel() {
           >
             Load Example
           </button>
-          <button 
+          <button
+            type="button"
             onClick={() => useDesignerStore.getState().setSidebarOpen(false)}
             className="p-1 hover:bg-[var(--bg-hover)] rounded transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
           >

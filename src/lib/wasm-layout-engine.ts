@@ -30,7 +30,9 @@ export class WasmLayoutEngine {
     if (this.engine) this.engine.clear();
   }
 
-  public loadNodes(nodes: { id: string; zone: string; x: number; y: number; width: number; height: number }[]) {
+  public loadNodes(
+    nodes: { id: string; zone: string; x: number; y: number; width: number; height: number }[]
+  ) {
     if (!this.engine) return;
     try {
       this.engine.insert_nodes_batch(nodes);
@@ -57,7 +59,15 @@ export class WasmLayoutEngine {
     }
   }
 
-  public findSnaps(id: string, x: number, y: number, width: number, height: number, threshold = 5, zoneFilter?: string) {
+  public findSnaps(
+    id: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    threshold = 5,
+    zoneFilter?: string
+  ) {
     if (!this.engine) return null;
     try {
       return this.engine.find_snaps(id, x, y, width, height, threshold, zoneFilter);

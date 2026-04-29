@@ -1,23 +1,18 @@
 'use client';
 
 import { useDesignerStore } from '@/store/designer-store';
-import { TableComponent } from '@/types/schema';
-import { 
-  Merge, 
-  Split, 
-  Trash2, 
-  Plus, 
-  Minus, 
-  AlignCenter, 
-  AlignLeft, 
+import type { TableComponent } from '@/types/schema';
+import {
+  AlignCenter,
+  AlignLeft,
   AlignRight,
-  ChevronUp,
-  ChevronDown,
   Columns,
-  Rows
+  Merge,
+  Plus,
+  Rows,
+  Split,
+  Trash2,
 } from 'lucide-react';
-import { clsx } from 'clsx';
-import React from 'react';
 
 interface Props {
   component: TableComponent;
@@ -34,10 +29,18 @@ interface Props {
   onInsertCol: () => void;
 }
 
-export function TableActionToolbar({ component, selectedCells, onMerge, onSplit, onDelete, onInsertRow, onInsertCol }: Props) {
+export function TableActionToolbar({
+  component,
+  selectedCells,
+  onMerge,
+  onSplit,
+  onDelete,
+  onInsertRow,
+  onInsertCol,
+}: Props) {
   const updateComponent = useDesignerStore((state) => state.updateComponent);
   const isMulti = selectedCells.rowIds.length > 1 || selectedCells.cellIndices.length > 1;
-  const isSingle = !isMulti;
+  const _isSingle = !isMulti;
 
   const handleAlign = (align: 'left' | 'center' | 'right') => {
     // Basic alignment update for selected cells
@@ -45,27 +48,27 @@ export function TableActionToolbar({ component, selectedCells, onMerge, onSplit,
     if (selectedCells.section === 'header' || selectedCells.section === 'footer') {
       const sectionKey = selectedCells.section === 'header' ? 'headerRows' : 'footerRows';
       const rows = [...(component[sectionKey] || [])];
-      
-      selectedCells.rowIds.forEach(rowId => {
-        const rowIdx = rows.findIndex(r => r.id === rowId);
+
+      for (const rowId of selectedCells.rowIds) {
+        const rowIdx = rows.findIndex((r) => r.id === rowId);
         if (rowIdx !== -1) {
           const newCells = [...rows[rowIdx].cells];
-          selectedCells.cellIndices.forEach(cellIdx => {
+          for (const cellIdx of selectedCells.cellIndices) {
             if (newCells[cellIdx]) {
               newCells[cellIdx] = { ...newCells[cellIdx], align };
             }
-          });
+          }
           rows[rowIdx] = { ...rows[rowIdx], cells: newCells };
         }
-      });
-      
+      }
+
       updateComponent(component.id, { [sectionKey]: rows } as any);
     } else {
       // Data section updates columns
       const newCols = [...component.columns];
-      selectedCells.cellIndices.forEach(idx => {
+      for (const idx of selectedCells.cellIndices) {
         if (newCols[idx]) newCols[idx] = { ...newCols[idx], align };
-      });
+      }
       updateComponent(component.id, { columns: newCols } as any);
     }
   };
@@ -74,6 +77,7 @@ export function TableActionToolbar({ component, selectedCells, onMerge, onSplit,
     <div className="absolute -top-10 left-0 flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-xl rounded-[6px] p-1 z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
       <div className="flex items-center gap-0.5 border-r border-white/10 pr-1 mr-1">
         <button
+          type="button"
           onClick={onMerge}
           disabled={!isMulti}
           className="p-1.5 hover:bg-[var(--accent-glow)] text-[var(--text-secondary)] hover:text-[#A78BFA] rounded-[4px] disabled:opacity-30 transition-colors flex flex-col items-center"
@@ -83,6 +87,7 @@ export function TableActionToolbar({ component, selectedCells, onMerge, onSplit,
           <span className="text-[7px] font-bold uppercase mt-0.5">Merge</span>
         </button>
         <button
+          type="button"
           onClick={onSplit}
           disabled={isMulti}
           className="p-1.5 hover:bg-white/5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-[4px] disabled:opacity-30 transition-colors flex flex-col items-center"
@@ -94,28 +99,42 @@ export function TableActionToolbar({ component, selectedCells, onMerge, onSplit,
       </div>
 
       <div className="flex items-center gap-0.5 border-r border-white/10 pr-1 mr-1">
-        <button onClick={() => handleAlign('left')} className="p-1.5 hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-[4px]">
+        <button
+          type="button"
+          onClick={() => handleAlign('left')}
+          className="p-1.5 hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-[4px]"
+        >
           <AlignLeft className="w-3.5 h-3.5" />
         </button>
-        <button onClick={() => handleAlign('center')} className="p-1.5 hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-[4px]">
+        <button
+          type="button"
+          onClick={() => handleAlign('center')}
+          className="p-1.5 hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-[4px]"
+        >
           <AlignCenter className="w-3.5 h-3.5" />
         </button>
-        <button onClick={() => handleAlign('right')} className="p-1.5 hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-[4px]">
+        <button
+          type="button"
+          onClick={() => handleAlign('right')}
+          className="p-1.5 hover:bg-white/5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-[4px]"
+        >
           <AlignRight className="w-3.5 h-3.5" />
         </button>
       </div>
 
       <div className="flex items-center gap-0.5 border-r border-white/10 pr-1 mr-1">
-        <button 
-           onClick={onInsertRow}
-           className="p-1.5 hover:bg-[var(--green)]/10 text-[var(--green)] rounded-[4px] flex flex-col items-center"
-           title="Insert Row Below"
+        <button
+          type="button"
+          onClick={onInsertRow}
+          className="p-1.5 hover:bg-[var(--green)]/10 text-[var(--green)] rounded-[4px] flex flex-col items-center"
+          title="Insert Row Below"
         >
           <Rows className="w-3.5 h-3.5" />
           <Plus className="w-2 h-2 absolute translate-x-2 translate-y-1" />
           <span className="text-[7px] font-bold uppercase mt-0.5">Row</span>
         </button>
-        <button 
+        <button
+          type="button"
           onClick={onInsertCol}
           className="p-1.5 hover:bg-[var(--green)]/10 text-[var(--green)] rounded-[4px] flex flex-col items-center"
           title="Insert Column Right"
@@ -127,6 +146,7 @@ export function TableActionToolbar({ component, selectedCells, onMerge, onSplit,
       </div>
 
       <button
+        type="button"
         onClick={onDelete}
         className="p-1.5 hover:bg-red-500/10 text-red-400 rounded-[4px] flex flex-col items-center"
         title="Delete Selection"

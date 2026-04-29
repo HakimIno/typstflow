@@ -1,26 +1,22 @@
 'use client';
 
-import { memo } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
-import { Cpu, FileText, Save } from 'lucide-react';
+import { memo } from 'react';
 import { InsertMenu } from './InsertMenu';
-import { ViewSwitcher } from './ViewSwitcher';
 import { SettingsMenu } from './SettingsMenu';
-import { ToolbarButton } from './ToolbarButton';
+import { ViewSwitcher } from './ViewSwitcher';
 
 export const TopHeader = memo(function TopHeader() {
-  const version = useDesignerStore((state) => state.schema.version);
-  const schemaName = useDesignerStore((state) => state.schema.name);
-  const updateSchema = useDesignerStore((state) => state.updateSchema);
+  const _version = useDesignerStore((state) => state.schema.version);
+  const _schemaName = useDesignerStore((state) => state.schema.name);
+  const _updateSchema = useDesignerStore((state) => state.updateSchema);
 
   return (
     <header className="h-[40px] bg-[var(--bg-surface)] backdrop-blur-2xl flex items-center justify-between px-3 border-b border-[var(--border-default)]">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full" />
-          <span className="text-[11px] font-bold  tracking-tight">
-            TypstFlow
-          </span>
+          <span className="text-[11px] font-bold  tracking-tight">TypstFlow</span>
         </div>
 
         <nav className="flex items-center gap-1">

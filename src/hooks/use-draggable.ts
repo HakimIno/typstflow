@@ -20,7 +20,14 @@ interface DraggableOptions {
  * It manages the drag handle, initial data, and custom drag preview.
  * The global DragMonitor handles the real-time position tracking and snapping.
  */
-export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEnd }: DraggableOptions) {
+export function useDraggable({
+  id,
+  zoneKey,
+  ref,
+  disabled,
+  onDragStart,
+  onDragEnd,
+}: DraggableOptions) {
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
@@ -34,37 +41,43 @@ export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEn
         const rect = el.getBoundingClientRect();
         const state = useDesignerStore.getState();
         const selectedIds = state.selectedComponentIds;
-        
+
         // If the item being dragged is selected, we move the whole selection
         const isPartOfSelection = selectedIds.includes(id);
         const dragGroup = isPartOfSelection ? selectedIds : [id];
-        
+
         // Calculate relative offsets for everyone in the group
         const zones = state.schema.zones;
-        const groupInfo = dragGroup.map(gid => {
-          // Find component and its zone
-          for (const [zKey, zone] of Object.entries(zones)) {
-            const found = zone.components.find(c => c.id === gid);
-            if (found) {
-              return { 
-                id: gid, 
-                x: found.x || 0, 
-                y: found.y || 0, 
-                zoneKey: zKey as string,
-                // Calculate absolute Y for easier relative math across zones
-                absY: (found.y || 0) + LayoutEngine.pxToMm(LayoutEngine.calculateZoneOffset(zKey as any, state.schema))
-              };
+        const groupInfo = dragGroup
+          .map((gid) => {
+            // Find component and its zone
+            for (const [zKey, zone] of Object.entries(zones)) {
+              const found = zone.components.find((c) => c.id === gid);
+              if (found) {
+                return {
+                  id: gid,
+                  x: found.x || 0,
+                  y: found.y || 0,
+                  zoneKey: zKey as string,
+                  // Calculate absolute Y for easier relative math across zones
+                  absY:
+                    (found.y || 0) +
+                    LayoutEngine.pxToMm(
+                      LayoutEngine.calculateZoneOffset(zKey as any, state.schema)
+                    ),
+                };
+              }
             }
-          }
-          return null;
-        }).filter((item): item is NonNullable<typeof item> => item !== null);
+            return null;
+          })
+          .filter((item): item is NonNullable<typeof item> => item !== null);
 
-        const primaryComp = groupInfo.find(c => c.id === id);
-        const groupWithOffsets = groupInfo.map(c => ({
+        const primaryComp = groupInfo.find((c) => c.id === id);
+        const groupWithOffsets = groupInfo.map((c) => ({
           id: c.id,
           sourceZoneKey: c.zoneKey,
           offsetX: c.x - (primaryComp?.x || 0),
-          offsetY: c.absY - (primaryComp?.absY || 0)
+          offsetY: c.absY - (primaryComp?.absY || 0),
         }));
 
         return {
@@ -75,7 +88,7 @@ export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEn
           height: LayoutEngine.pxToMm(el.offsetHeight),
           dragOffsetX: input.clientX - rect.left,
           dragOffsetY: input.clientY - rect.top,
-          group: groupWithOffsets
+          group: groupWithOffsets,
         };
       },
       onGenerateDragPreview: ({ nativeSetDragImage, source }) => {
@@ -97,21 +110,21 @@ export function useDraggable({ id, zoneKey, ref, disabled, onDragStart, onDragEn
       onDragStart: () => {
         setIsDragging(true);
         onDragStart?.();
-        
+
         useDesignerStore.getState().setDragState({
-            isDragging: true,
-            draggedComponentId: id,
-            activeGuides: { vertical: [], horizontal: [] }
+          isDragging: true,
+          draggedComponentId: id,
+          activeGuides: { vertical: [], horizontal: [] },
         });
       },
       onDrop: () => {
         setIsDragging(false);
         onDragEnd?.();
-        
+
         useDesignerStore.getState().setDragState({
-            isDragging: false,
-            draggedComponentId: null,
-            activeGuides: { vertical: [], horizontal: [] }
+          isDragging: false,
+          draggedComponentId: null,
+          activeGuides: { vertical: [], horizontal: [] },
         });
       },
     });

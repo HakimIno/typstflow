@@ -1,9 +1,15 @@
 'use client';
 
-import { extractJsonPaths, formatBinding, getValueType, groupPathsByParent, type PathGroup } from '@/lib/utils/json-path';
-import { ChevronDown, FileText, Hash, Box, List, Braces, Search, X } from 'lucide-react';
-import { useMemo, useState, useRef, useEffect } from 'react';
+import {
+  type PathGroup as PathGroupType,
+  extractJsonPaths,
+  formatBinding,
+  getValueType,
+  groupPathsByParent,
+} from '@/lib/utils/json-path';
 import { clsx } from 'clsx';
+import { Box, Braces, ChevronDown, FileText, Hash, List, Search, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DesignerInput } from '../shared/DesignerInput';
 
 interface VariablePickerProps {
@@ -30,7 +36,11 @@ const TypeIcon = ({ type, size = 12 }: { type: string; size?: number }) => {
   }
 };
 
-export function VariablePicker({ sampleData, onSelect, placeholder = 'Select variable...' }: VariablePickerProps) {
+export function VariablePicker({
+  sampleData,
+  onSelect,
+  placeholder = 'Select variable...',
+}: VariablePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,7 +103,9 @@ export function VariablePicker({ sampleData, onSelect, placeholder = 'Select var
           'disabled:opacity-50 disabled:cursor-not-allowed'
         )}
         disabled={isEmpty}
-        title={isEmpty ? 'No sample data available. Add data in the Data panel first.' : placeholder}
+        title={
+          isEmpty ? 'No sample data available. Add data in the Data panel first.' : placeholder
+        }
       >
         <Braces className="w-3 h-3" />
         <span className="hidden sm:inline">Variables</span>
@@ -103,9 +115,12 @@ export function VariablePicker({ sampleData, onSelect, placeholder = 'Select var
       {isOpen && (
         <>
           {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-40"
+          <button
+            type="button"
+            className="fixed inset-0 z-40 cursor-default bg-transparent w-full h-full border-none p-0"
             onClick={() => setIsOpen(false)}
+            onKeyDown={(e) => e.key === 'Escape' && setIsOpen(false)}
+            aria-label="Close variable picker"
           />
 
           {/* Popover */}
@@ -178,7 +193,7 @@ export function VariablePicker({ sampleData, onSelect, placeholder = 'Select var
 }
 
 interface PathGroupProps {
-  group: PathGroup;
+  group: PathGroupType;
   sampleData: Record<string, any>;
   onSelect: (path: string) => void;
 }
@@ -191,12 +206,7 @@ function PathGroup({ group, sampleData, onSelect }: PathGroupProps) {
     return (
       <div className="space-y-0.5">
         {group.paths.map((path) => (
-          <PathItem
-            key={path}
-            path={path}
-            sampleData={sampleData}
-            onClick={() => onSelect(path)}
-          />
+          <PathItem key={path} path={path} sampleData={sampleData} onClick={() => onSelect(path)} />
         ))}
       </div>
     );
@@ -220,9 +230,7 @@ function PathGroup({ group, sampleData, onSelect }: PathGroupProps) {
         />
         <TypeIcon type={getValueType(sampleData, group.name)} />
         <span>{group.name}</span>
-        <span className="ml-auto text-[9px] text-slate-400">
-          {group.paths.length}
-        </span>
+        <span className="ml-auto text-[9px] text-slate-400">{group.paths.length}</span>
       </button>
       {isExpanded && (
         <div className="p-1 space-y-0.5 bg-[var(--bg-surface)]">

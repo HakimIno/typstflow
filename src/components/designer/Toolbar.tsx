@@ -1,9 +1,9 @@
 'use client';
 
-import { memo, useEffect } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
-import { TopHeader } from './toolbar/TopHeader';
+import { memo, useEffect } from 'react';
 import { SubToolbar } from './toolbar/SubToolbar';
+import { TopHeader } from './toolbar/TopHeader';
 
 export const Toolbar = memo(function Toolbar() {
   const undo = useDesignerStore((state) => state.undo);

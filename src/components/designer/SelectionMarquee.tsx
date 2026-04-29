@@ -1,8 +1,8 @@
 'use client';
 
-import { useDesignerStore } from '@/store/designer-store';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
-import { useState, useEffect, useRef, memo } from 'react';
+import { useDesignerStore } from '@/store/designer-store';
+import { memo, useEffect, useState } from 'react';
 
 export const SelectionMarquee = memo(function SelectionMarquee() {
   const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(null);
@@ -16,15 +16,16 @@ export const SelectionMarquee = memo(function SelectionMarquee() {
     const handleMouseDown = (e: MouseEvent) => {
       // Only start if clicking on paper container background or zone background
       const target = e.target as HTMLElement;
-      
+
       // Check if we clicked on the paper or its children but NOT on a component/handle
       const paper = document.querySelector('[data-paper-container]') as HTMLElement;
       if (!paper) return;
 
       const isInsidePaper = paper.contains(target);
-      const isComponent = target.closest('[data-designer-component]') || target.closest('[data-drag-handle]');
+      const isComponent =
+        target.closest('[data-designer-component]') || target.closest('[data-drag-handle]');
       const isToolbar = target.closest('[data-toolbar]');
-      
+
       if (!isInsidePaper || isComponent || isToolbar || e.button !== 0) return;
 
       const rect = paper.getBoundingClientRect();
@@ -33,7 +34,7 @@ export const SelectionMarquee = memo(function SelectionMarquee() {
 
       setStartPos({ x, y });
       setCurrentPos({ x, y });
-      
+
       if (!e.shiftKey) clearSelection();
     };
 
@@ -67,9 +68,9 @@ export const SelectionMarquee = memo(function SelectionMarquee() {
 
         // For each zone, select components in range
         let zoneOffsetPx = 0;
-        (['header', 'body', 'footer'] as const).forEach((zoneKey) => {
+        for (const zoneKey of ['header', 'body', 'footer'] as const) {
           const zoneHeightMm = Number.parseFloat(schema.zones[zoneKey].minHeight || '0');
-          
+
           selectComponentsInRange(
             {
               ...rectMm,
@@ -77,9 +78,9 @@ export const SelectionMarquee = memo(function SelectionMarquee() {
             },
             zoneKey
           );
-          
+
           zoneOffsetPx += LayoutEngine.mmToPx(zoneHeightMm);
-        });
+        }
       }
 
       setStartPos(null);

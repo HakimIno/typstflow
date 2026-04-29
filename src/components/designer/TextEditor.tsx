@@ -1,9 +1,15 @@
 'use client';
 
-import { extractJsonPaths, formatBinding, getValueType, groupPathsByParent } from '@/lib/utils/json-path';
-import { FileText, Hash, Box, List, Braces } from 'lucide-react';
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import {
+  extractJsonPaths,
+  formatBinding,
+  getValueType,
+  groupPathsByParent,
+} from '@/lib/utils/json-path';
 import { clsx } from 'clsx';
+import { Box, FileText, Hash, List } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 
 interface TextEditorProps {
@@ -43,7 +49,7 @@ export function TextEditor({
   style = {},
   textareaClassName = '',
   inline = false,
-  onExit
+  onExit,
 }: TextEditorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,9 +75,7 @@ export function TextEditor({
 
   const filteredPaths = useMemo(() => {
     if (!searchQuery) return allPaths.slice(0, 50);
-    return allPaths.filter((p) =>
-      p.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 50);
+    return allPaths.filter((p) => p.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 50);
   }, [allPaths, searchQuery]);
 
   const groupedPaths = useMemo(() => {
@@ -103,7 +107,7 @@ export function TextEditor({
         // This is a simplified version, real cursor positioning requires a hidden mirror span
         setDropdownPosition({
           top: rect.top + 30,
-          left: rect.left + Math.min(rect.width - 200, 20)
+          left: rect.left + Math.min(rect.width - 200, 20),
         });
       }
     } else {
@@ -112,83 +116,92 @@ export function TextEditor({
     }
   }, [getCurrentBinding]);
 
-  const handleInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
-    requestAnimationFrame(updateDropdownState);
-  }, [onChange, updateDropdownState]);
+  const handleInput = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onChange(e.target.value);
+      requestAnimationFrame(updateDropdownState);
+    },
+    [onChange, updateDropdownState]
+  );
 
-  const insertPath = useCallback((path: string) => {
-    if (!editorRef.current) return;
-    const textarea = editorRef.current;
-    const cursorPos = textarea.selectionStart;
-    const beforeCursor = value.substring(0, cursorPos);
-    const afterCursor = value.substring(cursorPos);
+  const insertPath = useCallback(
+    (path: string) => {
+      if (!editorRef.current) return;
+      const textarea = editorRef.current;
+      const cursorPos = textarea.selectionStart;
+      const beforeCursor = value.substring(0, cursorPos);
+      const afterCursor = value.substring(cursorPos);
 
-    const bindingStart = beforeCursor.lastIndexOf('{{');
-    if (bindingStart === -1) return;
+      const bindingStart = beforeCursor.lastIndexOf('{{');
+      if (bindingStart === -1) return;
 
-    let finalAfterCursor = afterCursor;
-    if (afterCursor.startsWith('}}')) {
-      finalAfterCursor = afterCursor.substring(2);
-    } else if (afterCursor.startsWith('}')) {
-      finalAfterCursor = afterCursor.substring(1);
-    }
-
-    const insertedText = formatBinding(path);
-    const newValue = beforeCursor.substring(0, bindingStart) + insertedText + finalAfterCursor;
-
-    onChange(newValue);
-    setIsOpen(false);
-    setSearchQuery('');
-
-    setTimeout(() => {
-      if (textarea) {
-        const newPos = bindingStart + insertedText.length;
-        textarea.setSelectionRange(newPos, newPos);
-        textarea.focus();
+      let finalAfterCursor = afterCursor;
+      if (afterCursor.startsWith('}}')) {
+        finalAfterCursor = afterCursor.substring(2);
+      } else if (afterCursor.startsWith('}')) {
+        finalAfterCursor = afterCursor.substring(1);
       }
-    }, 0);
-  }, [value, onChange]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!isOpen || filteredPaths.length === 0) {
-      if (e.key === 'Tab') {
-        const currentBinding = getCurrentBinding();
-        if (currentBinding !== null && filteredPaths.length > 0) {
+      const insertedText = formatBinding(path);
+      const newValue = beforeCursor.substring(0, bindingStart) + insertedText + finalAfterCursor;
+
+      onChange(newValue);
+      setIsOpen(false);
+      setSearchQuery('');
+
+      setTimeout(() => {
+        if (textarea) {
+          const newPos = bindingStart + insertedText.length;
+          textarea.setSelectionRange(newPos, newPos);
+          textarea.focus();
+        }
+      }, 0);
+    },
+    [value, onChange]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!isOpen || filteredPaths.length === 0) {
+        if (e.key === 'Tab') {
+          const currentBinding = getCurrentBinding();
+          if (currentBinding !== null && filteredPaths.length > 0) {
+            e.preventDefault();
+            insertPath(filteredPaths[0]);
+            return;
+          }
+        }
+        if (e.key === 'Enter' && !e.shiftKey) {
+          // If no autocomplete, finish editing
+          onExit?.();
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowDown':
           e.preventDefault();
-          insertPath(filteredPaths[0]);
-          return;
-        }
+          setSelectedIndex((prev) => (prev + 1) % filteredPaths.length);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev - 1 + filteredPaths.length) % filteredPaths.length);
+          break;
+        case 'Enter':
+        case 'Tab':
+          e.preventDefault();
+          if (filteredPaths[selectedIndex]) {
+            insertPath(filteredPaths[selectedIndex]);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setIsOpen(false);
+          break;
       }
-      if (e.key === 'Enter' && !e.shiftKey) {
-        // If no autocomplete, finish editing
-        onExit?.();
-      }
-      return;
-    }
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % filteredPaths.length);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + filteredPaths.length) % filteredPaths.length);
-        break;
-      case 'Enter':
-      case 'Tab':
-        e.preventDefault();
-        if (filteredPaths[selectedIndex]) {
-          insertPath(filteredPaths[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        e.preventDefault();
-        setIsOpen(false);
-        break;
-    }
-  }, [isOpen, filteredPaths, selectedIndex, getCurrentBinding, onExit, insertPath]);
+    },
+    [isOpen, filteredPaths, selectedIndex, getCurrentBinding, onExit, insertPath]
+  );
 
   // Highlight variables in the text with colorful parts
   const highlightedContent = useMemo(() => {
@@ -198,22 +211,36 @@ export function TextEditor({
       if (part.startsWith('{{') && part.endsWith('}}')) {
         const content = part.slice(2, -2);
         const segments = content.split(/(\.)/g);
-        
+
         return (
           <span key={i} className="bg-blue-50/80 rounded-[2px]">
             <span className="text-blue-500 opacity-70">{'{{'}</span>
             {segments.map((seg, si) => {
-              if (seg === '.') return <span key={si} className="text-slate-400">.</span>;
+              if (seg === '.')
+                return (
+                  <span key={si} className="text-slate-400">
+                    .
+                  </span>
+                );
               // High contrast colors for visibility
-              const colorClass = si === 0 ? 'text-orange-600' : si === 2 ? 'text-pink-600' : 'text-blue-600';
-              return <span key={si} className={colorClass}>{seg}</span>;
+              const colorClass =
+                si === 0 ? 'text-orange-600' : si === 2 ? 'text-pink-600' : 'text-blue-600';
+              return (
+                <span key={si} className={colorClass}>
+                  {seg}
+                </span>
+              );
             })}
             <span className="text-blue-500 opacity-70">{'}}'}</span>
           </span>
         );
       }
       // For literal text, we use slate-700 for good contrast since we removed font-bold
-      return <span key={i} className="text-slate-700">{part || ''}</span>;
+      return (
+        <span key={i} className="text-slate-700">
+          {part || ''}
+        </span>
+      );
     });
   }, [value]);
 
@@ -226,7 +253,9 @@ export function TextEditor({
     container.style.left = '0';
     document.body.appendChild(container);
     setPortalContainer(container);
-    return () => { if (document.body.contains(container)) document.body.removeChild(container); };
+    return () => {
+      if (document.body.contains(container)) document.body.removeChild(container);
+    };
   }, []);
 
   const sharedStyles: React.CSSProperties = {
@@ -235,7 +264,7 @@ export function TextEditor({
     lineHeight: style.lineHeight || 1.2,
     letterSpacing: style.letterSpacing || 'normal',
     textAlign: (style as any).textAlign || 'left',
-    padding: inline ? 0 : '8px', 
+    padding: inline ? 0 : '8px',
     margin: 0,
     boxSizing: 'border-box',
     width: '100%',
@@ -246,7 +275,13 @@ export function TextEditor({
   };
 
   return (
-    <div className={clsx('relative bg-transparent group select-text h-full overflow-hidden', className)} style={style}>
+    <div
+      className={clsx(
+        'relative bg-transparent group select-text h-full overflow-hidden',
+        className
+      )}
+      style={style}
+    >
       {/* 
         CLEAN STRATEGY: 
         1. Mirror Div (Bottom Layer) -> Shows COLORS and TEXT.
@@ -264,11 +299,7 @@ export function TextEditor({
         {/* Fix for textarea trailing newline cursor positioning */}
         {value.endsWith('\n') && <br />}
         {/* Placeholder replication */}
-        {!value && (
-          <span className="text-slate-300 pointer-events-none italic">
-            {placeholder}
-          </span>
-        )}
+        {!value && <span className="text-slate-300 pointer-events-none italic">{placeholder}</span>}
       </div>
 
       {/* Input Layer (Logic Layer - Transparent Text) */}
@@ -287,78 +318,100 @@ export function TextEditor({
         style={{
           ...sharedStyles,
           color: 'transparent', // IMPORTANT: Hide native text to show mirror text only
-          caretColor: '#2563eb', 
+          caretColor: '#2563eb',
         }}
         spellCheck={false}
       />
 
       {/* Dropdown Portal */}
-      {portalContainer && isOpen && filteredPaths.length > 0 && ReactDOM.createPortal(
-        <>
-          <div
-            className="fixed inset-0 z-[9998]"
-            onClick={() => setIsOpen(false)}
-          />
-          <div
-            ref={dropdownRef}
-            style={{
-              position: 'fixed',
-              top: `${dropdownPosition.top}px`,
-              left: `${dropdownPosition.left}px`,
-              minWidth: '220px',
-              zIndex: 9999,
-            }}
-            className="bg-[var(--bg-surface)] rounded-lg shadow-xl border border-[var(--border-default)] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-100"
-            data-variable-dropdown="true"
-          >
-            <div className="p-1.5 overflow-y-auto max-h-48 space-y-0.5">
-              {groupedPaths.map((group) => (
-                <div key={group.name} className="space-y-0.5">
-                  {group.name !== 'root' && (
-                    <div className="px-2 py-0.5 text-[8px] font-bold text-slate-400 tracking-wider uppercase">
-                      {group.name}
-                    </div>
-                  )}
-                  {group.paths.map((path) => {
-                    const globalIndex = filteredPaths.indexOf(path);
-                    const isSelected = globalIndex === selectedIndex;
-                    const type = getValueType(sampleData, path);
-                    return (
-                      <button
-                        key={path}
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); insertPath(path); }}
-                        onMouseEnter={() => setSelectedIndex(globalIndex)}
-                        className={clsx(
-                          'w-full flex items-center gap-2 px-2 py-1.5',
-                          'text-[10.5px] text-left rounded-md transition-all',
-                          isSelected ? 'bg-[var(--accent)] text-white shadow-sm' : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
-                        )}
-                      >
-                        <TypeIcon type={type} />
-                        <span className="flex-1 font-mono truncate">{path}</span>
-                        <span className={clsx("text-[8px] px-1 rounded border", isSelected ? "border-[var(--accent-glow)] text-white/90" : "border-[var(--border-default)] text-[var(--text-muted)]")}>
-                          {type}
-                        </span>
-                      </button>
-                    );
-                  })}
+      {portalContainer &&
+        isOpen &&
+        filteredPaths.length > 0 &&
+        ReactDOM.createPortal(
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-[9998] cursor-default bg-transparent w-full h-full border-none p-0"
+              onClick={() => setIsOpen(false)}
+              onKeyDown={(e) => e.key === 'Escape' && setIsOpen(false)}
+              aria-label="Close suggestions"
+            />
+            <div
+              ref={dropdownRef}
+              style={{
+                position: 'fixed',
+                top: `${dropdownPosition.top}px`,
+                left: `${dropdownPosition.left}px`,
+                minWidth: '220px',
+                zIndex: 9999,
+              }}
+              className="bg-[var(--bg-surface)] rounded-lg shadow-xl border border-[var(--border-default)] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-100"
+              data-variable-dropdown="true"
+            >
+              <div className="p-1.5 overflow-y-auto max-h-48 space-y-0.5">
+                {groupedPaths.map((group) => (
+                  <div key={group.name} className="space-y-0.5">
+                    {group.name !== 'root' && (
+                      <div className="px-2 py-0.5 text-[8px] font-bold text-slate-400 tracking-wider uppercase">
+                        {group.name}
+                      </div>
+                    )}
+                    {group.paths.map((path) => {
+                      const globalIndex = filteredPaths.indexOf(path);
+                      const isSelected = globalIndex === selectedIndex;
+                      const type = getValueType(sampleData, path);
+                      return (
+                        <button
+                          key={path}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            insertPath(path);
+                          }}
+                          onMouseEnter={() => setSelectedIndex(globalIndex)}
+                          className={clsx(
+                            'w-full flex items-center gap-2 px-2 py-1.5',
+                            'text-[10.5px] text-left rounded-md transition-all',
+                            isSelected
+                              ? 'bg-[var(--accent)] text-white shadow-sm'
+                              : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
+                          )}
+                        >
+                          <TypeIcon type={type} />
+                          <span className="flex-1 font-mono truncate">{path}</span>
+                          <span
+                            className={clsx(
+                              'text-[8px] px-1 rounded border',
+                              isSelected
+                                ? 'border-[var(--accent-glow)] text-white/90'
+                                : 'border-[var(--border-default)] text-[var(--text-muted)]'
+                            )}
+                          >
+                            {type}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+              <div className="px-2 py-1.5 bg-[var(--bg-widget)] border-t border-[var(--border-default)] flex items-center justify-between">
+                <span className="text-[9px] font-medium text-slate-400 uppercase tracking-tighter">
+                  {filteredPaths.length} Results
+                </span>
+                <div className="flex gap-2">
+                  <kbd className="px-1 text-[8px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[var(--text-muted)]">
+                    ↑↓
+                  </kbd>
+                  <kbd className="px-1 text-[8px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[var(--text-muted)]">
+                    Enter
+                  </kbd>
                 </div>
-              ))}
-            </div>
-            <div className="px-2 py-1.5 bg-[var(--bg-widget)] border-t border-[var(--border-default)] flex items-center justify-between">
-              <span className="text-[9px] font-medium text-slate-400 uppercase tracking-tighter">
-                {filteredPaths.length} Results
-              </span>
-              <div className="flex gap-2">
-                <kbd className="px-1 text-[8px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[var(--text-muted)]">↑↓</kbd>
-                <kbd className="px-1 text-[8px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[var(--text-muted)]">Enter</kbd>
               </div>
             </div>
-          </div>
-        </>,
-        portalContainer
-      )}
+          </>,
+          portalContainer
+        )}
     </div>
   );
 }

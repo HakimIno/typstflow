@@ -142,7 +142,7 @@ export const LayoutEngine = {
     dragOffsetX = 0,
     dragOffsetY = 0
   ): PositionResult {
-    const { rect, scrollLeft = 0, scrollTop = 0, scale = 1 } = context;
+    const { rect, scale = 1 } = context;
 
     // Adjust for scale transform if present
     const effectiveScale = scale > 0 ? scale : 1;
@@ -209,7 +209,7 @@ export const LayoutEngine = {
 
   /**
    * High-level method to calculate component position relative to the main drafting container.
-   * This handles the complex coordinate mapping between viewport screen space and 
+   * This handles the complex coordinate mapping between viewport screen space and
    * scrollable millimeter-based page space.
    */
   calculateAbsolutePosition(
@@ -224,13 +224,13 @@ export const LayoutEngine = {
 
     // 2. Find the scrollable parent
     const scrollParent = container.closest('.overflow-auto') as HTMLElement;
-    
+
     // 3. Read zoom scale explicitly from data attribute (set by Canvas.tsx)
-    const explicitZoom = parseFloat(container.dataset.zoom || '1');
-    
+    const explicitZoom = Number.parseFloat(container.dataset.zoom || '1');
+
     // 4. Create context with explicit scale
     const context = this.createContextFromElement(container, explicitZoom);
-    
+
     // Add scroll info from parent if needed (createContextFromElement uses element's own scroll)
     if (scrollParent) {
       context.scrollLeft = scrollParent.scrollLeft;
@@ -246,16 +246,16 @@ export const LayoutEngine = {
    */
   calculateZoneOffset(zoneKey: string, schema: any): number {
     let offset = 0;
-    
+
     // Order: Header -> Body -> Footer
     if (zoneKey === 'header') return 0;
-    
+
     offset += parseTypstUnit(schema.zones.header.minHeight);
     if (zoneKey === 'body') return offset;
-    
+
     offset += parseTypstUnit(schema.zones.body.minHeight);
     if (zoneKey === 'footer') return offset;
-    
+
     return offset;
   },
 

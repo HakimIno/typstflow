@@ -2,17 +2,17 @@
 
 import { Canvas } from '@/components/designer/Canvas';
 import { DataPanel } from '@/components/designer/DataPanel';
+import { LayersPanel } from '@/components/designer/LayersPanel';
 import { Palette } from '@/components/designer/Palette';
 import { PreviewPane } from '@/components/designer/PreviewPane';
 import { PropertiesPanel } from '@/components/designer/PropertiesPanel';
-import { LayersPanel } from '@/components/designer/LayersPanel';
 import { SidebarNav } from '@/components/designer/SidebarNav';
 import { Toolbar } from '@/components/designer/Toolbar';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { layoutEngine } from '@/lib/wasm-layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { useEffect, useState } from 'react';
-import { layoutEngine } from '@/lib/wasm-layout-engine';
 
 export default function DesignerPage() {
   const [mounted, setMounted] = useState(false);
@@ -31,7 +31,9 @@ export default function DesignerPage() {
   // Theme & Accent styles
   const themeStyles = {
     '--accent': primaryColor,
-    '--accent-glow': primaryColor.startsWith('#') ? `${primaryColor}15` : 'rgba(139, 92, 246, 0.15)',
+    '--accent-glow': primaryColor.startsWith('#')
+      ? `${primaryColor}15`
+      : 'rgba(139, 92, 246, 0.15)',
   } as React.CSSProperties;
 
   // Apply Theme to HTML root for global effects (portals, browser UI, etc)
@@ -69,8 +71,8 @@ export default function DesignerPage() {
   };
 
   return (
-    <div 
-      className={clsx("flex flex-col h-screen bg-[var(--bg-app)] overflow-hidden font-sans", theme)}
+    <div
+      className={clsx('flex flex-col h-screen bg-[var(--bg-app)] overflow-hidden font-sans', theme)}
       style={themeStyles}
     >
       <ErrorBoundary componentName="Toolbar">
@@ -83,34 +85,34 @@ export default function DesignerPage() {
 
         {/* The Detail Drawer and Workspace are synced in a relative container */}
         <div className="flex-1 relative flex overflow-hidden bg-[var(--bg-app)]">
-
           {/* Stage 2: Detail Drawer (Hardware-Accelerated Slide-out) */}
           <aside
             className={clsx(
-              "absolute left-0 top-0 bottom-0 w-80 bg-[var(--bg-surface)] backdrop-blur-2xl border-r border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform shadow-[var(--shadow-premium)]",
-              isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+              'absolute left-0 top-0 bottom-0 w-80 bg-[var(--bg-surface)] backdrop-blur-2xl border-r border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform shadow-[var(--shadow-premium)]',
+              isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
             )}
           >
             <div className="w-80 h-full flex flex-col overflow-hidden">
-              <ErrorBoundary componentName="Sidebar Panel">
-                {renderLeftPanel()}
-              </ErrorBoundary>
+              <ErrorBoundary componentName="Sidebar Panel">{renderLeftPanel()}</ErrorBoundary>
             </div>
           </aside>
 
           {/* Center: Workspace (Design / Preview / Split) - Hardware-Accelerated PUSH */}
           <div
             className={clsx(
-              "flex-1 flex overflow-hidden gap-0.5 min-w-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform transform-gpu",
-              isSidebarOpen ? "translate-x-[320px]" : "translate-x-0"
+              'flex-1 flex overflow-hidden gap-0.5 min-w-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform transform-gpu',
+              isSidebarOpen ? 'translate-x-[320px]' : 'translate-x-0'
             )}
             style={{ width: '100%' }}
           >
             {(viewMode === 'design' || viewMode === 'split') && (
-              <main className={clsx(
-                "flex-1 overflow-auto bg-[var(--bg-canvas)] flex justify-center p-0 transition-all duration-300",
-                viewMode === 'split' && "border-r-2 border-[var(--border-default)] shadow-2xl z-10"
-              )}>
+              <main
+                className={clsx(
+                  'flex-1 overflow-auto bg-[var(--bg-canvas)] flex justify-center p-0 transition-all duration-300',
+                  viewMode === 'split' &&
+                    'border-r-2 border-[var(--border-default)] shadow-2xl z-10'
+                )}
+              >
                 <ErrorBoundary componentName="Designer Canvas">
                   <Canvas />
                 </ErrorBoundary>
@@ -130,8 +132,8 @@ export default function DesignerPage() {
         {/* Right Sidebar: Properties - Professional Slide-out (Hardware Accelerated) */}
         <aside
           className={clsx(
-            "absolute right-0 top-0 bottom-0 w-64 bg-[var(--bg-surface)] backdrop-blur-2xl overflow-hidden border-l border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform shadow-[var(--shadow-premium)]",
-            isRightSidebarOpen ? "translate-x-0" : "translate-x-full"
+            'absolute right-0 top-0 bottom-0 w-64 bg-[var(--bg-surface)] backdrop-blur-2xl overflow-hidden border-l border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform shadow-[var(--shadow-premium)]',
+            isRightSidebarOpen ? 'translate-x-0' : 'translate-x-full'
           )}
         >
           <div className="w-64 h-full flex flex-col overflow-hidden">

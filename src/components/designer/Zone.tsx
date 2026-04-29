@@ -3,11 +3,11 @@
 import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
 import { Layers } from 'lucide-react';
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { ComponentWrapper } from './ComponentWrapper';
 
-import { useZoneResize } from '@/hooks/use-zone-resize';
 import { useZoneDropTarget } from '@/hooks/use-zone-drop-target';
+import { useZoneResize } from '@/hooks/use-zone-resize';
 
 interface ZoneProps {
   zoneKey: 'header' | 'body' | 'footer';
@@ -20,8 +20,13 @@ interface ZoneProps {
 export function Zone({ zoneKey, label, components, minHeight, resizeEdge = 'bottom' }: ZoneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  
-  const { isResizing, localHeight, handleResizeStart } = useZoneResize(zoneKey, minHeight || '50', components, resizeEdge);
+
+  const { isResizing, localHeight, handleResizeStart } = useZoneResize(
+    zoneKey,
+    minHeight || '50',
+    components,
+    resizeEdge
+  );
   const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef);
 
   return (
@@ -37,9 +42,9 @@ export function Zone({ zoneKey, label, components, minHeight, resizeEdge = 'bott
       {/* Vertical Side Label (External to Paper) */}
       <div className="absolute -left-10 top-0 bottom-0 w-10 flex flex-col items-center justify-center pointer-events-none select-none z-10 opacity-60 group-hover/zone:opacity-100 transition-opacity">
         <div className="absolute inset-y-0 right-0 w-px bg-[var(--border-default)]" />
-        <span 
+        <span
           className={clsx(
-            "text-[8px] font-medium uppercase tracking-[0.1em] text-[var(--text-muted)] whitespace-nowrap",
+            'text-[8px] font-medium uppercase tracking-[0.1em] text-[var(--text-muted)] whitespace-nowrap'
           )}
           style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
         >
@@ -47,13 +52,19 @@ export function Zone({ zoneKey, label, components, minHeight, resizeEdge = 'bott
         </span>
       </div>
 
-      <div ref={contentRef} className="relative w-full h-full bg-transparent overflow-visible min-h-[inherit]">
+      <div
+        ref={contentRef}
+        className="relative w-full h-full bg-transparent overflow-visible min-h-[inherit]"
+      >
         {components.length === 0 && !isDraggedOver ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-[var(--text-muted)] opacity-30 select-none pointer-events-none">
             <Layers className="w-6 h-6 mb-1" />
             <p className="text-[9px] font-bold uppercase tracking-widest text-center px-4">
-              {label} EMPTY<br/>
-              <span className="text-[7px] font-medium tracking-normal opacity-60">DRAG COMPONENTS HERE</span>
+              {label} EMPTY
+              <br />
+              <span className="text-[7px] font-medium tracking-normal opacity-60">
+                DRAG COMPONENTS HERE
+              </span>
             </p>
           </div>
         ) : (
@@ -77,23 +88,25 @@ export function Zone({ zoneKey, label, components, minHeight, resizeEdge = 'bott
         <div
           onMouseDown={handleResizeStart}
           className={clsx(
-            "absolute left-0 right-0 h-2 cursor-ns-resize z-40 group/resize flex items-center justify-center",
-            resizeEdge === 'top' ? "-top-1" : "-bottom-1"
+            'absolute left-0 right-0 h-2 cursor-ns-resize z-40 group/resize flex items-center justify-center',
+            resizeEdge === 'top' ? '-top-1' : '-bottom-1'
           )}
         >
           {/* Visual Line */}
-          <div className={clsx(
-            "absolute left-0 right-0 h-[1.5px] transition-colors",
-            isResizing 
-              ? "bg-[var(--accent)]" 
-              : "group-hover/resize:bg-[var(--accent)] group-hover/zone:bg-[var(--border-default)] bg-transparent"
-          )} />
+          <div
+            className={clsx(
+              'absolute left-0 right-0 h-[1.5px] transition-colors',
+              isResizing
+                ? 'bg-[var(--accent)]'
+                : 'group-hover/resize:bg-[var(--accent)] group-hover/zone:bg-[var(--border-default)] bg-transparent'
+            )}
+          />
 
           {/* Full-width Horizontal Guide Line during Resize */}
           {isResizing && (
             <div className="absolute top-1/2 -translate-y-1/2 -left-[2000px] -right-[2000px] border-b border-dashed border-[var(--accent)] opacity-50 pointer-events-none" />
           )}
-          
+
           {/* Drag Dots (Smaller) */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover/zone:opacity-100 transition-opacity z-10">
             <div className="w-1 h-1 rounded-full bg-[var(--accent)] shadow-sm" />

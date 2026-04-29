@@ -1,5 +1,3 @@
-'use client';
-
 import { useDesignerStore } from '@/store/designer-store';
 import type {
   FillPattern,
@@ -13,23 +11,24 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  BoxSelect,
   ChevronDown,
   ChevronRight,
   Columns3,
   Database,
   Grid3X3,
+  Merge,
   Minus,
   Paintbrush,
   Plus,
   Rows3,
-  Trash2,
-  BoxSelect,
-  Merge,
   Split,
+  Trash2,
   Wand2,
 } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { DesignerInput, type DesignerInputProps } from '../shared/DesignerInput';
-import React, { useState, useEffect } from 'react';
 
 type TableTab = 'columns' | 'rows' | 'style' | 'lines' | 'data' | 'cell';
 
@@ -70,12 +69,14 @@ const SectionHeader = ({ label }: { label: string }) => (
   </div>
 );
 
-const MiniInput = (props: Omit<DesignerInputProps, 'variant'>) => <DesignerInput variant="mini" {...props} />;
+const MiniInput = (props: Omit<DesignerInputProps, 'variant'>) => (
+  <DesignerInput variant="mini" {...props} />
+);
 
 export function TablePropertiesPanel({ component }: Props) {
   const updateComponent = useDesignerStore((state) => state.updateComponent);
   const selectedCell = useDesignerStore((state) => state.selectedCell);
-  const setSelectedCell = useDesignerStore((state) => state.setSelectedCell);
+  const _setSelectedCell = useDesignerStore((state) => state.setSelectedCell);
   const [activeTab, setActiveTab] = useState<TableTab>('columns');
   const [expandedColIndex, setExpandedColIndex] = useState<number | null>(null);
 
@@ -102,33 +103,62 @@ export function TablePropertiesPanel({ component }: Props) {
   const renderColumnsTab = () => (
     <div className="p-2 space-y-1 bg-[var(--bg-widget)]">
       {component.columns.map((col, idx) => (
-        <div key={col.id} className="flex flex-col bg-[var(--bg-surface)] border border-[var(--border-default)] rounded shadow-sm group/col overflow-hidden">
+        <div
+          key={col.id}
+          className="flex flex-col bg-[var(--bg-surface)] border border-[var(--border-default)] rounded shadow-sm group/col overflow-hidden"
+        >
           {/* Compact row */}
           <div
             className={clsx(
-              'flex items-center gap-2 p-1.5 cursor-pointer transition-colors',
+              'w-full flex items-center gap-2 p-1.5 cursor-pointer transition-colors border-0 text-left',
               expandedColIndex === idx ? 'bg-[var(--accent-glow)]' : 'hover:bg-[var(--bg-hover)]'
             )}
             onClick={() => setExpandedColIndex(expandedColIndex === idx ? null : idx)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                setExpandedColIndex(expandedColIndex === idx ? null : idx);
+              }
+            }}
+            // biome-ignore lint/a11y/useSemanticElements: Nested buttons are illegal in HTML
+            role="button"
+            tabIndex={0}
+            aria-expanded={expandedColIndex === idx}
           >
             <span className="w-4 h-4 flex items-center justify-center bg-[var(--bg-widget)] text-[8px] font-bold text-[var(--text-muted)] rounded-full shrink-0">
               {idx + 1}
             </span>
             <div className="flex-1 min-w-0 flex flex-col">
-              <span className="text-[10px] font-bold text-[var(--text-primary)] truncate">{col.header || 'Untitled'}</span>
-              <span className="text-[8px] text-[var(--text-muted)] font-mono truncate">{col.field ? `{${col.field}}` : 'unbound'}</span>
+              <span className="text-[10px] font-bold text-[var(--text-primary)] truncate">
+                {col.header || 'Untitled'}
+              </span>
+              <span className="text-[8px] text-[var(--text-muted)] font-mono truncate">
+                {col.field ? `{${col.field}}` : 'unbound'}
+              </span>
             </div>
             <span className="text-[9px] font-mono text-[var(--text-muted)] bg-[var(--bg-widget)] px-1 py-0.5 rounded border border-[var(--border-default)]">
               {col.width}
             </span>
             {((col.colspan && col.colspan > 1) || (col.rowspan && col.rowspan > 1)) && (
               <div className="flex gap-0.5">
-                {col.colspan && col.colspan > 1 ? <span className="text-[8px] bg-purple-100 text-purple-600 px-1 py-0.5 rounded font-bold">C{col.colspan}</span> : null}
-                {col.rowspan && col.rowspan > 1 ? <span className="text-[8px] bg-orange-100 text-orange-600 px-1 py-0.5 rounded font-bold">R{col.rowspan}</span> : null}
+                {col.colspan && col.colspan > 1 ? (
+                  <span className="text-[8px] bg-purple-100 text-purple-600 px-1 py-0.5 rounded font-bold">
+                    C{col.colspan}
+                  </span>
+                ) : null}
+                {col.rowspan && col.rowspan > 1 ? (
+                  <span className="text-[8px] bg-orange-100 text-orange-600 px-1 py-0.5 rounded font-bold">
+                    R{col.rowspan}
+                  </span>
+                ) : null}
               </div>
             )}
-            {expandedColIndex === idx ? <ChevronDown className="w-3 h-3 text-[var(--text-muted)] shrink-0" /> : <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />}
+            {expandedColIndex === idx ? (
+              <ChevronDown className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+            ) : (
+              <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+            )}
             <button
+              type="button"
               className="p-1 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded opacity-0 group-hover/col:opacity-100 transition-all shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
@@ -146,40 +176,69 @@ export function TablePropertiesPanel({ component }: Props) {
               {/* Header & Field */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Header</span>
-                  <MiniInput value={col.header || ''} onChange={(v) => updateColumn(idx, { header: v })} placeholder="Column Header" />
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Header
+                  </span>
+                  <MiniInput
+                    value={col.header || ''}
+                    onChange={(v) => updateColumn(idx, { header: v })}
+                    placeholder="Column Header"
+                  />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Field Binding</span>
-                  <MiniInput value={col.field || ''} onChange={(v) => updateColumn(idx, { field: v })} placeholder="e.g. qty" mono />
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Field Binding
+                  </span>
+                  <MiniInput
+                    value={col.field || ''}
+                    onChange={(v) => updateColumn(idx, { field: v })}
+                    placeholder="e.g. qty"
+                    mono
+                  />
                 </div>
               </div>
               {/* Width, Colspan, Rowspan, Align */}
               <div className="flex flex-wrap items-end gap-2">
                 <div className="flex flex-col gap-0.5 min-w-[60px]">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Width</span>
-                  <MiniInput value={col.width} onChange={(v) => updateColumn(idx, { width: v })} className="w-full" />
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Width
+                  </span>
+                  <MiniInput
+                    value={col.width}
+                    onChange={(v) => updateColumn(idx, { width: v })}
+                    className="w-full"
+                  />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Colspan</span>
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Colspan
+                  </span>
                   <MiniInput
                     type="number"
                     value={col.colspan || 1}
-                    onChange={(v) => updateColumn(idx, { colspan: Math.max(1, parseInt(v) || 1) })}
+                    onChange={(v) =>
+                      updateColumn(idx, { colspan: Math.max(1, Number.parseInt(v) || 1) })
+                    }
                     className="w-10 text-center"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Rowspan</span>
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Rowspan
+                  </span>
                   <MiniInput
                     type="number"
                     value={col.rowspan || 1}
-                    onChange={(v) => updateColumn(idx, { rowspan: Math.max(1, parseInt(v) || 1) })}
+                    onChange={(v) =>
+                      updateColumn(idx, { rowspan: Math.max(1, Number.parseInt(v) || 1) })
+                    }
                     className="w-10 text-center"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Align</span>
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Align
+                  </span>
                   <div className="flex border border-[var(--border-default)] rounded overflow-hidden">
                     {[
                       { id: 'left', Icon: AlignLeft },
@@ -187,11 +246,17 @@ export function TablePropertiesPanel({ component }: Props) {
                       { id: 'right', Icon: AlignRight },
                     ].map(({ id, Icon }) => (
                       <button
+                        type="button"
                         key={id}
-                        onClick={(e) => { e.stopPropagation(); updateColumn(idx, { align: id }); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateColumn(idx, { align: id });
+                        }}
                         className={clsx(
                           'p-0.5 transition-all',
-                          (col.align || 'left') === id ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                          (col.align || 'left') === id
+                            ? 'bg-[var(--accent)] text-white'
+                            : 'bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                         )}
                       >
                         <Icon className="w-3 h-3" />
@@ -203,7 +268,9 @@ export function TablePropertiesPanel({ component }: Props) {
               {/* Per-column cell style overrides */}
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[var(--border-default)]">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Cell BG</span>
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Cell BG
+                  </span>
                   <input
                     type="color"
                     value={col.background || '#ffffff'}
@@ -213,7 +280,9 @@ export function TablePropertiesPanel({ component }: Props) {
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Border</span>
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Border
+                  </span>
                   <MiniInput
                     value={col.borderWidth || ''}
                     onChange={(v) => updateColumn(idx, { borderWidth: v })}
@@ -227,14 +296,18 @@ export function TablePropertiesPanel({ component }: Props) {
         </div>
       ))}
       <button
+        type="button"
         className="w-full py-1.5 border border-dashed border-[var(--border-default)] text-[9px] font-bold uppercase text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all mt-2 flex items-center justify-center gap-1"
         onClick={() => {
-          const newCols = [...component.columns, {
-            id: Math.random().toString(36).substring(7),
-            header: 'New Column',
-            field: '',
-            width: '1fr',
-          }];
+          const newCols = [
+            ...component.columns,
+            {
+              id: Math.random().toString(36).substring(7),
+              header: 'New Column',
+              field: '',
+              width: '1fr',
+            },
+          ];
           updateComponent(component.id, { columns: newCols } as any);
         }}
       >
@@ -276,20 +349,31 @@ export function TablePropertiesPanel({ component }: Props) {
 
     const removeRow = (type: 'header' | 'footer', rowId: string) => {
       if (type === 'header') {
-        updateComponent(component.id, { headerRows: headerRows.filter((r) => r.id !== rowId) } as any);
+        updateComponent(component.id, {
+          headerRows: headerRows.filter((r) => r.id !== rowId),
+        } as any);
       } else {
-        updateComponent(component.id, { footerRows: footerRows.filter((r) => r.id !== rowId) } as any);
+        updateComponent(component.id, {
+          footerRows: footerRows.filter((r) => r.id !== rowId),
+        } as any);
       }
     };
 
-    const updateRowCell = (type: 'header' | 'footer', rowId: string, cellIdx: number, content: string) => {
+    const updateRowCell = (
+      type: 'header' | 'footer',
+      rowId: string,
+      cellIdx: number,
+      content: string
+    ) => {
       const rows = type === 'header' ? [...headerRows] : [...footerRows];
       const rowIndex = rows.findIndex((r) => r.id === rowId);
       if (rowIndex === -1) return;
       const newCells = [...rows[rowIndex].cells];
       newCells[cellIdx] = { ...newCells[cellIdx], content };
       rows[rowIndex] = { ...rows[rowIndex], cells: newCells };
-      updateComponent(component.id, { [type === 'header' ? 'headerRows' : 'footerRows']: rows } as any);
+      updateComponent(component.id, {
+        [type === 'header' ? 'headerRows' : 'footerRows']: rows,
+      } as any);
     };
 
     return (
@@ -302,21 +386,35 @@ export function TablePropertiesPanel({ component }: Props) {
               <input
                 type="checkbox"
                 checked={component.repeatHeaderOnPage ?? false}
-                onChange={(e) => updateComponent(component.id, { repeatHeaderOnPage: e.target.checked } as any)}
+                onChange={(e) =>
+                  updateComponent(component.id, { repeatHeaderOnPage: e.target.checked } as any)
+                }
                 className="w-3 h-3 rounded border-[var(--border-default)] bg-[var(--bg-surface)]"
               />
               <span className="text-[10px] text-[var(--text-secondary)]">On every page</span>
             </label>
           </PropertyRow>
           {headerRows.map((row, rowIdx) => (
-            <div key={row.id} className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5 space-y-1">
+            <div
+              key={row.id}
+              className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5 space-y-1"
+            >
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-bold text-[var(--accent)] uppercase">Header Row {rowIdx + 1}</span>
-                <button onClick={() => removeRow('header', row.id)} className="p-0.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded">
+                <span className="text-[9px] font-bold text-[var(--accent)] uppercase">
+                  Header Row {rowIdx + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeRow('header', row.id)}
+                  className="p-0.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded"
+                >
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${row.cells.length}, 1fr)` }}>
+              <div
+                className="grid gap-1"
+                style={{ gridTemplateColumns: `repeat(${row.cells.length}, 1fr)` }}
+              >
                 {row.cells.map((cell, cellIdx) => (
                   <MiniInput
                     key={cell.id}
@@ -330,6 +428,7 @@ export function TablePropertiesPanel({ component }: Props) {
             </div>
           ))}
           <button
+            type="button"
             className="w-full py-1 border border-dashed border-[var(--border-default)] text-[9px] font-bold uppercase text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all flex items-center justify-center gap-1"
             onClick={addHeaderRow}
           >
@@ -341,9 +440,14 @@ export function TablePropertiesPanel({ component }: Props) {
         <SectionHeader label="Footer Rows" />
         <div className="p-2 space-y-1 bg-[var(--bg-widget)]">
           {footerRows.map((row, rowIdx) => (
-            <div key={row.id} className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5 space-y-1">
+            <div
+              key={row.id}
+              className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5 space-y-1"
+            >
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-bold text-green-500 uppercase">Footer Row {rowIdx + 1}</span>
+                <span className="text-[9px] font-bold text-green-500 uppercase">
+                  Footer Row {rowIdx + 1}
+                </span>
                 <div className="flex items-center gap-1">
                   <label className="flex items-center gap-0.5 cursor-pointer">
                     <input
@@ -358,12 +462,19 @@ export function TablePropertiesPanel({ component }: Props) {
                     />
                     <span className="text-[8px] text-[var(--text-muted)]">Repeat</span>
                   </label>
-                  <button onClick={() => removeRow('footer', row.id)} className="p-0.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded">
+                  <button
+                    type="button"
+                    onClick={() => removeRow('footer', row.id)}
+                    className="p-0.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded"
+                  >
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
               </div>
-              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${row.cells.length}, 1fr)` }}>
+              <div
+                className="grid gap-1"
+                style={{ gridTemplateColumns: `repeat(${row.cells.length}, 1fr)` }}
+              >
                 {row.cells.map((cell, cellIdx) => (
                   <MiniInput
                     key={cell.id}
@@ -378,12 +489,14 @@ export function TablePropertiesPanel({ component }: Props) {
           ))}
           <div className="flex gap-2 mt-2">
             <button
+              type="button"
               className="flex-1 py-1.5 border border-dashed border-[var(--border-default)] text-[9px] font-bold uppercase text-[var(--text-muted)] hover:border-green-400 hover:text-green-500 rounded transition-all flex items-center justify-center gap-1"
               onClick={addFooterRow}
             >
               <Plus className="w-3 h-3" /> Add Standard Row
             </button>
             <button
+              type="button"
               className="flex-1 py-1.5 border border-purple-500/20 text-[9px] font-bold uppercase text-purple-400 bg-purple-500/5 hover:bg-purple-500/10 rounded transition-all flex items-center justify-center gap-1 shadow-sm"
               onClick={() => {
                 const colCount = component.columns.length;
@@ -431,7 +544,14 @@ export function TablePropertiesPanel({ component }: Props) {
         <PropertyRow label="Row Heights">
           <MiniInput
             value={(component.style?.rowHeights || []).join(', ')}
-            onChange={(v) => handleStyleUpdate({ rowHeights: v.split(',').map((s) => s.trim()).filter(Boolean) })}
+            onChange={(v) =>
+              handleStyleUpdate({
+                rowHeights: v
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              })
+            }
             placeholder="auto, 30pt, auto..."
             mono
             className="w-full"
@@ -450,6 +570,7 @@ export function TablePropertiesPanel({ component }: Props) {
         <div className="grid grid-cols-3 gap-1">
           {FILL_PATTERNS.map((pattern) => (
             <button
+              type="button"
               key={pattern.id}
               onClick={() => handleStyleUpdate({ fillPattern: pattern.id })}
               className={clsx(
@@ -499,7 +620,7 @@ export function TablePropertiesPanel({ component }: Props) {
         <MiniInput
           type="number"
           value={component.style?.fontSize || 10}
-          onChange={(v) => handleStyleUpdate({ fontSize: parseInt(v) || 10 })}
+          onChange={(v) => handleStyleUpdate({ fontSize: Number.parseInt(v) || 10 })}
           className="w-full"
         />
       </PropertyRow>
@@ -509,16 +630,22 @@ export function TablePropertiesPanel({ component }: Props) {
           onChange={(e) => handleStyleUpdate({ fontWeight: e.target.value })}
           className="pro-input h-6 px-1 w-full bg-[var(--bg-surface)] text-[11px] outline-none"
         >
-          <option value="regular" className="bg-[var(--bg-surface)]">Regular</option>
-          <option value="medium" className="bg-[var(--bg-surface)]">Medium</option>
-          <option value="bold" className="bg-[var(--bg-surface)]">Bold</option>
+          <option value="regular" className="bg-[var(--bg-surface)]">
+            Regular
+          </option>
+          <option value="medium" className="bg-[var(--bg-surface)]">
+            Medium
+          </option>
+          <option value="bold" className="bg-[var(--bg-surface)]">
+            Bold
+          </option>
         </select>
       </PropertyRow>
       <PropertyRow label="Line Height">
         <MiniInput
           type="number"
           value={component.style?.lineHeight || 1.2}
-          onChange={(v) => handleStyleUpdate({ lineHeight: parseFloat(v) || 1.2 })}
+          onChange={(v) => handleStyleUpdate({ lineHeight: Number.parseFloat(v) || 1.2 })}
           className="w-full"
           step="0.1"
         />
@@ -603,8 +730,13 @@ export function TablePropertiesPanel({ component }: Props) {
         <SectionHeader label="Horizontal Lines (HLine)" />
         <div className="p-2 space-y-1 bg-[var(--bg-widget)]">
           {hlines.map((line, idx) => (
-            <div key={line.id} className="flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5">
-              <span className="text-[8px] font-bold text-[var(--text-muted)] w-6 shrink-0">#{idx + 1}</span>
+            <div
+              key={line.id}
+              className="flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5"
+            >
+              <span className="text-[8px] font-bold text-[var(--text-muted)] w-6 shrink-0">
+                #{idx + 1}
+              </span>
               <div className="flex flex-col gap-0.5 flex-1">
                 <div className="flex items-center gap-1">
                   <span className="text-[8px] text-[var(--text-muted)]">Y:</span>
@@ -613,7 +745,7 @@ export function TablePropertiesPanel({ component }: Props) {
                     value={line.y}
                     onChange={(v) => {
                       const newLines = [...hlines];
-                      newLines[idx] = { ...line, y: parseInt(v) || 0 };
+                      newLines[idx] = { ...line, y: Number.parseInt(v) || 0 };
                       updateComponent(component.id, { hlines: newLines } as any);
                     }}
                     className="w-8 text-center"
@@ -624,7 +756,7 @@ export function TablePropertiesPanel({ component }: Props) {
                     value={line.start ?? 0}
                     onChange={(v) => {
                       const newLines = [...hlines];
-                      newLines[idx] = { ...line, start: parseInt(v) || 0 };
+                      newLines[idx] = { ...line, start: Number.parseInt(v) || 0 };
                       updateComponent(component.id, { hlines: newLines } as any);
                     }}
                     className="w-8 text-center"
@@ -635,7 +767,7 @@ export function TablePropertiesPanel({ component }: Props) {
                     value={line.end ?? component.columns.length}
                     onChange={(v) => {
                       const newLines = [...hlines];
-                      newLines[idx] = { ...line, end: parseInt(v) || undefined };
+                      newLines[idx] = { ...line, end: Number.parseInt(v) || undefined };
                       updateComponent(component.id, { hlines: newLines } as any);
                     }}
                     className="w-8 text-center"
@@ -656,8 +788,11 @@ export function TablePropertiesPanel({ component }: Props) {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => {
-                  updateComponent(component.id, { hlines: hlines.filter((_, i) => i !== idx) } as any);
+                  updateComponent(component.id, {
+                    hlines: hlines.filter((_, i) => i !== idx),
+                  } as any);
                 }}
                 className="p-0.5 hover:bg-red-100 text-slate-300 hover:text-red-500 rounded shrink-0"
               >
@@ -666,6 +801,7 @@ export function TablePropertiesPanel({ component }: Props) {
             </div>
           ))}
           <button
+            type="button"
             className="w-full py-1 border border-dashed border-[var(--border-default)] text-[9px] font-bold uppercase text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all flex items-center justify-center gap-1"
             onClick={addHLine}
           >
@@ -677,8 +813,13 @@ export function TablePropertiesPanel({ component }: Props) {
         <SectionHeader label="Vertical Lines (VLine)" />
         <div className="p-2 space-y-1 bg-[var(--bg-widget)]">
           {vlines.map((line, idx) => (
-            <div key={line.id} className="flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5">
-              <span className="text-[8px] font-bold text-[var(--text-muted)] w-6 shrink-0">#{idx + 1}</span>
+            <div
+              key={line.id}
+              className="flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5"
+            >
+              <span className="text-[8px] font-bold text-[var(--text-muted)] w-6 shrink-0">
+                #{idx + 1}
+              </span>
               <div className="flex flex-col gap-0.5 flex-1">
                 <div className="flex items-center gap-1">
                   <span className="text-[8px] text-[var(--text-muted)]">X:</span>
@@ -687,7 +828,7 @@ export function TablePropertiesPanel({ component }: Props) {
                     value={line.x}
                     onChange={(v) => {
                       const newLines = [...vlines];
-                      newLines[idx] = { ...line, x: parseInt(v) || 0 };
+                      newLines[idx] = { ...line, x: Number.parseInt(v) || 0 };
                       updateComponent(component.id, { vlines: newLines } as any);
                     }}
                     className="w-8 text-center"
@@ -698,7 +839,7 @@ export function TablePropertiesPanel({ component }: Props) {
                     value={line.start ?? 0}
                     onChange={(v) => {
                       const newLines = [...vlines];
-                      newLines[idx] = { ...line, start: parseInt(v) || 0 };
+                      newLines[idx] = { ...line, start: Number.parseInt(v) || 0 };
                       updateComponent(component.id, { vlines: newLines } as any);
                     }}
                     className="w-8 text-center"
@@ -709,7 +850,7 @@ export function TablePropertiesPanel({ component }: Props) {
                     value={line.end ?? ''}
                     onChange={(v) => {
                       const newLines = [...vlines];
-                      newLines[idx] = { ...line, end: parseInt(v) || undefined };
+                      newLines[idx] = { ...line, end: Number.parseInt(v) || undefined };
                       updateComponent(component.id, { vlines: newLines } as any);
                     }}
                     className="w-8 text-center"
@@ -730,8 +871,11 @@ export function TablePropertiesPanel({ component }: Props) {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => {
-                  updateComponent(component.id, { vlines: vlines.filter((_, i) => i !== idx) } as any);
+                  updateComponent(component.id, {
+                    vlines: vlines.filter((_, i) => i !== idx),
+                  } as any);
                 }}
                 className="p-0.5 hover:bg-red-100 text-slate-300 hover:text-red-500 rounded shrink-0"
               >
@@ -740,6 +884,7 @@ export function TablePropertiesPanel({ component }: Props) {
             </div>
           ))}
           <button
+            type="button"
             className="w-full py-1 border border-dashed border-[var(--border-default)] text-[9px] font-bold uppercase text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all flex items-center justify-center gap-1"
             onClick={addVLine}
           >
@@ -757,23 +902,25 @@ export function TablePropertiesPanel({ component }: Props) {
       <PropertyRow label="Table Mode">
         <div className="flex gap-1 w-full">
           <button
+            type="button"
             onClick={() => updateComponent(component.id, { isStatic: false } as any)}
             className={clsx(
-              "flex-1 py-1 text-[9px] font-bold rounded uppercase border transition-all",
+              'flex-1 py-1 text-[9px] font-bold rounded uppercase border transition-all',
               !component.isStatic
-                ? "bg-[var(--accent-glow)] border-[var(--accent)] text-[var(--accent)]"
-                : "bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
+                ? 'bg-[var(--accent-glow)] border-[var(--accent)] text-[var(--accent)]'
+                : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'
             )}
           >
             Data Loop
           </button>
           <button
+            type="button"
             onClick={() => updateComponent(component.id, { isStatic: true } as any)}
             className={clsx(
-              "flex-1 py-1 text-[9px] font-bold rounded uppercase border transition-all",
+              'flex-1 py-1 text-[9px] font-bold rounded uppercase border transition-all',
               component.isStatic
-                ? "bg-purple-500/10 border-purple-500/20 text-purple-400"
-                : "bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
+                ? 'bg-purple-500/10 border-purple-500/20 text-purple-400'
+                : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'
             )}
           >
             Static Grid
@@ -798,7 +945,7 @@ export function TablePropertiesPanel({ component }: Props) {
         <MiniInput
           type="number"
           value={component.style?.headerRows ?? 1}
-          onChange={(v) => handleStyleUpdate({ headerRows: parseInt(v) || 0 })}
+          onChange={(v) => handleStyleUpdate({ headerRows: Number.parseInt(v) || 0 })}
           className="w-full"
           min="0"
           max="5"
@@ -809,8 +956,13 @@ export function TablePropertiesPanel({ component }: Props) {
       <SectionHeader label="Column ↔ Field Mapping" />
       <div className="p-2 space-y-1 bg-[var(--bg-widget)]">
         {component.columns.map((col, idx) => (
-          <div key={col.id} className="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5">
-            <span className="text-[9px] font-bold text-[var(--text-secondary)] w-16 truncate">{col.header || `Col ${idx + 1}`}</span>
+          <div
+            key={col.id}
+            className="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5"
+          >
+            <span className="text-[9px] font-bold text-[var(--text-secondary)] w-16 truncate">
+              {col.header || `Col ${idx + 1}`}
+            </span>
             <span className="text-[9px] text-[var(--text-muted)]">→</span>
             <MiniInput
               value={col.field || ''}
@@ -823,15 +975,30 @@ export function TablePropertiesPanel({ component }: Props) {
               value={col.format || 'text'}
               onChange={(e) => updateColumn(idx, { format: e.target.value })}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
               className="text-[9px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded px-0.5 h-5 outline-none cursor-pointer text-[var(--text-primary)]"
             >
-              <option value="text" className="bg-[var(--bg-surface)]">Text</option>
-              <option value="number" className="bg-[var(--bg-surface)]">Number</option>
-              <option value="currency-thb" className="bg-[var(--bg-surface)]">฿ THB</option>
-              <option value="currency-usd" className="bg-[var(--bg-surface)]">$ USD</option>
-              <option value="percent" className="bg-[var(--bg-surface)]">%</option>
-              <option value="date-th" className="bg-[var(--bg-surface)]">Date TH</option>
-              <option value="date-en" className="bg-[var(--bg-surface)]">Date EN</option>
+              <option value="text" className="bg-[var(--bg-surface)]">
+                Text
+              </option>
+              <option value="number" className="bg-[var(--bg-surface)]">
+                Number
+              </option>
+              <option value="currency-thb" className="bg-[var(--bg-surface)]">
+                ฿ THB
+              </option>
+              <option value="currency-usd" className="bg-[var(--bg-surface)]">
+                $ USD
+              </option>
+              <option value="percent" className="bg-[var(--bg-surface)]">
+                %
+              </option>
+              <option value="date-th" className="bg-[var(--bg-surface)]">
+                Date TH
+              </option>
+              <option value="date-en" className="bg-[var(--bg-surface)]">
+                Date EN
+              </option>
             </select>
           </div>
         ))}
@@ -841,7 +1008,10 @@ export function TablePropertiesPanel({ component }: Props) {
       <SectionHeader label="Summary Rows" />
       <div className="p-2 space-y-1 bg-[var(--bg-widget)]">
         {(component.summaryRows || []).map((row, idx) => (
-          <div key={idx} className="flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5">
+          <div
+            key={idx}
+            className="flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5"
+          >
             <MiniInput
               value={row.label}
               onChange={(v) => {
@@ -865,6 +1035,7 @@ export function TablePropertiesPanel({ component }: Props) {
               className="flex-1"
             />
             <button
+              type="button"
               onClick={() => {
                 const rows = (component.summaryRows || []).filter((_, i) => i !== idx);
                 updateComponent(component.id, { summaryRows: rows } as any);
@@ -876,9 +1047,13 @@ export function TablePropertiesPanel({ component }: Props) {
           </div>
         ))}
         <button
+          type="button"
           className="w-full py-1 border border-dashed border-[var(--border-default)] text-[9px] font-bold uppercase text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all flex items-center justify-center gap-1"
           onClick={() => {
-            const rows = [...(component.summaryRows || []), { label: '', value: '', separator: false }];
+            const rows = [
+              ...(component.summaryRows || []),
+              { label: '', value: '', separator: false },
+            ];
             updateComponent(component.id, { summaryRows: rows } as any);
           }}
         >
@@ -894,7 +1069,11 @@ export function TablePropertiesPanel({ component }: Props) {
       return (
         <div className="p-4 flex flex-col items-center justify-center text-[var(--text-muted)] gap-2 h-40">
           <BoxSelect className="w-8 h-8 opacity-20" />
-          <p className="text-[10px] text-center">Select a cell in the header<br/>or footer to edit its properties.</p>
+          <p className="text-[10px] text-center">
+            Select a cell in the header
+            <br />
+            or footer to edit its properties.
+          </p>
         </div>
       );
     }
@@ -915,7 +1094,7 @@ export function TablePropertiesPanel({ component }: Props) {
       const newCells = [...newRows[rowIndex].cells];
       newCells[cellIdx] = { ...newCells[cellIdx], ...updates };
       newRows[rowIndex] = { ...newRows[rowIndex], cells: newCells };
-      
+
       updateComponent(component.id, {
         [isHeader ? 'headerRows' : 'footerRows']: newRows,
       } as any);
@@ -923,19 +1102,28 @@ export function TablePropertiesPanel({ component }: Props) {
 
     return (
       <div className="space-y-0">
-        <SectionHeader label={`Selected Cell (${section == 'header' ? 'Header' : 'Footer'} R${rowIndex + 1} C${cellIdx + 1})`} />
-        
+        <SectionHeader
+          label={`Selected Cell (${section === 'header' ? 'Header' : 'Footer'} R${rowIndex + 1} C${cellIdx + 1})`}
+        />
+
         <div className="p-2 space-y-2 bg-[var(--bg-widget)] border-b border-[var(--border-default)]">
-           {/* Header & Field */}
-           <div className="flex flex-col gap-0.5">
-             <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Content</span>
-             <MiniInput value={cell.content || ''} onChange={(v) => updateCurrentCell({ content: v })} className="w-full" />
-           </div>
+          {/* Header & Field */}
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+              Content
+            </span>
+            <MiniInput
+              value={cell.content || ''}
+              onChange={(v) => updateCurrentCell({ content: v })}
+              className="w-full"
+            />
+          </div>
         </div>
 
         <SectionHeader label="Smart Merge" />
         <div className="flex gap-2 p-2 border-b border-[var(--border-default)] bg-[var(--bg-widget)]">
           <button
+            type="button"
             title="Merge Right"
             disabled={cellIdx >= rows[rowIndex].cells.length - 1} // Can't merge if it's the last cell
             onClick={() => {
@@ -943,46 +1131,51 @@ export function TablePropertiesPanel({ component }: Props) {
               const nextCell = rows[rowIndex].cells[cellIdx + 1];
               const currentColspan = cell.colspan || 1;
               const nextColspan = nextCell.colspan || 1;
-              
+
               const newCols = [...rows[rowIndex].cells];
               // Remove the adjacent cell from array to prevent table explosion
               newCols.splice(cellIdx + 1, 1);
               // Absorb its colspan
               newCols[cellIdx] = { ...cell, colspan: currentColspan + nextColspan };
-              
+
               const newRows = [...rows];
               newRows[rowIndex] = { ...newRows[rowIndex], cells: newCols };
-              updateComponent(component.id, { [isHeader ? 'headerRows' : 'footerRows']: newRows } as any);
+              updateComponent(component.id, {
+                [isHeader ? 'headerRows' : 'footerRows']: newRows,
+              } as any);
             }}
             className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[9px] font-bold text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded shadow-sm hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             <Merge className="w-3.5 h-3.5" /> Merge Right
           </button>
-          
+
           <button
+            type="button"
             title="Split Cell"
             disabled={!cell.colspan || cell.colspan <= 1} // Can't split a basic cell
             onClick={() => {
               const currentColspan = cell.colspan || 1;
               if (currentColspan <= 1) return;
-  
+
               const newCols = [...rows[rowIndex].cells];
               newCols[cellIdx] = { ...cell, colspan: currentColspan - 1 };
-              
+
               // Safely restore a new cell to the array
               newCols.splice(cellIdx + 1, 0, {
-                 id: `cell-${Math.random().toString(36).substring(7)}`,
-                 content: '',
-                 colspan: 1
+                id: `cell-${Math.random().toString(36).substring(7)}`,
+                content: '',
+                colspan: 1,
               });
-  
+
               const newRows = [...rows];
               newRows[rowIndex] = { ...newRows[rowIndex], cells: newCols };
-              updateComponent(component.id, { [isHeader ? 'headerRows' : 'footerRows']: newRows } as any);
+              updateComponent(component.id, {
+                [isHeader ? 'headerRows' : 'footerRows']: newRows,
+              } as any);
             }}
             className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[9px] font-bold text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded shadow-sm hover:border-orange-500 hover:text-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            <Split className="w-3.5 h-3.5" /> Split 
+            <Split className="w-3.5 h-3.5" /> Split
           </button>
         </div>
 
@@ -995,11 +1188,17 @@ export function TablePropertiesPanel({ component }: Props) {
               { id: 'right', Icon: AlignRight },
             ].map(({ id, Icon }) => (
               <button
+                type="button"
                 key={id}
-                onClick={(e) => { e.stopPropagation(); updateCurrentCell({ align: id }); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateCurrentCell({ align: id });
+                }}
                 className={clsx(
                   'px-2 py-1 transition-all',
-                  (cell.align) === id ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                  cell.align === id
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                 )}
               >
                 <Icon className="w-3 h-3" />
@@ -1007,7 +1206,7 @@ export function TablePropertiesPanel({ component }: Props) {
             ))}
           </div>
         </PropertyRow>
-        
+
         <PropertyRow label="Fill Color">
           <input
             type="color"
@@ -1019,8 +1218,9 @@ export function TablePropertiesPanel({ component }: Props) {
 
         <PropertyRow label="Clear Fill">
           <button
-             onClick={() => updateCurrentCell({ fill: undefined })}
-             className="text-[10px] border border-[var(--border-default)] rounded px-2 hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]"
+            type="button"
+            onClick={() => updateCurrentCell({ fill: undefined })}
+            className="text-[10px] border border-[var(--border-default)] rounded px-2 hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]"
           >
             Clear / Transparent
           </button>
@@ -1046,6 +1246,7 @@ export function TablePropertiesPanel({ component }: Props) {
       <div className="flex bg-[var(--bg-surface)] border-b border-[var(--border-default)]">
         {TAB_CONFIG.map((tab) => (
           <button
+            type="button"
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={clsx(

@@ -1,178 +1,220 @@
 'use client';
 
-import { 
-  monitorForElements, 
-  draggable, 
-  dropTargetForElements 
-} from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { attachClosestEdge, extractClosestEdge, Edge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
-import { useEffect, useRef, memo, useState } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
-import { 
-  Layers, 
-  Eye, 
-  EyeOff, 
-  Lock, 
-  Unlock, 
-  ChevronDown, 
-  ChevronRight,
-  Type,
-  Image as ImageIcon,
-  Table,
-  Square,
-  QrCode,
-  GripVertical
-} from 'lucide-react';
-import { clsx } from 'clsx';
 import type { ComponentNode } from '@/types/schema';
+import {
+  type Edge,
+  attachClosestEdge,
+  extractClosestEdge,
+} from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
+import {
+  draggable,
+  dropTargetForElements,
+  monitorForElements,
+} from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { clsx } from 'clsx';
+import {
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  GripVertical,
+  Image as ImageIcon,
+  Layers,
+  Lock,
+  QrCode,
+  Square,
+  Table,
+  Type,
+  Unlock,
+} from 'lucide-react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { DesignerInput } from '../shared/DesignerInput';
 
 const ComponentIcon = ({ type }: { type: string }) => {
   switch (type) {
-    case 'text': return <Type className="w-3.5 h-3.5" />;
-    case 'image': return <ImageIcon className="w-3.5 h-3.5" />;
-    case 'table': return <Table className="w-3.5 h-3.5" />;
-    case 'rect': 
-    case 'circle': return <Square className="w-3.5 h-3.5" />;
-    case 'qrcode': return <QrCode className="w-3.5 h-3.5" />;
-    default: return <Layers className="w-3.5 h-3.5" />;
+    case 'text':
+      return <Type className="w-3.5 h-3.5" />;
+    case 'image':
+      return <ImageIcon className="w-3.5 h-3.5" />;
+    case 'table':
+      return <Table className="w-3.5 h-3.5" />;
+    case 'rect':
+    case 'circle':
+      return <Square className="w-3.5 h-3.5" />;
+    case 'qrcode':
+      return <QrCode className="w-3.5 h-3.5" />;
+    default:
+      return <Layers className="w-3.5 h-3.5" />;
   }
 };
 
-const LayerItem = memo(({ 
-  component, 
-  zoneKey,
-  index,
-}: { 
-  component: ComponentNode; 
-  zoneKey: 'header' | 'body' | 'footer';
-  index: number;
-}) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
-  
-  const isSelected = useDesignerStore((state) => state.selectedComponentIds.includes(component.id));
-  const isHidden = useDesignerStore((state) => state.hiddenComponentIds.includes(component.id));
-  const isLocked = useDesignerStore((state) => state.lockedComponentIds.includes(component.id));
-  
-  const selectComponent = useDesignerStore((state) => state.selectComponent);
-  const toggleVisibility = useDesignerStore((state) => state.toggleComponentVisibility);
-  const toggleLock = useDesignerStore((state) => state.toggleComponentLock);
-  const renameComponent = useDesignerStore((state) => state.renameComponent);
+const LayerItem = memo(
+  ({
+    component,
+    zoneKey,
+    index,
+  }: {
+    component: ComponentNode;
+    zoneKey: 'header' | 'body' | 'footer';
+    index: number;
+  }) => {
+    const ref = useRef<HTMLDivElement>(null);
+    const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(component.name || component.type);
-  const [isDragging, setIsDragging] = useState(false);
+    const isSelected = useDesignerStore((state) =>
+      state.selectedComponentIds.includes(component.id)
+    );
+    const isHidden = useDesignerStore((state) => state.hiddenComponentIds.includes(component.id));
+    const isLocked = useDesignerStore((state) => state.lockedComponentIds.includes(component.id));
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const selectComponent = useDesignerStore((state) => state.selectComponent);
+    const toggleVisibility = useDesignerStore((state) => state.toggleComponentVisibility);
+    const toggleLock = useDesignerStore((state) => state.toggleComponentLock);
+    const renameComponent = useDesignerStore((state) => state.renameComponent);
 
-    return draggable({
-      element: el,
-      getInitialData: () => ({ id: component.id, zoneKey, index, type: 'layer-item' }),
-      onDragStart: () => setIsDragging(true),
-      onDrop: () => setIsDragging(false),
-    });
-  }, [component.id, zoneKey, index]);
+    const [isEditing, setIsEditing] = useState(false);
+    const [name, setName] = useState(component.name || component.type);
+    const [isDragging, setIsDragging] = useState(false);
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
 
-    return dropTargetForElements({
-      element: el,
-      getData: ({ input, element }) => attachClosestEdge({ id: component.id, zoneKey, index, type: 'layer-item' }, { input, element, allowedEdges: ['top', 'bottom'] }),
-      onDragEnter: ({ self }) => setClosestEdge(extractClosestEdge(self.data)),
-      onDrag: ({ self }) => setClosestEdge(extractClosestEdge(self.data)),
-      onDragLeave: () => setClosestEdge(null),
-      onDrop: () => setClosestEdge(null),
-    });
-  }, [component.id, zoneKey, index]);
+      return draggable({
+        element: el,
+        getInitialData: () => ({ id: component.id, zoneKey, index, type: 'layer-item' }),
+        onDragStart: () => setIsDragging(true),
+        onDrop: () => setIsDragging(false),
+      });
+    }, [component.id, zoneKey, index]);
 
-  const handleRename = () => {
-    setIsEditing(false);
-    renameComponent(component.id, name);
-  };
+    useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
 
-  return (
-    <div 
-      ref={ref}
-      className={clsx(
-        "group relative flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-all duration-200 border-l-2",
-        isSelected 
-          ? "bg-blue-500/10 border-blue-500 text-blue-500" 
-          : "border-transparent text-slate-400 hover:bg-slate-50/50 hover:text-slate-200",
-        isDragging && "opacity-40 grayscale"
-      )}
-      onClick={() => selectComponent(component.id)}
-    >
-      {/* Drop Indicator */}
-      {closestEdge === 'top' && (
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 z-10" />
-      )}
-      {closestEdge === 'bottom' && (
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 z-10" />
-      )}
+      return dropTargetForElements({
+        element: el,
+        getData: ({ input, element }) =>
+          attachClosestEdge(
+            { id: component.id, zoneKey, index, type: 'layer-item' },
+            { input, element, allowedEdges: ['top', 'bottom'] }
+          ),
+        onDragEnter: ({ self }) => setClosestEdge(extractClosestEdge(self.data)),
+        onDrag: ({ self }) => setClosestEdge(extractClosestEdge(self.data)),
+        onDragLeave: () => setClosestEdge(null),
+        onDrop: () => setClosestEdge(null),
+      });
+    }, [component.id, zoneKey, index]);
 
-      <GripVertical className="w-3 h-3 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-      
-      <div className={clsx(
-        "p-1 rounded-md shrink-0",
-        isSelected ? "bg-blue-500/20" : "bg-slate-100/10"
-      )}>
-        <ComponentIcon type={component.type} />
-      </div>
+    const handleRename = () => {
+      setIsEditing(false);
+      renameComponent(component.id, name);
+    };
 
-      <div className="flex-1 min-w-0 overflow-hidden">
-        {isEditing ? (
-          <DesignerInput
-            autoFocus
-            variant="ghost"
-            className="text-[11.5px] font-medium p-0"
-            value={name}
-            onChange={(v) => setName(v)}
-            onBlur={handleRename}
-            onKeyDown={(e) => e.key === 'Enter' && handleRename()}
-          />
-        ) : (
-          <span 
-            className="block text-[11.5px] font-medium truncate"
-            onDoubleClick={() => setIsEditing(true)}
-          >
-            {component.name || (component.type === 'text' ? component.content : component.type)}
-          </span>
+    return (
+      <div
+        ref={ref}
+        className={clsx(
+          'w-full group relative flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-all duration-200 border-y-0 border-r-0 border-l-2',
+          isSelected
+            ? 'bg-blue-500/10 border-blue-500 text-blue-500'
+            : 'border-transparent text-slate-400 hover:bg-slate-50/50 hover:text-slate-200',
+          isDragging && 'opacity-40 grayscale'
         )}
-      </div>
+        onClick={() => selectComponent(component.id)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            selectComponent(component.id);
+          }
+        }}
+        // biome-ignore lint/a11y/useSemanticElements: Nested buttons are illegal in HTML
+        role="button"
+        tabIndex={0}
+      >
+        {/* Drop Indicator */}
+        {closestEdge === 'top' && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 z-10" />
+        )}
+        {closestEdge === 'bottom' && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 z-10" />
+        )}
 
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button 
-          onClick={(e) => { e.stopPropagation(); toggleVisibility(component.id); }}
-          className={clsx("p-1 hover:bg-slate-800 rounded", isHidden && "text-blue-500 opacity-100")}
-          title={isHidden ? "Show" : "Hide"}
-        >
-          {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-        </button>
-        <button 
-          onClick={(e) => { e.stopPropagation(); toggleLock(component.id); }}
-          className={clsx("p-1 hover:bg-slate-800 rounded", isLocked && "text-orange-500 opacity-100")}
-          title={isLocked ? "Unlock" : "Lock"}
-        >
-          {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-        </button>
-      </div>
-    </div>
-  );
-});
+        <GripVertical className="w-3 h-3 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
 
-const ZoneGroup = ({ 
-  zoneKey, 
-  label, 
-  components 
-}: { 
-  zoneKey: 'header' | 'body' | 'footer'; 
-  label: string; 
-  components: ComponentNode[] 
+        <div
+          className={clsx(
+            'p-1 rounded-md shrink-0',
+            isSelected ? 'bg-blue-500/20' : 'bg-slate-100/10'
+          )}
+        >
+          <ComponentIcon type={component.type} />
+        </div>
+
+        <div className="flex-1 min-w-0 overflow-hidden">
+          {isEditing ? (
+            <DesignerInput
+              autoFocus
+              variant="ghost"
+              className="text-[11.5px] font-medium p-0"
+              value={name}
+              onChange={(v) => setName(v)}
+              onBlur={handleRename}
+              onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+            />
+          ) : (
+            <span
+              className="block text-[11.5px] font-medium truncate"
+              onDoubleClick={() => setIsEditing(true)}
+            >
+              {component.name || (component.type === 'text' ? component.content : component.type)}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleVisibility(component.id);
+            }}
+            className={clsx(
+              'p-1 hover:bg-slate-800 rounded',
+              isHidden && 'text-blue-500 opacity-100'
+            )}
+            title={isHidden ? 'Show' : 'Hide'}
+          >
+            {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleLock(component.id);
+            }}
+            className={clsx(
+              'p-1 hover:bg-slate-800 rounded',
+              isLocked && 'text-orange-500 opacity-100'
+            )}
+            title={isLocked ? 'Unlock' : 'Lock'}
+          >
+            {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+          </button>
+        </div>
+      </div>
+    );
+  }
+);
+
+const ZoneGroup = ({
+  zoneKey,
+  label,
+  components,
+}: {
+  zoneKey: 'header' | 'body' | 'footer';
+  label: string;
+  components: ComponentNode[];
 }) => {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -180,7 +222,8 @@ const ZoneGroup = ({
 
   return (
     <div className="mb-2">
-      <button 
+      <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors"
       >
@@ -190,20 +233,13 @@ const ZoneGroup = ({
           {components.length}
         </span>
       </button>
-      
+
       {isOpen && (
         <div className="space-y-px">
           {/* Note: Components are rendered bottom-to-top in canvas, so we reverse for layer list (top-to-bottom) */}
           {[...components].reverse().map((c, idx) => {
             const actualIndex = components.length - 1 - idx;
-            return (
-              <LayerItem 
-                key={c.id} 
-                component={c} 
-                zoneKey={zoneKey} 
-                index={actualIndex}
-              />
-            );
+            return <LayerItem key={c.id} component={c} zoneKey={zoneKey} index={actualIndex} />;
           })}
         </div>
       )}
@@ -237,25 +273,25 @@ export const LayersPanel = memo(function LayersPanel() {
           // In a reversed list, 'bottom' means lower index
           newIndex = Math.max(0, destData.index - 0); // No, let's think.
         }
-        
+
         // Let's use a simpler logic for the reversed list:
         // List: [Top (idx 2), Middle (idx 1), Bottom (idx 0)]
         // If I drag Top to Bottom's 'bottom' edge, it should become idx 0.
         // If I drag Bottom to Top's 'top' edge, it should become idx 2.
-        
+
         if (edge === 'bottom') {
-            // Drop below the item in the list
-            // If dragging from above to below, newIndex is just destData.index
-            // If dragging from below to above, newIndex is destData.index
-            newIndex = destData.index;
+          // Drop below the item in the list
+          // If dragging from above to below, newIndex is just destData.index
+          // If dragging from below to above, newIndex is destData.index
+          newIndex = destData.index;
         } else {
-            // Drop above the item in the list
-            newIndex = destData.index + 1;
-            // If it was originally before this, adjust? No, moveComponent handles the filter.
+          // Drop above the item in the list
+          newIndex = destData.index + 1;
+          // If it was originally before this, adjust? No, moveComponent handles the filter.
         }
 
         moveComponent(sourceData.id, sourceData.zoneKey, destData.zoneKey, newIndex);
-      }
+      },
     });
   }, [moveComponent]);
 
@@ -263,32 +299,24 @@ export const LayersPanel = memo(function LayersPanel() {
     <div className="flex flex-col h-full bg-[var(--bg-surface)]">
       <div className="p-3 flex items-center gap-2 border-b border-[var(--border-default)] bg-[var(--bg-widget)]">
         <Layers className="w-3.5 h-3.5 text-[var(--accent)]" />
-        <h2 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Layers</h2>
+        <h2 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+          Layers
+        </h2>
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
-        <ZoneGroup 
-          zoneKey="header" 
-          label="Report Header" 
-          components={zones.header.components} 
-        />
-        <ZoneGroup 
-          zoneKey="body" 
-          label="Detail Band" 
-          components={zones.body.components} 
-        />
-        <ZoneGroup 
-          zoneKey="footer" 
-          label="Page Footer" 
-          components={zones.footer.components} 
-        />
+        <ZoneGroup zoneKey="header" label="Report Header" components={zones.header.components} />
+        <ZoneGroup zoneKey="body" label="Detail Band" components={zones.body.components} />
+        <ZoneGroup zoneKey="footer" label="Page Footer" components={zones.footer.components} />
 
-        {Object.values(zones).every(z => z.components.length === 0) && (
+        {Object.values(zones).every((z) => z.components.length === 0) && (
           <div className="flex flex-col items-center justify-center h-48 px-8 text-center">
             <div className="w-10 h-10 rounded-full bg-[var(--bg-widget)] flex items-center justify-center mb-3">
               <Layers className="w-5 h-5 text-[var(--text-muted)]" />
             </div>
-            <p className="text-[10px] text-[var(--text-muted)]">No layers yet. Add components from the palette.</p>
+            <p className="text-[10px] text-[var(--text-muted)]">
+              No layers yet. Add components from the palette.
+            </p>
           </div>
         )}
       </div>

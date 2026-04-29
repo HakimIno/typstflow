@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { useDesignerStore } from '@/store/designer-store';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { useDesignerStore } from '@/store/designer-store';
+import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { useEffect, useState } from 'react';
 
 export function useZoneDropTarget(
   zoneKey: 'header' | 'body' | 'footer',
@@ -23,7 +23,7 @@ export function useZoneDropTarget(
       getData: () => ({ zoneKey }),
       onDragEnter: ({ source }) => {
         setIsDraggedOver(true);
-        
+
         // Real-time Zone Switching for Layers Panel
         const data = source.data as any;
         if (data.id && data.zoneKey !== zoneKey) {
@@ -31,19 +31,35 @@ export function useZoneDropTarget(
           const finalX = state.dragState.lastSnappedX;
           const finalY = state.dragState.lastSnappedY;
           const zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, state.schema);
-          
+
           if (data.group && data.group.length > 1) {
-            data.group.forEach((item: any) => {
+            for (const item of data.group as any[]) {
               const targetAbsY = finalY + item.offsetY;
               const localY = targetAbsY - zoneOffsetMm;
-              moveComponent(item.id, data.zoneKey as any, zoneKey, -1, finalX + item.offsetX, localY, true);
-            });
+              moveComponent(
+                item.id,
+                data.zoneKey as any,
+                zoneKey,
+                -1,
+                finalX + item.offsetX,
+                localY,
+                true
+              );
+            }
             setDragState({ startX: finalX, startY: finalY });
           } else {
-            moveComponent(data.id, data.zoneKey as any, zoneKey, -1, finalX, finalY - zoneOffsetMm, true);
+            moveComponent(
+              data.id,
+              data.zoneKey as any,
+              zoneKey,
+              -1,
+              finalX,
+              finalY - zoneOffsetMm,
+              true
+            );
             setDragState({ startX: finalX, startY: finalY });
           }
-          
+
           data.zoneKey = zoneKey;
         }
       },
@@ -70,18 +86,34 @@ export function useZoneDropTarget(
         } else if (data.id) {
           // Commit to history
           if (data.group && data.group.length > 1) {
-            data.group.forEach((item: any) => {
+            for (const item of data.group as any[]) {
               const targetAbsY = finalY + item.offsetY;
               const localY = targetAbsY - zoneOffsetMm;
-              moveComponent(item.id, data.zoneKey as any, zoneKey, -1, finalX + item.offsetX, localY, false);
-            });
+              moveComponent(
+                item.id,
+                data.zoneKey as any,
+                zoneKey,
+                -1,
+                finalX + item.offsetX,
+                localY,
+                false
+              );
+            }
           } else {
-            moveComponent(data.id, data.zoneKey as any, zoneKey, -1, finalX, finalY - zoneOffsetMm, false);
+            moveComponent(
+              data.id,
+              data.zoneKey as any,
+              zoneKey,
+              -1,
+              finalX,
+              finalY - zoneOffsetMm,
+              false
+            );
           }
         }
       },
     });
-  }, [zoneKey, addComponent, moveComponent, setDragState]);
+  }, [zoneKey, addComponent, moveComponent, setDragState, contentRef]);
 
   return { isDraggedOver };
 }

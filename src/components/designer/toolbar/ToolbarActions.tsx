@@ -1,8 +1,8 @@
 'use client';
 
-import { memo, useState } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
-import { Download, Play, PanelRight, Save } from 'lucide-react';
+import { Download, PanelRight, Play } from 'lucide-react';
+import { memo, useState } from 'react';
 import { ToolbarButton } from './ToolbarButton';
 
 export const ToolbarActions = memo(function ToolbarActions() {
@@ -10,7 +10,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
   const sampleData = useDesignerStore((state) => state.sampleData);
   const isRightSidebarOpen = useDesignerStore((state) => state.isRightSidebarOpen);
   const toggleRightSidebar = useDesignerStore((state) => state.toggleRightSidebar);
-  
+
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
@@ -60,10 +60,10 @@ export const ToolbarActions = memo(function ToolbarActions() {
         title="Download Typst Source (.typ)"
         className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />
-      
+
       <ToolbarButton
         icon={isExporting ? undefined : Play}
-        label={isExporting ? "Exporting..." : "Run PDF"}
+        label={isExporting ? 'Exporting...' : 'Run PDF'}
         onClick={handleExport}
         disabled={isExporting}
         variant="primary"

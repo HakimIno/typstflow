@@ -1,8 +1,8 @@
 'use client';
 
-import { memo } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
-import { Layout, Search, Cpu } from 'lucide-react';
+import { Cpu, Layout, Search } from 'lucide-react';
+import { memo } from 'react';
 import { ToolbarButton } from './ToolbarButton';
 
 export const PanelSwitcher = memo(function PanelSwitcher() {
@@ -25,7 +25,11 @@ export const PanelSwitcher = memo(function PanelSwitcher() {
           active={activeTab === tab.id}
           variant="ghost"
           title={tab.label}
-          className={activeTab === tab.id ? "!bg-white !text-slate-900 border-slate-400" : "!text-slate-500 !hover:bg-slate-300"}
+          className={
+            activeTab === tab.id
+              ? '!bg-white !text-slate-900 border-slate-400'
+              : '!text-slate-500 !hover:bg-slate-300'
+          }
         />
       ))}
     </div>

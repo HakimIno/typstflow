@@ -1,10 +1,10 @@
 'use client';
 
 import { memo } from 'react';
-import { UndoRedoTools } from './UndoRedoTools';
 import { AlignmentTools } from './AlignmentTools';
-import { ZoomControls } from './ZoomControls';
 import { ToolbarActions } from './ToolbarActions';
+import { UndoRedoTools } from './UndoRedoTools';
+import { ZoomControls } from './ZoomControls';
 
 export const SubToolbar = memo(function SubToolbar() {
   return (

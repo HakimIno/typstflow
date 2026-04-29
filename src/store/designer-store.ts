@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { INVOICE_SAMPLE_DATA, INVOICE_TEMPLATE } from '../lib/templates/invoice';
 import { COMPLEX_SAMPLE_DATA, COMPLEX_TABLE_TEMPLATE } from '../lib/templates/complex-table';
-import { INVOICE_WITH_MANY_ITEMS_SAMPLE_DATA, INVOICE_WITH_PAGE_BREAKS_TEMPLATE } from '../lib/templates/invoice-with-page-breaks';
+import { INVOICE_SAMPLE_DATA, INVOICE_TEMPLATE } from '../lib/templates/invoice';
+import {
+  INVOICE_WITH_MANY_ITEMS_SAMPLE_DATA,
+  INVOICE_WITH_PAGE_BREAKS_TEMPLATE,
+} from '../lib/templates/invoice-with-page-breaks';
 import type { ComponentNode, LayoutSchema } from '../types/schema';
 
 type ZoneKey = 'header' | 'body' | 'footer';
@@ -83,10 +86,17 @@ interface DesignerState {
   selectComponent: (id: string | null, multi?: boolean) => void;
   toggleComponentSelection: (id: string) => void;
   clearSelection: () => void;
-  selectComponentsInRange: (rect: { x: number; y: number; width: number; height: number }, zoneKey: ZoneKey) => void;
+  selectComponentsInRange: (
+    rect: { x: number; y: number; width: number; height: number },
+    zoneKey: ZoneKey
+  ) => void;
   setSelectedCell: (cell: DesignerState['selectedCell']) => void;
   setSelectedCells: (cells: DesignerState['selectedCells']) => void;
-  updateZone: (zoneKey: ZoneKey, updates: Partial<LayoutSchema['zones']['header']>, skipHistory?: boolean) => void;
+  updateZone: (
+    zoneKey: ZoneKey,
+    updates: Partial<LayoutSchema['zones']['header']>,
+    skipHistory?: boolean
+  ) => void;
   updateSchema: (updates: Partial<LayoutSchema>) => void;
   setDragState: (updates: Partial<DesignerState['dragState']>) => void;
   setSampleData: (data: Record<string, any>) => void;
@@ -212,8 +222,11 @@ export const useDesignerStore = create<DesignerState>()(
             history: [INVOICE_WITH_PAGE_BREAKS_TEMPLATE],
             historyIndex: 0,
           });
-        } else if (name === 'tax-invoice' as any) {
-          const { TAX_INVOICE_TEMPLATE, TAX_INVOICE_SAMPLE_DATA } = require('../lib/templates/tax-invoice');
+        } else if (name === ('tax-invoice' as any)) {
+          const {
+            TAX_INVOICE_TEMPLATE,
+            TAX_INVOICE_SAMPLE_DATA,
+          } = require('../lib/templates/tax-invoice');
           set({
             schema: TAX_INVOICE_TEMPLATE,
             sampleData: TAX_INVOICE_SAMPLE_DATA,
@@ -296,7 +309,7 @@ export const useDesignerStore = create<DesignerState>()(
           for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
             const originalComponents = zones[key].components;
             const newComponents = originalComponents.filter((c) => c.id !== id);
-            
+
             if (newComponents.length !== originalComponents.length) {
               zones[key] = {
                 ...zones[key],
@@ -320,7 +333,7 @@ export const useDesignerStore = create<DesignerState>()(
           for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
             const originalComponents = zones[key].components;
             const newComponents = originalComponents.filter((c) => !ids.includes(c.id));
-            
+
             if (newComponents.length !== originalComponents.length) {
               zones[key] = {
                 ...zones[key],
@@ -355,8 +368,8 @@ export const useDesignerStore = create<DesignerState>()(
           if (fromZone === toZone) {
             // Move within same zone
             const originalComponents = zones[fromZone].components;
-            const currentIndex = originalComponents.findIndex(c => c.id === id);
-            
+            const currentIndex = originalComponents.findIndex((c) => c.id === id);
+
             // If newIndex is not provided or same as current, and position changed, just update position
             if (newIndex === currentIndex || newIndex === undefined) {
               const components = [...originalComponents];
@@ -365,7 +378,10 @@ export const useDesignerStore = create<DesignerState>()(
             } else {
               const components = originalComponents.filter((c) => c.id !== id);
               // Handle out of bounds or "top-most" request
-              const targetIndex = newIndex === -1 ? components.length : Math.max(0, Math.min(newIndex, components.length));
+              const targetIndex =
+                newIndex === -1
+                  ? components.length
+                  : Math.max(0, Math.min(newIndex, components.length));
               components.splice(targetIndex, 0, updatedComponent);
               newZones[fromZone] = { ...zones[fromZone], components };
             }
@@ -373,12 +389,13 @@ export const useDesignerStore = create<DesignerState>()(
             // Move between zones
             const fromComponents = [...zones[fromZone].components].filter((c) => c.id !== id);
             const toComponents = [...zones[toZone].components];
-            
+
             // Default to top if newIndex is -1 or undefined
-            const targetIndex = (newIndex === -1 || newIndex === undefined) 
-              ? toComponents.length 
-              : Math.max(0, Math.min(newIndex, toComponents.length));
-              
+            const targetIndex =
+              newIndex === -1 || newIndex === undefined
+                ? toComponents.length
+                : Math.max(0, Math.min(newIndex, toComponents.length));
+
             toComponents.splice(targetIndex, 0, updatedComponent);
 
             newZones[fromZone] = { ...zones[fromZone], components: fromComponents };
@@ -393,13 +410,17 @@ export const useDesignerStore = create<DesignerState>()(
       selectComponent: (id, multi) =>
         set((state) => {
           if (!id) return { selectedComponentIds: [], selectedCell: null, selectedCells: null };
-          
+
           if (multi) {
             // Add to selection if not already there
             if (state.selectedComponentIds.includes(id)) return state;
-            return { selectedComponentIds: [...state.selectedComponentIds, id], selectedCell: null, selectedCells: null };
+            return {
+              selectedComponentIds: [...state.selectedComponentIds, id],
+              selectedCell: null,
+              selectedCells: null,
+            };
           }
-          
+
           return { selectedComponentIds: [id], selectedCell: null, selectedCells: null };
         }),
 
@@ -411,33 +432,46 @@ export const useDesignerStore = create<DesignerState>()(
           return { selectedComponentIds: ids, selectedCell: null, selectedCells: null };
         }),
 
-      clearSelection: () => set({ selectedComponentIds: [], selectedCell: null, selectedCells: null, selectedZone: null }),
+      clearSelection: () =>
+        set({
+          selectedComponentIds: [],
+          selectedCell: null,
+          selectedCells: null,
+          selectedZone: null,
+        }),
 
       selectComponentsInRange: (rect, zoneKey) =>
         set((state) => {
           const zone = state.schema.zones[zoneKey];
           // Use WASM Layout Engine if initialized
           let foundIds: string[] = [];
-          
+
           try {
             // Because this is synchronous and we don't have async in Zustand reducers easily,
             // we assume LayoutEngine is loaded with nodes. If not, fallback to JS filter.
             const { layoutEngine } = require('@/lib/wasm-layout-engine');
-            
+
             // Temporary sync to ensure accuracy for marquee
             const nodes: any[] = [];
-            Object.values(state.schema.zones).forEach((z: any) => {
-              z.components.forEach((c: any) => {
-                nodes.push({ id: c.id, zone: z.id, x: c.x || 0, y: c.y || 0, width: c.width || 0, height: c.height || 0 });
-              });
-            });
+            for (const z of Object.values(state.schema.zones) as any[]) {
+              for (const c of z.components) {
+                nodes.push({
+                  id: c.id,
+                  zone: z.id,
+                  x: c.x || 0,
+                  y: c.y || 0,
+                  width: c.width || 0,
+                  height: c.height || 0,
+                });
+              }
+            }
             layoutEngine.loadNodes(nodes);
 
             const result = layoutEngine.queryRect(rect.x, rect.y, rect.width, rect.height, zoneKey);
-            if (result && result.ids) {
+            if (result?.ids) {
               foundIds = result.ids.filter((id: string) => !state.lockedComponentIds.includes(id));
             }
-          } catch (e) {
+          } catch (_e) {
             // Fallback
             foundIds = zone.components
               .filter((comp) => {
@@ -462,20 +496,26 @@ export const useDesignerStore = create<DesignerState>()(
           // but we'll handle the clearing at the start of the marquee drag.
           const newIds = [...new Set([...state.selectedComponentIds, ...foundIds])];
 
-          return { 
-            selectedComponentIds: newIds, 
-            selectedZone: zoneKey, 
-            selectedCell: null, 
-            selectedCells: null 
+          return {
+            selectedComponentIds: newIds,
+            selectedZone: zoneKey,
+            selectedCell: null,
+            selectedCells: null,
           };
         }),
 
-      setSelectedCell: (cell) => set({ selectedCell: cell, selectedCells: cell ? { 
-        tableId: cell.tableId, 
-        section: cell.section, 
-        rowIds: [cell.rowId], 
-        cellIndices: [cell.cellIdx] 
-      } : null }),
+      setSelectedCell: (cell) =>
+        set({
+          selectedCell: cell,
+          selectedCells: cell
+            ? {
+                tableId: cell.tableId,
+                section: cell.section,
+                rowIds: [cell.rowId],
+                cellIndices: [cell.cellIdx],
+              }
+            : null,
+        }),
 
       setSelectedCells: (cells) => set({ selectedCells: cells }),
 
@@ -523,18 +563,20 @@ export const useDesignerStore = create<DesignerState>()(
 
       setSampleData: (data) => set({ sampleData: data }),
       setZoom: (zoom) => set({ zoom: Math.max(0.2, Math.min(zoom, 3.0)) }),
-      setViewMode: (mode) => set({ 
-        viewMode: mode,
-        zoom: mode === 'split' ? 0.65 : 1.0 
-      }),
+      setViewMode: (mode) =>
+        set({
+          viewMode: mode,
+          zoom: mode === 'split' ? 0.65 : 1.0,
+        }),
       setActiveTab: (tab) => set({ activeTab: tab, isSidebarOpen: true }),
       setSidebarOpen: (open) => set({ isSidebarOpen: open }),
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
       setRightSidebarOpen: (open) => set({ isRightSidebarOpen: open }),
       toggleRightSidebar: () => set((state) => ({ isRightSidebarOpen: !state.isRightSidebarOpen })),
-      setDragState: (updates) => set((state) => ({ 
-        dragState: { ...state.dragState, ...updates } 
-      })),
+      setDragState: (updates) =>
+        set((state) => ({
+          dragState: { ...state.dragState, ...updates },
+        })),
       setTheme: (theme) => set({ theme }),
       setPrimaryColor: (color) => set({ primaryColor: color }),
 
@@ -634,7 +676,10 @@ export const useDesignerStore = create<DesignerState>()(
             const index = zones[key].components.findIndex((c) => c.id === id);
             if (index !== -1 && index < zones[key].components.length - 1) {
               const components = [...zones[key].components];
-              [components[index], components[index + 1]] = [components[index + 1], components[index]];
+              [components[index], components[index + 1]] = [
+                components[index + 1],
+                components[index],
+              ];
               const newSchema = {
                 ...state.schema,
                 zones: { ...zones, [key]: { ...zones[key], components } },
@@ -652,7 +697,10 @@ export const useDesignerStore = create<DesignerState>()(
             const index = zones[key].components.findIndex((c) => c.id === id);
             if (index !== -1 && index > 0) {
               const components = [...zones[key].components];
-              [components[index], components[index - 1]] = [components[index - 1], components[index]];
+              [components[index], components[index - 1]] = [
+                components[index - 1],
+                components[index],
+              ];
               const newSchema = {
                 ...state.schema,
                 zones: { ...zones, [key]: { ...zones[key], components } },
@@ -665,9 +713,9 @@ export const useDesignerStore = create<DesignerState>()(
     }),
     {
       name: 'typstflow-settings',
-      partialize: (state) => ({ 
-        theme: state.theme, 
-        primaryColor: state.primaryColor 
+      partialize: (state) => ({
+        theme: state.theme,
+        primaryColor: state.primaryColor,
       }),
     }
   )

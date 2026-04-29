@@ -44,7 +44,7 @@ function getWorker(): Worker {
 async function callWorker(type: string, payload: any): Promise<any> {
   const id = Math.random().toString(36).substring(7);
   const w = getWorker();
-  
+
   if (workerReadyPromise) {
     await workerReadyPromise;
   }

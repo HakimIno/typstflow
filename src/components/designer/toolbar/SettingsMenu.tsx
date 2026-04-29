@@ -1,9 +1,8 @@
 'use client';
 
-import { memo, useState, useRef, useEffect } from 'react';
-import { Settings, Check, Palette } from 'lucide-react';
-import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
+import { Palette, Settings } from 'lucide-react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { ThemeSettings } from './ThemeSettings';
 
 export const SettingsMenu = memo(function SettingsMenu() {
@@ -27,10 +26,10 @@ export const SettingsMenu = memo(function SettingsMenu() {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={clsx(
-          "p-1.5 rounded-md transition-all flex items-center gap-1.5 border",
+          'p-1.5 rounded-md transition-all flex items-center gap-1.5 border',
           isOpen
-            ? "bg-[var(--bg-widget-hover)] border-[var(--border-accent)] text-[var(--accent)]"
-            : "border-transparent text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)]"
+            ? 'bg-[var(--bg-widget-hover)] border-[var(--border-accent)] text-[var(--accent)]'
+            : 'border-transparent text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)]'
         )}
         title="Settings"
       >
@@ -48,10 +47,10 @@ export const SettingsMenu = memo(function SettingsMenu() {
           <div className="p-3 flex flex-col gap-4">
             {/* Theme Section */}
             <div className="flex flex-col gap-2">
-              <label className="text-[11px] font-medium text-[var(--text-secondary)] flex items-center gap-2">
+              <div className="text-[11px] font-medium text-[var(--text-secondary)] flex items-center gap-2">
                 <Palette className="w-3.5 h-3.5" />
                 Theme & Branding
-              </label>
+              </div>
               <div className="bg-[var(--bg-app)] rounded-lg p-2 border border-[var(--border-default)]">
                 <ThemeSettings />
               </div>

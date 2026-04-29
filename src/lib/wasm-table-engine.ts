@@ -1,5 +1,5 @@
-import init, { TableEngine } from '../../src-wasm/pkg/typst_bridge';
 import type { TableComponent } from '@/types/schema';
+import init, { TableEngine } from '../../src-wasm/pkg/typst_bridge';
 
 export interface ResolvedCell {
   id: string;
@@ -49,10 +49,10 @@ export class WasmTableEngine {
   public resolve(
     component: TableComponent,
     pageHeightMm: number,
-    startYMm: number = 0
+    startYMm = 0
   ): TableResolutionResult | null {
     if (!this.initialized) return null;
-    
+
     try {
       const componentJson = JSON.stringify(component);
       const result = TableEngine.resolve(componentJson, pageHeightMm, startYMm);

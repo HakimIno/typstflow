@@ -41,7 +41,8 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
         {
           id: 'company-details',
           type: 'text',
-          content: 'B-126, Rear Side Basement Malviya Nagar New Delhi-110017\ne-mail : info@gmail.com, Ph. 011-3483465734, 123323487348\nState Name : Delhi, State Code : DL',
+          content:
+            'B-126, Rear Side Basement Malviya Nagar New Delhi-110017\ne-mail : info@gmail.com, Ph. 011-3483465734, 123323487348\nState Name : Delhi, State Code : DL',
           x: 15,
           y: 20,
           width: 150,
@@ -52,7 +53,7 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
         // Tax Invoice Badge
         {
           id: 'tax-badge-bg',
-          type: 'line', 
+          type: 'line',
           x: 150, // 15 (margin) + 180 (content) - 45 (width)
           y: 5,
           width: 45,
@@ -78,7 +79,16 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
       minHeight: '220mm',
       components: [
         // Top Header Bar for Client Section
-        { id: 'client-bar', type: 'line', x: 15, y: 0, width: 180, height: 6, thickness: '6mm', color: '#c084fc' }, // Light Purple
+        {
+          id: 'client-bar',
+          type: 'line',
+          x: 15,
+          y: 0,
+          width: 180,
+          height: 6,
+          thickness: '6mm',
+          color: '#c084fc',
+        }, // Light Purple
         {
           id: 'client-label',
           type: 'text',
@@ -101,9 +111,18 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
           style: { fontSize: 9, fontWeight: 'bold', color: '#000000' },
           align: 'right',
         },
-        
+
         // Bordered Client Box
-        { id: 'client-box-border', type: 'line', x: 15, y: 6, width: 180, height: 20, thickness: '0.2mm', color: '#000000' },
+        {
+          id: 'client-box-border',
+          type: 'line',
+          x: 15,
+          y: 6,
+          width: 180,
+          height: 20,
+          thickness: '0.2mm',
+          color: '#000000',
+        },
         {
           id: 'client-details',
           type: 'text',
@@ -142,7 +161,8 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
         {
           id: 'delivery-details',
           type: 'text',
-          content: 'Client Name : {{invoice.customer.name}}\nAddress : {{invoice.customer.address}}\nGSTIN : {{invoice.customer.tax_id}}',
+          content:
+            'Client Name : {{invoice.customer.name}}\nAddress : {{invoice.customer.address}}\nGSTIN : {{invoice.customer.tax_id}}',
           x: 17,
           y: 33,
           width: 120,
@@ -175,7 +195,13 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
           repeatHeaderOnPage: true,
           columns: [
             { id: 'sno', header: 'S.No', field: 'index', width: '0.4fr', align: 'center' },
-            { id: 'desc', header: 'Description', field: 'description', width: '3fr', align: 'left' },
+            {
+              id: 'desc',
+              header: 'Description',
+              field: 'description',
+              width: '3fr',
+              align: 'left',
+            },
             { id: 'hsn', header: 'HSN Code', field: 'hsn', width: '1fr', align: 'center' },
             { id: 'qty', header: 'Qty', field: 'qty', width: '0.6fr', align: 'center' },
             { id: 'rate', header: 'Rate', field: 'price', width: '0.8fr', align: 'right' },
@@ -194,36 +220,74 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
               id: 'footer-total-value',
               type: 'footer',
               cells: [
-                { id: 'lbl-total', content: 'Total Value', colspan: 5, align: 'right', fill: '#c084fc', style: { fontWeight: 'bold' } },
-                { id: 'val-total', content: '{{invoice.subtotal}}', align: 'right', fill: '#c084fc', style: { fontWeight: 'bold' } },
-              ]
+                {
+                  id: 'lbl-total',
+                  content: 'Total Value',
+                  colspan: 5,
+                  align: 'right',
+                  fill: '#c084fc',
+                  style: { fontWeight: 'bold' },
+                },
+                {
+                  id: 'val-total',
+                  content: '{{invoice.subtotal}}',
+                  align: 'right',
+                  fill: '#c084fc',
+                  style: { fontWeight: 'bold' },
+                },
+              ],
             },
             {
               id: 'footer-cgst',
               type: 'footer',
               cells: [
                 { id: 'empty1', content: '', colspan: 3 },
-                { id: 'lbl-cgst', content: 'Add : CGST', colspan: 2, align: 'right', style: { fontWeight: 'bold' } },
+                {
+                  id: 'lbl-cgst',
+                  content: 'Add : CGST',
+                  colspan: 2,
+                  align: 'right',
+                  style: { fontWeight: 'bold' },
+                },
                 { id: 'val-cgst', content: '14%', align: 'center', style: { fontWeight: 'bold' } }, // Following the image style of 14%
-              ]
+              ],
             },
             {
               id: 'footer-sgst',
               type: 'footer',
               cells: [
                 { id: 'empty2', content: '', colspan: 3 },
-                { id: 'lbl-sgst', content: 'Add : SGST', colspan: 2, align: 'right', style: { fontWeight: 'bold' } },
+                {
+                  id: 'lbl-sgst',
+                  content: 'Add : SGST',
+                  colspan: 2,
+                  align: 'right',
+                  style: { fontWeight: 'bold' },
+                },
                 { id: 'val-sgst', content: '14%', align: 'center', style: { fontWeight: 'bold' } },
-              ]
+              ],
             },
             {
               id: 'footer-grand-total',
               type: 'footer',
               cells: [
-                { id: 'lbl-grand', content: 'Grand Total', colspan: 5, align: 'right', fill: '#c084fc', style: { fontWeight: 'bold' } },
-                { id: 'val-grand', content: '{{invoice.total}}', align: 'right', fill: '#c084fc', style: { fontWeight: 'bold' } },
-              ]
-            }
+                {
+                  id: 'lbl-grand',
+                  content: 'Grand Total',
+                  colspan: 5,
+                  align: 'right',
+                  fill: '#c084fc',
+                  style: { fontWeight: 'bold' },
+                },
+                {
+                  id: 'val-grand',
+                  content: '{{invoice.total}}',
+                  align: 'right',
+                  fill: '#c084fc',
+                  style: { fontWeight: 'bold' },
+                },
+              ],
+            },
           ],
           vlines: [
             { id: 'v1', x: 1, stroke: '0.5pt + black' },
@@ -231,7 +295,7 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
             { id: 'v3', x: 3, stroke: '0.5pt + black' },
             { id: 'v4', x: 4, stroke: '0.5pt + black' },
             { id: 'v5', x: 5, stroke: '0.5pt + black' },
-          ]
+          ],
         },
 
         {
@@ -244,7 +308,7 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
           height: 5,
           style: { fontSize: 10, fontWeight: 'bold' },
           align: 'left',
-        }
+        },
       ],
     },
     footer: {

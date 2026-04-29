@@ -1,8 +1,8 @@
 'use client';
 
-import { memo } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
 import { ZoomIn, ZoomOut } from 'lucide-react';
+import { memo } from 'react';
 import { ToolbarButton } from './ToolbarButton';
 
 export const ZoomControls = memo(function ZoomControls() {
@@ -18,7 +18,7 @@ export const ZoomControls = memo(function ZoomControls() {
         title="Zoom Out"
         className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />
-      <div 
+      <div
         className="flex items-center justify-center h-full text-[10px] font-mono text-[var(--text-secondary)] font-bold px-2 cursor-default"
         title="Current Zoom"
       >

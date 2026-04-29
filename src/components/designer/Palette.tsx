@@ -6,21 +6,20 @@ import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { clsx } from 'clsx';
 import {
   Columns,
+  FileDown,
   Image,
+  LayoutDashboard,
+  ListTree,
   Minus,
   QrCode,
   ScanLine,
+  Search,
   Space,
   Table,
   Type,
-  Search,
   X,
-  LayoutDashboard,
-  Box,
-  ListTree,
-  FileDown,
 } from 'lucide-react';
-import { useEffect, useRef, useState, memo } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { DesignerInput } from '../shared/DesignerInput';
 
 const CATEGORIES = [
@@ -30,7 +29,7 @@ const CATEGORIES = [
     items: [
       { type: 'table', label: 'Data Table', icon: Table },
       { type: 'summary-box', label: 'Summary Box', icon: LayoutDashboard },
-    ]
+    ],
   },
   {
     id: 'basics',
@@ -39,7 +38,7 @@ const CATEGORIES = [
       { type: 'text', label: 'Text Field', icon: Type },
       { type: 'image', label: 'Picture', icon: Image },
       { type: 'line', label: 'Line Divider', icon: Minus },
-    ]
+    ],
   },
   {
     id: 'advanced',
@@ -47,7 +46,7 @@ const CATEGORIES = [
     items: [
       { type: 'barcode', label: 'Barcode', icon: ScanLine },
       { type: 'qr', label: 'QR Code', icon: QrCode },
-    ]
+    ],
   },
   {
     id: 'layout',
@@ -57,28 +56,32 @@ const CATEGORIES = [
       { type: 'spacer', label: 'Space', icon: Space },
       { type: 'repeater', label: 'Repeater', icon: ListTree },
       { type: 'page-break-indicator', label: 'Page Break', icon: FileDown },
-    ]
-  }
+    ],
+  },
 ];
 
 export const Palette = memo(function Palette() {
   const { setSidebarOpen } = useDesignerStore();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredCategories = CATEGORIES.map(cat => ({
+  const filteredCategories = CATEGORIES.map((cat) => ({
     ...cat,
-    items: cat.items.filter(item =>
-      item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.type.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  })).filter(cat => cat.items.length > 0);
+    items: cat.items.filter(
+      (item) =>
+        item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.type.toLowerCase().includes(searchQuery.toLowerCase())
+    ),
+  })).filter((cat) => cat.items.length > 0);
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg-surface)] overflow-hidden font-sans border-r border-[var(--border-default)]">
       {/* Utility Header */}
       <div className="px-3 py-2.5 bg-[var(--bg-widget)] flex items-center justify-between border-b border-[var(--border-default)] shrink-0">
-        <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">Element Library</span>
+        <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">
+          Element Library
+        </span>
         <button
+          type="button"
           onClick={() => setSidebarOpen(false)}
           className="p-1 hover:bg-[var(--bg-hover)] rounded transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
         >
@@ -133,39 +136,67 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: any) 
       const base = { id: '', x: 10, y: 10, width: 100, height: 20 };
       switch (type) {
         case 'text':
-          return { ...base, type: 'text', content: 'Double click to edit', style: { fontSize: 10 }, width: 60, height: 6 };
+          return {
+            ...base,
+            type: 'text',
+            content: 'Double click to edit',
+            style: { fontSize: 10 },
+            width: 60,
+            height: 6,
+          };
         case 'table':
-          return { ...base, type: 'table', dataSource: '{{items}}', columns: [{ id: '1', header: 'Header', field: 'field', width: '1fr' }], width: 180, height: 40 };
+          return {
+            ...base,
+            type: 'table',
+            dataSource: '{{items}}',
+            columns: [{ id: '1', header: 'Header', field: 'field', width: '1fr' }],
+            width: 180,
+            height: 40,
+          };
         case 'image':
           return { ...base, type: 'image', src: '/logo.png', width: 40, height: 40 };
         case 'line':
           return { ...base, type: 'line', thickness: '1pt', color: 'black', width: 180, height: 2 };
         case 'barcode':
-          return { ...base, type: 'barcode', value: '12345678', format: 'code128', width: 40, height: 15 };
+          return {
+            ...base,
+            type: 'barcode',
+            value: '12345678',
+            format: 'code128',
+            width: 40,
+            height: 15,
+          };
         case 'qr':
           return { ...base, type: 'qr', value: 'https://example.com', width: 30, height: 30 };
         case 'spacer':
           return { ...base, type: 'spacer', height: 10, width: 10 };
         case 'columns':
-          return { 
-            ...base, 
-            type: 'columns', 
+          return {
+            ...base,
+            type: 'columns',
             columns: [
               { width: '1fr', components: [] },
-              { width: '1fr', components: [] }
+              { width: '1fr', components: [] },
             ],
             width: 180,
-            height: 40
+            height: 40,
           };
         case 'repeater':
-          return { ...base, type: 'repeater', dataSource: '{{items}}', children: [], width: 180, height: 40 };
+          return {
+            ...base,
+            type: 'repeater',
+            dataSource: '{{items}}',
+            children: [],
+            width: 180,
+            height: 40,
+          };
         case 'summary-box':
-          return { 
-            ...base, 
-            type: 'summary-box', 
+          return {
+            ...base,
+            type: 'summary-box',
             rows: [{ label: 'Subtotal', value: '$0.00' }],
             width: 80,
-            height: 30
+            height: 30,
           };
         default:
           return { ...base, type: 'text', content: '', height: 10 };
@@ -174,8 +205,8 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: any) 
 
     return draggable({
       element: el,
-      getInitialData: ({ input }) => {
-        const rect = el.getBoundingClientRect();
+      getInitialData: () => {
+        const _rect = el.getBoundingClientRect();
         const comp = getTemplate();
         // Offset must be in viewport pixels (compensated for zoom)
         // so that calculateDropPosition divides correctly
@@ -188,7 +219,7 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: any) 
         };
       },
     });
-  }, [type, label]);
+  }, [type]);
 
   return (
     <div

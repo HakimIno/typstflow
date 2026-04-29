@@ -2,13 +2,7 @@
 
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import {
-  Cpu,
-  Layout,
-  Layers,
-  Settings2,
-} from 'lucide-react';
-
+import { Cpu, Layers, Layout, Settings2 } from 'lucide-react';
 import { memo } from 'react';
 
 export const SidebarNav = memo(function SidebarNav() {
@@ -38,12 +32,13 @@ export const SidebarNav = memo(function SidebarNav() {
         {navItems.map((item) => (
           <button
             key={item.id}
+            type="button"
             onClick={() => handleTabClick(item.id)}
             className={clsx(
-              "group relative flex flex-col items-center transition-all duration-150 w-7 h-7 justify-center rounded-[5px]",
+              'group relative flex flex-col items-center transition-all duration-150 w-7 h-7 justify-center rounded-[5px]',
               activeTab === item.id && isSidebarOpen
-                ? "bg-[var(--accent-glow)] text-[var(--accent)]"
-                : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                ? 'bg-[var(--accent-glow)] text-[var(--accent)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
             )}
             title={item.label}
           >
@@ -54,7 +49,11 @@ export const SidebarNav = memo(function SidebarNav() {
 
       {/* Settings Action */}
       <div className="flex flex-col items-center gap-4 w-full px-1.5 pt-4 border-t border-[var(--border-default)]">
-        <button className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors rounded-[5px] hover:bg-[var(--bg-hover)]" title="Settings">
+        <button
+          type="button"
+          className="w-7 h-7 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors rounded-[5px] hover:bg-[var(--bg-hover)]"
+          title="Settings"
+        >
           <Settings2 className="w-[14px] h-[14px]" />
         </button>
       </div>

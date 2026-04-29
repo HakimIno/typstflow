@@ -11,7 +11,10 @@ async function initialize() {
     console.log('[Worker] WASM Bridge Initialized v2 (Robust Format Detection)');
     self.postMessage({ type: 'READY' });
   } catch (err: any) {
-    self.postMessage({ type: 'error', payload: `Failed to initialize WASM: ${err.message || err}` });
+    self.postMessage({
+      type: 'error',
+      payload: `Failed to initialize WASM: ${err.message || err}`,
+    });
   }
 }
 
@@ -29,17 +32,20 @@ function getMimeFromDataUrl(dataUrl: string): string | undefined {
  */
 function sniffExtension(bytes: Uint8Array): string {
   // PNG: 89 50 4E 47
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return 'png';
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47)
+    return 'png';
   // JPEG: FF D8 FF
-  if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) return 'jpg';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpg';
   // WebP: RIFF .... WEBP
   if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) {
-    if (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return 'webp';
+    if (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50)
+      return 'webp';
   }
   // GIF: GIF8
-  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return 'gif';
-  
-  return 'png'; 
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38)
+    return 'gif';
+
+  return 'png';
 }
 
 /**
@@ -83,22 +89,22 @@ function walkComponents(components: any[]) {
     if (comp.type === 'image' && comp.srcData) {
       try {
         const bytes = dataUrlToBytes(comp.srcData);
-        
+
         // Sniff real extension from bytes instead of trusting headers
         const sniffedExt = sniffExtension(bytes);
-        
+
         // Only fallback to MIME detection if sniffing didn't yield common binary formats
         // (e.g. for SVGs which are text-based)
         let ext = sniffedExt;
         if (sniffedExt === 'png' && !comp.srcData.startsWith('data:image/png')) {
-           const mimeFromData = getMimeFromDataUrl(comp.srcData);
-           ext = getExtFromMime(mimeFromData || comp.mimeType);
+          const mimeFromData = getMimeFromDataUrl(comp.srcData);
+          ext = getExtFromMime(mimeFromData || comp.mimeType);
         }
 
         const virtualPath = `asset-${comp.id}.${ext}`;
         console.log(`[Worker] Registering: ${virtualPath} (Sniffed: ${sniffedExt})`);
 
-        bridge!.register_image(virtualPath, bytes);
+        bridge?.register_image(virtualPath, bytes);
 
         // Swapping src here ensures the generator (Rust or TS) uses this exact path
         comp.src = virtualPath;

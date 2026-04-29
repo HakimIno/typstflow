@@ -1,9 +1,9 @@
 'use client';
 
 import { useDesignerStore } from '@/store/designer-store';
-import { Moon, Sun, Palette as PaletteIcon } from 'lucide-react';
-import { memo } from 'react';
 import { clsx } from 'clsx';
+import { Moon, Sun } from 'lucide-react';
+import { memo } from 'react';
 
 const ACCENT_COLORS = [
   { name: 'Purple', color: '#8B5CF6' },
@@ -28,10 +28,10 @@ export const ThemeSettings = memo(function ThemeSettings() {
           type="button"
           onClick={() => setTheme('light')}
           className={clsx(
-            "p-1.5 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center",
-            theme === 'light' 
-              ? "bg-white shadow-md text-amber-500 scale-110" 
-              : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+            'p-1.5 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center',
+            theme === 'light'
+              ? 'bg-white shadow-md text-amber-500 scale-110'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           )}
           title="Light Mode"
         >
@@ -41,10 +41,10 @@ export const ThemeSettings = memo(function ThemeSettings() {
           type="button"
           onClick={() => setTheme('dark')}
           className={clsx(
-            "p-1.5 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center",
-            theme === 'dark' 
-              ? "bg-[var(--bg-surface)] shadow-md text-[var(--accent)] scale-110 border border-[var(--border-default)]" 
-              : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+            'p-1.5 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center',
+            theme === 'dark'
+              ? 'bg-[var(--bg-surface)] shadow-md text-[var(--accent)] scale-110 border border-[var(--border-default)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           )}
           title="Dark Mode"
         >
@@ -60,8 +60,10 @@ export const ThemeSettings = memo(function ThemeSettings() {
             type="button"
             onClick={() => setPrimaryColor(c.color)}
             className={clsx(
-              "w-3.5 h-3.5 rounded-full transition-all hover:scale-125 cursor-pointer ring-offset-1 ring-offset-[var(--bg-surface)]",
-              primaryColor === c.color ? "ring-2 ring-[var(--accent)] scale-110" : "opacity-60 hover:opacity-100"
+              'w-3.5 h-3.5 rounded-full transition-all hover:scale-125 cursor-pointer ring-offset-1 ring-offset-[var(--bg-surface)]',
+              primaryColor === c.color
+                ? 'ring-2 ring-[var(--accent)] scale-110'
+                : 'opacity-60 hover:opacity-100'
             )}
             style={{ backgroundColor: c.color }}
             title={c.name}

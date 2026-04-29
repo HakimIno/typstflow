@@ -10,71 +10,71 @@
 
 :root {
   /* Light Theme (HeroUI Pro Inspired) */
-  --bg-app: #F8FAFC;
+  --bg-app: #f8fafc;
   --bg-surface: rgba(255, 255, 255, 0.7);
-  --bg-surface-solid: #FFFFFF;
-  --bg-canvas: #E2E8F0;
+  --bg-surface-solid: #ffffff;
+  --bg-canvas: #e2e8f0;
   --bg-widget: rgba(0, 0, 0, 0.04);
   --bg-hover: rgba(0, 0, 0, 0.08);
   --border-default: rgba(0, 0, 0, 0.08);
   --border-subtle: rgba(0, 0, 0, 0.04);
   --border-accent: rgba(0, 0, 0, 0.15);
-  --text-primary: #0F172A;
+  --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-muted: #94A3B8;
-  --accent: #006FEE;
+  --text-muted: #94a3b8;
+  --accent: #006fee;
   --accent-glow: rgba(0, 111, 238, 0.15);
-  --green: #17C964;
+  --green: #17c964;
   --grid-dot: rgba(0, 0, 0, 0.08);
-  --shadow-premium: 0px 4px 24px -4px rgba(0,0,0,0.06), 0px 16px 40px -16px rgba(0,0,0,0.04);
+  --shadow-premium: 0px 4px 24px -4px rgba(0, 0, 0, 0.06), 0px 16px 40px -16px rgba(0, 0, 0, 0.04);
 }
 
 .dark {
   /* Dark Theme (HeroUI Pro Inspired) */
   --bg-app: #000000;
   --bg-surface: rgba(24, 24, 27, 0.65);
-  --bg-surface-solid: #18181B;
-  --bg-canvas: #09090B;
+  --bg-surface-solid: #18181b;
+  --bg-canvas: #09090b;
   --bg-widget: rgba(255, 255, 255, 0.06);
   --bg-hover: rgba(255, 255, 255, 0.1);
   --border-default: rgba(255, 255, 255, 0.1);
   --border-subtle: rgba(255, 255, 255, 0.05);
   --border-accent: rgba(255, 255, 255, 0.2);
-  --text-primary: #ECEDEE;
-  --text-secondary: #A1A1AA;
-  --text-muted: #71717A;
-  --accent: #006FEE;
+  --text-primary: #ecedee;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent: #006fee;
   --accent-glow: rgba(0, 111, 238, 0.25);
-  --green: #17C964;
+  --green: #17c964;
   --grid-dot: rgba(255, 255, 255, 0.08);
-  --shadow-premium: 0px 4px 24px -4px rgba(0,0,0,0.5), 0px 16px 40px -16px rgba(0,0,0,0.4);
+  --shadow-premium: 0px 4px 24px -4px rgba(0, 0, 0, 0.5), 0px 16px 40px -16px rgba(0, 0, 0, 0.4);
 }
 
 .light {
   /* Explicit Light Theme Overrides */
-  --bg-app: #F8FAFC;
+  --bg-app: #f8fafc;
   --bg-surface: rgba(255, 255, 255, 0.7);
-  --bg-surface-solid: #FFFFFF;
-  --bg-canvas: #E2E8F0;
+  --bg-surface-solid: #ffffff;
+  --bg-canvas: #e2e8f0;
   --bg-widget: rgba(0, 0, 0, 0.04);
   --bg-hover: rgba(0, 0, 0, 0.08);
   --border-default: rgba(0, 0, 0, 0.08);
   --border-subtle: rgba(0, 0, 0, 0.04);
   --border-accent: rgba(0, 0, 0, 0.15);
-  --text-primary: #0F172A;
+  --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-muted: #94A3B8;
-  --accent: #006FEE;
+  --text-muted: #94a3b8;
+  --accent: #006fee;
   --accent-glow: rgba(0, 111, 238, 0.15);
-  --green: #17C964;
+  --green: #17c964;
   --grid-dot: rgba(0, 0, 0, 0.08);
-  --shadow-premium: 0px 4px 24px -4px rgba(0,0,0,0.06), 0px 16px 40px -16px rgba(0,0,0,0.04);
+  --shadow-premium: 0px 4px 24px -4px rgba(0, 0, 0, 0.06), 0px 16px 40px -16px rgba(0, 0, 0, 0.04);
 }
 
 @layer base {
   body {
     @apply bg-[var(--bg-app)] text-[var(--text-primary)] antialiased transition-colors duration-300;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
     font-size: 13px;
     font-weight: 400;
     background-image: radial-gradient(circle at top center, var(--accent-glow) 0%, transparent 40%);
@@ -82,11 +82,16 @@
     background-attachment: fixed;
   }
 
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { 
-    background: var(--text-muted); 
-    border-radius: 10px; 
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 10px;
     opacity: 0.2;
   }
   ::-webkit-scrollbar-thumb:hover {
@@ -102,7 +107,7 @@
 
   .pro-button {
     @apply px-4 py-2 border border-[var(--border-default)] bg-[var(--bg-widget)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-accent)] transition-all duration-200 active:scale-[0.97] disabled:opacity-50 text-[12px] font-medium rounded-[var(--radius-md)];
-    box-shadow: 0px 1px 2px rgba(0,0,0,0.02);
+    box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.02);
   }
 
   .pro-input {
@@ -138,6 +143,6 @@
 
   .coord-pill {
     @apply bg-[var(--bg-surface)] backdrop-blur-md text-[var(--text-primary)] text-[10px] font-medium px-2 py-1 flex items-center gap-1.5 leading-none rounded-[var(--radius-sm)] border border-[var(--border-default)];
-    box-shadow: 0px 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
   }
 }

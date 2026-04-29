@@ -48,7 +48,10 @@ export function formatBinding(path: string): string {
  * Get value type from path
  * Returns the type of value at the given path in the object
  */
-export function getValueType(obj: any, path: string): 'string' | 'number' | 'boolean' | 'object' | 'array' | 'undefined' {
+export function getValueType(
+  obj: any,
+  path: string
+): 'string' | 'number' | 'boolean' | 'object' | 'array' | 'undefined' {
   const value = resolvePath(obj, path);
 
   if (value === undefined || value === null) return 'undefined';
@@ -98,21 +101,21 @@ export function resolvePath(obj: any, path: string): any {
 export function resolveBindings(text: string, data: any): string {
   if (!text) return '';
   if (!data || Object.keys(data).length === 0) return text;
-  
+
   return text.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
     const trimmedPath = path.trim();
     if (!trimmedPath) return match; // Keep {{}} or {{  }} as is
-    
+
     const value = resolvePath(data, trimmedPath);
     if (value === undefined || value === null) {
       return match; // Keep {{path}} if not found
     }
-    
+
     // Convert object/array to string representation if needed
     if (typeof value === 'object') {
       return JSON.stringify(value);
     }
-    
+
     return String(value);
   });
 }
@@ -134,8 +137,8 @@ export function groupPathsByParent(paths: string[]): PathGroup[] {
     const parts = path.split('.');
     if (parts.length === 1) {
       // Root level item
-      if (!groups['root']) groups['root'] = [];
-      groups['root'].push(path);
+      if (!groups.root) groups.root = [];
+      groups.root.push(path);
     } else {
       // Nested item - group by parent
       const parent = parts[0];

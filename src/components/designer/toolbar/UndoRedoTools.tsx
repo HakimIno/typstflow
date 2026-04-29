@@ -1,8 +1,8 @@
 'use client';
 
-import { memo } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
-import { Undo, Redo } from 'lucide-react';
+import { Redo, Undo } from 'lucide-react';
+import { memo } from 'react';
 import { ToolbarButton } from './ToolbarButton';
 
 export const UndoRedoTools = memo(function UndoRedoTools() {

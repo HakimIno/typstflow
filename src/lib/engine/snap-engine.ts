@@ -1,5 +1,5 @@
-import { LayoutSchema, ComponentNode } from '@/types/schema';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
+import type { LayoutSchema } from '@/types/schema';
 
 export interface SnapPoint {
   value: number; // mm
@@ -36,7 +36,10 @@ export const SnapEngine = {
 
     if (!cachedPoints) {
       // 1. Page Points
-      const { width: pageWidth, height: pageHeight } = getPaperDimensions(schema.page.size, schema.page.orientation);
+      const { width: pageWidth, height: pageHeight } = getPaperDimensions(
+        schema.page.size,
+        schema.page.orientation
+      );
 
       pointsX.push({ value: 0, type: 'edge', originId: 'page' });
       pointsX.push({ value: pageWidth, type: 'edge', originId: 'page' });
@@ -47,10 +50,10 @@ export const SnapEngine = {
       pointsY.push({ value: pageHeight / 2, type: 'center', originId: 'page' });
 
       // 2. Component Points (from all zones)
-      Object.values(schema.zones).forEach((zone) => {
-        zone.components.forEach((c) => {
-          if (c.id === draggedId) return;
-          
+      for (const zone of Object.values(schema.zones)) {
+        for (const c of zone.components) {
+          if (c.id === draggedId) continue;
+
           const cx = c.x || 0;
           const cy = c.y || 0;
           const cw = c.width || 0;
@@ -63,8 +66,8 @@ export const SnapEngine = {
           pointsY.push({ value: cy, type: 'edge', originId: c.id });
           pointsY.push({ value: cy + ch, type: 'edge', originId: c.id });
           pointsY.push({ value: cy + ch / 2, type: 'center', originId: c.id });
-        });
-      });
+        }
+      }
     }
 
     let snappedX = x;
@@ -74,44 +77,44 @@ export const SnapEngine = {
 
     // Snap X
     const draggedPointsX = [
-        { val: x, name: 'left' },
-        { val: x + width, name: 'right' },
-        { val: x + width / 2, name: 'center' }
+      { val: x, name: 'left' },
+      { val: x + width, name: 'right' },
+      { val: x + width / 2, name: 'center' },
     ];
 
     for (const dp of draggedPointsX) {
-        for (const sp of pointsX) {
-            if (Math.abs(dp.val - sp.value) < SNAP_THRESHOLD) {
-                if (dp.name === 'left') snappedX = sp.value;
-                if (dp.name === 'right') snappedX = sp.value - width;
-                if (dp.name === 'center') snappedX = sp.value - width / 2;
-                activeGuidesX.push(sp.value);
-                break;
-            }
+      for (const sp of pointsX) {
+        if (Math.abs(dp.val - sp.value) < SNAP_THRESHOLD) {
+          if (dp.name === 'left') snappedX = sp.value;
+          if (dp.name === 'right') snappedX = sp.value - width;
+          if (dp.name === 'center') snappedX = sp.value - width / 2;
+          activeGuidesX.push(sp.value);
+          break;
         }
-        if (activeGuidesX.length > 0) break;
+      }
+      if (activeGuidesX.length > 0) break;
     }
 
     // Snap Y
     const draggedPointsY = [
-        { val: y, name: 'top' },
-        { val: y + height, name: 'bottom' },
-        { val: y + height / 2, name: 'center' }
+      { val: y, name: 'top' },
+      { val: y + height, name: 'bottom' },
+      { val: y + height / 2, name: 'center' },
     ];
 
     for (const dp of draggedPointsY) {
-        for (const sp of pointsY) {
-            if (Math.abs(dp.val - sp.value) < SNAP_THRESHOLD) {
-                if (dp.name === 'top') snappedY = sp.value;
-                if (dp.name === 'bottom') snappedY = sp.value - height;
-                if (dp.name === 'center') snappedY = sp.value - height / 2;
-                activeGuidesY.push(sp.value);
-                break;
-            }
+      for (const sp of pointsY) {
+        if (Math.abs(dp.val - sp.value) < SNAP_THRESHOLD) {
+          if (dp.name === 'top') snappedY = sp.value;
+          if (dp.name === 'bottom') snappedY = sp.value - height;
+          if (dp.name === 'center') snappedY = sp.value - height / 2;
+          activeGuidesY.push(sp.value);
+          break;
         }
-        if (activeGuidesY.length > 0) break;
+      }
+      if (activeGuidesY.length > 0) break;
     }
 
     return { snappedX, snappedY, activeGuidesX, activeGuidesY };
-  }
+  },
 };

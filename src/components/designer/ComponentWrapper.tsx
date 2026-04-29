@@ -3,19 +3,18 @@
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
-import { 
-  Copy, 
-  GripVertical, 
-  Trash2, 
-  Lock, 
-  ArrowUp, 
-  ArrowDown, 
-  ChevronUp, 
+import {
   ChevronDown,
+  ChevronFirst,
   ChevronLast,
-  ChevronFirst
+  ChevronUp,
+  Copy,
+  GripVertical,
+  Lock,
+  Trash2,
 } from 'lucide-react';
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useDraggable } from '@/hooks/use-draggable';
@@ -46,16 +45,16 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
   const previewRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
-  const { 
-    selectedComponentIds, 
-    isDraggingGlobal, 
-    draggedComponentId, 
-    selectComponent, 
-    toggleComponentSelection, 
-    removeComponent, 
-    removeComponents, 
-    addComponent, 
-    updateComponent, 
+  const {
+    selectedComponentIds,
+    isDraggingGlobal,
+    draggedComponentId,
+    selectComponent,
+    toggleComponentSelection,
+    removeComponent,
+    removeComponents,
+    addComponent,
+    updateComponent,
     sampleData,
     hiddenComponentIds,
     lockedComponentIds,
@@ -63,27 +62,26 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
     sendToBack,
     moveUp,
     moveDown,
-  } =
-    useDesignerStore(
-      useShallow((state) => ({
-        selectedComponentIds: state.selectedComponentIds,
-        isDraggingGlobal: state.dragState.isDragging,
-        draggedComponentId: state.dragState.draggedComponentId,
-        selectComponent: state.selectComponent,
-        toggleComponentSelection: state.toggleComponentSelection,
-        removeComponent: state.removeComponent,
-        removeComponents: state.removeComponents,
-        addComponent: state.addComponent,
-        updateComponent: state.updateComponent,
-        sampleData: state.sampleData,
-        hiddenComponentIds: state.hiddenComponentIds,
-        lockedComponentIds: state.lockedComponentIds,
-        bringToFront: state.bringToFront,
-        sendToBack: state.sendToBack,
-        moveUp: state.moveUp,
-        moveDown: state.moveDown,
-      }))
-    );
+  } = useDesignerStore(
+    useShallow((state) => ({
+      selectedComponentIds: state.selectedComponentIds,
+      isDraggingGlobal: state.dragState.isDragging,
+      draggedComponentId: state.dragState.draggedComponentId,
+      selectComponent: state.selectComponent,
+      toggleComponentSelection: state.toggleComponentSelection,
+      removeComponent: state.removeComponent,
+      removeComponents: state.removeComponents,
+      addComponent: state.addComponent,
+      updateComponent: state.updateComponent,
+      sampleData: state.sampleData,
+      hiddenComponentIds: state.hiddenComponentIds,
+      lockedComponentIds: state.lockedComponentIds,
+      bringToFront: state.bringToFront,
+      sendToBack: state.sendToBack,
+      moveUp: state.moveUp,
+      moveDown: state.moveDown,
+    }))
+  );
 
   const isHidden = hiddenComponentIds.includes(component.id);
   const isLocked = lockedComponentIds.includes(component.id);
@@ -123,9 +121,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
         return;
       }
 
-      if (editorContainerRef.current &&
-          !editorContainerRef.current.contains(target) &&
-          !dragHandleRef.current?.contains(target)) {
+      if (
+        editorContainerRef.current &&
+        !editorContainerRef.current.contains(target) &&
+        !dragHandleRef.current?.contains(target)
+      ) {
         setIsEditing(false);
       }
     };
@@ -247,10 +247,10 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
     });
   };
 
-  const isMoving = isDraggingGlobal && (
-    draggedComponentId === component.id || 
-    (isSelected && selectedComponentIds.includes(draggedComponentId || ''))
-  );
+  const isMoving =
+    isDraggingGlobal &&
+    (draggedComponentId === component.id ||
+      (isSelected && selectedComponentIds.includes(draggedComponentId || '')));
 
   return (
     <div
@@ -276,12 +276,10 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
         outline: 'none',
         boxSizing: 'border-box',
         willChange: 'transform',
-        transform: isMoving
-          ? 'translate(var(--drag-dx, 0px), var(--drag-dy, 0px))'
-          : 'none',
+        transform: isMoving ? 'translate(var(--drag-dx, 0px), var(--drag-dy, 0px))' : 'none',
         zIndex: isMoving ? 100 : 10,
         opacity: isHidden ? 0 : 1,
-        pointerEvents: isHidden || isLocked && !isMoving ? 'none' : 'auto',
+        pointerEvents: isHidden || (isLocked && !isMoving) ? 'none' : 'auto',
       }}
       data-designer-component
       className={clsx(
@@ -317,9 +315,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
             // Keep text in the same position
             display: 'flex',
             alignItems: (component.style as any)?.verticalAlign || 'flex-start',
-            justifyContent: component.align === 'center' ? 'center' :
-                         component.align === 'right' ? 'flex-end' :
-                         component.align === 'justify' ? 'flex-start' : 'flex-start',
+            justifyContent:
+              component.align === 'center'
+                ? 'center'
+                : component.align === 'right'
+                  ? 'flex-end'
+                  : component.align === 'justify'
+                    ? 'flex-start'
+                    : 'flex-start',
           }}
         >
           <TextEditor
@@ -350,80 +353,94 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       {!isLocked && (
         <div
           key={`action-bar-${component.id}`}
-        className={clsx(
-          'absolute -top-7 right-0 flex items-center bg-[var(--accent)] border border-[var(--border-accent)] rounded-md px-0.5 h-6.5 shadow-sm transition-opacity duration-200',
-          !isSelected || isDragging || selectedComponentIds.length > 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        )}
-      >
-        <div
-          key="drag-handle"
-          ref={dragHandleRef}
-          data-drag-handle="true"
-          className="p-1 hover:bg-white/10 text-white cursor-grab active:cursor-grabbing border-r border-white/10"
+          className={clsx(
+            'absolute -top-7 right-0 flex items-center bg-[var(--accent)] border border-[var(--border-accent)] rounded-md px-0.5 h-6.5 shadow-sm transition-opacity duration-200',
+            !isSelected || isDragging || selectedComponentIds.length > 1
+              ? 'opacity-0 pointer-events-none'
+              : 'opacity-100'
+          )}
         >
-          <GripVertical className="w-3 h-3" />
-        </div>
-        
-        {/* Arrangement Actions */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); bringToFront(component.id); }}
-          className="p-1 hover:bg-white/10 text-white border-r border-white/10"
-          title="Bring to Front"
-        >
-          <ChevronLast className="w-3 h-3" />
-        </button>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); moveUp(component.id); }}
-          className="p-1 hover:bg-white/10 text-white border-r border-white/10"
-          title="Bring Forward"
-        >
-          <ChevronUp className="w-3 h-3" />
-        </button>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); moveDown(component.id); }}
-          className="p-1 hover:bg-white/10 text-white border-r border-white/10"
-          title="Send Backward"
-        >
-          <ChevronDown className="w-3 h-3" />
-        </button>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); sendToBack(component.id); }}
-          className="p-1 hover:bg-white/10 text-white border-r border-white/10"
-          title="Send to Back"
-        >
-          <ChevronFirst className="w-3 h-3" />
-        </button>
+          <div
+            key="drag-handle"
+            ref={dragHandleRef}
+            data-drag-handle="true"
+            className="p-1 hover:bg-white/10 text-white cursor-grab active:cursor-grabbing border-r border-white/10"
+          >
+            <GripVertical className="w-3 h-3" />
+          </div>
 
-        <button
-          key="duplicate-btn"
-          type="button"
-          onClick={handleDuplicate}
-          className="p-1 hover:bg-white/10 text-white border-r border-white/10"
-          title="Duplicate"
-        >
-          <Copy className="w-3 h-3" />
-        </button>
-        <button
-          key="delete-btn"
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (selectedComponentIds.length > 1) {
-              removeComponents(selectedComponentIds);
-            } else {
-              removeComponent(component.id);
-            }
-          }}
-          className="p-1 hover:bg-red-600 text-white"
-          title="Delete"
-        >
-          <Trash2 className="w-3 h-3" />
-        </button>
-      </div>
+          {/* Arrangement Actions */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              bringToFront(component.id);
+            }}
+            className="p-1 hover:bg-white/10 text-white border-r border-white/10"
+            title="Bring to Front"
+          >
+            <ChevronLast className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              moveUp(component.id);
+            }}
+            className="p-1 hover:bg-white/10 text-white border-r border-white/10"
+            title="Bring Forward"
+          >
+            <ChevronUp className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              moveDown(component.id);
+            }}
+            className="p-1 hover:bg-white/10 text-white border-r border-white/10"
+            title="Send Backward"
+          >
+            <ChevronDown className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              sendToBack(component.id);
+            }}
+            className="p-1 hover:bg-white/10 text-white border-r border-white/10"
+            title="Send to Back"
+          >
+            <ChevronFirst className="w-3 h-3" />
+          </button>
+
+          <button
+            key="duplicate-btn"
+            type="button"
+            onClick={handleDuplicate}
+            className="p-1 hover:bg-white/10 text-white border-r border-white/10"
+            title="Duplicate"
+          >
+            <Copy className="w-3 h-3" />
+          </button>
+          <button
+            key="delete-btn"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (selectedComponentIds.length > 1) {
+                removeComponents(selectedComponentIds);
+              } else {
+                removeComponent(component.id);
+              }
+            }}
+            className="p-1 hover:bg-red-600 text-white"
+            title="Delete"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
       )}
 
       {/* Content Preview */}
@@ -434,7 +451,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
       )}
 
       {/* Resizing Handles */}
-      {isSelected && !isLocked &&
+      {isSelected &&
+        !isLocked &&
         RESIZE_HANDLES.map((handle) => (
           <div
             key={handle}

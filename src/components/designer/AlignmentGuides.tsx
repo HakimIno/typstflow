@@ -1,11 +1,11 @@
 'use client';
 
-import { useDesignerStore } from '@/store/designer-store';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { useDesignerStore } from '@/store/designer-store';
 
 export function AlignmentGuides() {
   const dragState = useDesignerStore((state) => state.dragState);
-  
+
   if (!dragState.isDragging) return null;
 
   const { vertical, horizontal } = dragState.activeGuides;
@@ -16,9 +16,9 @@ export function AlignmentGuides() {
         <div
           key={`v-${i}`}
           className="absolute top-0 bottom-0 border-l border-magenta-500 border-dashed"
-          style={{ 
+          style={{
             left: `${LayoutEngine.mmToPx(x)}px`,
-            borderColor: '#ff00ff' // High-visibility magenta
+            borderColor: '#ff00ff', // High-visibility magenta
           }}
         />
       ))}
@@ -26,9 +26,9 @@ export function AlignmentGuides() {
         <div
           key={`h-${i}`}
           className="absolute left-0 right-0 border-t border-magenta-500 border-dashed"
-          style={{ 
+          style={{
             top: `${LayoutEngine.mmToPx(y)}px`,
-            borderColor: '#ff00ff'
+            borderColor: '#ff00ff',
           }}
         />
       ))}
