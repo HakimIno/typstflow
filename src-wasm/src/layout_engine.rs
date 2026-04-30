@@ -179,7 +179,7 @@ impl LayoutEngine {
             let my_x_edges = [(left, 0.0), (right, width), (center_x, width / 2.0)];
 
             for target_x in x_edges.iter() {
-                for (my_x, offset) in my_x_edges.iter() {
+                for (my_x, _offset) in my_x_edges.iter() {
                     let dx = target_x - my_x;
                     if dx.abs() < min_dx {
                         min_dx = dx.abs();
@@ -193,7 +193,7 @@ impl LayoutEngine {
             let my_y_edges = [(top, 0.0), (bottom, height), (center_y, height / 2.0)];
 
             for target_y in y_edges.iter() {
-                for (my_y, offset) in my_y_edges.iter() {
+                for (my_y, _offset) in my_y_edges.iter() {
                     let dy = target_y - my_y;
                     if dy.abs() < min_dy {
                         min_dy = dy.abs();

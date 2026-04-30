@@ -100,12 +100,12 @@ impl TypstBridge {
                 JsValue::from_str(&format!("Compilation failed: {:?}", err))
             })?;
         
-        if let Some(page) = doc.pages.first() {
-            let svg = typst_svg::svg(page);
-            Ok(svg)
-        } else {
-            Err(JsValue::from_str("No pages rendered"))
+        let mut all_svgs = String::new();
+        for page in &doc.pages {
+            all_svgs.push_str(&typst_svg::svg(page));
+            all_svgs.push_str("<!-- PAGE_BREAK -->");
         }
+        Ok(all_svgs)
     }
 
     pub fn render_pdf(&self, source_code: &str) -> Result<Vec<u8>, JsValue> {

@@ -414,7 +414,7 @@ fn render_table(c: &TableComponent, data: &Value, offset_x: &str, offset_y: &str
     // ── 10. DATA ROWS ─────────────────────────────────────────────────────────
     let is_static = c.is_static.unwrap_or(false);
 
-    let mut render_item = |item: &Value, t_out: &mut String| {
+    let render_item = |item: &Value, t_out: &mut String| {
         // Check for modern detailRows template
         if let Some(detail_rows) = &c.detail_rows {
             for row in detail_rows {

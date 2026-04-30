@@ -14,7 +14,7 @@ export function PreviewPane() {
   const sampleData = useDesignerStore((state) => state.sampleData);
   const viewMode = useDesignerStore((state) => state.viewMode);
   const zoom = useDesignerStore((state) => state.zoom);
-  const [svgContent, setSvgContent] = useState<string | null>(null);
+  const [svgContent, setSvgContent] = useState<string[] | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,14 +29,13 @@ export function PreviewPane() {
         setError(null);
 
         console.log('--- RENDERING VIA RUST ENGINE (WASM) ---');
-        console.log('DEBUG SCHEMA:', JSON.stringify(schema, null, 2));
-        console.log('DEBUG DATA:', JSON.stringify(sampleData, null, 2));
-        const svg = await renderReportToSvg(schema, sampleData);
+        const result = await renderReportToSvg(schema, sampleData);
 
         if (!active) return;
-        if (!svg) throw new Error('Engine returned empty SVG');
+        if (!result) throw new Error('Engine returned empty result');
 
-        setSvgContent(svg);
+        const svgs = result.split('<!-- PAGE_BREAK -->').filter(s => s.trim().length > 0);
+        setSvgContent(svgs);
       } catch (err: any) {
         if (!active) return;
         console.error('Render error:', err);
@@ -65,37 +64,51 @@ export function PreviewPane() {
       {/* Precision Preview Area */}
       <div className="flex-1 overflow-auto p-8 scrollbar-thin transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform">
         <div
-          className={clsx(
-            'relative bg-white shadow-2xl overflow-hidden border border-slate-400 transition-transform duration-300 origin-top-left'
-          )}
+          className="flex flex-col items-start gap-8 origin-top-left pl-16 pr-16"
           style={{
-            width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
-            minHeight: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
             transform: `scale(${zoom})`,
           }}
         >
           {svgContent ? (
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: Needed for SVG preview
-            <div className="w-full h-full" dangerouslySetInnerHTML={{ __html: svgContent }} />
+            svgContent.map((svg, idx) => (
+              <div
+                key={idx}
+                className={clsx(
+                  'relative bg-white shadow-2xl overflow-hidden border border-slate-400'
+                )}
+                style={{
+                  width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
+                  height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
+                }}
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: Needed for SVG preview
+                dangerouslySetInnerHTML={{ __html: svg }}
+              />
+            ))
           ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-slate-400 bg-slate-50/50">
+            <div
+              className="relative bg-white shadow-2xl overflow-hidden border border-slate-400 flex flex-col items-center justify-center gap-4 text-slate-400 bg-slate-50/50"
+              style={{
+                width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
+                height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
+              }}
+            >
               <Loader2 className="w-12 h-12 animate-spin opacity-20" />
               <p className="text-[11px] font-bold uppercase tracking-widest opacity-40">
                 Compiling Report...
               </p>
             </div>
           )}
-
-          {error && (
-            <div className="absolute inset-0 bg-red-50/90 flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-300">
-              <AlertTriangle className="w-12 h-12 text-red-600 mb-4" />
-              <p className="text-sm font-bold text-red-800 mb-2">Build Error</p>
-              <p className="text-[11px] text-red-600 font-mono bg-white p-4 border border-red-200 rounded-md shadow-sm max-w-md break-all">
-                {error}
-              </p>
-            </div>
-          )}
         </div>
+
+        {error && (
+          <div className="absolute inset-0 bg-red-50/90 flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-300 z-50">
+            <AlertTriangle className="w-12 h-12 text-red-600 mb-4" />
+            <p className="text-sm font-bold text-red-800 mb-2">Build Error</p>
+            <p className="text-[11px] text-red-600 font-mono bg-white p-4 border border-red-200 rounded-md shadow-sm max-w-md break-all">
+              {error}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Floating Status / Info */}
@@ -115,20 +128,6 @@ export function PreviewPane() {
         </div>
       </div>
 
-      {/* Stats overlay (Top Right) */}
-      <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5 pointer-events-none">
-        <div className="flex items-center gap-2 px-2 py-1 bg-white border border-slate-300 rounded shadow-sm">
-          <Cpu className="w-3 h-3 text-blue-500" />
-          <span className="text-[9px] font-bold text-slate-500 uppercase">
-            Engine: Custom Rust WASM
-          </span>
-        </div>
-        <div className="flex items-center gap-2 px-2 py-1 bg-white border border-slate-300 rounded shadow-sm">
-          <span className="text-[9px] font-bold text-slate-500 uppercase">
-            Input: {Object.keys(sampleData).length} Fields
-          </span>
-        </div>
-      </div>
     </div>
   );
 }

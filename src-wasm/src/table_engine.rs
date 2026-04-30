@@ -133,9 +133,9 @@ impl TableEngine {
         let mut page_index = 0;
         let mut span_matrix: HashMap<(usize, usize), usize> = HashMap::new(); // (row_idx, col_idx) -> rowspan_remaining
 
-        let mut process_rows = |rows: &Vec<TableRowInput>, section: &str, is_header: bool| {
+        let mut process_rows = |rows: &Vec<TableRowInput>, section: &str, _is_header: bool| {
             for (row_idx, row) in rows.iter().enumerate() {
-                let mut cell_idx = 0;
+                let _cell_idx = 0;
                 let mut row_height = 8.0; // Base default height in mm (approx 22.6pt)
                 
                 if let Some(h) = &row.height {
@@ -155,7 +155,7 @@ impl TableEngine {
                     // Skip columns that are covered by a previous rowspan
                     while let Some(&remaining) = span_matrix.get(&(row_idx, col_ptr)) {
                         if remaining > 0 {
-                            for c in 0..1 { // We don't know the exact colspan of the spanning cell easily here without tracking it better, simple skip for now.
+                            for _c in 0..1 { // We don't know the exact colspan of the spanning cell easily here without tracking it better, simple skip for now.
                                 let skip_w = col_widths.get(col_ptr).unwrap_or(&0.0);
                                 current_x += skip_w;
                                 col_ptr += 1;
