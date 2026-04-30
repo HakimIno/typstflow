@@ -339,6 +339,37 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 </select>
               </div>
             </div>
+            <div className="flex border-b border-[var(--border-default)] last:border-0 hover:bg-[var(--bg-hover)] group transition-colors">
+              <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-[var(--text-secondary)] bg-[var(--bg-widget)] border-r border-[var(--border-default)] flex items-center shrink-0">
+                Total Pages
+              </div>
+              <div className="flex-1 px-2 py-1.5 flex items-center gap-2 overflow-hidden">
+                <DesignerInput
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={(fullSchema.pages || []).length}
+                  onChange={(v) => useDesignerStore.getState().setPageCount(Number.parseInt(v) || 1)}
+                  mono
+                />
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => useDesignerStore.getState().setPageCount((fullSchema.pages || []).length - 1)}
+                    className="w-6 h-6 flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] border border-[var(--border-default)] rounded-full text-[12px] font-bold text-[var(--text-muted)]"
+                  >
+                    -
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => useDesignerStore.getState().setPageCount((fullSchema.pages || []).length + 1)}
+                    className="w-6 h-6 flex items-center justify-center bg-[var(--accent)] hover:bg-[var(--accent)]/80 text-white rounded-full text-[12px] font-bold"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
           </section>
           <section>
             <div className="px-3 py-1.5 bg-[var(--bg-widget)] border-b border-[var(--border-default)] text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
@@ -370,43 +401,6 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 </div>
               </div>
             ))}
-          </section>
-
-          <section>
-            <div className="px-3 py-1.5 bg-[var(--bg-widget)] border-b border-[var(--border-default)] text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
-              Document Management
-            </div>
-            <div className="flex border-b border-[var(--border-default)] last:border-0 hover:bg-[var(--bg-hover)] group transition-colors">
-              <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-[var(--text-secondary)] bg-[var(--bg-widget)] border-r border-[var(--border-default)] flex items-center shrink-0">
-                Total Pages
-              </div>
-              <div className="flex-1 px-2 py-1.5 flex items-center gap-2 overflow-hidden">
-                <DesignerInput
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={fullSchema.pages.length}
-                  onChange={(v) => useDesignerStore.getState().setPageCount(Number.parseInt(v) || 1)}
-                  mono
-                />
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => useDesignerStore.getState().setPageCount(fullSchema.pages.length - 1)}
-                    className="w-6 h-6 flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] border border-[var(--border-default)] rounded text-[12px] font-bold text-[var(--text-muted)]"
-                  >
-                    -
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => useDesignerStore.getState().setPageCount(fullSchema.pages.length + 1)}
-                    className="w-6 h-6 flex items-center justify-center bg-[var(--accent)] hover:bg-[var(--accent)]/80 text-white rounded text-[12px] font-bold"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
           </section>
         </div>
       </div>
