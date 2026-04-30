@@ -22,6 +22,7 @@ export function useZoneDropTarget(
     return dropTargetForElements({
       element: el,
       getData: () => ({ zoneKey, pageId }),
+      canDrop: () => true,
       onDragEnter: () => {
         setIsDraggedOver(true);
       },

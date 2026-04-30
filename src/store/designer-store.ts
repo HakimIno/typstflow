@@ -125,6 +125,7 @@ interface DesignerState {
   addPage: () => void;
   removePage: (id: string) => void;
   reorderPage: (id: string, newIndex: number) => void;
+  setPageCount: (count: number) => void;
 
   // Layer Actions
   toggleComponentVisibility: (id: string) => void;
@@ -134,6 +135,7 @@ interface DesignerState {
   sendToBack: (id: string) => void;
   moveUp: (id: string) => void;
   moveDown: (id: string) => void;
+  updateLastSnapped: (x: number, y: number, pageId: string | null) => void;
 }
 
 const MAX_HISTORY = 50;
@@ -270,8 +272,8 @@ export const useDesignerStore = create<DesignerState>()(
           const newComponent = {
             ...component,
             id,
-            x: component.x ?? 10,
-            y: component.y ?? 10,
+            x: component.x ?? state.dragState.lastSnappedX ?? 10,
+            y: component.y ?? state.dragState.lastSnappedY ?? 10,
             width: component.width ?? 100,
             height: component.height ?? 20,
           };
@@ -301,8 +303,18 @@ export const useDesignerStore = create<DesignerState>()(
             };
           }
 
-          return pushHistory(state, newSchema);
+          return { ...pushHistory(state, newSchema), selectedComponentIds: [id] };
         }),
+
+      updateLastSnapped: (x, y, pageId) =>
+        set((state) => ({
+          dragState: {
+            ...state.dragState,
+            lastSnappedX: x,
+            lastSnappedY: y,
+            activePageId: pageId,
+          },
+        })),
 
       updateComponent: (id, updates, skipHistory) =>
         set((state) => {
@@ -724,6 +736,33 @@ export const useDesignerStore = create<DesignerState>()(
           const [page] = pages.splice(oldIndex, 1);
           pages.splice(newIndex, 0, page);
           return pushHistory(state, { ...state.schema, pages });
+        }),
+
+      setPageCount: (count) =>
+        set((state) => {
+          const targetCount = Math.max(1, count);
+          const currentCount = state.schema.pages.length;
+          if (targetCount === currentCount) return state;
+
+          const newPages = [...state.schema.pages];
+          if (targetCount > currentCount) {
+            for (let i = currentCount; i < targetCount; i++) {
+              newPages.push({
+                id: `page-${i + 1}`,
+                name: `Page ${i + 1}`,
+                body: { id: 'body', minHeight: '237mm', components: [] },
+              });
+            }
+          } else {
+            newPages.splice(targetCount);
+          }
+
+          const newSchema = { ...state.schema, pages: newPages };
+          const newActiveId = newPages.some((p) => p.id === state.activePageId)
+            ? state.activePageId
+            : (newPages[newPages.length - 1]?.id || null);
+
+          return { ...pushHistory(state, newSchema), activePageId: newActiveId };
         }),
 
       bringToFront: (id) =>

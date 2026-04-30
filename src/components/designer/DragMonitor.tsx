@@ -100,35 +100,37 @@ export function DragMonitor() {
 
           // 2. Load Rust WASM Layout Engine
           getLayoutEngine().then((layoutEngine) => {
-            const nodes: any[] = [];
-            for (const [zKey, zone] of Object.entries(schema.zones) as [string, any][]) {
-              const yOffset = LayoutEngine.calculateZoneOffset(zKey, schema);
-              for (const c of zone.components) {
+            layoutEngine.initWasm().then(() => {
+              const nodes: any[] = [];
+              for (const [zKey, zone] of Object.entries(schema.zones) as [string, any][]) {
+                const yOffset = LayoutEngine.calculateZoneOffset(zKey, schema);
+                for (const c of zone.components) {
+                  if (c.id === data.id) continue;
+                  nodes.push({
+                    id: c.id,
+                    zone: zKey,
+                    x: c.x || 0,
+                    y: (c.y || 0) + yOffset,
+                    width: c.width || 0,
+                    height: c.height || 0,
+                  });
+                }
+              }
+              const sourcePage = schema.pages.find(p => p.id === data.pageId) || schema.pages[0];
+              const bodyOffset = LayoutEngine.calculateZoneOffset('body', schema, sourcePage.id);
+              for (const c of sourcePage.body.components) {
                 if (c.id === data.id) continue;
                 nodes.push({
                   id: c.id,
-                  zone: zKey,
+                  zone: 'body',
                   x: c.x || 0,
-                  y: (c.y || 0) + yOffset,
+                  y: (c.y || 0) + bodyOffset,
                   width: c.width || 0,
                   height: c.height || 0,
                 });
               }
-            }
-            const sourcePage = schema.pages.find(p => p.id === data.pageId) || schema.pages[0];
-            const bodyOffset = LayoutEngine.calculateZoneOffset('body', schema, sourcePage.id);
-            for (const c of sourcePage.body.components) {
-              if (c.id === data.id) continue;
-              nodes.push({
-                id: c.id,
-                zone: 'body',
-                x: c.x || 0,
-                y: (c.y || 0) + bodyOffset,
-                width: c.width || 0,
-                height: c.height || 0,
-              });
-            }
-            layoutEngine.loadNodes(nodes);
+              layoutEngine.loadNodes(nodes);
+            });
           });
 
           dragRef.current = {
@@ -161,8 +163,10 @@ export function DragMonitor() {
             startY: startPos.rawY,
             currentX: startPos.rawX,
             currentY: startPos.rawY,
+            lastSnappedX: startPos.x,
+            lastSnappedY: startPos.y,
             activeGuides: { vertical: [], horizontal: [] },
-            activePageId: data.pageId || null,
+            activePageId: data.pageId || (offsets[0]?.id) || null,
           });
         }
       },
@@ -206,6 +210,17 @@ export function DragMonitor() {
         // 4. SNAPPING (Async WASM Engine)
         const width = data.width || data.component?.width || 0;
         const height = data.height || data.component?.height || 0;
+
+        // 5. SYNCHRONOUS STORE UPDATE (For reliable drops)
+        // We update the store immediately with raw coordinates so that onDrop 
+        // always has access to the most recent position, even if WASM snapping is slow.
+        if (rawX !== cache.lastSentX || rawY !== cache.lastSentY || pageId !== useDesignerStore.getState().dragState.activePageId) {
+          useDesignerStore.getState().updateLastSnapped(rawX, rawY, pageId || null);
+          cache.lastSentX = rawX;
+          cache.lastSentY = rawY;
+        }
+
+        // 6. SNAPPING (Async WASM Engine)
 
         const updateTransientVisuals = (guidesX: number[], guidesY: number[], x: number, y: number, pInfo: any) => {
           // Calculate absolute offsets for the global overlay
@@ -269,16 +284,8 @@ export function DragMonitor() {
 
           updateTransientVisuals(activeGuidesX, activeGuidesY, snapX, snapY, activePageInfo);
 
-          // 5. OPTIMIZED STORE UPDATE (Only on snap change or page change)
-          if (snapX !== cache.lastSentX || snapY !== cache.lastSentY || pageId !== useDesignerStore.getState().dragState.activePageId) {
-            useDesignerStore.getState().setDragState({
-              lastSnappedX: snapX,
-              lastSnappedY: snapY,
-              activePageId: pageId || null,
-            });
-            cache.lastSentX = snapX;
-            cache.lastSentY = snapY;
-          }
+          // Update store with final snapped position (Still important for visual precision)
+          useDesignerStore.getState().updateLastSnapped(snapX, snapY, pageId || null);
         });
       },
       onDrop: () => {

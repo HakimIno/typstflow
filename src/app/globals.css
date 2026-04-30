@@ -164,9 +164,14 @@
 
   /* Extreme Performance: Only active during drag */
   .is-dragging-components {
-    /* Disable all pointer interactions on everything except the drag overlay */
-    pointer-events: none !important;
     cursor: grabbing !important;
+  }
+
+  .is-dragging-components [data-designer-component] {
+    /* Stop any CSS interactions/animations on components during drag */
+    transition: none !important;
+    animation: none !important;
+    pointer-events: none !important;
   }
 
   .is-dragging-components .contain-page {
