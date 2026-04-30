@@ -34,20 +34,50 @@ export const ReportTree = memo(function ReportTree() {
       </div>
 
       <div className="flex-1 overflow-auto p-1">
-        {zones.map((zoneKey) => (
-          <div key={zoneKey} className="mb-1">
+        {/* Header Zone */}
+        <div className="mb-1">
+          <div className="flex items-center gap-1 px-1 py-1 text-[var(--text-secondary)] font-bold text-[10px] uppercase bg-[var(--bg-widget)] rounded-sm">
+            <ChevronDown className="w-3 h-3" />
+            Header (Master)
+          </div>
+          <div className="ml-2 mt-1 border-l border-[var(--border-default)] pl-1 space-y-0.5">
+            {schema.zones.header.components.length === 0 ? (
+              <div className="text-[10px] text-[var(--text-muted)] italic px-4 py-1">
+                No components
+              </div>
+            ) : (
+              schema.zones.header.components.map((comp) => (
+                <TreeItem
+                  key={comp.id}
+                  component={comp}
+                  isSelected={selectedComponentIds.includes(comp.id)}
+                  onClick={(e: React.MouseEvent) => {
+                    if (e.shiftKey) {
+                      toggleComponentSelection(comp.id);
+                    } else {
+                      selectComponent(comp.id);
+                    }
+                  }}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Pages */}
+        {schema.pages.map((page, pIdx) => (
+          <div key={page.id} className="mb-1">
             <div className="flex items-center gap-1 px-1 py-1 text-[var(--text-secondary)] font-bold text-[10px] uppercase bg-[var(--bg-widget)] rounded-sm">
               <ChevronDown className="w-3 h-3" />
-              {zoneKey}
+              {page.name || `Page ${pIdx + 1}`}
             </div>
-
             <div className="ml-2 mt-1 border-l border-[var(--border-default)] pl-1 space-y-0.5">
-              {schema.zones[zoneKey].components.length === 0 ? (
+              {page.body.components.length === 0 ? (
                 <div className="text-[10px] text-[var(--text-muted)] italic px-4 py-1">
-                  No components
+                  Empty page body
                 </div>
               ) : (
-                schema.zones[zoneKey].components.map((comp) => (
+                page.body.components.map((comp) => (
                   <TreeItem
                     key={comp.id}
                     component={comp}
@@ -65,6 +95,36 @@ export const ReportTree = memo(function ReportTree() {
             </div>
           </div>
         ))}
+
+        {/* Footer Zone */}
+        <div className="mb-1">
+          <div className="flex items-center gap-1 px-1 py-1 text-[var(--text-secondary)] font-bold text-[10px] uppercase bg-[var(--bg-widget)] rounded-sm">
+            <ChevronDown className="w-3 h-3" />
+            Footer (Master)
+          </div>
+          <div className="ml-2 mt-1 border-l border-[var(--border-default)] pl-1 space-y-0.5">
+            {schema.zones.footer.components.length === 0 ? (
+              <div className="text-[10px] text-[var(--text-muted)] italic px-4 py-1">
+                No components
+              </div>
+            ) : (
+              schema.zones.footer.components.map((comp) => (
+                <TreeItem
+                  key={comp.id}
+                  component={comp}
+                  isSelected={selectedComponentIds.includes(comp.id)}
+                  onClick={(e: React.MouseEvent) => {
+                    if (e.shiftKey) {
+                      toggleComponentSelection(comp.id);
+                    } else {
+                      selectComponent(comp.id);
+                    }
+                  }}
+                />
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

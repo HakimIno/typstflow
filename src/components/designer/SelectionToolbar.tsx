@@ -20,7 +20,11 @@ import {
 } from 'lucide-react';
 import { memo, useMemo } from 'react';
 
-export const SelectionToolbar = memo(function SelectionToolbar() {
+export const SelectionToolbar = memo(function SelectionToolbar({
+  pageId,
+}: {
+  pageId?: string;
+}) {
   const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
   const schema = useDesignerStore((state) => state.schema);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
@@ -35,17 +39,30 @@ export const SelectionToolbar = memo(function SelectionToolbar() {
     if (selectedComponentIds.length <= 1) return [];
 
     const allComps: any[] = [];
-    for (const [_key, zone] of Object.entries(schema.zones) as [any, any][]) {
+    // Check Global Zones
+    for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
+      const zone = schema.zones[key];
       for (const c of zone.components) {
         if (selectedComponentIds.includes(c.id)) {
-          // Calculate absolute Y
-          const zoneOffset = LayoutEngine.calculateZoneOffset(_key, schema);
-          allComps.push({ ...c, absY: (c.y || 0) + zoneOffset });
+          const zoneOffset = LayoutEngine.calculateZoneOffset(key, schema, pageId);
+          allComps.push({ ...c, absY: (c.y || 0) + zoneOffset, zoneKey: key });
         }
       }
     }
+
+    // Check Page Body
+    const page = schema.pages.find((p) => p.id === pageId);
+    if (page) {
+      for (const c of page.body.components) {
+        if (selectedComponentIds.includes(c.id)) {
+          const zoneOffset = LayoutEngine.calculateZoneOffset('body', schema, pageId);
+          allComps.push({ ...c, absY: (c.y || 0) + zoneOffset, zoneKey: 'body' });
+        }
+      }
+    }
+
     return allComps;
-  }, [selectedComponentIds, schema]);
+  }, [selectedComponentIds, schema, pageId]);
 
   if (selectedComponents.length <= 1) return null;
 

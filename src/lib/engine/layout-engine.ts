@@ -216,10 +216,14 @@ export const LayoutEngine = {
     clientX: number,
     clientY: number,
     dragOffsetX = 0,
-    dragOffsetY = 0
+    dragOffsetY = 0,
+    pageId?: string
   ): PositionResult {
-    // 1. Find the paper container via stable data attribute
-    const container = document.querySelector('[data-paper-container]') as HTMLElement;
+    // 1. Find the specific paper container or default to the first one
+    const selector = pageId
+      ? `[data-paper-container][data-page-id="${pageId}"]`
+      : '[data-paper-container]';
+    const container = document.querySelector(selector) as HTMLElement;
     if (!container) return { x: 0, y: 0, rawX: 0, rawY: 0 };
 
     // 2. Find the scrollable parent
@@ -244,7 +248,7 @@ export const LayoutEngine = {
   /**
    * Calculates the cumulative Y offset (mm) from the top of the page to the start of a specific zone.
    */
-  calculateZoneOffset(zoneKey: string, schema: any): number {
+  calculateZoneOffset(zoneKey: string, schema: any, pageId?: string): number {
     let offset = 0;
 
     // Order: Header -> Body -> Footer
@@ -253,8 +257,12 @@ export const LayoutEngine = {
     offset += parseTypstUnit(schema.zones.header.minHeight);
     if (zoneKey === 'body') return offset;
 
-    offset += parseTypstUnit(schema.zones.body.minHeight);
-    if (zoneKey === 'footer') return offset;
+    // If it's the footer, we need the height of the specific page's body
+    if (zoneKey === 'footer') {
+      const page = pageId ? schema.pages.find((p: any) => p.id === pageId) : schema.pages[0];
+      const bodyHeight = page ? parseTypstUnit(page.body.minHeight) : 0;
+      return offset + bodyHeight;
+    }
 
     return offset;
   },

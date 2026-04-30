@@ -10,6 +10,7 @@ interface DraggableOptions {
   id: string;
   zoneKey: string;
   ref: RefObject<HTMLDivElement | null>;
+  pageId?: string;
   disabled?: boolean;
   onDragStart?: () => void;
   onDragEnd?: () => void;
@@ -24,6 +25,7 @@ export function useDraggable({
   id,
   zoneKey,
   ref,
+  pageId,
   disabled,
   onDragStart,
   onDragEnd,
@@ -47,24 +49,37 @@ export function useDraggable({
         const dragGroup = isPartOfSelection ? selectedIds : [id];
 
         // Calculate relative offsets for everyone in the group
-        const zones = state.schema.zones;
+        const schema = state.schema;
         const groupInfo = dragGroup
           .map((gid) => {
-            // Find component and its zone
-            for (const [zKey, zone] of Object.entries(zones)) {
-              const found = zone.components.find((c) => c.id === gid);
+            // 1. Check Global Zones
+            for (const zKey of ['header', 'footer'] as const) {
+              const found = schema.zones[zKey].components.find((c) => c.id === gid);
               if (found) {
                 return {
                   id: gid,
                   x: found.x || 0,
                   y: found.y || 0,
                   zoneKey: zKey as string,
-                  // Calculate absolute Y for easier relative math across zones
+                  pageId: undefined,
                   absY:
                     (found.y || 0) +
-                    LayoutEngine.pxToMm(
-                      LayoutEngine.calculateZoneOffset(zKey as any, state.schema)
-                    ),
+                    LayoutEngine.calculateZoneOffset(zKey as any, schema, pageId),
+                };
+              }
+            }
+
+            // 2. Check Pages
+            for (const page of schema.pages) {
+              const found = page.body.components.find((c) => c.id === gid);
+              if (found) {
+                return {
+                  id: gid,
+                  x: found.x || 0,
+                  y: found.y || 0,
+                  zoneKey: 'body',
+                  pageId: page.id,
+                  absY: (found.y || 0) + LayoutEngine.calculateZoneOffset('body', schema, page.id),
                 };
               }
             }
@@ -76,6 +91,7 @@ export function useDraggable({
         const groupWithOffsets = groupInfo.map((c) => ({
           id: c.id,
           sourceZoneKey: c.zoneKey,
+          sourcePageId: c.pageId,
           offsetX: c.x - (primaryComp?.x || 0),
           offsetY: c.absY - (primaryComp?.absY || 0),
         }));
@@ -84,6 +100,7 @@ export function useDraggable({
           type: 'canvas-item',
           id,
           zoneKey,
+          pageId,
           width: LayoutEngine.pxToMm(el.offsetWidth),
           height: LayoutEngine.pxToMm(el.offsetHeight),
           dragOffsetX: input.clientX - rect.left,
@@ -128,7 +145,7 @@ export function useDraggable({
         });
       },
     });
-  }, [id, zoneKey, ref, disabled, onDragStart, onDragEnd]);
+  }, [id, zoneKey, pageId, ref, disabled, onDragStart, onDragEnd]);
 
   return { isDragging };
 }

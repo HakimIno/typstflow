@@ -137,11 +137,20 @@ function injectImagesIntoSchema(schema: any): any {
 
   bridge.clear_images();
 
-  const zoneNames = ['header', 'body', 'footer'];
+  const zoneNames = ['header', 'footer'];
   for (const zoneName of zoneNames) {
     const zone = s.zones?.[zoneName];
     if (zone?.components) {
       walkComponents(zone.components);
+    }
+  }
+
+  // Iterate over all pages for body components
+  if (s.pages && Array.isArray(s.pages)) {
+    for (const page of s.pages) {
+      if (page.body?.components) {
+        walkComponents(page.body.components);
+      }
     }
   }
 

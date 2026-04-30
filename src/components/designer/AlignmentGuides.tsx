@@ -1,14 +1,21 @@
 'use client';
 
+import { useShallow } from 'zustand/react/shallow';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
 
-export function AlignmentGuides() {
-  const dragState = useDesignerStore((state) => state.dragState);
+export function AlignmentGuides({ pageId }: { pageId?: string }) {
+  const { isDragging, activeGuides, activePageId } = useDesignerStore(
+    useShallow((state) => ({
+      isDragging: state.dragState.isDragging,
+      activeGuides: state.dragState.activeGuides,
+      activePageId: state.dragState.activePageId,
+    }))
+  );
 
-  if (!dragState.isDragging) return null;
+  if (!isDragging || activePageId !== pageId) return null;
 
-  const { vertical, horizontal } = dragState.activeGuides;
+  const { vertical, horizontal } = activeGuides;
 
   return (
     <div className="absolute inset-0 pointer-events-none z-50">

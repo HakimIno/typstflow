@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { indexedDBStorage } from '@/lib/async-storage';
 import { COMPLEX_SAMPLE_DATA, COMPLEX_TABLE_TEMPLATE } from '../lib/templates/complex-table';
 import { INVOICE_SAMPLE_DATA, INVOICE_TEMPLATE } from '../lib/templates/invoice';
 import {
@@ -18,6 +19,7 @@ interface DesignerState {
   viewMode: 'design' | 'preview' | 'split';
   zoom: number;
   activeTab: 'palette' | 'outline' | 'data';
+  activePageId: string | null;
   isSidebarOpen: boolean;
   isRightSidebarOpen: boolean;
   theme: 'dark' | 'light';
@@ -67,10 +69,11 @@ interface DesignerState {
       vertical: number[]; // x positions in mm
       horizontal: number[]; // y positions in mm
     };
+    activePageId: string | null;
   };
 
   // Actions
-  addComponent: (zoneKey: ZoneKey, component: ComponentNode) => void;
+  addComponent: (zoneKey: ZoneKey, component: ComponentNode, pageId?: string) => void;
   updateComponent: (id: string, updates: Partial<ComponentNode>, skipHistory?: boolean) => void;
   removeComponent: (id: string) => void;
   removeComponents: (ids: string[]) => void;
@@ -81,6 +84,8 @@ interface DesignerState {
     newIndex: number,
     x?: number,
     y?: number,
+    fromPageId?: string,
+    toPageId?: string,
     skipHistory?: boolean
   ) => void;
   selectComponent: (id: string | null, multi?: boolean) => void;
@@ -88,13 +93,15 @@ interface DesignerState {
   clearSelection: () => void;
   selectComponentsInRange: (
     rect: { x: number; y: number; width: number; height: number },
-    zoneKey: ZoneKey
+    zoneKey: ZoneKey,
+    pageId?: string
   ) => void;
   setSelectedCell: (cell: DesignerState['selectedCell']) => void;
   setSelectedCells: (cells: DesignerState['selectedCells']) => void;
   updateZone: (
     zoneKey: ZoneKey,
     updates: Partial<LayoutSchema['zones']['header']>,
+    pageId?: string,
     skipHistory?: boolean
   ) => void;
   updateSchema: (updates: Partial<LayoutSchema>) => void;
@@ -103,6 +110,7 @@ interface DesignerState {
   setZoom: (zoom: number) => void;
   setViewMode: (mode: 'design' | 'preview' | 'split') => void;
   setActiveTab: (tab: 'palette' | 'outline' | 'data') => void;
+  setActivePage: (pageId: string | null) => void;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
   toggleRightSidebar: () => void;
@@ -112,6 +120,11 @@ interface DesignerState {
   loadTemplate: (name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks') => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setPrimaryColor: (color: string) => void;
+
+  // Page Actions
+  addPage: () => void;
+  removePage: (id: string) => void;
+  reorderPage: (id: string, newIndex: number) => void;
 
   // Layer Actions
   toggleComponentVisibility: (id: string) => void;
@@ -150,9 +163,15 @@ const BLANK_SCHEMA: LayoutSchema = {
   fonts: [{ family: 'Sarabun', role: 'body', size: 10, embedded: true }],
   zones: {
     header: { id: 'header', minHeight: '30mm', components: [] },
-    body: { id: 'body', minHeight: '237mm', components: [] },
     footer: { id: 'footer', minHeight: '30mm', components: [] },
   },
+  pages: [
+    {
+      id: 'page-1',
+      name: 'Page 1',
+      body: { id: 'body', minHeight: '237mm', components: [] },
+    },
+  ],
   variables: [],
   dataSchema: [],
   metadata: {
@@ -169,6 +188,7 @@ export const useDesignerStore = create<DesignerState>()(
       viewMode: 'design',
       zoom: 1.0,
       activeTab: 'palette',
+      activePageId: 'page-1',
       isSidebarOpen: true,
       isRightSidebarOpen: true,
       theme: 'dark',
@@ -198,6 +218,7 @@ export const useDesignerStore = create<DesignerState>()(
           vertical: [],
           horizontal: [],
         },
+        activePageId: null,
       },
 
       loadTemplate: (name) => {
@@ -243,7 +264,7 @@ export const useDesignerStore = create<DesignerState>()(
         }
       },
 
-      addComponent: (zoneKey, component) =>
+      addComponent: (zoneKey, component, pageId) =>
         set((state) => {
           const id = `${component.type}-${Math.random().toString(36).substring(2, 9)}`;
           const newComponent = {
@@ -254,48 +275,70 @@ export const useDesignerStore = create<DesignerState>()(
             width: component.width ?? 100,
             height: component.height ?? 20,
           };
-          const newSchema = {
-            ...state.schema,
-            zones: {
+
+          const newSchema = { ...state.schema };
+
+          if (zoneKey === 'body') {
+            const targetPageId = pageId || state.activePageId || state.schema.pages[0]?.id;
+            newSchema.pages = state.schema.pages.map((p) =>
+              p.id === targetPageId
+                ? {
+                    ...p,
+                    body: {
+                      ...p.body,
+                      components: [...p.body.components, newComponent],
+                    },
+                  }
+                : p
+            );
+          } else {
+            newSchema.zones = {
               ...state.schema.zones,
               [zoneKey]: {
                 ...state.schema.zones[zoneKey],
                 components: [...state.schema.zones[zoneKey].components, newComponent],
               },
-            },
-          };
+            };
+          }
+
           return pushHistory(state, newSchema);
         }),
 
       updateComponent: (id, updates, skipHistory) =>
         set((state) => {
-          const zones = state.schema.zones;
-          let foundKey: ZoneKey | null = null;
-          let newComponents: ComponentNode[] | null = null;
+          const newSchema = { ...state.schema };
+          let changed = false;
 
-          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-            const components = zones[key].components;
-            const index = components.findIndex((c) => c.id === id);
+          // Check Global Zones
+          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
+            const index = newSchema.zones[key].components.findIndex((c) => c.id === id);
             if (index !== -1) {
-              foundKey = key;
-              newComponents = [...components];
+              const newComponents = [...newSchema.zones[key].components];
               newComponents[index] = { ...newComponents[index], ...updates } as ComponentNode;
+              newSchema.zones = {
+                ...newSchema.zones,
+                [key]: { ...newSchema.zones[key], components: newComponents },
+              };
+              changed = true;
               break;
             }
           }
 
-          if (!foundKey || !newComponents) return state;
+          // Check Page Bodies
+          if (!changed) {
+            newSchema.pages = newSchema.pages.map((page) => {
+              const index = page.body.components.findIndex((c) => c.id === id);
+              if (index !== -1) {
+                const newComponents = [...page.body.components];
+                newComponents[index] = { ...newComponents[index], ...updates } as ComponentNode;
+                changed = true;
+                return { ...page, body: { ...page.body, components: newComponents } };
+              }
+              return page;
+            });
+          }
 
-          const newSchema = {
-            ...state.schema,
-            zones: {
-              ...zones,
-              [foundKey]: {
-                ...zones[foundKey],
-                components: newComponents,
-              },
-            },
-          };
+          if (!changed) return state;
 
           if (skipHistory) return { schema: newSchema };
           return pushHistory(state, newSchema);
@@ -303,106 +346,140 @@ export const useDesignerStore = create<DesignerState>()(
 
       removeComponent: (id) =>
         set((state) => {
-          const zones = { ...state.schema.zones };
+          const newSchema = { ...state.schema };
           let changed = false;
 
-          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-            const originalComponents = zones[key].components;
-            const newComponents = originalComponents.filter((c) => c.id !== id);
-
-            if (newComponents.length !== originalComponents.length) {
-              zones[key] = {
-                ...zones[key],
-                components: newComponents,
+          // Global Zones
+          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
+            const original = newSchema.zones[key].components;
+            const filtered = original.filter((c) => c.id !== id);
+            if (filtered.length !== original.length) {
+              newSchema.zones = {
+                ...newSchema.zones,
+                [key]: { ...newSchema.zones[key], components: filtered },
               };
               changed = true;
             }
           }
 
+          // Pages
+          newSchema.pages = newSchema.pages.map((page) => {
+            const original = page.body.components;
+            const filtered = original.filter((c) => c.id !== id);
+            if (filtered.length !== original.length) {
+              changed = true;
+              return { ...page, body: { ...page.body, components: filtered } };
+            }
+            return page;
+          });
+
           if (!changed) return state;
 
-          const newSchema = { ...state.schema, zones };
           return { ...pushHistory(state, newSchema), selectedComponentIds: [] };
         }),
 
       removeComponents: (ids) =>
         set((state) => {
-          const zones = { ...state.schema.zones };
+          const newSchema = { ...state.schema };
           let changed = false;
 
-          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-            const originalComponents = zones[key].components;
-            const newComponents = originalComponents.filter((c) => !ids.includes(c.id));
-
-            if (newComponents.length !== originalComponents.length) {
-              zones[key] = {
-                ...zones[key],
-                components: newComponents,
+          // Global Zones
+          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
+            const original = newSchema.zones[key].components;
+            const filtered = original.filter((c) => !ids.includes(c.id));
+            if (filtered.length !== original.length) {
+              newSchema.zones = {
+                ...newSchema.zones,
+                [key]: { ...newSchema.zones[key], components: filtered },
               };
               changed = true;
             }
           }
 
+          // Pages
+          newSchema.pages = newSchema.pages.map((page) => {
+            const original = page.body.components;
+            const filtered = original.filter((c) => !ids.includes(c.id));
+            if (filtered.length !== original.length) {
+              changed = true;
+              return { ...page, body: { ...page.body, components: filtered } };
+            }
+            return page;
+          });
+
           if (!changed) return state;
 
-          const newSchema = { ...state.schema, zones };
           return { ...pushHistory(state, newSchema), selectedComponentIds: [] };
         }),
 
-      moveComponent: (id, fromZone, toZone, newIndex, x, y, skipHistory) =>
+      moveComponent: (
+        id,
+        fromZone,
+        toZone,
+        newIndex,
+        x,
+        y,
+        fromPageId,
+        toPageId,
+        skipHistory
+      ) =>
         set((state) => {
-          const zones = state.schema.zones;
-          const component = zones[fromZone].components.find((c) => c.id === id);
+          let component: ComponentNode | undefined;
+
+          // 1. Find and Extract Component
+          const newSchema = { ...state.schema };
+
+          if (fromZone === 'body') {
+            const page = newSchema.pages.find((p) => p.id === fromPageId);
+            if (page) {
+              component = page.body.components.find((c) => c.id === id);
+              if (component) {
+                page.body.components = page.body.components.filter((c) => c.id !== id);
+              }
+            }
+          } else {
+            component = newSchema.zones[fromZone].components.find((c) => c.id === id);
+            if (component) {
+              newSchema.zones[fromZone].components = newSchema.zones[fromZone].components.filter(
+                (c) => c.id !== id
+              );
+            }
+          }
+
           if (!component) return state;
 
-          // Create new component with updated position
+          // 2. Update Component Position
           const updatedComponent = {
             ...component,
             ...(x !== undefined ? { x } : {}),
             ...(y !== undefined ? { y } : {}),
           };
 
-          // Prepare new zones object
-          const newZones = { ...zones };
-
-          if (fromZone === toZone) {
-            // Move within same zone
-            const originalComponents = zones[fromZone].components;
-            const currentIndex = originalComponents.findIndex((c) => c.id === id);
-
-            // If newIndex is not provided or same as current, and position changed, just update position
-            if (newIndex === currentIndex || newIndex === undefined) {
-              const components = [...originalComponents];
-              components[currentIndex] = updatedComponent;
-              newZones[fromZone] = { ...zones[fromZone], components };
-            } else {
-              const components = originalComponents.filter((c) => c.id !== id);
-              // Handle out of bounds or "top-most" request
-              const targetIndex =
-                newIndex === -1
-                  ? components.length
-                  : Math.max(0, Math.min(newIndex, components.length));
-              components.splice(targetIndex, 0, updatedComponent);
-              newZones[fromZone] = { ...zones[fromZone], components };
-            }
+          // 3. Insert into Target Zone
+          if (toZone === 'body') {
+            const targetPageId = toPageId || state.activePageId || newSchema.pages[0]?.id;
+            newSchema.pages = newSchema.pages.map((p) => {
+              if (p.id === targetPageId) {
+                const comps = [...p.body.components];
+                const insertAt =
+                  newIndex === -1 || newIndex === undefined
+                    ? comps.length
+                    : Math.max(0, Math.min(newIndex, comps.length));
+                comps.splice(insertAt, 0, updatedComponent);
+                return { ...p, body: { ...p.body, components: comps } };
+              }
+              return p;
+            });
           } else {
-            // Move between zones
-            const fromComponents = [...zones[fromZone].components].filter((c) => c.id !== id);
-            const toComponents = [...zones[toZone].components];
-
-            // Default to top if newIndex is -1 or undefined
-            const targetIndex =
+            const comps = [...newSchema.zones[toZone].components];
+            const insertAt =
               newIndex === -1 || newIndex === undefined
-                ? toComponents.length
-                : Math.max(0, Math.min(newIndex, toComponents.length));
-
-            toComponents.splice(targetIndex, 0, updatedComponent);
-
-            newZones[fromZone] = { ...zones[fromZone], components: fromComponents };
-            newZones[toZone] = { ...zones[toZone], components: toComponents };
+                ? comps.length
+                : Math.max(0, Math.min(newIndex, comps.length));
+            comps.splice(insertAt, 0, updatedComponent);
+            newSchema.zones[toZone].components = comps;
           }
 
-          const newSchema = { ...state.schema, zones: newZones };
           if (skipHistory) return { schema: newSchema };
           return pushHistory(state, newSchema);
         }),
@@ -440,60 +517,34 @@ export const useDesignerStore = create<DesignerState>()(
           selectedZone: null,
         }),
 
-      selectComponentsInRange: (rect, zoneKey) =>
+      selectComponentsInRange: (rect, zoneKey, pageId) =>
         set((state) => {
-          const zone = state.schema.zones[zoneKey];
-          // Use WASM Layout Engine if initialized
-          let foundIds: string[] = [];
-
-          try {
-            // Because this is synchronous and we don't have async in Zustand reducers easily,
-            // we assume LayoutEngine is loaded with nodes. If not, fallback to JS filter.
-            const { layoutEngine } = require('@/lib/wasm-layout-engine');
-
-            // Temporary sync to ensure accuracy for marquee
-            const nodes: any[] = [];
-            for (const z of Object.values(state.schema.zones) as any[]) {
-              for (const c of z.components) {
-                nodes.push({
-                  id: c.id,
-                  zone: z.id,
-                  x: c.x || 0,
-                  y: c.y || 0,
-                  width: c.width || 0,
-                  height: c.height || 0,
-                });
-              }
-            }
-            layoutEngine.loadNodes(nodes);
-
-            const result = layoutEngine.queryRect(rect.x, rect.y, rect.width, rect.height, zoneKey);
-            if (result?.ids) {
-              foundIds = result.ids.filter((id: string) => !state.lockedComponentIds.includes(id));
-            }
-          } catch (_e) {
-            // Fallback
-            foundIds = zone.components
-              .filter((comp) => {
-                if (state.lockedComponentIds.includes(comp.id)) return false;
-
-                const compX = comp.x || 0;
-                const compY = comp.y || 0;
-                const compW = comp.width || 0;
-                const compH = comp.height || 0;
-
-                return (
-                  compX < rect.x + rect.width &&
-                  compX + compW > rect.x &&
-                  compY < rect.y + rect.height &&
-                  compY + compH > rect.y
-                );
-              })
-              .map((comp) => comp.id);
+          let components: ComponentNode[] = [];
+          if (zoneKey === 'body') {
+            const page = state.schema.pages.find((p) => p.id === pageId);
+            components = page?.body.components || [];
+          } else {
+            components = state.schema.zones[zoneKey].components;
           }
 
-          // For range selection, we usually want to ADD to existing selection if we are looping through zones
-          // but we'll handle the clearing at the start of the marquee drag.
+          const foundIds = components
+            .filter((comp) => {
+              if (state.lockedComponentIds.includes(comp.id)) return false;
+
+              const compX = comp.x || 0;
+              const compY = comp.y || 0;
+              const compW = comp.width || 0;
+              const compH = comp.height || 0;
+
+              return (
+                compX < rect.x + rect.width &&
+                compX + compW > rect.x &&
+                compY < rect.y + rect.height &&
+                compY + compH > rect.y
+              );
+            })
+            .map((comp) => comp.id);
+
           const newIds = [...new Set([...state.selectedComponentIds, ...foundIds])];
 
           return {
@@ -525,18 +576,20 @@ export const useDesignerStore = create<DesignerState>()(
           return pushHistory(state, newSchema);
         }),
 
-      updateZone: (zoneKey, updates, skipHistory) =>
+      updateZone: (zoneKey, updates, pageId, skipHistory) =>
         set((state) => {
-          const newSchema = {
-            ...state.schema,
-            zones: {
+          const newSchema = { ...state.schema };
+          if (zoneKey === 'body') {
+            const targetPageId = pageId || state.activePageId || state.schema.pages[0]?.id;
+            newSchema.pages = state.schema.pages.map((p) =>
+              p.id === targetPageId ? { ...p, body: { ...p.body, ...updates } } : p
+            );
+          } else {
+            newSchema.zones = {
               ...state.schema.zones,
-              [zoneKey]: {
-                ...state.schema.zones[zoneKey],
-                ...updates,
-              },
-            },
-          };
+              [zoneKey]: { ...state.schema.zones[zoneKey], ...updates },
+            };
+          }
           if (skipHistory) return { schema: newSchema };
           return pushHistory(state, newSchema);
         }),
@@ -569,6 +622,7 @@ export const useDesignerStore = create<DesignerState>()(
           zoom: mode === 'split' ? 0.65 : 1.0,
         }),
       setActiveTab: (tab) => set({ activeTab: tab, isSidebarOpen: true }),
+      setActivePage: (pageId) => set({ activePageId: pageId }),
       setSidebarOpen: (open) => set({ isSidebarOpen: open }),
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
       setRightSidebarOpen: (open) => set({ isRightSidebarOpen: open }),
@@ -600,115 +654,232 @@ export const useDesignerStore = create<DesignerState>()(
 
       renameComponent: (id, name) =>
         set((state) => {
-          const zones = state.schema.zones;
-          let foundKey: ZoneKey | null = null;
-          let newComponents: ComponentNode[] | null = null;
+          const newSchema = { ...state.schema };
+          let changed = false;
 
-          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-            const components = zones[key].components;
+          // Global
+          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
+            const components = newSchema.zones[key].components;
             const index = components.findIndex((c) => c.id === id);
             if (index !== -1) {
-              foundKey = key;
-              newComponents = [...components];
+              const newComponents = [...components];
               newComponents[index] = { ...newComponents[index], name } as ComponentNode;
+              newSchema.zones = {
+                ...newSchema.zones,
+                [key]: { ...newSchema.zones[key], components: newComponents },
+              };
+              changed = true;
               break;
             }
           }
 
-          if (!foundKey || !newComponents) return state;
+          // Pages
+          if (!changed) {
+            newSchema.pages = newSchema.pages.map((page) => {
+              const index = page.body.components.findIndex((c) => c.id === id);
+              if (index !== -1) {
+                const newComponents = [...page.body.components];
+                newComponents[index] = { ...newComponents[index], name } as ComponentNode;
+                changed = true;
+                return { ...page, body: { ...page.body, components: newComponents } };
+              }
+              return page;
+            });
+          }
 
+          if (!changed) return state;
+          return pushHistory(state, newSchema);
+        }),
+
+      addPage: () =>
+        set((state) => {
+          const newPageId = `page-${state.schema.pages.length + 1}`;
+          const newPage = {
+            id: newPageId,
+            name: `Page ${state.schema.pages.length + 1}`,
+            body: { id: 'body', minHeight: '237mm', components: [] },
+          };
           const newSchema = {
             ...state.schema,
-            zones: {
-              ...zones,
-              [foundKey]: {
-                ...zones[foundKey],
-                components: newComponents,
-              },
-            },
+            pages: [...state.schema.pages, newPage],
           };
+          return { ...pushHistory(state, newSchema), activePageId: newPageId };
+        }),
 
-          return pushHistory(state, newSchema);
+      removePage: (id) =>
+        set((state) => {
+          if (state.schema.pages.length <= 1) return state;
+          const newPages = state.schema.pages.filter((p) => p.id !== id);
+          const newSchema = { ...state.schema, pages: newPages };
+          const newActiveId =
+            state.activePageId === id ? newPages[newPages.length - 1].id : state.activePageId;
+          return { ...pushHistory(state, newSchema), activePageId: newActiveId };
+        }),
+
+      reorderPage: (id, newIndex) =>
+        set((state) => {
+          const pages = [...state.schema.pages];
+          const oldIndex = pages.findIndex((p) => p.id === id);
+          if (oldIndex === -1) return state;
+          const [page] = pages.splice(oldIndex, 1);
+          pages.splice(newIndex, 0, page);
+          return pushHistory(state, { ...state.schema, pages });
         }),
 
       bringToFront: (id) =>
         set((state) => {
-          const zones = state.schema.zones;
-          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-            const index = zones[key].components.findIndex((c) => c.id === id);
+          const newSchema = { ...state.schema };
+          let changed = false;
+
+          // Global
+          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
+            const index = newSchema.zones[key].components.findIndex((c) => c.id === id);
             if (index !== -1) {
-              const components = [...zones[key].components];
+              const components = [...newSchema.zones[key].components];
               const [component] = components.splice(index, 1);
               components.push(component);
-              const newSchema = {
-                ...state.schema,
-                zones: { ...zones, [key]: { ...zones[key], components } },
-              };
-              return pushHistory(state, newSchema);
+              newSchema.zones[key].components = components;
+              changed = true;
+              break;
             }
           }
-          return state;
+
+          // Pages
+          if (!changed) {
+            newSchema.pages = newSchema.pages.map((page) => {
+              const index = page.body.components.findIndex((c) => c.id === id);
+              if (index !== -1) {
+                const components = [...page.body.components];
+                const [component] = components.splice(index, 1);
+                components.push(component);
+                changed = true;
+                return { ...page, body: { ...page.body, components } };
+              }
+              return page;
+            });
+          }
+
+          if (!changed) return state;
+          return pushHistory(state, newSchema);
         }),
 
       sendToBack: (id) =>
         set((state) => {
-          const zones = state.schema.zones;
-          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-            const index = zones[key].components.findIndex((c) => c.id === id);
+          const newSchema = { ...state.schema };
+          let changed = false;
+
+          // Global
+          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
+            const index = newSchema.zones[key].components.findIndex((c) => c.id === id);
             if (index !== -1) {
-              const components = [...zones[key].components];
+              const components = [...newSchema.zones[key].components];
               const [component] = components.splice(index, 1);
               components.unshift(component);
-              const newSchema = {
-                ...state.schema,
-                zones: { ...zones, [key]: { ...zones[key], components } },
-              };
-              return pushHistory(state, newSchema);
+              newSchema.zones[key].components = components;
+              changed = true;
+              break;
             }
           }
-          return state;
+
+          // Pages
+          if (!changed) {
+            newSchema.pages = newSchema.pages.map((page) => {
+              const index = page.body.components.findIndex((c) => c.id === id);
+              if (index !== -1) {
+                const components = [...page.body.components];
+                const [component] = components.splice(index, 1);
+                components.unshift(component);
+                changed = true;
+                return { ...page, body: { ...page.body, components } };
+              }
+              return page;
+            });
+          }
+
+          if (!changed) return state;
+          return pushHistory(state, newSchema);
         }),
 
       moveUp: (id) =>
         set((state) => {
-          const zones = state.schema.zones;
-          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-            const index = zones[key].components.findIndex((c) => c.id === id);
-            if (index !== -1 && index < zones[key].components.length - 1) {
-              const components = [...zones[key].components];
+          const newSchema = { ...state.schema };
+          let changed = false;
+
+          // Global
+          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
+            const index = newSchema.zones[key].components.findIndex((c) => c.id === id);
+            if (index !== -1 && index < newSchema.zones[key].components.length - 1) {
+              const components = [...newSchema.zones[key].components];
               [components[index], components[index + 1]] = [
                 components[index + 1],
                 components[index],
               ];
-              const newSchema = {
-                ...state.schema,
-                zones: { ...zones, [key]: { ...zones[key], components } },
-              };
-              return pushHistory(state, newSchema);
+              newSchema.zones[key].components = components;
+              changed = true;
+              break;
             }
           }
-          return state;
+
+          // Pages
+          if (!changed) {
+            newSchema.pages = newSchema.pages.map((page) => {
+              const index = page.body.components.findIndex((c) => c.id === id);
+              if (index !== -1 && index < page.body.components.length - 1) {
+                const components = [...page.body.components];
+                [components[index], components[index + 1]] = [
+                  components[index + 1],
+                  components[index],
+                ];
+                changed = true;
+                return { ...page, body: { ...page.body, components } };
+              }
+              return page;
+            });
+          }
+
+          if (!changed) return state;
+          return pushHistory(state, newSchema);
         }),
 
       moveDown: (id) =>
         set((state) => {
-          const zones = state.schema.zones;
-          for (const key of ['header', 'body', 'footer'] as ZoneKey[]) {
-            const index = zones[key].components.findIndex((c) => c.id === id);
+          const newSchema = { ...state.schema };
+          let changed = false;
+
+          // Global
+          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
+            const index = newSchema.zones[key].components.findIndex((c) => c.id === id);
             if (index !== -1 && index > 0) {
-              const components = [...zones[key].components];
+              const components = [...newSchema.zones[key].components];
               [components[index], components[index - 1]] = [
                 components[index - 1],
                 components[index],
               ];
-              const newSchema = {
-                ...state.schema,
-                zones: { ...zones, [key]: { ...zones[key], components } },
-              };
-              return pushHistory(state, newSchema);
+              newSchema.zones[key].components = components;
+              changed = true;
+              break;
             }
           }
-          return state;
+
+          // Pages
+          if (!changed) {
+            newSchema.pages = newSchema.pages.map((page) => {
+              const index = page.body.components.findIndex((c) => c.id === id);
+              if (index !== -1 && index > 0) {
+                const components = [...page.body.components];
+                [components[index], components[index - 1]] = [
+                  components[index - 1],
+                  components[index],
+                ];
+                changed = true;
+                return { ...page, body: { ...page.body, components } };
+              }
+              return page;
+            });
+          }
+
+          if (!changed) return state;
+          return pushHistory(state, newSchema);
         }),
     }),
     {
@@ -717,6 +888,37 @@ export const useDesignerStore = create<DesignerState>()(
         theme: state.theme,
         primaryColor: state.primaryColor,
       }),
+    },
+    {
+      name: 'designer-storage',
+      storage: createJSONStorage(() => indexedDBStorage),
+      partialize: (state) => {
+        // Exclude dragState from persistence to avoid performance lag
+        const { dragState, ...rest } = state;
+        return rest;
+      },
+      version: 3,
+      migrate: (persistedState: any, version: number) => {
+        if (version < 2) {
+          const state = persistedState as any;
+          if (state.schema && !state.schema.pages) {
+            // Transform legacy zones.body to pages array
+            const bodyZone = state.schema.zones.body || { id: 'body', minHeight: '237mm', components: [] };
+            state.schema.pages = [
+              {
+                id: 'page-1',
+                name: 'Page 1',
+                body: bodyZone,
+              },
+            ];
+            // Remove legacy body zone
+            delete state.schema.zones.body;
+            state.activePageId = 'page-1';
+          }
+          return state;
+        }
+        return persistedState;
+      },
     }
   )
 );

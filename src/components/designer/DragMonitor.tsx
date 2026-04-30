@@ -5,6 +5,15 @@ import { SnapEngine, type SnapPoint } from '@/lib/engine/snap-engine';
 import { useDesignerStore } from '@/store/designer-store';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { useEffect, useRef } from 'react';
+import type { layoutEngine as LayoutEngineType } from '@/lib/wasm-layout-engine';
+
+let wasmEngineCache: typeof LayoutEngineType | null = null;
+const getLayoutEngine = async () => {
+  if (wasmEngineCache) return wasmEngineCache;
+  const { layoutEngine } = await import('@/lib/wasm-layout-engine');
+  wasmEngineCache = layoutEngine;
+  return wasmEngineCache;
+};
 
 /**
  * Global Drag Monitor
@@ -22,6 +31,8 @@ export function DragMonitor() {
     snapPointsY: SnapPoint[];
     lastSentX: number;
     lastSentY: number;
+    initialClientX: number;
+    initialClientY: number;
   }>({
     containerRect: null,
     zoom: 1,
@@ -29,6 +40,8 @@ export function DragMonitor() {
     snapPointsY: [],
     lastSentX: -1,
     lastSentY: -1,
+    initialClientX: 0,
+    initialClientY: 0,
   });
 
   useEffect(() => {
@@ -62,7 +75,7 @@ export function DragMonitor() {
           pointsY.push({ value: pH / 2, type: 'center', originId: 'page' });
 
           // Instead of looping in JS, we load the Rust WASM Layout Engine
-          import('@/lib/wasm-layout-engine').then(({ layoutEngine }) => {
+          getLayoutEngine().then((layoutEngine) => {
             const nodes: any[] = [];
             for (const zone of Object.values(schema.zones) as any[]) {
               for (const c of zone.components as any[]) {
@@ -87,6 +100,8 @@ export function DragMonitor() {
             snapPointsY: pointsY,
             lastSentX: -1,
             lastSentY: -1,
+            initialClientX: location.initial.input.clientX,
+            initialClientY: location.initial.input.clientY,
           };
 
           const startPos = LayoutEngine.calculateAbsolutePosition(
@@ -106,17 +121,31 @@ export function DragMonitor() {
             currentX: startPos.rawX,
             currentY: startPos.rawY,
             activeGuides: { vertical: [], horizontal: [] },
+            activePageId: data.pageId || null,
           });
         }
       },
       onDrag: ({ location, source }) => {
         const cache = dragRef.current;
-        if (!cache.containerRect) return;
-
         const data = source.data as any;
         const { schema } = useDesignerStore.getState();
 
-        // 1. Optimized Coordinate Calculation (NO reflow)
+        // 1. Dynamic Container Detection (for Multi-page)
+        const targetElement = document.elementFromPoint(
+          location.current.input.clientX,
+          location.current.input.clientY
+        );
+        const activeContainer = targetElement?.closest('[data-paper-container]') as HTMLElement;
+        const pageId = activeContainer?.dataset.pageId;
+
+        if (activeContainer) {
+          cache.containerRect = activeContainer.getBoundingClientRect();
+          cache.zoom = Number.parseFloat(activeContainer.dataset.zoom || '1');
+        }
+
+        if (!cache.containerRect) return;
+
+        // 2. Coordinate Calculation
         const relX =
           (location.current.input.clientX - cache.containerRect.left - (data.dragOffsetX || 0)) /
           cache.zoom;
@@ -136,7 +165,7 @@ export function DragMonitor() {
         let activeGuidesX: number[] = [];
         let activeGuidesY: number[] = [];
 
-        import('@/lib/wasm-layout-engine').then(({ layoutEngine }) => {
+        getLayoutEngine().then((layoutEngine) => {
           const wasmSnap = layoutEngine.findSnaps(data.id || 'new', rawX, rawY, width, height, 5);
           if (wasmSnap) {
             snapX = rawX + wasmSnap.dx;
@@ -157,6 +186,7 @@ export function DragMonitor() {
               data.id || 'new',
               schema,
               false,
+              pageId,
               { x: cache.snapPointsX, y: cache.snapPointsY }
             );
             snapX = snap.snappedX;
@@ -176,6 +206,7 @@ export function DragMonitor() {
                 vertical: activeGuidesX,
                 horizontal: activeGuidesY,
               },
+              activePageId: pageId || null,
             });
             cache.lastSentX = snapX;
             cache.lastSentY = snapY;
@@ -183,9 +214,20 @@ export function DragMonitor() {
 
           // 4. Ultra-fast CSS Update
           const root = document.documentElement;
-          const ds = useDesignerStore.getState().dragState;
-          const dx = LayoutEngine.mmToPx(snapX - ds.startX);
-          const dy = LayoutEngine.mmToPx(snapY - ds.startY);
+          
+          // Calculate delta in design-space (millimeters)
+          const pxDeltaX = location.current.input.clientX - cache.initialClientX;
+          const pxDeltaY = location.current.input.clientY - cache.initialClientY;
+          
+          const mmDeltaX = LayoutEngine.pxToMm(pxDeltaX) / cache.zoom;
+          const mmDeltaY = LayoutEngine.pxToMm(pxDeltaY) / cache.zoom;
+          
+          const snapOffsetX = snapX - rawX;
+          const snapOffsetY = snapY - rawY;
+
+          const dx = LayoutEngine.mmToPx(mmDeltaX + snapOffsetX);
+          const dy = LayoutEngine.mmToPx(mmDeltaY + snapOffsetY);
+          
           root.style.setProperty('--drag-dx', `${dx}px`);
           root.style.setProperty('--drag-dy', `${dy}px`);
         });
@@ -204,6 +246,7 @@ export function DragMonitor() {
           isDragging: false,
           draggedComponentId: null,
           activeGuides: { vertical: [], horizontal: [] },
+          activePageId: null,
         });
       },
     });

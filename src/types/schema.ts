@@ -6,9 +6,9 @@ export interface LayoutSchema {
   fonts: FontConfig[];
   zones: {
     header: Zone;
-    body: Zone;
     footer: Zone;
   };
+  pages: PageDefinition[];
   variables: VariableDefinition[]; // user-defined reusable values
   dataSchema: DataFieldDefinition[]; // expected input data shape
   metadata: {
@@ -16,6 +16,12 @@ export interface LayoutSchema {
     updatedAt: string;
     author: string;
   };
+}
+
+export interface PageDefinition {
+  id: string;
+  name: string;
+  body: Zone;
 }
 
 export interface PageConfig {

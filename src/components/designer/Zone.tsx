@@ -13,11 +13,19 @@ interface ZoneProps {
   zoneKey: 'header' | 'body' | 'footer';
   label: string;
   components: ComponentNode[];
+  pageId?: string;
   minHeight?: string;
   resizeEdge?: 'top' | 'bottom' | 'none';
 }
 
-export function Zone({ zoneKey, label, components, minHeight, resizeEdge = 'bottom' }: ZoneProps) {
+export function Zone({
+  zoneKey,
+  label,
+  components,
+  pageId,
+  minHeight,
+  resizeEdge = 'bottom',
+}: ZoneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -25,9 +33,10 @@ export function Zone({ zoneKey, label, components, minHeight, resizeEdge = 'bott
     zoneKey,
     minHeight || '50',
     components,
-    resizeEdge
+    resizeEdge,
+    pageId
   );
-  const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef);
+  const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef, pageId);
 
   return (
     <div
@@ -70,7 +79,7 @@ export function Zone({ zoneKey, label, components, minHeight, resizeEdge = 'bott
         ) : (
           <div className="absolute inset-0 overflow-visible">
             {components.map((comp) => (
-              <ComponentWrapper key={comp.id} component={comp} zoneKey={zoneKey} />
+              <ComponentWrapper key={comp.id} component={comp} zoneKey={zoneKey} pageId={pageId} />
             ))}
           </div>
         )}

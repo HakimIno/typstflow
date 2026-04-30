@@ -26,6 +26,7 @@ import { TextEditor } from './TextEditor';
 interface Props {
   component: ComponentNode;
   zoneKey: 'header' | 'body' | 'footer';
+  pageId?: string;
 }
 
 const RESIZE_HANDLES = [
@@ -39,7 +40,11 @@ const RESIZE_HANDLES = [
   'bottom-right',
 ];
 
-export const ComponentWrapper = memo(function ComponentWrapper({ component, zoneKey }: Props) {
+export const ComponentWrapper = memo(function ComponentWrapper({
+  component,
+  zoneKey,
+  pageId,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -172,21 +177,25 @@ export const ComponentWrapper = memo(function ComponentWrapper({ component, zone
     id: component.id,
     zoneKey,
     ref,
+    pageId,
     disabled: isEditing,
   });
 
   // STABLE: Prevent recreation of handlers on every render
   const handleDuplicate = useCallback(
     (e: React.MouseEvent) => {
-      e.stopPropagation();
-      addComponent(zoneKey, {
-        ...component,
-        id: Math.random().toString(36).substring(7),
-        x: (component.x || 0) + 10,
-        y: (component.y || 0) + 10,
-      });
+      addComponent(
+        zoneKey,
+        {
+          ...component,
+          id: Math.random().toString(36).substring(7),
+          x: (component.x || 0) + 10,
+          y: (component.y || 0) + 10,
+        },
+        pageId
+      );
     },
-    [addComponent, component, zoneKey]
+    [addComponent, component, zoneKey, pageId]
   );
 
   const x = LayoutEngine.mmToPx(localBounds.x);

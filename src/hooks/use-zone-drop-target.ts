@@ -7,7 +7,8 @@ import { useEffect, useState } from 'react';
 
 export function useZoneDropTarget(
   zoneKey: 'header' | 'body' | 'footer',
-  contentRef: React.RefObject<HTMLDivElement | null>
+  contentRef: React.RefObject<HTMLDivElement | null>,
+  pageId?: string
 ) {
   const [isDraggedOver, setIsDraggedOver] = useState(false);
   const addComponent = useDesignerStore((state) => state.addComponent);
@@ -20,17 +21,17 @@ export function useZoneDropTarget(
 
     return dropTargetForElements({
       element: el,
-      getData: () => ({ zoneKey }),
+      getData: () => ({ zoneKey, pageId }),
       onDragEnter: ({ source }) => {
         setIsDraggedOver(true);
 
         // Real-time Zone Switching for Layers Panel
         const data = source.data as any;
-        if (data.id && data.zoneKey !== zoneKey) {
+        if (data.id && (data.zoneKey !== zoneKey || data.pageId !== pageId)) {
           const state = useDesignerStore.getState();
           const finalX = state.dragState.lastSnappedX;
           const finalY = state.dragState.lastSnappedY;
-          const zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, state.schema);
+          const zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, state.schema, pageId);
 
           if (data.group && data.group.length > 1) {
             for (const item of data.group as any[]) {
@@ -43,6 +44,8 @@ export function useZoneDropTarget(
                 -1,
                 finalX + item.offsetX,
                 localY,
+                data.pageId,
+                pageId,
                 true
               );
             }
@@ -55,12 +58,15 @@ export function useZoneDropTarget(
               -1,
               finalX,
               finalY - zoneOffsetMm,
+              data.pageId,
+              pageId,
               true
             );
             setDragState({ startX: finalX, startY: finalY });
           }
 
           data.zoneKey = zoneKey;
+          data.pageId = pageId;
         }
       },
       onDragLeave: () => {
@@ -72,17 +78,26 @@ export function useZoneDropTarget(
 
         const state = useDesignerStore.getState();
         const data = source.data as any;
+        const selector = pageId
+          ? `[data-paper-container][data-page-id="${pageId}"]`
+          : '[data-paper-container]';
+        const container = document.querySelector(selector) as HTMLElement;
+        const zoom = Number.parseFloat(container?.dataset.zoom || '1');
         const finalX = state.dragState.lastSnappedX;
         const finalY = state.dragState.lastSnappedY;
-        const zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, state.schema);
+        const zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, state.schema, pageId);
 
         if (data.type === 'new-component') {
-          addComponent(zoneKey, {
-            ...data.component,
-            id: Math.random().toString(36).substring(7),
-            x: finalX,
-            y: finalY - zoneOffsetMm,
-          });
+          addComponent(
+            zoneKey,
+            {
+              ...data.component,
+              id: Math.random().toString(36).substring(7),
+              x: finalX,
+              y: finalY - zoneOffsetMm,
+            },
+            pageId
+          );
         } else if (data.id) {
           // Commit to history
           if (data.group && data.group.length > 1) {
@@ -96,6 +111,8 @@ export function useZoneDropTarget(
                 -1,
                 finalX + item.offsetX,
                 localY,
+                data.pageId,
+                pageId,
                 false
               );
             }
@@ -107,13 +124,15 @@ export function useZoneDropTarget(
               -1,
               finalX,
               finalY - zoneOffsetMm,
+              data.pageId,
+              pageId,
               false
             );
           }
         }
       },
     });
-  }, [zoneKey, addComponent, moveComponent, setDragState, contentRef]);
+  }, [zoneKey, pageId, addComponent, moveComponent, setDragState, contentRef]);
 
   return { isDraggedOver };
 }

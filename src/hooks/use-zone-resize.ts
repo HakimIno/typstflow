@@ -10,7 +10,8 @@ export function useZoneResize(
   zoneKey: 'header' | 'body' | 'footer',
   initialMinHeight: string,
   components: ComponentNode[],
-  resizeEdge: 'top' | 'bottom' | 'none' = 'bottom'
+  resizeEdge: 'top' | 'bottom' | 'none' = 'bottom',
+  pageId?: string
 ) {
   const [isResizing, setIsResizing] = useState(false);
   const initialHeightMm = Number.parseFloat(initialMinHeight || '50');
@@ -51,7 +52,8 @@ export function useZoneResize(
     const { height: pageHeightMm } = getPaperDimensions(schema.page.size, schema.page.orientation);
 
     // Find body's minimum required height based on its components
-    const bodyLowestPoint = schema.zones.body.components.reduce((max, comp) => {
+    const targetPage = pageId ? schema.pages.find((p) => p.id === pageId) : schema.pages[0];
+    const bodyLowestPoint = (targetPage?.body.components || []).reduce((max, comp) => {
       const bottom = (comp.y || 0) + (comp.height || 0);
       return Math.max(max, bottom);
     }, 0);
@@ -82,12 +84,12 @@ export function useZoneResize(
 
       setLocalHeight(snappedHeight);
       heightRef.current = snappedHeight;
-      updateZone(zoneKey, { minHeight: `${snappedHeight}mm` }, true);
+      updateZone(zoneKey, { minHeight: `${snappedHeight}mm` }, pageId, true);
     };
 
     const onMouseUp = () => {
       setIsResizing(false);
-      updateZone(zoneKey, { minHeight: `${heightRef.current}mm` }, false);
+      updateZone(zoneKey, { minHeight: `${heightRef.current}mm` }, pageId, false);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };

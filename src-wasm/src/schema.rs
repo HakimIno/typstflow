@@ -10,8 +10,17 @@ pub struct LayoutSchema {
     pub page: PageConfig,
     pub fonts: Vec<FontConfig>,
     pub zones: Zones,
+    pub pages: Vec<PageDefinition>,
     pub variables: Vec<VariableDefinition>,
     pub data_schema: Vec<DataFieldDefinition>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PageDefinition {
+    pub id: String,
+    pub name: Option<String>,
+    pub body: Zone,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,7 +54,6 @@ pub struct FontConfig {
 #[serde(rename_all = "camelCase")]
 pub struct Zones {
     pub header: Zone,
-    pub body: Zone,
     pub footer: Zone,
 }
 

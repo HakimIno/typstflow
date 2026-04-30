@@ -11,6 +11,7 @@ import { DragMonitor } from './DragMonitor';
 import { Ruler } from './Ruler';
 import { SelectionMarquee } from './SelectionMarquee';
 import { SelectionToolbar } from './SelectionToolbar';
+import { Plus, X } from 'lucide-react';
 import { Zone } from './Zone';
 
 export const Canvas = memo(function Canvas() {
@@ -87,7 +88,7 @@ export const Canvas = memo(function Canvas() {
           <div className="w-6 bg-[var(--bg-surface)] border-r border-[var(--border-default)] flex-shrink-0 relative z-30 overflow-hidden">
             <Ruler
               orientation="vertical"
-              length={pageHeightMm}
+              length={pageHeightMm * schema.pages.length + (schema.pages.length - 1) * 12}
               scrollPos={scrollPos.y}
               zoom={zoom}
             />
@@ -97,73 +98,110 @@ export const Canvas = memo(function Canvas() {
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-auto p-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform"
+            className="flex-1 overflow-auto p-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform bg-[var(--bg-canvas-dots)]"
           >
-            <div className="min-w-max min-h-max pl-12 pr-12 pb-12 pt-12">
-              <div
-                ref={paperRef}
-                data-paper-container
-                data-zoom={zoom}
-                className={clsx(
-                  'bg-white pro-grid border border-slate-300 relative shadow-2xl origin-top-left overflow-visible rounded-[4px]',
-                  !isDraggingGlobal && 'transition-all duration-300'
-                )}
-                style={{
-                  width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
-                  height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
-                  transform: `scale(${zoom})`,
-                }}
-              >
-                {/* Page End Indicator (Red Dashed Line) */}
+            <div className="min-w-max min-h-max pl-16 pr-16 pb-24 pt-12 flex flex-col items-start gap-8">
+              {(schema.pages || []).map((page, pIdx) => (
                 <div
-                  className="absolute left-0 right-0 border-b-2 border-red-500/40 border-dashed z-[35] pointer-events-none"
-                  style={{ top: `${LayoutEngine.mmToPx(pageHeightMm)}px` }}
+                  key={`wrapper-${page.id}`}
+                  style={{
+                    width: `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
+                    height: `${LayoutEngine.mmToPx(pageHeightMm) * zoom}px`,
+                  }}
+                  className="relative group"
                 >
-                  <div className="absolute right-2 top-0 -translate-y-full bg-red-500 text-white text-[7px] px-1.5 py-0.5 font-black uppercase tracking-widest rounded-t-sm shadow-sm opacity-80 backdrop-blur-sm">
-                    Physical Page Limit ({pageHeightMm}mm)
+                  <div
+                    ref={pIdx === 0 ? paperRef : null}
+                    data-paper-container
+                    data-page-id={page.id}
+                    data-zoom={zoom}
+                    className={clsx(
+                      'bg-white pro-grid border border-slate-300 absolute top-0 left-0 shadow-2xl origin-top-left flex-shrink-0 rounded-[4px]',
+                      !isDraggingGlobal && 'transition-all duration-300'
+                    )}
+                    style={{
+                      width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
+                      height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
+                      transform: `scale(${zoom})`,
+                    }}
+                  >
+                    {/* Page Label */}
+                    <div className="absolute -left-16 top-0 text-[10px] font-bold text-slate-400 opacity-60 uppercase tracking-widest pointer-events-none">
+                      Page {pIdx + 1}
+                    </div>
+
+                    {/* Margin Guides (Dashed) */}
+                    <div
+                      className="absolute border border-[var(--accent)] border-dashed pointer-events-none z-10 opacity-30"
+                      style={{
+                        top: `${LayoutEngine.mmToPx(marginTop)}px`,
+                        bottom: `${LayoutEngine.mmToPx(marginBottom)}px`,
+                        left: `${LayoutEngine.mmToPx(marginLeft)}px`,
+                        right: `${LayoutEngine.mmToPx(marginRight)}px`,
+                      }}
+                    />
+
+                    {/* Alignment Guides & Selection (Global per Page) */}
+                    <AlignmentGuides pageId={page.id} />
+                    <SelectionMarquee pageId={page.id} />
+                    <SelectionToolbar pageId={page.id} />
+
+                    <div className="flex flex-col gap-0 absolute inset-0 z-20">
+                      <Zone
+                        zoneKey="header"
+                        label="Report Header"
+                        components={schema.zones.header.components}
+                        minHeight={schema.zones.header.minHeight}
+                        resizeEdge="bottom"
+                      />
+                      <Zone
+                        zoneKey="body"
+                        label="Detail Band"
+                        components={page.body.components}
+                        pageId={page.id}
+                        minHeight={page.body.minHeight}
+                        resizeEdge="none"
+                      />
+                      <Zone
+                        zoneKey="footer"
+                        label="Page Footer"
+                        components={schema.zones.footer.components}
+                        minHeight={schema.zones.footer.minHeight}
+                        resizeEdge="top"
+                      />
+                    </div>
+
+                    {/* Remove Page Button */}
+                    {schema.pages.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          useDesignerStore.getState().removePage(page.id);
+                        }}
+                        className="absolute -right-8 top-0 p-1.5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-md transition-all opacity-0 group-hover:opacity-100"
+                        title="Remove Page"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
+              ))}
 
-                {/* Margin Guides (Dashed) */}
-                <div
-                  className="absolute border border-[var(--accent)] border-dashed pointer-events-none z-10 opacity-30"
-                  style={{
-                    top: `${LayoutEngine.mmToPx(marginTop)}px`,
-                    bottom: `${LayoutEngine.mmToPx(marginBottom)}px`,
-                    left: `${LayoutEngine.mmToPx(marginLeft)}px`,
-                    right: `${LayoutEngine.mmToPx(marginRight)}px`,
-                  }}
-                />
-
-                {/* Snapping Alignment Guides Overlay */}
-                <AlignmentGuides />
-                <SelectionMarquee />
-                <SelectionToolbar />
-
-                <div className="flex flex-col gap-0 absolute inset-0 z-20">
-                  <Zone
-                    zoneKey="header"
-                    label="Report Header"
-                    components={schema.zones.header.components}
-                    minHeight={schema.zones.header.minHeight}
-                    resizeEdge="bottom"
-                  />
-                  <Zone
-                    zoneKey="body"
-                    label="Detail Band"
-                    components={schema.zones.body.components}
-                    minHeight={schema.zones.body.minHeight}
-                    resizeEdge="none"
-                  />
-                  <Zone
-                    zoneKey="footer"
-                    label="Page Footer"
-                    components={schema.zones.footer.components}
-                    minHeight={schema.zones.footer.minHeight}
-                    resizeEdge="top"
-                  />
+              {/* Add Page Button */}
+              <button
+                type="button"
+                onClick={() => useDesignerStore.getState().addPage()}
+                className="group flex flex-col items-center gap-3 py-8 px-16 border-2 border-dashed border-slate-200 rounded-xl hover:border-[var(--accent)] hover:bg-[var(--accent-glow)]/5 transition-all"
+              >
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-white transition-colors">
+                  <Plus className="w-6 h-6" />
                 </div>
-              </div>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-[var(--accent)] transition-colors">
+                  Add New Page
+                </span>
+              </button>
             </div>
           </div>
         </div>

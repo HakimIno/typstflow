@@ -21,7 +21,6 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     // Page dimensions
     let margin = &schema.page.margin;
     let h_height = schema.zones.header.min_height.clone().unwrap_or("0mm".to_string());
-    let _b_height = schema.zones.body.min_height.clone().unwrap_or("0mm".to_string());
     let f_height = schema.zones.footer.min_height.clone().unwrap_or("0mm".to_string());
 
     let is_landscape = schema.page.orientation == "landscape";
@@ -50,34 +49,43 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     // All zones are rendered with #place() using absolute Y offsets from page top.
     // This ensures consistent 1:1 mapping between designer canvas and PDF output.
     
+    // ── MULTI-PAGE RENDER LOOP ─────────────────────────────────────────────
     let offset_x = "0mm";
-
-    // 1. HEADER starts at 0mm (absolute from top)
     let header_offset_y = "0mm";
-    if !is_zone_empty(&schema.zones.header) {
-        render_zone(&mut t, &schema.zones.header, "HEADER", data, offset_x, header_offset_y);
-    }
-
-    // 2. BODY starts after header
-    // We use the min_height or 0mm as the base offset for body
     let body_offset_y = h_height.clone();
-    if !is_zone_empty(&schema.zones.body) {
-        render_zone(&mut t, &schema.zones.body, "BODY", data, offset_x, &body_offset_y);
-    }
-
-    // 3. FOOTER anchored to the bottom of the page
-    // Position = Page Height - Footer Height
+    
+    // Page height for footer placement
     let footer_pos = page_height_mm - parse_mm_value(&f_height);
     let footer_offset_y = format!("{}mm", footer_pos);
-    if !is_zone_empty(&schema.zones.footer) {
-        render_zone(&mut t, &schema.zones.footer, "FOOTER", data, offset_x, &footer_offset_y);
-    }
 
-    // 4. Empty content block to establish page flow (prevents blank page issues)
-    t.push_str(&format!(
-        "\n#pad(top: {} + {} + 2mm, bottom: {} + {} + 2mm, left: {}, right: {})[]\n",
-        margin.top, h_height, margin.bottom, f_height, margin.left, margin.right
-    ));
+    for (i, page_def) in schema.pages.iter().enumerate() {
+        if i > 0 {
+            t.push_str("\n#pagebreak(weak: true)\n");
+        }
+
+        t.push_str(&format!("\n// --- PAGE {} --- \n", i + 1));
+
+        // 1. HEADER (Master)
+        if !is_zone_empty(&schema.zones.header) {
+            render_zone(&mut t, &schema.zones.header, "HEADER", data, offset_x, header_offset_y);
+        }
+
+        // 2. PAGE BODY (Per Page)
+        if !is_zone_empty(&page_def.body) {
+            render_zone(&mut t, &page_def.body, "BODY", data, offset_x, &body_offset_y);
+        }
+
+        // 3. FOOTER (Master)
+        if !is_zone_empty(&schema.zones.footer) {
+            render_zone(&mut t, &schema.zones.footer, "FOOTER", data, offset_x, &footer_offset_y);
+        }
+
+        // 4. Empty padding to ensure page flow
+        t.push_str(&format!(
+            "\n#pad(top: {} + {} + 2mm, bottom: {} + {} + 2mm, left: {}, right: {})[]\n",
+            margin.top, h_height, margin.bottom, f_height, margin.left, margin.right
+        ));
+    }
 
     t
 }

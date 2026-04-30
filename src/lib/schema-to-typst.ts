@@ -404,7 +404,6 @@ export function schemaToTypst(schema: LayoutSchema, data: Record<string, any>): 
   // Page Setup with zone-based control
   const headerZone = schema.zones.header;
   const footerZone = schema.zones.footer;
-  const bodyZone = schema.zones.body;
 
   // Build header content for page setup
   let headerContent = '';
@@ -455,15 +454,23 @@ export function schemaToTypst(schema: LayoutSchema, data: Record<string, any>): 
   typst += `#set text(font: "${mainFont.family}", size: ${mainFont.size}pt, lang: "th")\n`;
   typst += '#set par(leading: 0.2em, justify: false)\n';
 
-  // Body Zone - Main content area (header/footer are handled by page setup)
-  if (bodyZone.components.length > 0) {
-    typst += '\n// ZONE: BODY (MAIN CONTENT)\n';
-    typst += '#block(width: 100%)[\n';
-    for (const c of bodyZone.components) {
-      // Apply ZONE_HEADER_HEIGHT_MM offset to match designer's coordinate system
-      typst += `  ${renderComponent(c, data, ZONE_HEADER_HEIGHT_MM)}`;
+  // Pages - Main content area (header/footer are handled by page setup)
+  if (schema.pages && schema.pages.length > 0) {
+    for (let i = 0; i < schema.pages.length; i++) {
+      const page = schema.pages[i];
+      typst += `\n// PAGE ${i + 1}: ${page.name || 'Body'}\n`;
+      typst += '#block(width: 100%)[\n';
+      for (const c of page.body.components) {
+        // Apply ZONE_HEADER_HEIGHT_MM offset to match designer's coordinate system
+        typst += `  ${renderComponent(c, data, ZONE_HEADER_HEIGHT_MM)}`;
+      }
+      typst += ']\n';
+
+      // Add page break if not the last page
+      if (i < schema.pages.length - 1) {
+        typst += '\n#pagebreak(weak: true)\n';
+      }
     }
-    typst += ']\n';
   }
 
   return typst;

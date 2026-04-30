@@ -4,7 +4,11 @@ import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
 import { memo, useEffect, useState } from 'react';
 
-export const SelectionMarquee = memo(function SelectionMarquee() {
+export const SelectionMarquee = memo(function SelectionMarquee({
+  pageId,
+}: {
+  pageId?: string;
+}) {
   const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(null);
   const [currentPos, setCurrentPos] = useState<{ x: number; y: number } | null>(null);
   const zoom = useDesignerStore((state) => state.zoom);
@@ -18,7 +22,10 @@ export const SelectionMarquee = memo(function SelectionMarquee() {
       const target = e.target as HTMLElement;
 
       // Check if we clicked on the paper or its children but NOT on a component/handle
-      const paper = document.querySelector('[data-paper-container]') as HTMLElement;
+      const selector = pageId
+        ? `[data-paper-container][data-page-id="${pageId}"]`
+        : '[data-paper-container]';
+      const paper = document.querySelector(selector) as HTMLElement;
       if (!paper) return;
 
       const isInsidePaper = paper.contains(target);
@@ -41,7 +48,10 @@ export const SelectionMarquee = memo(function SelectionMarquee() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!startPos) return;
 
-      const paper = document.querySelector('[data-paper-container]') as HTMLElement;
+      const selector = pageId
+        ? `[data-paper-container][data-page-id="${pageId}"]`
+        : '[data-paper-container]';
+      const paper = document.querySelector(selector) as HTMLElement;
       if (!paper) return;
 
       const rect = paper.getBoundingClientRect();
@@ -69,14 +79,21 @@ export const SelectionMarquee = memo(function SelectionMarquee() {
         // For each zone, select components in range
         let zoneOffsetPx = 0;
         for (const zoneKey of ['header', 'body', 'footer'] as const) {
-          const zoneHeightMm = Number.parseFloat(schema.zones[zoneKey].minHeight || '0');
+          let zoneHeightMm = 0;
+          if (zoneKey === 'body') {
+            const page = schema.pages.find((p) => p.id === pageId);
+            zoneHeightMm = Number.parseFloat(page?.body.minHeight || '0');
+          } else {
+            zoneHeightMm = Number.parseFloat(schema.zones[zoneKey].minHeight || '0');
+          }
 
           selectComponentsInRange(
             {
               ...rectMm,
               y: rectMm.y - LayoutEngine.pxToMm(zoneOffsetPx),
             },
-            zoneKey
+            zoneKey,
+            pageId
           );
 
           zoneOffsetPx += LayoutEngine.mmToPx(zoneHeightMm);

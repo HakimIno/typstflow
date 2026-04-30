@@ -54,10 +54,12 @@ const LayerItem = memo(
     component,
     zoneKey,
     index,
+    pageId,
   }: {
     component: ComponentNode;
     zoneKey: 'header' | 'body' | 'footer';
     index: number;
+    pageId?: string;
   }) => {
     const ref = useRef<HTMLDivElement>(null);
     const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
@@ -83,11 +85,11 @@ const LayerItem = memo(
 
       return draggable({
         element: el,
-        getInitialData: () => ({ id: component.id, zoneKey, index, type: 'layer-item' }),
+        getInitialData: () => ({ id: component.id, zoneKey, index, type: 'layer-item', pageId }),
         onDragStart: () => setIsDragging(true),
         onDrop: () => setIsDragging(false),
       });
-    }, [component.id, zoneKey, index]);
+    }, [component.id, zoneKey, index, pageId]);
 
     useEffect(() => {
       const el = ref.current;
@@ -97,7 +99,7 @@ const LayerItem = memo(
         element: el,
         getData: ({ input, element }) =>
           attachClosestEdge(
-            { id: component.id, zoneKey, index, type: 'layer-item' },
+            { id: component.id, zoneKey, index, type: 'layer-item', pageId },
             { input, element, allowedEdges: ['top', 'bottom'] }
           ),
         onDragEnter: ({ self }) => setClosestEdge(extractClosestEdge(self.data)),
@@ -105,7 +107,7 @@ const LayerItem = memo(
         onDragLeave: () => setClosestEdge(null),
         onDrop: () => setClosestEdge(null),
       });
-    }, [component.id, zoneKey, index]);
+    }, [component.id, zoneKey, index, pageId]);
 
     const handleRename = () => {
       setIsEditing(false);
@@ -211,10 +213,12 @@ const ZoneGroup = ({
   zoneKey,
   label,
   components,
+  pageId,
 }: {
   zoneKey: 'header' | 'body' | 'footer';
   label: string;
   components: ComponentNode[];
+  pageId?: string;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
 
@@ -239,7 +243,15 @@ const ZoneGroup = ({
           {/* Note: Components are rendered bottom-to-top in canvas, so we reverse for layer list (top-to-bottom) */}
           {[...components].reverse().map((c, idx) => {
             const actualIndex = components.length - 1 - idx;
-            return <LayerItem key={c.id} component={c} zoneKey={zoneKey} index={actualIndex} />;
+            return (
+              <LayerItem
+                key={c.id}
+                component={c}
+                zoneKey={zoneKey}
+                index={actualIndex}
+                pageId={pageId}
+              />
+            );
           })}
         </div>
       )}
@@ -248,7 +260,7 @@ const ZoneGroup = ({
 };
 
 export const LayersPanel = memo(function LayersPanel() {
-  const zones = useDesignerStore((state) => state.schema.zones);
+  const schema = useDesignerStore((state) => state.schema);
   const moveComponent = useDesignerStore((state) => state.moveComponent);
 
   useEffect(() => {
@@ -290,7 +302,16 @@ export const LayersPanel = memo(function LayersPanel() {
           // If it was originally before this, adjust? No, moveComponent handles the filter.
         }
 
-        moveComponent(sourceData.id, sourceData.zoneKey, destData.zoneKey, newIndex);
+        moveComponent(
+          sourceData.id,
+          sourceData.zoneKey,
+          destData.zoneKey,
+          newIndex,
+          undefined,
+          undefined,
+          sourceData.pageId,
+          destData.pageId
+        );
       },
     });
   }, [moveComponent]);
@@ -305,11 +326,38 @@ export const LayersPanel = memo(function LayersPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
-        <ZoneGroup zoneKey="header" label="Report Header" components={zones.header.components} />
-        <ZoneGroup zoneKey="body" label="Detail Band" components={zones.body.components} />
-        <ZoneGroup zoneKey="footer" label="Page Footer" components={zones.footer.components} />
+        <ZoneGroup
+          zoneKey="header"
+          label="Report Header (Global)"
+          components={schema.zones.header.components}
+        />
 
-        {Object.values(zones).every((z) => z.components.length === 0) && (
+        {schema.pages.map((page, idx) => (
+          <div key={page.id} className="mt-4 first:mt-0">
+            <div className="px-3 py-1 flex items-center gap-2 bg-slate-100/30">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Page {idx + 1}
+              </span>
+            </div>
+            <ZoneGroup
+              zoneKey="body"
+              label="Detail Band"
+              components={page.body.components}
+              pageId={page.id}
+            />
+          </div>
+        ))}
+
+        <div className="mt-4">
+          <ZoneGroup
+            zoneKey="footer"
+            label="Page Footer (Global)"
+            components={schema.zones.footer.components}
+          />
+        </div>
+
+        {Object.values(schema.zones).every((z) => z.components.length === 0) &&
+          schema.pages.every((p) => p.body.components.length === 0) && (
           <div className="flex flex-col items-center justify-center h-48 px-8 text-center">
             <div className="w-10 h-10 rounded-full bg-[var(--bg-widget)] flex items-center justify-center mb-3">
               <Layers className="w-5 h-5 text-[var(--text-muted)]" />
