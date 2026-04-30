@@ -274,3 +274,65 @@ export function reorderComponentInSchema(
   if (!changed) return { schema, changed: false };
   return { schema: { ...schema, pages: newPages }, changed: true };
 }
+
+/**
+ * Move a component from one zone/page to another, or reorder within the same zone.
+ * 
+ * Handles:
+ * - Cross-zone movement (e.g. Header to Body)
+ * - Cross-page movement (e.g. Page 1 to Page 2)
+ * - Intra-zone reordering
+ * - Absolute position updates (x, y)
+ */
+export function moveComponentInSchema(
+  schema: LayoutSchema,
+  id: string,
+  fromZone: ZoneKey,
+  toZone: ZoneKey,
+  newIndex: number,
+  x?: number,
+  y?: number,
+  fromPageId?: string | null,
+  toPageId?: string | null,
+): MutationResult {
+  // 1. Extract the component from source
+  let component: ComponentNode | null = null;
+  const { schema: schemaWithoutComp, changed: removed } = removeComponentFromSchema(schema, id);
+  
+  if (!removed) return { schema, changed: false };
+  
+  // Find the original to get its data (we need it to apply x, y)
+  // We search in original schema because it's already removed from schemaWithoutComp
+  component = findComponentInSchema(schema, id);
+  if (!component) return { schema, changed: false };
+
+  const updatedComp: ComponentNode = {
+    ...component,
+    ...(x !== undefined ? { x } : {}),
+    ...(y !== undefined ? { y } : {}),
+  };
+
+  // 2. Insert into destination
+  let nextSchema = { ...schemaWithoutComp };
+
+  if (toZone === 'body') {
+    const targetPageId = toPageId || schema.pages[0]?.id;
+    nextSchema.pages = schemaWithoutComp.pages.map(p => {
+      if (p.id !== targetPageId) return p;
+      const nextComps = [...p.body.components];
+      const insertAt = Math.max(0, Math.min(newIndex, nextComps.length));
+      nextComps.splice(insertAt, 0, updatedComp);
+      return { ...p, body: { ...p.body, components: nextComps } };
+    });
+  } else {
+    const nextComps = [...schemaWithoutComp.zones[toZone].components];
+    const insertAt = Math.max(0, Math.min(newIndex, nextComps.length));
+    nextComps.splice(insertAt, 0, updatedComp);
+    nextSchema.zones = {
+      ...schemaWithoutComp.zones,
+      [toZone]: { ...schemaWithoutComp.zones[toZone], components: nextComps }
+    };
+  }
+
+  return { schema: nextSchema, changed: true };
+}

@@ -169,6 +169,7 @@ export const INVOICE_TEMPLATE: LayoutSchema = {
   variables: [],
   dataSchema: [],
   metadata: {
+    title: 'Standard Pro Invoice',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     author: 'Antigravity Pro',

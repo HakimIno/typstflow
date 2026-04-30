@@ -74,6 +74,7 @@ export const COMPLEX_TABLE_TEMPLATE: LayoutSchema = {
   variables: [],
   dataSchema: [],
   metadata: {
+    title: 'Inventory Status Report',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     author: 'Antigravity',

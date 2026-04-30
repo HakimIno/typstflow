@@ -1,12 +1,18 @@
 'use client';
 
 import { useDesignerStore } from '@/store/designer-store';
+import { useShallow } from 'zustand/react/shallow';
 import { clsx } from 'clsx';
 import { AlertCircle, Braces, CheckCircle2, X } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 
 export const DataPanel = memo(function DataPanel() {
-  const { sampleData, setSampleData } = useDesignerStore();
+  const { sampleData, setSampleData } = useDesignerStore(
+    useShallow((state) => ({
+      sampleData: state.sampleData,
+      setSampleData: state.setSampleData,
+    }))
+  );
   const [jsonString, setJsonString] = useState(JSON.stringify(sampleData, null, 2));
   const [error, setError] = useState<string | null>(null);
 

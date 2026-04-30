@@ -12,6 +12,7 @@ export interface LayoutSchema {
   variables: VariableDefinition[]; // user-defined reusable values
   dataSchema: DataFieldDefinition[]; // expected input data shape
   metadata: {
+    title: string;
     createdAt: string;
     updatedAt: string;
     author: string;

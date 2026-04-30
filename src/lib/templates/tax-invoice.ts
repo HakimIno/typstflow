@@ -350,6 +350,7 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
   variables: [],
   dataSchema: [],
   metadata: {
+    title: 'Professional Tax Invoice',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     author: 'Antigravity Designer',

@@ -257,6 +257,7 @@ export const INVOICE_WITH_PAGE_BREAKS_TEMPLATE: LayoutSchema = {
     { path: 'invoice.items', type: 'array', required: true, description: 'รายการสินค้า/บริการ' },
   ],
   metadata: {
+    title: 'Multi-page Professional Invoice',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     author: 'TypstFlow System',

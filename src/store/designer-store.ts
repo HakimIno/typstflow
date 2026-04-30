@@ -1,7 +1,11 @@
 import { indexedDBStorage } from '@/lib/async-storage';
+import { agentLogger } from '@/lib/utils/agent-logger';
+import { generateStressTestSchema } from '@/lib/utils/performance-test';
+import { validateAndRepairSchema } from '@/lib/utils/schema-validator';
 import {
   getZoneComponents,
   mapComponentInSchema,
+  moveComponentInSchema,
   removeComponentFromSchema,
   removeComponentsFromSchema,
   reorderComponentInSchema,
@@ -185,6 +189,7 @@ const BLANK_SCHEMA: LayoutSchema = {
   variables: [],
   dataSchema: [],
   metadata: {
+    title: 'New Report',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     author: 'Antigravity',
@@ -232,6 +237,7 @@ export const useDesignerStore = create<DesignerState>()(
       },
 
       loadTemplate: (name) => {
+        agentLogger.log({ source: 'ai-agent', level: 'action', message: `Loading template: ${name}` });
         if (name === 'invoice') {
           set({
             schema: INVOICE_TEMPLATE,
@@ -268,6 +274,12 @@ export const useDesignerStore = create<DesignerState>()(
             historyIndex: 0,
           });
         }
+      },
+
+      loadStressTest: (pages?: number, components?: number) => {
+        agentLogger.log({ source: 'system', level: 'info', message: `Generating stress test schema: ${pages} pages` });
+        const schema = generateStressTestSchema(pages, components);
+        set({ schema, history: [schema], historyIndex: 0, activePageId: schema.pages[0]?.id });
       },
 
       addComponent: (zoneKey, component, pageId) =>
@@ -358,73 +370,19 @@ export const useDesignerStore = create<DesignerState>()(
         skipHistory
       ) =>
         set((state) => {
-          let component: ComponentNode | undefined;
+          const { schema: newSchema, changed } = moveComponentInSchema(
+            state.schema,
+            id,
+            fromZone as any,
+            toZone as any,
+            newIndex as any,
+            x,
+            y,
+            fromPageId,
+            toPageId,
+          );
 
-          // 1. Find and Extract Component — fully immutable via page/zone mapping
-          let newPages = state.schema.pages;
-          let newZones = state.schema.zones;
-
-          if (fromZone === 'body') {
-            newPages = state.schema.pages.map((p) => {
-              if (p.id !== fromPageId) return p;
-              const found = p.body.components.find((c) => c.id === id);
-              if (!found) return p;
-              component = found;
-              return {
-                ...p,
-                body: { ...p.body, components: p.body.components.filter((c) => c.id !== id) },
-              };
-            });
-          } else {
-            const zoneComps = state.schema.zones[fromZone].components;
-            component = zoneComps.find((c) => c.id === id);
-            if (component) {
-              newZones = {
-                ...state.schema.zones,
-                [fromZone]: {
-                  ...state.schema.zones[fromZone],
-                  components: zoneComps.filter((c) => c.id !== id),
-                },
-              };
-            }
-          }
-
-          if (!component) return state;
-
-          // 2. Update Component Position
-          const updatedComponent: ComponentNode = {
-            ...component,
-            ...(x !== undefined ? { x } : {}),
-            ...(y !== undefined ? { y } : {}),
-          };
-
-          // 3. Insert into Target Zone
-          if (toZone === 'body') {
-            const targetPageId = toPageId || state.activePageId || state.schema.pages[0]?.id;
-            newPages = newPages.map((p) => {
-              if (p.id !== targetPageId) return p;
-              const comps = [...p.body.components];
-              const insertAt =
-                newIndex === -1 || newIndex === undefined
-                  ? comps.length
-                  : Math.max(0, Math.min(newIndex, comps.length));
-              comps.splice(insertAt, 0, updatedComponent);
-              return { ...p, body: { ...p.body, components: comps } };
-            });
-          } else {
-            const comps = [...newZones[toZone].components];
-            const insertAt =
-              newIndex === -1 || newIndex === undefined
-                ? comps.length
-                : Math.max(0, Math.min(newIndex, comps.length));
-            comps.splice(insertAt, 0, updatedComponent);
-            newZones = {
-              ...newZones,
-              [toZone]: { ...newZones[toZone], components: comps },
-            };
-          }
-
-          const newSchema = { ...state.schema, pages: newPages, zones: newZones };
+          if (!changed) return state;
           if (skipHistory) return { schema: newSchema };
           return pushHistory(state, newSchema);
         }),
@@ -752,6 +710,21 @@ export const useDesignerStore = create<DesignerState>()(
           return state;
         }
         return persistedState;
+      },
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // Validate and repair schema on load
+          const validSchema = validateAndRepairSchema(state.schema, BLANK_SCHEMA);
+          if (validSchema !== state.schema) {
+            agentLogger.log({
+              source: 'system',
+              level: 'warn',
+              message: 'Corrupted schema detected and repaired on load',
+            });
+            state.schema = validSchema;
+          }
+          agentLogger.log({ source: 'system', level: 'info', message: 'Designer state rehydrated' });
+        }
       },
     }
   )

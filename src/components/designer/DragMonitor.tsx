@@ -98,10 +98,12 @@ export function DragMonitor() {
             });
           });
 
-          // 2. Load Rust WASM Layout Engine
+          // 2. Load Rust WASM Layout Engine (All pages and zones)
           getLayoutEngine().then((layoutEngine) => {
             layoutEngine.initWasm().then(() => {
               const nodes: any[] = [];
+              
+              // Add Global Zones (Header, Footer)
               for (const [zKey, zone] of Object.entries(schema.zones) as [string, any][]) {
                 const yOffset = LayoutEngine.calculateZoneOffset(zKey, schema);
                 for (const c of zone.components) {
@@ -116,19 +118,26 @@ export function DragMonitor() {
                   });
                 }
               }
-              const sourcePage = schema.pages.find(p => p.id === data.pageId) || schema.pages[0];
-              const bodyOffset = LayoutEngine.calculateZoneOffset('body', schema, sourcePage.id);
-              for (const c of sourcePage.body.components) {
-                if (c.id === data.id) continue;
-                nodes.push({
-                  id: c.id,
-                  zone: 'body',
-                  x: c.x || 0,
-                  y: (c.y || 0) + bodyOffset,
-                  width: c.width || 0,
-                  height: c.height || 0,
-                });
+
+              // Add Components from ALL Pages
+              for (const page of schema.pages) {
+                // We use a composite key for the zone to distinguish between bodies of different pages
+                const zoneKey = `body:${page.id}`;
+                const bodyOffset = LayoutEngine.calculateZoneOffset('body', schema, page.id);
+                
+                for (const c of page.body.components) {
+                  if (c.id === data.id) continue;
+                  nodes.push({
+                    id: c.id,
+                    zone: zoneKey,
+                    x: c.x || 0,
+                    y: (c.y || 0) + bodyOffset,
+                    width: c.width || 0,
+                    height: c.height || 0,
+                  });
+                }
               }
+              
               layoutEngine.loadNodes(nodes);
             });
           });
@@ -263,7 +272,13 @@ export function DragMonitor() {
           let activeGuidesX: number[] = [];
           let activeGuidesY: number[] = [];
 
-          const wasmSnap = layoutEngine.findSnaps(data.id || 'new', rawX, rawY, width, height, 5);
+          // Determine zone filter (body:pageId or global zone name)
+          let zoneFilter = data.zone;
+          if (pageId) {
+            zoneFilter = `body:${pageId}`;
+          }
+
+          const wasmSnap = layoutEngine.findSnaps(data.id || 'new', rawX, rawY, width, height, 5, zoneFilter);
 
           if (wasmSnap) {
             snapX = rawX + wasmSnap.dx;

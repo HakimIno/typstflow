@@ -61,7 +61,7 @@ const CATEGORIES = [
 ];
 
 export const Palette = memo(function Palette() {
-  const { setSidebarOpen } = useDesignerStore();
+  const setSidebarOpen = useDesignerStore((state) => state.setSidebarOpen);
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredCategories = CATEGORIES.map((cat) => ({

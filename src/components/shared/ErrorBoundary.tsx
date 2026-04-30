@@ -1,65 +1,67 @@
 'use client';
 
-import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import React, { Component, type ErrorInfo, type ReactNode } from 'react';
+import { AlertTriangle, RefreshCcw } from 'lucide-react';
+import { agentLogger } from '@/lib/utils/agent-logger';
 
 interface Props {
-  children?: ReactNode;
+  children: ReactNode;
   fallback?: ReactNode;
   componentName?: string;
 }
 
 interface State {
   hasError: boolean;
+  error: Error | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+export class DesignerErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
+    error: null,
   };
 
-  public static getDerivedStateFromError(_: Error): State {
-    // Update state so the next render will show the fallback UI.
-    return { hasError: true };
+  public static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error(
-      `Uncaught error in ${this.props.componentName || 'Component'}:`,
-      error,
-      errorInfo
-    );
+    // Log to our new agentLogger for later debugging
+    agentLogger.log({
+      source: 'system',
+      level: 'error',
+      message: `UI Crash in [${this.props.componentName || 'Unknown Component'}]`,
+      details: { error: error.message, stack: errorInfo.componentStack },
+    });
+    
+    console.error('Uncaught error in Designer:', error, errorInfo);
   }
 
   private handleReset = () => {
-    this.setState({ hasError: false });
+    this.setState({ hasError: false, error: null });
+    // In a real app, we might want to try and recover the state or clear the offending component
+    window.location.reload();
   };
 
   public render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-
-      return (
-        <div className="flex flex-col items-center justify-center p-6 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 gap-4 min-h-[100px] w-full shadow-inner">
-          <div className="flex items-center gap-2 text-red-500">
-            <AlertTriangle className="w-5 h-5" />
-            <h3 className="text-sm font-bold uppercase tracking-wider">
-              {this.props.componentName || 'Component'} Failed
-            </h3>
+      return this.props.fallback || (
+        <div className="flex flex-col items-center justify-center min-h-[100px] p-6 text-center bg-slate-900/50 rounded-lg border border-red-500/20 backdrop-blur-sm">
+          <div className="w-10 h-10 bg-red-500/10 rounded-full flex items-center justify-center mb-3">
+            <AlertTriangle className="w-5 h-5 text-red-500" />
           </div>
-          <p className="text-[11px] text-center opacity-80 max-w-xs">
-            An error occurred while rendering this section. You can try resetting this part of the
-            UI.
+          <h3 className="text-sm font-bold text-slate-200 mb-1">
+            {this.props.componentName || 'Component'} Failed
+          </h3>
+          <p className="text-slate-400 text-[10px] max-w-[200px] mb-4">
+            An unexpected error occurred in this section of the designer.
           </p>
           <button
-            type="button"
             onClick={this.handleReset}
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-white text-[10px] font-bold uppercase rounded hover:bg-slate-700 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-md text-[10px] font-medium transition-colors"
           >
-            <RefreshCw className="w-3 h-3" />
-            Reset Section
+            <RefreshCcw className="w-3 h-3" />
+            Retry
           </button>
         </div>
       );
@@ -68,3 +70,5 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
+export default DesignerErrorBoundary;

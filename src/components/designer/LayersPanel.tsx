@@ -1,6 +1,7 @@
 'use client';
 
 import { useDesignerStore } from '@/store/designer-store';
+import { useShallow } from 'zustand/react/shallow';
 import type { ComponentNode } from '@/types/schema';
 import {
   type Edge,
@@ -16,6 +17,7 @@ import { clsx } from 'clsx';
 import {
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Eye,
   EyeOff,
   GripVertical,
@@ -25,6 +27,7 @@ import {
   QrCode,
   Square,
   Table,
+  Trash2,
   Type,
   Unlock,
 } from 'lucide-react';
@@ -39,10 +42,10 @@ const ComponentIcon = ({ type }: { type: string }) => {
       return <ImageIcon className="w-3.5 h-3.5" />;
     case 'table':
       return <Table className="w-3.5 h-3.5" />;
-    case 'rect':
-    case 'circle':
+    case 'line':
       return <Square className="w-3.5 h-3.5" />;
     case 'qrcode':
+    case 'barcode':
       return <QrCode className="w-3.5 h-3.5" />;
     default:
       return <Layers className="w-3.5 h-3.5" />;
@@ -57,7 +60,7 @@ const LayerItem = memo(
     pageId,
   }: {
     component: ComponentNode;
-    zoneKey: 'header' | 'body' | 'footer';
+    zoneKey: string;
     index: number;
     pageId?: string;
   }) => {
@@ -74,6 +77,8 @@ const LayerItem = memo(
     const toggleVisibility = useDesignerStore((state) => state.toggleComponentVisibility);
     const toggleLock = useDesignerStore((state) => state.toggleComponentLock);
     const renameComponent = useDesignerStore((state) => state.renameComponent);
+    const moveUp = useDesignerStore((state) => state.moveUp);
+    const moveDown = useDesignerStore((state) => state.moveDown);
 
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(component.name || component.type);
@@ -174,7 +179,30 @@ const LayerItem = memo(
           )}
         </div>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              moveUp(component.id);
+            }}
+            className="p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-slate-200"
+            title="Move Up"
+          >
+            <ChevronUp className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              moveDown(component.id);
+            }}
+            className="p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-slate-200"
+            title="Move Down"
+          >
+            <ChevronDown className="w-3 h-3" />
+          </button>
+          <div className="w-px h-3 bg-slate-800 mx-0.5" />
           <button
             type="button"
             onClick={(e) => {
@@ -203,24 +231,44 @@ const LayerItem = memo(
           >
             {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
           </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm('Delete this component?')) {
+                useDesignerStore.getState().removeComponents([component.id]);
+              }
+            }}
+            className="p-1 hover:bg-red-500/20 hover:text-red-500 rounded text-slate-500"
+            title="Delete"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
         </div>
       </div>
     );
   }
 );
 
-const ZoneGroup = ({
+const ZoneGroup = memo(({
   zoneKey,
   label,
-  components,
   pageId,
 }: {
-  zoneKey: 'header' | 'body' | 'footer';
+  zoneKey: string;
   label: string;
-  components: ComponentNode[];
   pageId?: string;
 }) => {
   const [isOpen, setIsOpen] = useState(true);
+  const components = useDesignerStore(useShallow((state) => {
+    if (zoneKey === 'body') {
+      const page = pageId 
+        ? state.schema.pages.find(p => p.id === pageId)
+        : state.schema.pages[0];
+      return page?.body.components ?? [];
+    }
+    return state.schema.zones[zoneKey as 'header' | 'footer'].components;
+  }));
 
   if (components.length === 0) return null;
 
@@ -240,7 +288,6 @@ const ZoneGroup = ({
 
       {isOpen && (
         <div className="space-y-px">
-          {/* Note: Components are rendered bottom-to-top in canvas, so we reverse for layer list (top-to-bottom) */}
           {[...components].reverse().map((c, idx) => {
             const actualIndex = components.length - 1 - idx;
             return (
@@ -257,11 +304,15 @@ const ZoneGroup = ({
       )}
     </div>
   );
-};
+});
 
 export const LayersPanel = memo(function LayersPanel() {
-  const schema = useDesignerStore((state) => state.schema);
+  const pageIds = useDesignerStore(useShallow((state) => state.schema.pages.map((p) => p.id)));
   const moveComponent = useDesignerStore((state) => state.moveComponent);
+  const isEmpty = useDesignerStore((state) => 
+    Object.values(state.schema.zones).every((z) => z.components.length === 0) &&
+    state.schema.pages.every((p) => p.body.components.length === 0)
+  );
 
   useEffect(() => {
     return monitorForElements({
@@ -277,29 +328,11 @@ export const LayersPanel = memo(function LayersPanel() {
         const edge = extractClosestEdge(destData);
         if (!edge) return;
 
-        // Calculate new index
-        // Since the list is reversed, dropping on 'top' means we want it to be ABOVE (higher index)
-        // actually, pragmatic DnD with closestEdge is simpler.
         let newIndex = destData.index;
         if (edge === 'bottom') {
-          // In a reversed list, 'bottom' means lower index
-          newIndex = Math.max(0, destData.index - 0); // No, let's think.
-        }
-
-        // Let's use a simpler logic for the reversed list:
-        // List: [Top (idx 2), Middle (idx 1), Bottom (idx 0)]
-        // If I drag Top to Bottom's 'bottom' edge, it should become idx 0.
-        // If I drag Bottom to Top's 'top' edge, it should become idx 2.
-
-        if (edge === 'bottom') {
-          // Drop below the item in the list
-          // If dragging from above to below, newIndex is just destData.index
-          // If dragging from below to above, newIndex is destData.index
           newIndex = destData.index;
         } else {
-          // Drop above the item in the list
           newIndex = destData.index + 1;
-          // If it was originally before this, adjust? No, moveComponent handles the filter.
         }
 
         moveComponent(
@@ -329,11 +362,10 @@ export const LayersPanel = memo(function LayersPanel() {
         <ZoneGroup
           zoneKey="header"
           label="Report Header (Global)"
-          components={schema.zones.header.components}
         />
 
-        {schema.pages.map((page, idx) => (
-          <div key={page.id} className="mt-4 first:mt-0">
+        {pageIds.map((pageId, idx) => (
+          <div key={pageId} className="mt-4 first:mt-0">
             <div className="px-3 py-1 flex items-center gap-2 bg-slate-100/30">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 Page {idx + 1}
@@ -342,8 +374,7 @@ export const LayersPanel = memo(function LayersPanel() {
             <ZoneGroup
               zoneKey="body"
               label="Detail Band"
-              components={page.body.components}
-              pageId={page.id}
+              pageId={pageId}
             />
           </div>
         ))}
@@ -352,12 +383,10 @@ export const LayersPanel = memo(function LayersPanel() {
           <ZoneGroup
             zoneKey="footer"
             label="Page Footer (Global)"
-            components={schema.zones.footer.components}
           />
         </div>
 
-        {Object.values(schema.zones).every((z) => z.components.length === 0) &&
-          schema.pages.every((p) => p.body.components.length === 0) && (
+        {isEmpty && (
           <div className="flex flex-col items-center justify-center h-48 px-8 text-center">
             <div className="w-10 h-10 rounded-full bg-[var(--bg-widget)] flex items-center justify-center mb-3">
               <Layers className="w-5 h-5 text-[var(--text-muted)]" />
