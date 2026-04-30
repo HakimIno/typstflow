@@ -26,6 +26,7 @@ const getLayoutEngine = async () => {
 export function DragMonitor() {
   const dragRef = useRef<{
     containerRect: DOMRect | null;
+    containerElement: HTMLElement | null;
     zoom: number;
     snapPointsX: SnapPoint[];
     snapPointsY: SnapPoint[];
@@ -33,8 +34,11 @@ export function DragMonitor() {
     lastSentY: number;
     initialClientX: number;
     initialClientY: number;
+    lastSnapTime: number;
+    pageOffsets: { id: string, top: number, left: number, width: number, height: number, element: HTMLElement }[];
   }>({
     containerRect: null,
+    containerElement: null,
     zoom: 1,
     snapPointsX: [],
     snapPointsY: [],
@@ -42,6 +46,8 @@ export function DragMonitor() {
     lastSentY: -1,
     initialClientX: 0,
     initialClientY: 0,
+    lastSnapTime: 0,
+    pageOffsets: [],
   });
 
   useEffect(() => {
@@ -74,11 +80,27 @@ export function DragMonitor() {
           pointsY.push({ value: pH, type: 'edge', originId: 'page' });
           pointsY.push({ value: pH / 2, type: 'center', originId: 'page' });
 
-          // Instead of looping in JS, we load the Rust WASM Layout Engine
+          // 1. CACHE ALL PAGE OFFSETS (For ultra-fast page detection)
+          const scrollContainer = container.parentElement?.parentElement as HTMLElement;
+          const scrollRect = scrollContainer?.getBoundingClientRect();
+          const pageElements = document.querySelectorAll('[data-paper-container]');
+          const offsets: any[] = [];
+
+          pageElements.forEach((el: any) => {
+            const r = el.getBoundingClientRect();
+            offsets.push({
+              id: el.dataset.pageId,
+              top: r.top - scrollRect.top + scrollContainer.scrollTop,
+              left: r.left - scrollRect.left + scrollContainer.scrollLeft,
+              width: r.width,
+              height: r.height,
+              element: el
+            });
+          });
+
+          // 2. Load Rust WASM Layout Engine
           getLayoutEngine().then((layoutEngine) => {
             const nodes: any[] = [];
-            
-            // 1. Load Global Zones (Header, Footer)
             for (const [zKey, zone] of Object.entries(schema.zones) as [string, any][]) {
               const yOffset = LayoutEngine.calculateZoneOffset(zKey, schema);
               for (const c of zone.components) {
@@ -93,9 +115,6 @@ export function DragMonitor() {
                 });
               }
             }
-
-            // 2. Load Active Page Body (or all pages if preferred, but active is more performant)
-            // For now, let's load ALL components from the current page being dragged from
             const sourcePage = schema.pages.find(p => p.id === data.pageId) || schema.pages[0];
             const bodyOffset = LayoutEngine.calculateZoneOffset('body', schema, sourcePage.id);
             for (const c of sourcePage.body.components) {
@@ -109,12 +128,12 @@ export function DragMonitor() {
                 height: c.height || 0,
               });
             }
-
             layoutEngine.loadNodes(nodes);
           });
 
           dragRef.current = {
             containerRect: rect,
+            containerElement: container,
             zoom,
             snapPointsX: pointsX,
             snapPointsY: pointsY,
@@ -122,6 +141,8 @@ export function DragMonitor() {
             lastSentY: -1,
             initialClientX: location.initial.input.clientX,
             initialClientY: location.initial.input.clientY,
+            lastSnapTime: 0,
+            pageOffsets: offsets,
           };
 
           const startPos = LayoutEngine.calculateAbsolutePosition(
@@ -147,46 +168,79 @@ export function DragMonitor() {
       },
       onDrag: ({ location, source }) => {
         const cache = dragRef.current;
+        if (!cache.containerElement) return;
         const data = source.data as any;
         const { schema } = useDesignerStore.getState();
 
-        // 1. Dynamic Page Detection
-        const targetElement = document.elementFromPoint(
-          location.current.input.clientX,
-          location.current.input.clientY
-        );
-        const activeContainer = targetElement?.closest('[data-paper-container]') as HTMLElement;
-        const pageId = activeContainer?.dataset.pageId;
+        // 1. FAST HYBRID PAGE DETECTION (Using Cached Offsets)
+        const scrollContainer = cache.containerElement.parentElement?.parentElement as HTMLElement;
+        if (!scrollContainer) return;
 
-        if (activeContainer) {
-          cache.containerRect = activeContainer.getBoundingClientRect();
-          cache.zoom = Number.parseFloat(activeContainer.dataset.zoom || '1');
-        }
+        const scrollRect = scrollContainer.getBoundingClientRect();
+        const scrollX = location.current.input.clientX - scrollRect.left + scrollContainer.scrollLeft;
+        const scrollY = location.current.input.clientY - scrollRect.top + scrollContainer.scrollTop;
 
-        if (!cache.containerRect) return;
+        // Find page using cached offsets - NO DOM LOOKUPS HERE
+        const activePageInfo = cache.pageOffsets.find(p => scrollY >= p.top - 16 && scrollY <= p.top + p.height + 16)
+          || cache.pageOffsets[0];
 
-        // 2. STABLE COORDINATE CALCULATION (DELTA-BASED)
-        // We calculate position relative to the current active page.
-        // This ensures that when we drop, we are using the correct page-local coordinates.
-        const relX = (location.current.input.clientX - cache.containerRect.left - (data.dragOffsetX || 0)) / cache.zoom;
-        const relY = (location.current.input.clientY - cache.containerRect.top - (data.dragOffsetY || 0)) / cache.zoom;
-        
+        const pageId = activePageInfo.id;
+
+        // 2. COORDINATE CALCULATION (Using Cache)
+        // We calculate position relative to the found page's cached rect
+        const relX = (scrollX - activePageInfo.left - (data.dragOffsetX || 0)) / cache.zoom;
+        const relY = (scrollY - activePageInfo.top - (data.dragOffsetY || 0)) / cache.zoom;
+
         const rawX = LayoutEngine.pxToMm(relX);
         const rawY = LayoutEngine.pxToMm(relY);
 
-        // 3. SYNCHRONOUS VISUAL FEEDBACK (Ultra-fast CSS)
-        // This makes the element follow the cursor perfectly regardless of frame rate.
+        // 3. VISUAL FEEDBACK (CSS Variables) - High Performance GPU Path
         const root = document.documentElement;
         const pxDeltaX = location.current.input.clientX - cache.initialClientX;
         const pxDeltaY = location.current.input.clientY - cache.initialClientY;
-        
-        // CSS expects pixels, so we use pure screen deltas
+
+        // Initial feedback based on raw mouse delta
         root.style.setProperty('--drag-dx', `${pxDeltaX / cache.zoom}px`);
         root.style.setProperty('--drag-dy', `${pxDeltaY / cache.zoom}px`);
 
-        // 4. ASYNCHRONOUS SNAPPING (Off-main-thread via WASM)
+        // 4. SNAPPING (Async WASM Engine)
         const width = data.width || data.component?.width || 0;
         const height = data.height || data.component?.height || 0;
+
+        const updateTransientVisuals = (guidesX: number[], guidesY: number[], x: number, y: number, pInfo: any) => {
+          // Calculate absolute offsets for the global overlay
+          const pageTopPx = pInfo.top;
+          const pageLeftPx = pInfo.left;
+
+          for (let i = 0; i < 4; i++) {
+            const vG = document.getElementById(`v-guide-${i}`);
+            const hG = document.getElementById(`h-guide-${i}`);
+            if (vG) {
+              if (guidesX[i] !== undefined) {
+                vG.style.left = `${pageLeftPx + LayoutEngine.mmToPx(guidesX[i])}px`;
+                vG.style.display = 'block';
+              } else { vG.style.display = 'none'; }
+            }
+            if (hG) {
+              if (guidesY[i] !== undefined) {
+                hG.style.top = `${pageTopPx + LayoutEngine.mmToPx(guidesY[i])}px`;
+                hG.style.display = 'block';
+              } else { hG.style.display = 'none'; }
+            }
+          }
+          const pill = document.getElementById('drag-coord-pill');
+          if (pill) {
+            pill.style.display = 'block';
+            pill.style.left = `${pageLeftPx + LayoutEngine.mmToPx(x) + 10}px`;
+            pill.style.top = `${pageTopPx + LayoutEngine.mmToPx(y) + 10}px`;
+            pill.innerText = `${Math.round(x)}, ${Math.round(y)}mm`;
+          }
+        };
+
+        // 60 FPS Throttling for Snapping
+        const now = Date.now();
+        if (cache.lastSnapTime && now - cache.lastSnapTime < 16) return;
+        cache.lastSnapTime = now;
 
         getLayoutEngine().then((layoutEngine) => {
           let snapX = rawX;
@@ -195,52 +249,31 @@ export function DragMonitor() {
           let activeGuidesY: number[] = [];
 
           const wasmSnap = layoutEngine.findSnaps(data.id || 'new', rawX, rawY, width, height, 5);
-          
+
           if (wasmSnap) {
             snapX = rawX + wasmSnap.dx;
             snapY = rawY + wasmSnap.dy;
-            activeGuidesX = wasmSnap.guides
-              .filter((g: any) => g.is_vertical)
-              .map((g: any) => g.position);
-            activeGuidesY = wasmSnap.guides
-              .filter((g: any) => !g.is_vertical)
-              .map((g: any) => g.position);
+            activeGuidesX = wasmSnap.guides.filter((g: any) => g.is_vertical).map((g: any) => g.position);
+            activeGuidesY = wasmSnap.guides.filter((g: any) => !g.is_vertical).map((g: any) => g.position);
           } else {
-            const snap = SnapEngine.calculateSnap(
-              rawX,
-              rawY,
-              width,
-              height,
-              data.id || 'new',
-              schema,
-              false,
-              pageId,
-              { x: cache.snapPointsX, y: cache.snapPointsY }
-            );
-            snapX = snap.snappedX;
-            snapY = snap.snappedY;
-            activeGuidesX = snap.activeGuidesX;
-            activeGuidesY = snap.activeGuidesY;
+            const snap = SnapEngine.calculateSnap(rawX, rawY, width, height, data.id || 'new', schema, false, pageId, { x: cache.snapPointsX, y: cache.snapPointsY });
+            snapX = snap.snappedX; snapY = snap.snappedY;
+            activeGuidesX = snap.activeGuidesX; activeGuidesY = snap.activeGuidesY;
           }
 
-          // 5. Apply Snap Offset to Visuals
+          // Adjust CSS Variables with Snap Offset
           const snapOffsetX = LayoutEngine.mmToPx(snapX - rawX);
           const snapOffsetY = LayoutEngine.mmToPx(snapY - rawY);
-          
           root.style.setProperty('--drag-dx', `${(pxDeltaX + snapOffsetX) / cache.zoom}px`);
           root.style.setProperty('--drag-dy', `${(pxDeltaY + snapOffsetY) / cache.zoom}px`);
 
-          // 6. Throttle Store Update
-          if (snapX !== cache.lastSentX || snapY !== cache.lastSentY) {
+          updateTransientVisuals(activeGuidesX, activeGuidesY, snapX, snapY, activePageInfo);
+
+          // 5. OPTIMIZED STORE UPDATE (Only on snap change or page change)
+          if (snapX !== cache.lastSentX || snapY !== cache.lastSentY || pageId !== useDesignerStore.getState().dragState.activePageId) {
             useDesignerStore.getState().setDragState({
-              currentX: snapX,
-              currentY: snapY,
               lastSnappedX: snapX,
               lastSnappedY: snapY,
-              activeGuides: {
-                vertical: activeGuidesX,
-                horizontal: activeGuidesY,
-              },
               activePageId: pageId || null,
             });
             cache.lastSentX = snapX;
@@ -250,18 +283,23 @@ export function DragMonitor() {
       },
       onDrop: () => {
         dragRef.current.containerRect = null;
+        dragRef.current.containerElement = null;
+        dragRef.current.pageOffsets = [];
         document.body.classList.remove('is-dragging-components');
         const root = document.documentElement;
 
         requestAnimationFrame(() => {
           root.style.removeProperty('--drag-dx');
           root.style.removeProperty('--drag-dy');
+
+          // Clean up all transient overlays
+          const overlays = document.querySelectorAll('[id^="v-guide-"], [id^="h-guide-"], [id^="drag-coord-pill-"]');
+          overlays.forEach(el => (el as HTMLElement).style.display = 'none');
         });
 
         useDesignerStore.getState().setDragState({
           isDragging: false,
           draggedComponentId: null,
-          activeGuides: { vertical: [], horizontal: [] },
           activePageId: null,
         });
       },

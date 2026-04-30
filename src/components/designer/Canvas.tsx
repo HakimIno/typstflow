@@ -6,11 +6,11 @@ import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { AlignmentGuides } from './AlignmentGuides';
 import { DragMonitor } from './DragMonitor';
 import { Ruler } from './Ruler';
 import { SelectionMarquee } from './SelectionMarquee';
 import { SelectionToolbar } from './SelectionToolbar';
+import { TransientOverlay } from './TransientOverlay';
 import { Plus, X } from 'lucide-react';
 import { Zone } from './Zone';
 
@@ -24,19 +24,20 @@ export const Canvas = memo(function Canvas() {
   const [scrollPos, setScrollPos] = useState({ x: 0, y: 0 });
 
   const updateScrollPos = useCallback(() => {
-    if (scrollRef.current && paperRef.current) {
-      const scrollRect = scrollRef.current.getBoundingClientRect();
-      const paperRect = paperRef.current.getBoundingClientRect();
-
+    if (scrollRef.current) {
+      const { scrollLeft, scrollTop } = scrollRef.current;
+      // We use the raw scroll values. The 64px (16mm * 4) padding is added 
+      // to align with the drafting area's starting position.
       setScrollPos({
-        x: scrollRect.left - paperRect.left,
-        y: scrollRect.top - paperRect.top,
+        x: scrollLeft - 64, 
+        y: scrollTop - 48,
       });
     }
   }, []);
 
   const handleScroll = () => {
-    updateScrollPos();
+    // Optimization: Use RequestAnimationFrame for scroll sync
+    requestAnimationFrame(updateScrollPos);
   };
 
   useEffect(() => {
@@ -98,9 +99,15 @@ export const Canvas = memo(function Canvas() {
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-auto p-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform bg-[var(--bg-canvas-dots)]"
+            className={clsx(
+              "flex-1 overflow-auto p-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform bg-[var(--bg-canvas-dots)]",
+              isDraggingGlobal && "is-dragging-components"
+            )}
           >
-            <div className="min-w-max min-h-max pl-16 pr-16 pb-24 pt-12 flex flex-col items-start gap-8">
+            <div className="min-w-max min-h-max pl-16 pr-16 pb-24 pt-12 flex flex-col items-start gap-8 relative">
+              {/* Global Overlays (Singleton for Performance) */}
+              <TransientOverlay />
+              
               {(schema.pages || []).map((page, pIdx) => (
                 <div
                   key={`wrapper-${page.id}`}
@@ -116,7 +123,7 @@ export const Canvas = memo(function Canvas() {
                     data-page-id={page.id}
                     data-zoom={zoom}
                     className={clsx(
-                      'bg-white pro-grid border border-slate-300 absolute top-0 left-0 shadow-2xl origin-top-left flex-shrink-0 rounded-[4px]',
+                      'bg-white pro-grid border border-slate-300 absolute top-0 left-0 shadow-2xl origin-top-left flex-shrink-0 rounded-[4px] contain-page high-perf-gpu',
                       !isDraggingGlobal && 'transition-all duration-300'
                     )}
                     style={{
@@ -141,8 +148,7 @@ export const Canvas = memo(function Canvas() {
                       }}
                     />
 
-                    {/* Alignment Guides & Selection (Global per Page) */}
-                    <AlignmentGuides pageId={page.id} />
+                    {/* Selection (Per Page) */}
                     <SelectionMarquee pageId={page.id} />
                     <SelectionToolbar pageId={page.id} />
 

@@ -3,7 +3,7 @@
 import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
 import { Layers } from 'lucide-react';
-import { useRef } from 'react';
+import { memo, useRef } from 'react';
 import { ComponentWrapper } from './ComponentWrapper';
 
 import { useZoneDropTarget } from '@/hooks/use-zone-drop-target';
@@ -18,7 +18,7 @@ interface ZoneProps {
   resizeEdge?: 'top' | 'bottom' | 'none';
 }
 
-export function Zone({
+export const Zone = memo(function Zone({
   zoneKey,
   label,
   components,
@@ -126,4 +126,4 @@ export function Zone({
       )}
     </div>
   );
-}
+});

@@ -2,7 +2,7 @@
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 export const SelectionMarquee = memo(function SelectionMarquee({
   pageId,
@@ -16,59 +16,72 @@ export const SelectionMarquee = memo(function SelectionMarquee({
   const clearSelection = useDesignerStore((state) => state.clearSelection);
   const schema = useDesignerStore((state) => state.schema);
 
-  useEffect(() => {
-    const handleMouseDown = (e: MouseEvent) => {
-      // Only start if clicking on paper container background or zone background
-      const target = e.target as HTMLElement;
+  const [isSelecting, setIsSelecting] = useState(false);
+  const startPosRef = useRef<{ x: number; y: number } | null>(null);
+  const currentPosRef = useRef<{ x: number; y: number } | null>(null);
+  const paperRectRef = useRef<DOMRect | null>(null);
 
-      // Check if we clicked on the paper or its children but NOT on a component/handle
-      const selector = pageId
-        ? `[data-paper-container][data-page-id="${pageId}"]`
-        : '[data-paper-container]';
+  // 1. Handle Start of Selection (Stable Listener)
+  useEffect(() => {
+    const selector = pageId
+      ? `[data-paper-container][data-page-id="${pageId}"]`
+      : '[data-paper-container]';
+
+    const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
       const paper = document.querySelector(selector) as HTMLElement;
       if (!paper) return;
 
       const isInsidePaper = paper.contains(target);
-      const isComponent =
-        target.closest('[data-designer-component]') || target.closest('[data-drag-handle]');
+      const isComponent = target.closest('[data-designer-component]') || target.closest('[data-drag-handle]');
       const isToolbar = target.closest('[data-toolbar]');
 
       if (!isInsidePaper || isComponent || isToolbar || e.button !== 0) return;
 
       const rect = paper.getBoundingClientRect();
+      paperRectRef.current = rect;
+      
       const x = (e.clientX - rect.left) / zoom;
       const y = (e.clientY - rect.top) / zoom;
 
+      startPosRef.current = { x, y };
+      currentPosRef.current = { x, y };
       setStartPos({ x, y });
       setCurrentPos({ x, y });
+      setIsSelecting(true);
 
       if (!e.shiftKey) clearSelection();
     };
 
+    window.addEventListener('mousedown', handleMouseDown);
+    return () => window.removeEventListener('mousedown', handleMouseDown);
+  }, [pageId, zoom, clearSelection]);
+
+  // 2. Handle Active Selection (Dynamic Listeners)
+  useEffect(() => {
+    if (!isSelecting) return;
+
     const handleMouseMove = (e: MouseEvent) => {
-      if (!startPos) return;
+      const rect = paperRectRef.current;
+      if (!rect) return;
 
-      const selector = pageId
-        ? `[data-paper-container][data-page-id="${pageId}"]`
-        : '[data-paper-container]';
-      const paper = document.querySelector(selector) as HTMLElement;
-      if (!paper) return;
-
-      const rect = paper.getBoundingClientRect();
       const x = (e.clientX - rect.left) / zoom;
       const y = (e.clientY - rect.top) / zoom;
 
+      currentPosRef.current = { x, y };
       setCurrentPos({ x, y });
     };
 
     const handleMouseUp = () => {
-      if (startPos && currentPos) {
-        const x = Math.min(startPos.x, currentPos.x);
-        const y = Math.min(startPos.y, currentPos.y);
-        const width = Math.abs(startPos.x - currentPos.x);
-        const height = Math.abs(startPos.y - currentPos.y);
+      const start = startPosRef.current;
+      const current = currentPosRef.current;
 
-        // Convert PX to MM for collision detection
+      if (start && current) {
+        const x = Math.min(start.x, current.x);
+        const y = Math.min(start.y, current.y);
+        const width = Math.abs(start.x - current.x);
+        const height = Math.abs(start.y - current.y);
+
         const rectMm = {
           x: LayoutEngine.pxToMm(x),
           y: LayoutEngine.pxToMm(y),
@@ -76,7 +89,6 @@ export const SelectionMarquee = memo(function SelectionMarquee({
           height: LayoutEngine.pxToMm(height),
         };
 
-        // For each zone, select components in range
         let zoneOffsetPx = 0;
         for (const zoneKey of ['header', 'body', 'footer'] as const) {
           let zoneHeightMm = 0;
@@ -100,20 +112,21 @@ export const SelectionMarquee = memo(function SelectionMarquee({
         }
       }
 
+      setIsSelecting(false);
       setStartPos(null);
       setCurrentPos(null);
+      startPosRef.current = null;
+      currentPosRef.current = null;
     };
 
-    window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
-      window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [startPos, currentPos, zoom, selectComponentsInRange, clearSelection, schema, pageId]);
+  }, [isSelecting, zoom, pageId, schema, selectComponentsInRange]);
 
   if (!startPos || !currentPos) return null;
 

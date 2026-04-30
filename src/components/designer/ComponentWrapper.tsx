@@ -50,49 +50,30 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const previewRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
-  const {
-    selectedComponentIds,
-    isDraggingGlobal,
-    draggedComponentId,
-    selectComponent,
-    toggleComponentSelection,
-    removeComponent,
-    removeComponents,
-    addComponent,
-    updateComponent,
-    sampleData,
-    hiddenComponentIds,
-    lockedComponentIds,
-    bringToFront,
-    sendToBack,
-    moveUp,
-    moveDown,
-  } = useDesignerStore(
-    useShallow((state) => ({
-      selectedComponentIds: state.selectedComponentIds,
-      isDraggingGlobal: state.dragState.isDragging,
-      draggedComponentId: state.dragState.draggedComponentId,
-      selectComponent: state.selectComponent,
-      toggleComponentSelection: state.toggleComponentSelection,
-      removeComponent: state.removeComponent,
-      removeComponents: state.removeComponents,
-      addComponent: state.addComponent,
-      updateComponent: state.updateComponent,
-      sampleData: state.sampleData,
-      hiddenComponentIds: state.hiddenComponentIds,
-      lockedComponentIds: state.lockedComponentIds,
-      bringToFront: state.bringToFront,
-      sendToBack: state.sendToBack,
-      moveUp: state.moveUp,
-      moveDown: state.moveDown,
-    }))
-  );
-
-  const isHidden = hiddenComponentIds.includes(component.id);
-  const isLocked = lockedComponentIds.includes(component.id);
+  const isSelected = useDesignerStore((state) => state.selectedComponentIds.includes(component.id));
+  const isDraggingGlobal = useDesignerStore((state) => state.dragState.isDragging);
+  const draggedComponentId = useDesignerStore((state) => state.dragState.draggedComponentId);
+  
+  const selectComponent = useDesignerStore((state) => state.selectComponent);
+  const toggleComponentSelection = useDesignerStore((state) => state.toggleComponentSelection);
+  const updateComponent = useDesignerStore((state) => state.updateComponent);
+  const addComponent = useDesignerStore((state) => state.addComponent);
+  const removeComponent = useDesignerStore((state) => state.removeComponent);
+  const removeComponents = useDesignerStore((state) => state.removeComponents);
+  
+  const isHidden = useDesignerStore((state) => state.hiddenComponentIds.includes(component.id));
+  const isLocked = useDesignerStore((state) => state.lockedComponentIds.includes(component.id));
+  
+  const sampleData = useDesignerStore((state) => state.sampleData);
+  
+  const bringToFront = useDesignerStore((state) => state.bringToFront);
+  const sendToBack = useDesignerStore((state) => state.sendToBack);
+  const moveUp = useDesignerStore((state) => state.moveUp);
+  const moveDown = useDesignerStore((state) => state.moveDown);
+  
+  const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
 
   const [isEditing, setIsEditing] = useState(false);
-  const isSelected = selectedComponentIds.includes(component.id);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     if (component.type === 'text') {
@@ -292,7 +273,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       }}
       data-designer-component
       className={clsx(
-        'transition-none cursor-default select-none group focus:outline-none',
+        'transition-none cursor-default select-none group focus:outline-none high-perf-gpu',
         isSelected
           ? clsx(
               'z-50 ring-2 ring-[var(--accent)] ring-inset shadow-md',
@@ -302,8 +283,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               'z-10 ring-inset hover:ring-1 hover:ring-white/20',
               component.type === 'text' ? 'bg-transparent' : 'bg-white/5 hover:bg-white/10'
             ),
-        isSelected && !isLocked && 'z-[100] pointer-events-none is-moving', // Add class for CSS targeting
-        isMoving && 'z-[100] pointer-events-none is-moving ring-2 ring-[var(--accent)] shadow-lg', // Visual feedback during movement
+        isSelected && !isLocked && 'z-[100] pointer-events-none', // Removed is-moving here to apply it conditionally below
+        isMoving && 'is-moving z-[100] ring-2 ring-[var(--accent)] shadow-lg', // Visual feedback during movement
         isResizing && 'ring-2 ring-[var(--accent)] shadow-lg z-[100]'
       )}
     >

@@ -22,52 +22,8 @@ export function useZoneDropTarget(
     return dropTargetForElements({
       element: el,
       getData: () => ({ zoneKey, pageId }),
-      onDragEnter: ({ source }) => {
+      onDragEnter: () => {
         setIsDraggedOver(true);
-
-        // Real-time Zone Switching for Layers Panel
-        const data = source.data as any;
-        if (data.id && (data.zoneKey !== zoneKey || data.pageId !== pageId)) {
-          const state = useDesignerStore.getState();
-          const finalX = state.dragState.lastSnappedX;
-          const finalY = state.dragState.lastSnappedY;
-          const zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, state.schema, pageId);
-
-          if (data.group && data.group.length > 1) {
-            for (const item of data.group as any[]) {
-              const targetAbsY = finalY + item.offsetY;
-              const localY = targetAbsY - zoneOffsetMm;
-              moveComponent(
-                item.id,
-                data.zoneKey as any,
-                zoneKey,
-                -1,
-                finalX + item.offsetX,
-                localY,
-                data.pageId,
-                pageId,
-                true
-              );
-            }
-            setDragState({ startX: finalX, startY: finalY });
-          } else {
-            moveComponent(
-              data.id,
-              data.zoneKey as any,
-              zoneKey,
-              -1,
-              finalX,
-              finalY - zoneOffsetMm,
-              data.pageId,
-              pageId,
-              true
-            );
-            setDragState({ startX: finalX, startY: finalY });
-          }
-
-          data.zoneKey = zoneKey;
-          data.pageId = pageId;
-        }
       },
       onDragLeave: () => {
         setIsDraggedOver(false);
