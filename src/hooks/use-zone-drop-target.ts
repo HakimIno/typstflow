@@ -82,7 +82,7 @@ export function useZoneDropTarget(
           ? `[data-paper-container][data-page-id="${pageId}"]`
           : '[data-paper-container]';
         const container = document.querySelector(selector) as HTMLElement;
-        const zoom = Number.parseFloat(container?.dataset.zoom || '1');
+        const _zoom = Number.parseFloat(container?.dataset.zoom || '1');
         const finalX = state.dragState.lastSnappedX;
         const finalY = state.dragState.lastSnappedY;
         const zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, state.schema, pageId);

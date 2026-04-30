@@ -113,7 +113,7 @@ export const SelectionMarquee = memo(function SelectionMarquee({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [startPos, currentPos, zoom, selectComponentsInRange, clearSelection, schema]);
+  }, [startPos, currentPos, zoom, selectComponentsInRange, clearSelection, schema, pageId]);
 
   if (!startPos || !currentPos) return null;
 

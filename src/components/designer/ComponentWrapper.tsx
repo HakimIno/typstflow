@@ -183,7 +183,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
   // STABLE: Prevent recreation of handlers on every render
   const handleDuplicate = useCallback(
-    (e: React.MouseEvent) => {
+    (_e: React.MouseEvent) => {
       addComponent(
         zoneKey,
         {

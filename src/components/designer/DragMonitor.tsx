@@ -2,10 +2,10 @@
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { SnapEngine, type SnapPoint } from '@/lib/engine/snap-engine';
+import type { layoutEngine as LayoutEngineType } from '@/lib/wasm-layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { useEffect, useRef } from 'react';
-import type { layoutEngine as LayoutEngineType } from '@/lib/wasm-layout-engine';
 
 let wasmEngineCache: typeof LayoutEngineType | null = null;
 const getLayoutEngine = async () => {
@@ -77,19 +77,39 @@ export function DragMonitor() {
           // Instead of looping in JS, we load the Rust WASM Layout Engine
           getLayoutEngine().then((layoutEngine) => {
             const nodes: any[] = [];
-            for (const zone of Object.values(schema.zones) as any[]) {
-              for (const c of zone.components as any[]) {
+            
+            // 1. Load Global Zones (Header, Footer)
+            for (const [zKey, zone] of Object.entries(schema.zones) as [string, any][]) {
+              const yOffset = LayoutEngine.calculateZoneOffset(zKey, schema);
+              for (const c of zone.components) {
                 if (c.id === data.id) continue;
                 nodes.push({
                   id: c.id,
-                  zone: zone.id,
+                  zone: zKey,
                   x: c.x || 0,
-                  y: c.y || 0,
+                  y: (c.y || 0) + yOffset,
                   width: c.width || 0,
                   height: c.height || 0,
                 });
               }
             }
+
+            // 2. Load Active Page Body (or all pages if preferred, but active is more performant)
+            // For now, let's load ALL components from the current page being dragged from
+            const sourcePage = schema.pages.find(p => p.id === data.pageId) || schema.pages[0];
+            const bodyOffset = LayoutEngine.calculateZoneOffset('body', schema, sourcePage.id);
+            for (const c of sourcePage.body.components) {
+              if (c.id === data.id) continue;
+              nodes.push({
+                id: c.id,
+                zone: 'body',
+                x: c.x || 0,
+                y: (c.y || 0) + bodyOffset,
+                width: c.width || 0,
+                height: c.height || 0,
+              });
+            }
+
             layoutEngine.loadNodes(nodes);
           });
 
@@ -130,7 +150,7 @@ export function DragMonitor() {
         const data = source.data as any;
         const { schema } = useDesignerStore.getState();
 
-        // 1. Dynamic Container Detection (for Multi-page)
+        // 1. Dynamic Page Detection
         const targetElement = document.elementFromPoint(
           location.current.input.clientX,
           location.current.input.clientY
@@ -145,28 +165,37 @@ export function DragMonitor() {
 
         if (!cache.containerRect) return;
 
-        // 2. Coordinate Calculation
-        const relX =
-          (location.current.input.clientX - cache.containerRect.left - (data.dragOffsetX || 0)) /
-          cache.zoom;
-        const relY =
-          (location.current.input.clientY - cache.containerRect.top - (data.dragOffsetY || 0)) /
-          cache.zoom;
+        // 2. STABLE COORDINATE CALCULATION (DELTA-BASED)
+        // We calculate position relative to the current active page.
+        // This ensures that when we drop, we are using the correct page-local coordinates.
+        const relX = (location.current.input.clientX - cache.containerRect.left - (data.dragOffsetX || 0)) / cache.zoom;
+        const relY = (location.current.input.clientY - cache.containerRect.top - (data.dragOffsetY || 0)) / cache.zoom;
+        
         const rawX = LayoutEngine.pxToMm(relX);
         const rawY = LayoutEngine.pxToMm(relY);
 
-        // 2. Optimized Snapping
+        // 3. SYNCHRONOUS VISUAL FEEDBACK (Ultra-fast CSS)
+        // This makes the element follow the cursor perfectly regardless of frame rate.
+        const root = document.documentElement;
+        const pxDeltaX = location.current.input.clientX - cache.initialClientX;
+        const pxDeltaY = location.current.input.clientY - cache.initialClientY;
+        
+        // CSS expects pixels, so we use pure screen deltas
+        root.style.setProperty('--drag-dx', `${pxDeltaX / cache.zoom}px`);
+        root.style.setProperty('--drag-dy', `${pxDeltaY / cache.zoom}px`);
+
+        // 4. ASYNCHRONOUS SNAPPING (Off-main-thread via WASM)
         const width = data.width || data.component?.width || 0;
         const height = data.height || data.component?.height || 0;
 
-        // Use Rust WASM layout engine first, fallback to basic page snap
-        let snapX = rawX;
-        let snapY = rawY;
-        let activeGuidesX: number[] = [];
-        let activeGuidesY: number[] = [];
-
         getLayoutEngine().then((layoutEngine) => {
+          let snapX = rawX;
+          let snapY = rawY;
+          let activeGuidesX: number[] = [];
+          let activeGuidesY: number[] = [];
+
           const wasmSnap = layoutEngine.findSnaps(data.id || 'new', rawX, rawY, width, height, 5);
+          
           if (wasmSnap) {
             snapX = rawX + wasmSnap.dx;
             snapY = rawY + wasmSnap.dy;
@@ -177,7 +206,6 @@ export function DragMonitor() {
               .filter((g: any) => !g.is_vertical)
               .map((g: any) => g.position);
           } else {
-            // Fallback to old SnapEngine for page bounds if WASM fails
             const snap = SnapEngine.calculateSnap(
               rawX,
               rawY,
@@ -195,7 +223,14 @@ export function DragMonitor() {
             activeGuidesY = snap.activeGuidesY;
           }
 
-          // 3. Throttle Store Update (Only if snapped position changed)
+          // 5. Apply Snap Offset to Visuals
+          const snapOffsetX = LayoutEngine.mmToPx(snapX - rawX);
+          const snapOffsetY = LayoutEngine.mmToPx(snapY - rawY);
+          
+          root.style.setProperty('--drag-dx', `${(pxDeltaX + snapOffsetX) / cache.zoom}px`);
+          root.style.setProperty('--drag-dy', `${(pxDeltaY + snapOffsetY) / cache.zoom}px`);
+
+          // 6. Throttle Store Update
           if (snapX !== cache.lastSentX || snapY !== cache.lastSentY) {
             useDesignerStore.getState().setDragState({
               currentX: snapX,
@@ -211,25 +246,6 @@ export function DragMonitor() {
             cache.lastSentX = snapX;
             cache.lastSentY = snapY;
           }
-
-          // 4. Ultra-fast CSS Update
-          const root = document.documentElement;
-          
-          // Calculate delta in design-space (millimeters)
-          const pxDeltaX = location.current.input.clientX - cache.initialClientX;
-          const pxDeltaY = location.current.input.clientY - cache.initialClientY;
-          
-          const mmDeltaX = LayoutEngine.pxToMm(pxDeltaX) / cache.zoom;
-          const mmDeltaY = LayoutEngine.pxToMm(pxDeltaY) / cache.zoom;
-          
-          const snapOffsetX = snapX - rawX;
-          const snapOffsetY = snapY - rawY;
-
-          const dx = LayoutEngine.mmToPx(mmDeltaX + snapOffsetX);
-          const dy = LayoutEngine.mmToPx(mmDeltaY + snapOffsetY);
-          
-          root.style.setProperty('--drag-dx', `${dx}px`);
-          root.style.setProperty('--drag-dy', `${dy}px`);
         });
       },
       onDrop: () => {

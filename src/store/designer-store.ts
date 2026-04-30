@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import { indexedDBStorage } from '@/lib/async-storage';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { COMPLEX_SAMPLE_DATA, COMPLEX_TABLE_TEMPLATE } from '../lib/templates/complex-table';
 import { INVOICE_SAMPLE_DATA, INVOICE_TEMPLATE } from '../lib/templates/invoice';
 import {
@@ -912,7 +912,8 @@ export const useDesignerStore = create<DesignerState>()(
               },
             ];
             // Remove legacy body zone
-            delete state.schema.zones.body;
+            // @ts-ignore - Cleaning up legacy field
+            (state.schema.zones as any).body = undefined;
             state.activePageId = 'page-1';
           }
           return state;

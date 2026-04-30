@@ -1,8 +1,8 @@
 'use client';
 
-import { useShallow } from 'zustand/react/shallow';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
+import { useShallow } from 'zustand/react/shallow';
 
 export function AlignmentGuides({ pageId }: { pageId?: string }) {
   const { isDragging, activeGuides, activePageId } = useDesignerStore(

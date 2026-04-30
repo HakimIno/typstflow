@@ -63,8 +63,7 @@ export function useDraggable({
                   zoneKey: zKey as string,
                   pageId: undefined,
                   absY:
-                    (found.y || 0) +
-                    LayoutEngine.calculateZoneOffset(zKey as any, schema, pageId),
+                    (found.y || 0) + LayoutEngine.calculateZoneOffset(zKey as any, schema, pageId),
                 };
               }
             }

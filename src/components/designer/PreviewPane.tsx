@@ -5,7 +5,7 @@ import { renderReportToSvg } from '@/lib/typst-wasm';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { AlertTriangle, Cpu, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export function PreviewPane() {
@@ -34,7 +34,7 @@ export function PreviewPane() {
         if (!active) return;
         if (!result) throw new Error('Engine returned empty result');
 
-        const svgs = result.split('<!-- PAGE_BREAK -->').filter(s => s.trim().length > 0);
+        const svgs = result.split('<!-- PAGE_BREAK -->').filter((s) => s.trim().length > 0);
         setSvgContent(svgs);
       } catch (err: any) {
         if (!active) return;

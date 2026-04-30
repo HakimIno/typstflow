@@ -14,7 +14,7 @@ export const ReportTree = memo(function ReportTree() {
     setSidebarOpen,
   } = useDesignerStore();
 
-  const zones: (keyof typeof schema.zones)[] = ['header', 'body', 'footer'];
+  const _zones: (keyof typeof schema.zones)[] = ['header', 'body', 'footer'];
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-surface)] overflow-hidden font-sans border-r border-[var(--border-default)]">

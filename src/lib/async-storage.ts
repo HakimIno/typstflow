@@ -1,7 +1,7 @@
 /**
  * High-performance asynchronous storage engine using IndexedDB.
  * This is designed to be used with Zustand's persist middleware.
- * 
+ *
  * Unlike localStorage, IndexedDB:
  * 1. Is asynchronous (doesn't block the main UI thread).
  * 2. Has virtually no size limits (localStorage is limited to ~5MB).
@@ -46,7 +46,7 @@ export const indexedDBStorage = {
   setItem: async (name: string, value: string): Promise<void> => {
     const db = await getDB();
     const data = JSON.parse(value);
-    
+
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(STORE_NAME, 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
