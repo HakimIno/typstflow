@@ -195,19 +195,20 @@ export const Canvas = memo(function Canvas() {
                 </div>
               ))}
 
-              {/* Add Page Button */}
-              <button
-                type="button"
-                onClick={() => useDesignerStore.getState().addPage()}
-                className="group flex items-center gap-3 p-2 w-60 border-1 border-dashed border-slate-200 rounded-full hover:border-[var(--accent)] hover:bg-[var(--accent-glow)]/5 transition-all"
+              {/* Add Page Button (Minimal Version) */}
+              <div 
+                className="flex justify-center pt-4"
+                style={{ width: `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px` }}
               >
-                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-white transition-colors">
-                  <Plus className="w-3 h-3 text-[var(--accent)]" />
-                </div>
-                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-[var(--accent)] transition-colors">
-                  Add New Page
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => useDesignerStore.getState().addPage()}
+                  className="w-8 h-8 flex items-center justify-center rounded-full border border-dashed border-slate-400/40 bg-white/5 hover:border-[var(--accent)] hover:bg-[var(--accent-glow)] text-slate-400 hover:text-[var(--accent)] transition-all shadow-sm group"
+                  title="Add New Page"
+                >
+                  <Plus className="w-4 h-4 group-active:scale-90 transition-transform" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

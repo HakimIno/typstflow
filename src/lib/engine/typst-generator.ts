@@ -24,9 +24,23 @@ export class TypstGenerator {
 
     // Zones
     typst += '\n// --- Report Base ---\n';
-    typst += this.renderZone('header');
-    typst += this.renderZone('body');
-    typst += this.renderZone('footer');
+    
+    // 1. Header (Global)
+    typst += this.renderZone('header', this.schema.zones.header);
+
+    // 2. Pages (Iterate through each page body)
+    for (let i = 0; i < this.schema.pages.length; i++) {
+      const page = this.schema.pages[i];
+      typst += this.renderZone(`body-page-${i + 1}`, page.body);
+      
+      // Add pagebreak if not the last page
+      if (i < this.schema.pages.length - 1) {
+        typst += '\n#pagebreak()\n';
+      }
+    }
+
+    // 3. Footer (Global)
+    typst += this.renderZone('footer', this.schema.zones.footer);
 
     return typst;
   }
@@ -46,11 +60,10 @@ export class TypstGenerator {
     return `#set text(font: "${mainFont.family}", size: ${mainFont.size}pt, lang: "th")\n`;
   }
 
-  private renderZone(key: 'header' | 'body' | 'footer'): string {
-    const zone = this.schema.zones[key];
-    if (zone.components.length === 0) return '';
+  private renderZone(label: string, zone: any): string {
+    if (!zone || !zone.components || zone.components.length === 0) return '';
 
-    let typst = `\n// Band: ${key.toUpperCase()}\n`;
+    let typst = `\n// Band: ${label.toUpperCase()}\n`;
     // We treat each zone as a block to ensure clipping and containment
     typst += '#block(width: 100%, clip: true)[\n';
     for (const comp of zone.components) {
