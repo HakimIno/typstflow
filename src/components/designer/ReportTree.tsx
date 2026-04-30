@@ -14,8 +14,6 @@ export const ReportTree = memo(function ReportTree() {
     setSidebarOpen,
   } = useDesignerStore();
 
-  const _zones: (keyof typeof schema.zones)[] = ['header', 'body', 'footer'];
-
   return (
     <div className="flex flex-col h-full bg-[var(--bg-surface)] overflow-hidden font-sans border-r border-[var(--border-default)]">
       {/* Utility Header */}
@@ -130,8 +128,14 @@ export const ReportTree = memo(function ReportTree() {
   );
 });
 
-function TreeItem({ component, isSelected, onClick }: any) {
-  const icons: any = {
+interface TreeItemProps {
+  component: { id: string; type: string };
+  isSelected: boolean;
+  onClick: (e: React.MouseEvent) => void;
+}
+
+function TreeItem({ component, isSelected, onClick }: TreeItemProps) {
+  const icons: Record<string, React.ElementType> = {
     text: Type,
     table: Table,
     image: Image,

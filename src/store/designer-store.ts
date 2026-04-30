@@ -1,4 +1,11 @@
 import { indexedDBStorage } from '@/lib/async-storage';
+import {
+  getZoneComponents,
+  mapComponentInSchema,
+  removeComponentFromSchema,
+  removeComponentsFromSchema,
+  reorderComponentInSchema,
+} from '@/lib/utils/schema-mutators';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { COMPLEX_SAMPLE_DATA, COMPLEX_TABLE_TEMPLATE } from '../lib/templates/complex-table';
@@ -7,6 +14,7 @@ import {
   INVOICE_WITH_MANY_ITEMS_SAMPLE_DATA,
   INVOICE_WITH_PAGE_BREAKS_TEMPLATE,
 } from '../lib/templates/invoice-with-page-breaks';
+import { TAX_INVOICE_SAMPLE_DATA, TAX_INVOICE_TEMPLATE } from '../lib/templates/tax-invoice';
 import type { ComponentNode, LayoutSchema } from '../types/schema';
 
 type ZoneKey = 'header' | 'body' | 'footer';
@@ -117,7 +125,7 @@ interface DesignerState {
   setRightSidebarOpen: (open: boolean) => void;
   undo: () => void;
   redo: () => void;
-  loadTemplate: (name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks') => void;
+  loadTemplate: (name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks' | 'tax-invoice') => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setPrimaryColor: (color: string) => void;
 
@@ -245,11 +253,7 @@ export const useDesignerStore = create<DesignerState>()(
             history: [INVOICE_WITH_PAGE_BREAKS_TEMPLATE],
             historyIndex: 0,
           });
-        } else if (name === ('tax-invoice' as any)) {
-          const {
-            TAX_INVOICE_TEMPLATE,
-            TAX_INVOICE_SAMPLE_DATA,
-          } = require('../lib/templates/tax-invoice');
+        } else if (name === 'tax-invoice') {
           set({
             schema: TAX_INVOICE_TEMPLATE,
             sampleData: TAX_INVOICE_SAMPLE_DATA,
@@ -285,12 +289,12 @@ export const useDesignerStore = create<DesignerState>()(
             newSchema.pages = state.schema.pages.map((p) =>
               p.id === targetPageId
                 ? {
-                    ...p,
-                    body: {
-                      ...p.body,
-                      components: [...p.body.components, newComponent],
-                    },
-                  }
+                  ...p,
+                  body: {
+                    ...p.body,
+                    components: [...p.body.components, newComponent],
+                  },
+                }
                 : p
             );
           } else {
@@ -318,110 +322,28 @@ export const useDesignerStore = create<DesignerState>()(
 
       updateComponent: (id, updates, skipHistory) =>
         set((state) => {
-          const newSchema = { ...state.schema };
-          let changed = false;
-
-          // Check Global Zones
-          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
-            const index = newSchema.zones[key].components.findIndex((c) => c.id === id);
-            if (index !== -1) {
-              const newComponents = [...newSchema.zones[key].components];
-              newComponents[index] = { ...newComponents[index], ...updates } as ComponentNode;
-              newSchema.zones = {
-                ...newSchema.zones,
-                [key]: { ...newSchema.zones[key], components: newComponents },
-              };
-              changed = true;
-              break;
-            }
-          }
-
-          // Check Page Bodies
-          if (!changed) {
-            newSchema.pages = newSchema.pages.map((page) => {
-              const index = page.body.components.findIndex((c) => c.id === id);
-              if (index !== -1) {
-                const newComponents = [...page.body.components];
-                newComponents[index] = { ...newComponents[index], ...updates } as ComponentNode;
-                changed = true;
-                return { ...page, body: { ...page.body, components: newComponents } };
-              }
-              return page;
-            });
-          }
-
+          const { schema, changed } = mapComponentInSchema(
+            state.schema,
+            id,
+            (c) => ({ ...c, ...updates } as ComponentNode),
+          );
           if (!changed) return state;
-
-          if (skipHistory) return { schema: newSchema };
-          return pushHistory(state, newSchema);
+          if (skipHistory) return { schema };
+          return pushHistory(state, schema);
         }),
 
       removeComponent: (id) =>
         set((state) => {
-          const newSchema = { ...state.schema };
-          let changed = false;
-
-          // Global Zones
-          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
-            const original = newSchema.zones[key].components;
-            const filtered = original.filter((c) => c.id !== id);
-            if (filtered.length !== original.length) {
-              newSchema.zones = {
-                ...newSchema.zones,
-                [key]: { ...newSchema.zones[key], components: filtered },
-              };
-              changed = true;
-            }
-          }
-
-          // Pages
-          newSchema.pages = newSchema.pages.map((page) => {
-            const original = page.body.components;
-            const filtered = original.filter((c) => c.id !== id);
-            if (filtered.length !== original.length) {
-              changed = true;
-              return { ...page, body: { ...page.body, components: filtered } };
-            }
-            return page;
-          });
-
+          const { schema, changed } = removeComponentFromSchema(state.schema, id);
           if (!changed) return state;
-
-          return { ...pushHistory(state, newSchema), selectedComponentIds: [] };
+          return { ...pushHistory(state, schema), selectedComponentIds: [] };
         }),
 
       removeComponents: (ids) =>
         set((state) => {
-          const newSchema = { ...state.schema };
-          let changed = false;
-
-          // Global Zones
-          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
-            const original = newSchema.zones[key].components;
-            const filtered = original.filter((c) => !ids.includes(c.id));
-            if (filtered.length !== original.length) {
-              newSchema.zones = {
-                ...newSchema.zones,
-                [key]: { ...newSchema.zones[key], components: filtered },
-              };
-              changed = true;
-            }
-          }
-
-          // Pages
-          newSchema.pages = newSchema.pages.map((page) => {
-            const original = page.body.components;
-            const filtered = original.filter((c) => !ids.includes(c.id));
-            if (filtered.length !== original.length) {
-              changed = true;
-              return { ...page, body: { ...page.body, components: filtered } };
-            }
-            return page;
-          });
-
+          const { schema, changed } = removeComponentsFromSchema(state.schema, ids);
           if (!changed) return state;
-
-          return { ...pushHistory(state, newSchema), selectedComponentIds: [] };
+          return { ...pushHistory(state, schema), selectedComponentIds: [] };
         }),
 
       moveComponent: (
@@ -438,30 +360,39 @@ export const useDesignerStore = create<DesignerState>()(
         set((state) => {
           let component: ComponentNode | undefined;
 
-          // 1. Find and Extract Component
-          const newSchema = { ...state.schema };
+          // 1. Find and Extract Component — fully immutable via page/zone mapping
+          let newPages = state.schema.pages;
+          let newZones = state.schema.zones;
 
           if (fromZone === 'body') {
-            const page = newSchema.pages.find((p) => p.id === fromPageId);
-            if (page) {
-              component = page.body.components.find((c) => c.id === id);
-              if (component) {
-                page.body.components = page.body.components.filter((c) => c.id !== id);
-              }
-            }
+            newPages = state.schema.pages.map((p) => {
+              if (p.id !== fromPageId) return p;
+              const found = p.body.components.find((c) => c.id === id);
+              if (!found) return p;
+              component = found;
+              return {
+                ...p,
+                body: { ...p.body, components: p.body.components.filter((c) => c.id !== id) },
+              };
+            });
           } else {
-            component = newSchema.zones[fromZone].components.find((c) => c.id === id);
+            const zoneComps = state.schema.zones[fromZone].components;
+            component = zoneComps.find((c) => c.id === id);
             if (component) {
-              newSchema.zones[fromZone].components = newSchema.zones[fromZone].components.filter(
-                (c) => c.id !== id
-              );
+              newZones = {
+                ...state.schema.zones,
+                [fromZone]: {
+                  ...state.schema.zones[fromZone],
+                  components: zoneComps.filter((c) => c.id !== id),
+                },
+              };
             }
           }
 
           if (!component) return state;
 
           // 2. Update Component Position
-          const updatedComponent = {
+          const updatedComponent: ComponentNode = {
             ...component,
             ...(x !== undefined ? { x } : {}),
             ...(y !== undefined ? { y } : {}),
@@ -469,29 +400,31 @@ export const useDesignerStore = create<DesignerState>()(
 
           // 3. Insert into Target Zone
           if (toZone === 'body') {
-            const targetPageId = toPageId || state.activePageId || newSchema.pages[0]?.id;
-            newSchema.pages = newSchema.pages.map((p) => {
-              if (p.id === targetPageId) {
-                const comps = [...p.body.components];
-                const insertAt =
-                  newIndex === -1 || newIndex === undefined
-                    ? comps.length
-                    : Math.max(0, Math.min(newIndex, comps.length));
-                comps.splice(insertAt, 0, updatedComponent);
-                return { ...p, body: { ...p.body, components: comps } };
-              }
-              return p;
+            const targetPageId = toPageId || state.activePageId || state.schema.pages[0]?.id;
+            newPages = newPages.map((p) => {
+              if (p.id !== targetPageId) return p;
+              const comps = [...p.body.components];
+              const insertAt =
+                newIndex === -1 || newIndex === undefined
+                  ? comps.length
+                  : Math.max(0, Math.min(newIndex, comps.length));
+              comps.splice(insertAt, 0, updatedComponent);
+              return { ...p, body: { ...p.body, components: comps } };
             });
           } else {
-            const comps = [...newSchema.zones[toZone].components];
+            const comps = [...newZones[toZone].components];
             const insertAt =
               newIndex === -1 || newIndex === undefined
                 ? comps.length
                 : Math.max(0, Math.min(newIndex, comps.length));
             comps.splice(insertAt, 0, updatedComponent);
-            newSchema.zones[toZone].components = comps;
+            newZones = {
+              ...newZones,
+              [toZone]: { ...newZones[toZone], components: comps },
+            };
           }
 
+          const newSchema = { ...state.schema, pages: newPages, zones: newZones };
           if (skipHistory) return { schema: newSchema };
           return pushHistory(state, newSchema);
         }),
@@ -531,13 +464,7 @@ export const useDesignerStore = create<DesignerState>()(
 
       selectComponentsInRange: (rect, zoneKey, pageId) =>
         set((state) => {
-          let components: ComponentNode[] = [];
-          if (zoneKey === 'body') {
-            const page = state.schema.pages.find((p) => p.id === pageId);
-            components = page?.body.components || [];
-          } else {
-            components = state.schema.zones[zoneKey].components;
-          }
+          const components = getZoneComponents(state.schema, zoneKey, pageId);
 
           const foundIds = components
             .filter((comp) => {
@@ -572,11 +499,11 @@ export const useDesignerStore = create<DesignerState>()(
           selectedCell: cell,
           selectedCells: cell
             ? {
-                tableId: cell.tableId,
-                section: cell.section,
-                rowIds: [cell.rowId],
-                cellIndices: [cell.cellIdx],
-              }
+              tableId: cell.tableId,
+              section: cell.section,
+              rowIds: [cell.rowId],
+              cellIndices: [cell.cellIdx],
+            }
             : null,
         }),
 
@@ -666,41 +593,13 @@ export const useDesignerStore = create<DesignerState>()(
 
       renameComponent: (id, name) =>
         set((state) => {
-          const newSchema = { ...state.schema };
-          let changed = false;
-
-          // Global
-          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
-            const components = newSchema.zones[key].components;
-            const index = components.findIndex((c) => c.id === id);
-            if (index !== -1) {
-              const newComponents = [...components];
-              newComponents[index] = { ...newComponents[index], name } as ComponentNode;
-              newSchema.zones = {
-                ...newSchema.zones,
-                [key]: { ...newSchema.zones[key], components: newComponents },
-              };
-              changed = true;
-              break;
-            }
-          }
-
-          // Pages
-          if (!changed) {
-            newSchema.pages = newSchema.pages.map((page) => {
-              const index = page.body.components.findIndex((c) => c.id === id);
-              if (index !== -1) {
-                const newComponents = [...page.body.components];
-                newComponents[index] = { ...newComponents[index], name } as ComponentNode;
-                changed = true;
-                return { ...page, body: { ...page.body, components: newComponents } };
-              }
-              return page;
-            });
-          }
-
+          const { schema, changed } = mapComponentInSchema(
+            state.schema,
+            id,
+            (c) => ({ ...c, name } as ComponentNode),
+          );
           if (!changed) return state;
-          return pushHistory(state, newSchema);
+          return pushHistory(state, schema);
         }),
 
       addPage: () =>
@@ -767,173 +666,64 @@ export const useDesignerStore = create<DesignerState>()(
 
       bringToFront: (id) =>
         set((state) => {
-          const newSchema = { ...state.schema };
-          let changed = false;
-
-          // Global
-          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
-            const index = newSchema.zones[key].components.findIndex((c) => c.id === id);
-            if (index !== -1) {
-              const components = [...newSchema.zones[key].components];
-              const [component] = components.splice(index, 1);
-              components.push(component);
-              newSchema.zones[key].components = components;
-              changed = true;
-              break;
-            }
-          }
-
-          // Pages
-          if (!changed) {
-            newSchema.pages = newSchema.pages.map((page) => {
-              const index = page.body.components.findIndex((c) => c.id === id);
-              if (index !== -1) {
-                const components = [...page.body.components];
-                const [component] = components.splice(index, 1);
-                components.push(component);
-                changed = true;
-                return { ...page, body: { ...page.body, components } };
-              }
-              return page;
-            });
-          }
-
+          const { schema, changed } = reorderComponentInSchema(
+            state.schema,
+            id,
+            (comps, idx) => { const next = [...comps]; const [c] = next.splice(idx, 1); next.push(c); return next; },
+          );
           if (!changed) return state;
-          return pushHistory(state, newSchema);
+          return pushHistory(state, schema);
         }),
 
       sendToBack: (id) =>
         set((state) => {
-          const newSchema = { ...state.schema };
-          let changed = false;
-
-          // Global
-          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
-            const index = newSchema.zones[key].components.findIndex((c) => c.id === id);
-            if (index !== -1) {
-              const components = [...newSchema.zones[key].components];
-              const [component] = components.splice(index, 1);
-              components.unshift(component);
-              newSchema.zones[key].components = components;
-              changed = true;
-              break;
-            }
-          }
-
-          // Pages
-          if (!changed) {
-            newSchema.pages = newSchema.pages.map((page) => {
-              const index = page.body.components.findIndex((c) => c.id === id);
-              if (index !== -1) {
-                const components = [...page.body.components];
-                const [component] = components.splice(index, 1);
-                components.unshift(component);
-                changed = true;
-                return { ...page, body: { ...page.body, components } };
-              }
-              return page;
-            });
-          }
-
+          const { schema, changed } = reorderComponentInSchema(
+            state.schema,
+            id,
+            (comps, idx) => { const next = [...comps]; const [c] = next.splice(idx, 1); next.unshift(c); return next; },
+          );
           if (!changed) return state;
-          return pushHistory(state, newSchema);
+          return pushHistory(state, schema);
         }),
 
       moveUp: (id) =>
         set((state) => {
-          const newSchema = { ...state.schema };
-          let changed = false;
-
-          // Global
-          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
-            const index = newSchema.zones[key].components.findIndex((c) => c.id === id);
-            if (index !== -1 && index < newSchema.zones[key].components.length - 1) {
-              const components = [...newSchema.zones[key].components];
-              [components[index], components[index + 1]] = [
-                components[index + 1],
-                components[index],
-              ];
-              newSchema.zones[key].components = components;
-              changed = true;
-              break;
-            }
-          }
-
-          // Pages
-          if (!changed) {
-            newSchema.pages = newSchema.pages.map((page) => {
-              const index = page.body.components.findIndex((c) => c.id === id);
-              if (index !== -1 && index < page.body.components.length - 1) {
-                const components = [...page.body.components];
-                [components[index], components[index + 1]] = [
-                  components[index + 1],
-                  components[index],
-                ];
-                changed = true;
-                return { ...page, body: { ...page.body, components } };
-              }
-              return page;
-            });
-          }
-
+          const { schema, changed } = reorderComponentInSchema(
+            state.schema,
+            id,
+            (comps, idx) => {
+              if (idx >= comps.length - 1) return null;
+              const next = [...comps];
+              [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+              return next;
+            },
+          );
           if (!changed) return state;
-          return pushHistory(state, newSchema);
+          return pushHistory(state, schema);
         }),
 
       moveDown: (id) =>
         set((state) => {
-          const newSchema = { ...state.schema };
-          let changed = false;
-
-          // Global
-          for (const key of ['header', 'footer'] as ('header' | 'footer')[]) {
-            const index = newSchema.zones[key].components.findIndex((c) => c.id === id);
-            if (index !== -1 && index > 0) {
-              const components = [...newSchema.zones[key].components];
-              [components[index], components[index - 1]] = [
-                components[index - 1],
-                components[index],
-              ];
-              newSchema.zones[key].components = components;
-              changed = true;
-              break;
-            }
-          }
-
-          // Pages
-          if (!changed) {
-            newSchema.pages = newSchema.pages.map((page) => {
-              const index = page.body.components.findIndex((c) => c.id === id);
-              if (index !== -1 && index > 0) {
-                const components = [...page.body.components];
-                [components[index], components[index - 1]] = [
-                  components[index - 1],
-                  components[index],
-                ];
-                changed = true;
-                return { ...page, body: { ...page.body, components } };
-              }
-              return page;
-            });
-          }
-
+          const { schema, changed } = reorderComponentInSchema(
+            state.schema,
+            id,
+            (comps, idx) => {
+              if (idx <= 0) return null;
+              const next = [...comps];
+              [next[idx], next[idx - 1]] = [next[idx - 1], next[idx]];
+              return next;
+            },
+          );
           if (!changed) return state;
-          return pushHistory(state, newSchema);
+          return pushHistory(state, schema);
         }),
     }),
     {
-      name: 'typstflow-settings',
-      partialize: (state) => ({
-        theme: state.theme,
-        primaryColor: state.primaryColor,
-      }),
-    },
-    {
       name: 'designer-storage',
       storage: createJSONStorage(() => indexedDBStorage),
-      partialize: (state) => {
+      partialize: (state: DesignerState) => {
         // Exclude dragState from persistence to avoid performance lag
-        const { dragState, ...rest } = state;
+        const { dragState, history, historyIndex, ...rest } = state;
         return rest;
       },
       version: 3,
@@ -942,7 +732,11 @@ export const useDesignerStore = create<DesignerState>()(
           const state = persistedState as any;
           if (state.schema && !state.schema.pages) {
             // Transform legacy zones.body to pages array
-            const bodyZone = state.schema.zones.body || { id: 'body', minHeight: '237mm', components: [] };
+            const bodyZone = state.schema.zones.body || {
+              id: 'body',
+              minHeight: '237mm',
+              components: [],
+            };
             state.schema.pages = [
               {
                 id: 'page-1',

@@ -94,93 +94,6 @@ export const INVOICE_WITH_PAGE_BREAKS_TEMPLATE: LayoutSchema = {
         },
       ],
     },
-    body: {
-      id: 'body',
-      minHeight: '150mm',
-      components: [
-        // Customer Information Section
-        {
-          id: 'customer-section',
-          type: 'text',
-          content:
-            'BILL TO\n\n{{invoice.customer.name}}\n{{invoice.customer.address}}\nTax ID: {{invoice.customer.tax_id}}',
-          x: 0,
-          y: 0,
-          width: 180,
-          height: 30,
-          style: { fontSize: 10, lineHeight: 1.5, color: '#1e293b' },
-          align: 'left',
-        },
-
-        // Products Table
-        {
-          id: 'products-table',
-          type: 'table',
-          dataSource: '{{invoice.items}}',
-          x: 0,
-          y: 35,
-          width: 180,
-          height: 120,
-          pageBreakBefore: false,
-          showHeader: true,
-          repeatHeaderOnPage: true,
-          columns: [
-            {
-              id: 'col1',
-              header: 'รายการ (Description)',
-              field: 'description',
-              width: '3fr',
-              align: 'left',
-            },
-            { id: 'col2', header: 'จำนวน', field: 'qty', width: '0.8fr', align: 'center' },
-            { id: 'col3', header: 'ราคา/หน่วย', field: 'price', width: '1.2fr', align: 'right' },
-            { id: 'col4', header: 'ส่วนลด', field: 'discount', width: '1fr', align: 'right' },
-            { id: 'col5', header: 'จำนวนเงิน', field: 'total', width: '1.5fr', align: 'right' },
-          ],
-          style: {
-            headerBackground: '#1e40af',
-            headerTextColor: '#ffffff',
-            borderColor: '#cbd5e1',
-            borderWidth: '0.5pt',
-            cellPadding: '8pt',
-            fontSize: 9,
-            fillPattern: 'striped-rows',
-            stripedColor1: '#f8fafc',
-            stripedColor2: '#ffffff',
-          },
-        },
-
-        // Summary Section
-        {
-          id: 'summary-box',
-          type: 'summary-box',
-          x: 110,
-          y: 165,
-          width: 70,
-          height: 35,
-          rows: [
-            { label: 'ยอดรวม (Subtotal)', value: '{{invoice.subtotal}}', style: 'normal' },
-            { label: 'ส่วนลด (Discount)', value: '{{invoice.discount_total}}', style: 'highlight' },
-            { label: 'ภาษีมูลค่าเพิ่ม 7% (VAT)', value: '{{invoice.vat_amount}}', style: 'normal' },
-            { label: 'ยอดเงินสุทธิ (TOTAL)', value: '{{invoice.total}}', style: 'total' },
-          ],
-        },
-
-        // Terms and Conditions
-        {
-          id: 'terms',
-          type: 'text',
-          content:
-            'TERMS & CONDITIONS\n\n1. Payment is due within 30 days.\n2. Payable to: Thai Tech Solutions\n3. Bank Transfer: K-Bank 123-4-56789-0',
-          x: 0,
-          y: 165,
-          width: 100,
-          height: 30,
-          style: { fontSize: 8, color: '#475569', lineHeight: 1.4 },
-          align: 'left',
-        },
-      ],
-    },
     footer: {
       id: 'footer',
       minHeight: '20mm',
@@ -222,6 +135,99 @@ export const INVOICE_WITH_PAGE_BREAKS_TEMPLATE: LayoutSchema = {
       ],
     },
   },
+  pages: [
+    {
+      id: 'page-1',
+      name: 'Invoice Main',
+      body: {
+        id: 'body',
+        minHeight: '150mm',
+        components: [
+          // Customer Information Section
+          {
+            id: 'customer-section',
+            type: 'text',
+            content:
+              'BILL TO\n\n{{invoice.customer.name}}\n{{invoice.customer.address}}\nTax ID: {{invoice.customer.tax_id}}',
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 30,
+            style: { fontSize: 10, lineHeight: 1.5, color: '#1e293b' },
+            align: 'left',
+          },
+
+          // Products Table
+          {
+            id: 'products-table',
+            type: 'table',
+            dataSource: '{{invoice.items}}',
+            x: 0,
+            y: 35,
+            width: 180,
+            height: 120,
+            pageBreakBefore: false,
+            showHeader: true,
+            repeatHeaderOnPage: true,
+            columns: [
+              {
+                id: 'col1',
+                header: 'รายการ (Description)',
+                field: 'description',
+                width: '3fr',
+                align: 'left',
+              },
+              { id: 'col2', header: 'จำนวน', field: 'qty', width: '0.8fr', align: 'center' },
+              { id: 'col3', header: 'ราคา/หน่วย', field: 'price', width: '1.2fr', align: 'right' },
+              { id: 'col4', header: 'ส่วนลด', field: 'discount', width: '1fr', align: 'right' },
+              { id: 'col5', header: 'จำนวนเงิน', field: 'total', width: '1.5fr', align: 'right' },
+            ],
+            style: {
+              headerBackground: '#1e40af',
+              headerTextColor: '#ffffff',
+              borderColor: '#cbd5e1',
+              borderWidth: '0.5pt',
+              cellPadding: '8pt',
+              fontSize: 9,
+              fillPattern: 'striped-rows',
+              stripedColor1: '#f8fafc',
+              stripedColor2: '#ffffff',
+            },
+          },
+
+          // Summary Section
+          {
+            id: 'summary-box',
+            type: 'summary-box',
+            x: 110,
+            y: 165,
+            width: 70,
+            height: 35,
+            rows: [
+              { label: 'ยอดรวม (Subtotal)', value: '{{invoice.subtotal}}', style: 'normal' },
+              { label: 'ส่วนลด (Discount)', value: '{{invoice.discount_total}}', style: 'highlight' },
+              { label: 'ภาษีมูลค่าเพิ่ม 7% (VAT)', value: '{{invoice.vat_amount}}', style: 'normal' },
+              { label: 'ยอดเงินสุทธิ (TOTAL)', value: '{{invoice.total}}', style: 'total' },
+            ],
+          },
+
+          // Terms and Conditions
+          {
+            id: 'terms',
+            type: 'text',
+            content:
+              'TERMS & CONDITIONS\n\n1. Payment is due within 30 days.\n2. Payable to: Thai Tech Solutions\n3. Bank Transfer: K-Bank 123-4-56789-0',
+            x: 0,
+            y: 165,
+            width: 100,
+            height: 30,
+            style: { fontSize: 8, color: '#475569', lineHeight: 1.4 },
+            align: 'left',
+          },
+        ],
+      },
+    },
+  ],
   variables: [
     {
       name: 'companyName',

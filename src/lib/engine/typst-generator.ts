@@ -1,4 +1,5 @@
 import type { ComponentNode, LayoutSchema, TableComponent } from '../../types/schema';
+import { escapeTypst } from '../utils/typst-utils';
 
 /**
  * Professional-grade Typst Code Generator.
@@ -204,6 +205,6 @@ export class TypstGenerator {
   }
 
   private escapeTypst(str: string): string {
-    return str.replace(/([#\*_])/g, '\\$1');
+    return escapeTypst(str);
   }
 }

@@ -28,43 +28,49 @@ export const COMPLEX_TABLE_TEMPLATE: LayoutSchema = {
         },
       ],
     },
-    body: {
-      id: 'body',
-      minHeight: '150mm',
-      components: [
-        {
-          id: 'demo-table',
-          type: 'table',
-          x: 0,
-          y: 20,
-          width: 180,
-          height: 80,
-          dataSource: '{{inventory}}',
-          showHeader: true,
-          repeatHeaderOnPage: true,
-          style: {
-            headerBackground: '#1e293b',
-            headerRows: 1,
-            alternateRowBackground: '#f8fafc',
-            borderColor: '#e2e8f0',
-            borderWidth: '0.5pt',
-          },
-          columns: [
-            { id: 'c1', header: 'Category & Product', field: 'name', width: '2fr', colspan: 2 },
-            { id: 'c2', header: 'Hidden', field: '', width: '1fr' }, // This will be covered by C1
-            { id: 'c3', header: 'Details', field: 'sku', width: '1fr', rowspan: 1 },
-            { id: 'c4', header: 'Quantity', field: 'qty', width: '50pt', align: 'center' },
-            { id: 'c5', header: 'Price', field: 'price', width: '70pt', align: 'right' },
-          ],
-        },
-      ],
-    },
     footer: {
       id: 'footer',
       minHeight: '20mm',
       components: [],
     },
   },
+  pages: [
+    {
+      id: 'page-1',
+      name: 'Table Demo',
+      body: {
+        id: 'body',
+        minHeight: '150mm',
+        components: [
+          {
+            id: 'demo-table',
+            type: 'table',
+            x: 0,
+            y: 20,
+            width: 180,
+            height: 80,
+            dataSource: '{{inventory}}',
+            showHeader: true,
+            repeatHeaderOnPage: true,
+            style: {
+              headerBackground: '#1e293b',
+              headerRows: 1,
+              alternateRowBackground: '#f8fafc',
+              borderColor: '#e2e8f0',
+              borderWidth: '0.5pt',
+            },
+            columns: [
+              { id: 'c1', header: 'Category & Product', field: 'name', width: '2fr', colspan: 2 },
+              { id: 'c2', header: 'Hidden', field: '', width: '1fr' }, // This will be covered by C1
+              { id: 'c3', header: 'Details', field: 'sku', width: '1fr', rowspan: 1 },
+              { id: 'c4', header: 'Quantity', field: 'qty', width: '50pt', align: 'center' },
+              { id: 'c5', header: 'Price', field: 'price', width: '70pt', align: 'right' },
+            ],
+          },
+        ],
+      },
+    },
+  ],
   variables: [],
   dataSchema: [],
   metadata: {
