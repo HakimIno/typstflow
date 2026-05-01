@@ -21,6 +21,7 @@ export default function DesignerPage() {
   useKeyboardShortcuts();
 
   // Granular Selectors - Optimized for high performance
+  const _hasHydrated = useDesignerStore((state) => state._hasHydrated);
   const schema = useDesignerStore((state) => state.schema);
   const viewMode = useDesignerStore((state) => state.viewMode);
   const activeTab = useDesignerStore((state) => state.activeTab);
@@ -57,7 +58,7 @@ export default function DesignerPage() {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
+  if (!mounted || !_hasHydrated) return null;
 
   const renderLeftPanel = () => {
     switch (activeTab) {

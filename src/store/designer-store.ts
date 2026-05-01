@@ -158,6 +158,8 @@ interface DesignerState {
   paste: () => void;
   duplicateSelected: () => void;
   nudgeSelected: (dx: number, dy: number) => void;
+  _hasHydrated: boolean;
+  setHasHydrated: (state: boolean) => void;
 }
 
 const MAX_HISTORY = 50;
@@ -246,6 +248,8 @@ export const useDesignerStore = create<DesignerState>()(
         },
         activePageId: null,
       },
+      _hasHydrated: false,
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
 
       loadTemplate: (name) => {
         agentLogger.log({
@@ -823,8 +827,8 @@ export const useDesignerStore = create<DesignerState>()(
       name: 'designer-storage',
       storage: createJSONStorage(() => indexedDBStorage),
       partialize: (state: DesignerState) => {
-        // Exclude dragState from persistence to avoid performance lag
-        const { dragState, history, historyIndex, ...rest } = state;
+        // Exclude transient state from persistence
+        const { dragState, history, historyIndex, _hasHydrated, ...rest } = state;
         return rest;
       },
       version: 3,
@@ -871,6 +875,7 @@ export const useDesignerStore = create<DesignerState>()(
             level: 'info',
             message: 'Designer state rehydrated',
           });
+          state.setHasHydrated(true);
         }
       },
     }

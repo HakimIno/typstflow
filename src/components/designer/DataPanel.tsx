@@ -147,12 +147,12 @@ export const DataPanel = memo(function DataPanel() {
         {/* Error/Success Indicator */}
         <div className="absolute bottom-3 right-3 flex items-center gap-2 z-10 pointer-events-none">
           {error ? (
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--bg-surface-solid)] border border-red-500/20 rounded shadow-lg text-red-400 animate-in fade-in slide-in-from-right-2">
+            <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-[var(--bg-surface-solid)] border border-red-500 rounded  text-red-400 animate-in fade-in slide-in-from-right-2">
               <AlertCircle className="w-3 h-3" />
               <span className="text-[9px] font-bold uppercase tracking-wider">Invalid JSON</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--bg-surface-solid)] border border-green-500/20 rounded shadow-lg text-[var(--green)]">
+            <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-[var(--bg-surface-solid)] border border-green-500 rounded  text-[var(--green)]">
               <CheckCircle2 className="w-3 h-3" />
               <span className="text-[9px] font-bold uppercase tracking-wider">Valid Data</span>
             </div>
