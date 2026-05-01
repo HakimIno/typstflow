@@ -6,6 +6,7 @@ import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { clsx } from 'clsx';
 import {
   Columns,
+  EllipseIcon,
   FileDown,
   Image,
   LayoutDashboard,
@@ -77,9 +78,11 @@ export const Palette = memo(function Palette() {
     <div className="h-full flex flex-col bg-[var(--bg-surface)] overflow-hidden font-sans border-r border-[var(--border-default)]">
       {/* Utility Header */}
       <div className="px-3 py-2.5 bg-[var(--bg-widget)] flex items-center justify-between border-b border-[var(--border-default)] shrink-0">
-        <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">
-          Element Library
-        </span>
+        <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+          <EllipseIcon className="w-3.5 h-3.5 text-[var(--accent)]" />
+          <span className="text-[9px] font-bold uppercase tracking-[0.1em]"> Element Library</span>
+        </div>
+
         <button
           type="button"
           onClick={() => setSidebarOpen(false)}
@@ -103,17 +106,18 @@ export const Palette = memo(function Palette() {
         </div>
       </div>
 
-      {/* Categories Content - Dense Grid */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-4">
+      {/* Categories Content - Dense List */}
+      <div className="flex-1 overflow-y-auto scrollbar-none p-1.5 space-y-3">
         {filteredCategories.map((cat) => (
-          <div key={cat.id} className="space-y-1.5">
-            <div className="px-1 py-1 border-b border-[var(--border-default)] flex items-center justify-between">
-              <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">
+          <div key={cat.id} className="space-y-1">
+            <div className="px-1.5 py-0.5 flex items-center gap-2">
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.15em]">
                 {cat.label}
               </span>
+              <div className="flex-1 h-px bg-[var(--border-subtle)] opacity-50" />
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-1 gap-0.5">
               {cat.items.map((item) => (
                 <PaletteItem key={item.type} {...item} />
               ))}
@@ -125,7 +129,13 @@ export const Palette = memo(function Palette() {
   );
 });
 
-const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: any) {
+interface PaletteItemProps {
+  type: string;
+  label: string;
+  icon: React.ElementType;
+}
+
+const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: PaletteItemProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -198,6 +208,13 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: any) 
             width: 80,
             height: 30,
           };
+        case 'page-break-indicator':
+          return {
+            ...base,
+            type: 'page-break-indicator',
+            width: 210,
+            height: 2,
+          };
         default:
           return { ...base, type: 'text', content: '', height: 10 };
       }
@@ -225,14 +242,14 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: any) 
     <div
       ref={ref}
       className={clsx(
-        'group flex flex-col items-center gap-2 px-2 py-2 rounded-[6px] bg-[var(--bg-widget)] border border-[var(--border-default)] transition-all cursor-grab active:cursor-grabbing hover:bg-[var(--bg-hover)] hover:border-[var(--border-accent)]'
+        'group flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-grab active:cursor-grabbing hover:bg-[var(--bg-widget)] border border-transparent hover:border-[var(--border-subtle)] hover:shadow-sm'
       )}
     >
-      <div className="w-6 h-6 flex  items-center justify-center shrink-0">
-        <Icon className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" />
+      <div className="w-6 h-6 rounded-md bg-[var(--bg-widget)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] transition-all">
+        <Icon className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors" />
       </div>
 
-      <span className="text-[9px] text-[var(--text-muted)] font-medium truncate group-hover:text-[var(--text-secondary)] text-center w-full uppercase tracking-wider">
+      <span className="text-[10px] text-[var(--text-secondary)] font-semibold truncate group-hover:text-[var(--text-primary)] transition-colors">
         {label}
       </span>
     </div>

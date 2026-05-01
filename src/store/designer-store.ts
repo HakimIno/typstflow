@@ -31,7 +31,7 @@ interface DesignerState {
   // App State
   viewMode: 'design' | 'preview' | 'split';
   zoom: number;
-  activeTab: 'palette' | 'outline' | 'data';
+  activeTab: 'palette' | 'outline' | 'data' | 'ai';
   activePageId: string | null;
   isSidebarOpen: boolean;
   isRightSidebarOpen: boolean;
@@ -123,7 +123,7 @@ interface DesignerState {
   setSampleData: (data: Record<string, unknown>) => void;
   setZoom: (zoom: number) => void;
   setViewMode: (mode: 'design' | 'preview' | 'split') => void;
-  setActiveTab: (tab: 'palette' | 'outline' | 'data') => void;
+  setActiveTab: (tab: 'palette' | 'outline' | 'data' | 'ai') => void;
   setActivePage: (pageId: string | null) => void;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;

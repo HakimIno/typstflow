@@ -1,5 +1,6 @@
 'use client';
 
+import { AiPanel } from '@/components/designer/AiPanel';
 import { Canvas } from '@/components/designer/Canvas';
 import { DataPanel } from '@/components/designer/DataPanel';
 import { LayersPanel } from '@/components/designer/LayersPanel';
@@ -66,6 +67,8 @@ export default function DesignerPage() {
         return <LayersPanel />;
       case 'data':
         return <DataPanel />;
+      case 'ai':
+        return <AiPanel />;
       default:
         return <Palette />;
     }
