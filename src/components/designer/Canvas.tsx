@@ -5,8 +5,10 @@ import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { Plus, X } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { useVirtualElements } from '@/hooks/use-virtual-elements';
+
 import { DragMonitor } from './DragMonitor';
 import { Ruler } from './Ruler';
 import { SelectionMarquee } from './SelectionMarquee';
@@ -17,17 +19,20 @@ import { Zone } from './Zone';
 export const Canvas = memo(function Canvas() {
   const schema = useDesignerStore((state) => state.schema);
   const zoom = useDesignerStore((state) => state.zoom);
+  const activePageId = useDesignerStore((state) => state.activePageId);
+  const setActivePage = useDesignerStore((state) => state.setActivePage);
   const isDraggingGlobal = useDesignerStore((state) => state.dragState.isDragging);
   const [mounted, setMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
   const [scrollPos, setScrollPos] = useState({ x: 0, y: 0 });
 
+  // Track which elements and pages are visible in the current viewport
+  const { visibleIds, visiblePageIds } = useVirtualElements(scrollRef, zoom, schema, activePageId);
+
   const updateScrollPos = useCallback(() => {
     if (scrollRef.current) {
       const { scrollLeft, scrollTop } = scrollRef.current;
-      // We use the raw scroll values. The 64px (16mm * 4) padding is added
-      // to align with the drafting area's starting position.
       setScrollPos({
         x: scrollLeft - 64,
         y: scrollTop - 48,
@@ -36,7 +41,6 @@ export const Canvas = memo(function Canvas() {
   }, []);
 
   const handleScroll = () => {
-    // Optimization: Use RequestAnimationFrame for scroll sync
     requestAnimationFrame(updateScrollPos);
   };
 
@@ -49,7 +53,6 @@ export const Canvas = memo(function Canvas() {
   }, [updateScrollPos]);
 
   useEffect(() => {
-    // Initial measurement and re-measurement after state changes
     const t = setTimeout(updateScrollPos, 50);
     return () => clearTimeout(t);
   }, [updateScrollPos]);
@@ -61,7 +64,6 @@ export const Canvas = memo(function Canvas() {
     schema.page.orientation
   );
 
-  // Calculate Margin Guides
   const marginTop = parseTypstUnit(schema.page.margin.top);
   const marginBottom = parseTypstUnit(schema.page.margin.bottom);
   const marginLeft = parseTypstUnit(schema.page.margin.left);
@@ -105,97 +107,111 @@ export const Canvas = memo(function Canvas() {
             )}
           >
             <div className="min-w-max min-h-max pl-16 pr-16 pb-24 pt-12 flex flex-col items-start gap-8 relative">
-              {/* Global Overlays (Singleton for Performance) */}
               <TransientOverlay />
 
-              {(schema.pages || []).map((page, pIdx) => (
-                <div
-                  key={`wrapper-${page.id}`}
-                  style={{
-                    width: `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
-                    height: `${LayoutEngine.mmToPx(pageHeightMm) * zoom}px`,
-                  }}
-                  className="relative group"
-                >
+              {(schema.pages || []).map((page, pIdx) => {
+                const isPageVisible = visiblePageIds.has(page.id);
+
+                return (
                   <div
-                    ref={pIdx === 0 ? paperRef : null}
-                    data-paper-container
-                    data-page-id={page.id}
-                    data-zoom={zoom}
-                    className={clsx(
-                      'bg-white pro-grid border border-slate-300 absolute top-0 left-0 shadow-2xl origin-top-left flex-shrink-0 rounded-[4px] contain-page high-perf-gpu',
-                      !isDraggingGlobal && 'transition-all duration-300'
-                    )}
+                    key={`wrapper-${page.id}`}
                     style={{
-                      width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
-                      height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
-                      transform: `scale(${zoom})`,
+                      width: `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
+                      height: `${LayoutEngine.mmToPx(pageHeightMm) * zoom}px`,
                     }}
+                    className="relative group"
                   >
-                    {/* Page Label */}
-                    <div className="absolute -left-16 top-0 text-[10px] font-bold text-slate-400 opacity-60 uppercase tracking-widest pointer-events-none">
-                      Page {pIdx + 1}
-                    </div>
-
-                    {/* Margin Guides (Dashed) */}
                     <div
-                      className="absolute border border-[var(--accent)] border-dashed pointer-events-none z-10 opacity-30"
+                      ref={pIdx === 0 ? paperRef : null}
+                      data-paper-container
+                      data-page-id={page.id}
+                      data-zoom={zoom}
+                      onClick={() => setActivePage(page.id)}
+                      className={clsx(
+                        'bg-white border border-slate-300 absolute top-0 left-0 shadow-2xl origin-top-left flex-shrink-0 rounded-[4px] contain-page high-perf-gpu',
+                        !isDraggingGlobal && 'transition-all duration-300',
+                        activePageId === page.id && 'ring-2 ring-[var(--accent)] ring-offset-4'
+                      )}
                       style={{
-                        top: `${LayoutEngine.mmToPx(marginTop)}px`,
-                        bottom: `${LayoutEngine.mmToPx(marginBottom)}px`,
-                        left: `${LayoutEngine.mmToPx(marginLeft)}px`,
-                        right: `${LayoutEngine.mmToPx(marginRight)}px`,
+                        width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
+                        height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
+                        transform: `scale(${zoom})`,
                       }}
-                    />
+                    >
+                      {/* Virtualization logic: Only render contents if page is visible */}
 
-                    {/* Selection (Per Page) */}
-                    <SelectionMarquee pageId={page.id} />
-                    <SelectionToolbar pageId={page.id} />
+                      <>
+                        <div className="absolute -left-16 top-0 text-[10px] font-bold text-slate-400 opacity-60 uppercase tracking-widest pointer-events-none">
+                          Page {pIdx + 1}
+                        </div>
 
-                    <div className="flex flex-col gap-0 absolute inset-0 z-20">
-                      <Zone
-                        zoneKey="header"
-                        label="Report Header"
-                        components={schema.zones.header.components}
-                        minHeight={schema.zones.header.minHeight}
-                        resizeEdge="bottom"
-                      />
-                      <Zone
-                        zoneKey="body"
-                        label="Detail Band"
-                        components={page.body.components}
-                        pageId={page.id}
-                        minHeight={page.body.minHeight}
-                        resizeEdge="none"
-                      />
-                      <Zone
-                        zoneKey="footer"
-                        label="Page Footer"
-                        components={schema.zones.footer.components}
-                        minHeight={schema.zones.footer.minHeight}
-                        resizeEdge="top"
-                      />
+                        {/* Margin Guides */}
+                        <div
+                          className="absolute border border-[var(--accent)] border-dashed pointer-events-none z-10 opacity-30"
+                          style={{
+                            top: `${LayoutEngine.mmToPx(marginTop)}px`,
+                            bottom: `${LayoutEngine.mmToPx(marginBottom)}px`,
+                            left: `${LayoutEngine.mmToPx(marginLeft)}px`,
+                            right: `${LayoutEngine.mmToPx(marginRight)}px`,
+                          }}
+                        />
+
+                        <SelectionMarquee pageId={page.id} />
+                        <SelectionToolbar pageId={page.id} />
+
+                        <div className="flex flex-col gap-0 absolute inset-0 z-20">
+                          <Zone
+                            zoneKey="header"
+                            label="Report Header"
+                            components={schema.zones.header.components}
+                            minHeight={schema.zones.header.minHeight}
+                            resizeEdge="bottom"
+                            visibleIds={visibleIds}
+                            pageIndex={pIdx}
+                          />
+                          <Zone
+                            zoneKey="body"
+                            label="Detail Band"
+                            components={page.body.components}
+                            pageId={page.id}
+                            minHeight={page.body.minHeight}
+                            resizeEdge="none"
+                            visibleIds={visibleIds}
+                            pageIndex={pIdx}
+                          />
+                          <Zone
+                            zoneKey="footer"
+                            label="Page Footer"
+                            components={schema.zones.footer.components}
+                            minHeight={schema.zones.footer.minHeight}
+                            resizeEdge="top"
+                            visibleIds={visibleIds}
+                            pageIndex={pIdx}
+                          />
+                        </div>
+                      </>
+                      ))
+
+                      {/* Remove Page Button */}
+                      {schema.pages.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            useDesignerStore.getState().removePage(page.id);
+                          }}
+                          className="absolute -right-12 top-0 p-2 bg-white rounded-full shadow-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Remove Page"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
-
-                    {/* Remove Page Button */}
-                    {schema.pages.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          useDesignerStore.getState().removePage(page.id);
-                        }}
-                        className="absolute -right-8 top-0 p-1.5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-md transition-all opacity-0 group-hover:opacity-100"
-                        title="Remove Page"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
-              {/* Add Page Button (Minimal Version) */}
+              {/* Add Page Button */}
               <div
                 className="flex justify-center pt-4"
                 style={{ width: `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px` }}

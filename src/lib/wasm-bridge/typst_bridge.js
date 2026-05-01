@@ -65,16 +65,18 @@ export class LayoutEngine {
      * @param {number} width
      * @param {number} height
      * @param {string | null} [zone_filter]
-     * @returns {any}
+     * @param {string | null} [page_filter]
+     * @returns {string[]}
      */
-    query_rect(x, y, width, height, zone_filter) {
+    query_rect(x, y, width, height, zone_filter, page_filter) {
         var ptr0 = isLikeNone(zone_filter) ? 0 : passStringToWasm0(zone_filter, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         var len0 = WASM_VECTOR_LEN;
-        const ret = wasm.layoutengine_query_rect(this.__wbg_ptr, x, y, width, height, ptr0, len0);
-        if (ret[2]) {
-            throw takeFromExternrefTable0(ret[1]);
-        }
-        return takeFromExternrefTable0(ret[0]);
+        var ptr1 = isLikeNone(page_filter) ? 0 : passStringToWasm0(page_filter, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len1 = WASM_VECTOR_LEN;
+        const ret = wasm.layoutengine_query_rect(this.__wbg_ptr, x, y, width, height, ptr0, len0, ptr1, len1);
+        var v3 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v3;
     }
     /**
      * @param {string} id
@@ -535,6 +537,17 @@ function debugString(val) {
     }
     // TODO we could test for more things here, like `Set`s and `Map`s.
     return className;
+}
+
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(wasm.__wbindgen_externrefs.get(mem.getUint32(i, true)));
+    }
+    wasm.__externref_drop_slice(ptr, len);
+    return result;
 }
 
 function getArrayU8FromWasm0(ptr, len) {

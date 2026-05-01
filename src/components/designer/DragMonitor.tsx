@@ -6,6 +6,7 @@ import type { layoutEngine as LayoutEngineType } from '@/lib/wasm-layout-engine'
 import { useDesignerStore } from '@/store/designer-store';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { useEffect, useRef } from 'react';
+import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 
 let wasmEngineCache: typeof LayoutEngineType | null = null;
 const getLayoutEngine = async () => {
@@ -74,7 +75,7 @@ export function DragMonitor() {
           const pointsY: SnapPoint[] = [];
 
           // Add page bounds
-          const { width: pW, height: pH } = require('@/lib/utils/paper-sizes').getPaperDimensions(
+          const { width: pW, height: pH } = getPaperDimensions(
             schema.page.size,
             schema.page.orientation
           );
@@ -106,48 +107,52 @@ export function DragMonitor() {
           }
 
           // 2. Load Rust WASM Layout Engine (All pages and zones)
+          // Wrapped in try-catch: WASM snapping is optional, falls back to JS SnapEngine
           getLayoutEngine().then((layoutEngine) => {
             layoutEngine.initWasm().then(() => {
-              const nodes: any[] = [];
+              try {
+                const nodes: any[] = [];
 
-              // Add Global Zones (Header, Footer)
-              for (const [zKey, zone] of Object.entries(schema.zones) as [string, any][]) {
-                const yOffset = LayoutEngine.calculateZoneOffset(zKey, schema);
-                for (const c of zone.components) {
-                  if (c.id === data.id) continue;
-                  nodes.push({
-                    id: c.id,
-                    zone: zKey,
-                    x: c.x || 0,
-                    y: (c.y || 0) + yOffset,
-                    width: c.width || 0,
-                    height: c.height || 0,
-                  });
+                // Add Global Zones (Header, Footer)
+                for (const [zKey, zone] of Object.entries(schema.zones) as [string, any][]) {
+                  const yOffset = LayoutEngine.calculateZoneOffset(zKey, schema);
+                  for (const c of zone.components) {
+                    if (c.id === data.id) continue;
+                    nodes.push({
+                      id: c.id,
+                      zone: zKey,
+                      x: c.x || 0,
+                      y: (c.y || 0) + yOffset,
+                      width: c.width || 0,
+                      height: c.height || 0,
+                    });
+                  }
                 }
-              }
 
-              // Add Components from ALL Pages
-              for (const page of schema.pages) {
-                // We use a composite key for the zone to distinguish between bodies of different pages
-                const zoneKey = `body:${page.id}`;
-                const bodyOffset = LayoutEngine.calculateZoneOffset('body', schema, page.id);
+                // Add Components from ALL Pages
+                for (const page of schema.pages) {
+                  const zoneKey = `body:${page.id}`;
+                  const bodyOffset = LayoutEngine.calculateZoneOffset('body', schema, page.id);
 
-                for (const c of page.body.components) {
-                  if (c.id === data.id) continue;
-                  nodes.push({
-                    id: c.id,
-                    zone: zoneKey,
-                    x: c.x || 0,
-                    y: (c.y || 0) + bodyOffset,
-                    width: c.width || 0,
-                    height: c.height || 0,
-                  });
+                  for (const c of page.body.components) {
+                    if (c.id === data.id) continue;
+                    nodes.push({
+                      id: c.id,
+                      zone: zoneKey,
+                      x: c.x || 0,
+                      y: (c.y || 0) + bodyOffset,
+                      width: c.width || 0,
+                      height: c.height || 0,
+                    });
+                  }
                 }
-              }
 
-              layoutEngine.loadNodes(nodes);
-            });
-          });
+                layoutEngine.loadNodes(nodes);
+              } catch (e) {
+                console.warn('[DragMonitor] WASM loadNodes failed, using JS SnapEngine fallback', e);
+              }
+            }).catch(() => {});
+          }).catch(() => {});
 
           dragRef.current = {
             containerRect: rect,
@@ -302,15 +307,20 @@ export function DragMonitor() {
             zoneFilter = `body:${pageId}`;
           }
 
-          const wasmSnap = layoutEngine.findSnaps(
-            data.id || 'new',
-            rawX,
-            rawY,
-            width,
-            height,
-            5,
-            zoneFilter
-          );
+          let wasmSnap: any = null;
+          try {
+            wasmSnap = layoutEngine.findSnaps(
+              data.id || 'new',
+              rawX,
+              rawY,
+              width,
+              height,
+              5,
+              zoneFilter
+            );
+          } catch {
+            // WASM engine is in a corrupted state — fall through to JS fallback
+          }
 
           if (wasmSnap) {
             snapX = rawX + wasmSnap.dx;

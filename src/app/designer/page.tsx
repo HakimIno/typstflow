@@ -10,7 +10,7 @@ import { SidebarNav } from '@/components/designer/SidebarNav';
 import { Toolbar } from '@/components/designer/Toolbar';
 import { DesignerErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
-import { layoutEngine } from '@/lib/wasm-layout-engine';
+
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { useEffect, useState } from 'react';
@@ -53,7 +53,6 @@ export default function DesignerPage() {
   }, [viewMode, setRightSidebarOpen]);
 
   useEffect(() => {
-    layoutEngine.initWasm();
     setMounted(true);
   }, []);
 

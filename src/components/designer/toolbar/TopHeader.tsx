@@ -2,6 +2,7 @@
 
 import { useDesignerStore } from '@/store/designer-store';
 import { memo } from 'react';
+import { FileMenu } from './FileMenu';
 import { HelpMenu } from './HelpMenu';
 import { InsertMenu } from './InsertMenu';
 import { SettingsMenu } from './SettingsMenu';
@@ -21,7 +22,8 @@ export const TopHeader = memo(function TopHeader() {
         </div>
 
         <nav className="flex items-center gap-1">
-          {['File', 'Edit'].map((item) => (
+          <FileMenu />
+          {['Edit'].map((item) => (
             <button
               key={item}
               type="button"

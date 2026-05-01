@@ -40,7 +40,6 @@ export class WasmTableEngine {
     try {
       await init();
       this.initialized = true;
-      console.log('✅ WasmTableEngine initialized');
     } catch (e) {
       console.error('Failed to initialize WasmTableEngine', e);
     }

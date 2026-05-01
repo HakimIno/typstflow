@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 pub struct LayoutNode {
     pub id: String,
     pub zone: String,
+    pub page_id: Option<String>,
     pub x: f64,
     pub y: f64,
     pub width: f64,
@@ -33,6 +34,7 @@ impl rstar::PointDistance for LayoutNode {
 pub struct NodeInput {
     pub id: String,
     pub zone: String,
+    pub page_id: Option<String>,
     pub x: f64,
     pub y: f64,
     pub width: f64,
@@ -80,6 +82,7 @@ impl LayoutEngine {
         let layout_node = LayoutNode {
             id: node.id,
             zone: node.zone,
+            page_id: node.page_id,
             x: node.x,
             y: node.y,
             width: node.width,
@@ -113,6 +116,7 @@ impl LayoutEngine {
             layout_nodes.push(LayoutNode {
                 id: node.id,
                 zone: node.zone,
+                page_id: node.page_id,
                 x: node.x,
                 y: node.y,
                 width: node.width,
@@ -124,29 +128,48 @@ impl LayoutEngine {
         Ok(())
     }
 
-    pub fn query_rect(&self, x: f64, y: f64, width: f64, height: f64, zone_filter: Option<String>) -> Result<JsValue, JsValue> {
-        let aabb = AABB::from_corners([x, y], [x + width, y + height]);
+    pub fn query_rect(&self, x: f64, y: f64, width: f64, height: f64, zone_filter: Option<String>, page_filter: Option<String>) -> Vec<String> {
+        // Safety checks to prevent AABB panics
+        if x.is_nan() || y.is_nan() || width.is_nan() || height.is_nan() {
+            return vec![];
+        }
+
+        let x_min = x.min(x + width);
+        let x_max = x.max(x + width);
+        let y_min = y.min(y + height);
+        let y_max = y.max(y + height);
+
+        let aabb = AABB::from_corners([x_min, y_min], [x_max, y_max]);
         let mut ids = Vec::new();
         
         for node in self.tree.locate_in_envelope_intersecting(&aabb) {
             if let Some(ref z) = zone_filter {
-                if &node.zone == z {
-                    ids.push(node.id.clone());
-                }
-            } else {
-                ids.push(node.id.clone());
+                if &node.zone != z { continue; }
             }
+            if let Some(ref p) = page_filter {
+                if let Some(ref node_p) = node.page_id {
+                    if node_p != p { continue; }
+                } else {
+                    continue; 
+                }
+            }
+            ids.push(node.id.clone());
         }
         
-        let result = QueryResult { ids };
-        Ok(serde_wasm_bindgen::to_value(&result)?)
+        ids
     }
 
     pub fn find_snaps(&self, id: &str, x: f64, y: f64, width: f64, height: f64, threshold: f64, zone_filter: Option<String>) -> Result<JsValue, JsValue> {
-        let search_area = AABB::from_corners(
-            [x - threshold, y - threshold],
-            [x + width + threshold, y + height + threshold],
-        );
+        if x.is_nan() || y.is_nan() || width.is_nan() || height.is_nan() {
+            return Ok(serde_wasm_bindgen::to_value(&Vec::<SnapResult>::new())?);
+        }
+
+        let x_min = (x - threshold).min(x + width + threshold);
+        let x_max = (x - threshold).max(x + width + threshold);
+        let y_min = (y - threshold).min(y + height + threshold);
+        let y_max = (y - threshold).max(y + height + threshold);
+
+        let search_area = AABB::from_corners([x_min, y_min], [x_max, y_max]);
 
         let mut best_dx = 0.0;
         let mut best_dy = 0.0;

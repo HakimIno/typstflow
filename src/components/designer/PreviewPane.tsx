@@ -28,7 +28,6 @@ export function PreviewPane() {
         setIsRendering(true);
         setError(null);
 
-        console.log('--- RENDERING VIA RUST ENGINE (WASM) ---');
         const result = await renderReportToSvg(schema, sampleData);
 
         if (!active) return;

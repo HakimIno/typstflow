@@ -67,7 +67,6 @@ export async function initTypst() {
  * Renders Typst source code to an SVG string using the Web Worker.
  */
 export async function renderToSvg(mainContent: string): Promise<string> {
-  console.log('DEBUG: Compiling Typst source:', mainContent);
   return callWorker('RENDER_SVG', mainContent);
 }
 

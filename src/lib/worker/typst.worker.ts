@@ -8,7 +8,6 @@ async function initialize() {
   try {
     await init();
     bridge = new TypstBridge();
-    console.log('[Worker] WASM Bridge Initialized v2 (Robust Format Detection)');
     self.postMessage({ type: 'READY' });
   } catch (err: any) {
     self.postMessage({
@@ -102,7 +101,6 @@ function walkComponents(components: any[]) {
         }
 
         const virtualPath = `asset-${comp.id}.${ext}`;
-        console.log(`[Worker] Registering: ${virtualPath} (Sniffed: ${sniffedExt})`);
 
         bridge?.register_image(virtualPath, bytes);
 

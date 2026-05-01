@@ -16,6 +16,8 @@ interface ZoneProps {
   pageId?: string;
   minHeight?: string;
   resizeEdge?: 'top' | 'bottom' | 'none';
+  visibleIds?: Set<string>;
+  pageIndex?: number;
 }
 
 export const Zone = memo(function Zone({
@@ -25,6 +27,8 @@ export const Zone = memo(function Zone({
   pageId,
   minHeight,
   resizeEdge = 'bottom',
+  visibleIds,
+  pageIndex,
 }: ZoneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -78,9 +82,15 @@ export const Zone = memo(function Zone({
           </div>
         ) : (
           <div className="absolute inset-0 overflow-visible">
-            {components.map((comp) => (
-              <ComponentWrapper key={comp.id} component={comp} zoneKey={zoneKey} pageId={pageId} />
-            ))}
+            {components
+              .filter((comp) => {
+                if (!visibleIds) return true;
+                const lookupId = zoneKey === 'body' ? comp.id : `${comp.id}-p${pageIndex}`;
+                return visibleIds.has(lookupId);
+              })
+              .map((comp) => (
+                <ComponentWrapper key={comp.id} component={comp} zoneKey={zoneKey} pageId={pageId} />
+              ))}
           </div>
         )}
       </div>

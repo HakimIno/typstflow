@@ -258,6 +258,16 @@ export function TextEditor({
     };
   }, []);
 
+  // Ensure focus on mount for inline editor
+  useEffect(() => {
+    if (inline && editorRef.current) {
+      editorRef.current.focus();
+      // Move cursor to end of text
+      const len = value.length;
+      editorRef.current.setSelectionRange(len, len);
+    }
+  }, [inline]); // Run once when inline mode is activated
+
   const sharedStyles: React.CSSProperties = {
     fontFamily: style.fontFamily || 'Sarabun, sans-serif',
     fontSize: style.fontSize || '11px',
@@ -321,6 +331,7 @@ export function TextEditor({
           caretColor: '#2563eb',
         }}
         spellCheck={false}
+        autoFocus={inline}
       />
 
       {/* Dropdown Portal */}

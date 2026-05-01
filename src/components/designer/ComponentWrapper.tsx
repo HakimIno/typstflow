@@ -238,8 +238,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               'z-10 ring-inset hover:ring-1 hover:ring-white/20',
               component.type === 'text' ? 'bg-transparent' : 'bg-white/5 hover:bg-white/10'
             ),
-        isSelected && !isLocked && 'z-[100] pointer-events-none', // Removed is-moving here to apply it conditionally below
-        isMoving && 'is-moving z-[100] ring-2 ring-[var(--accent)] shadow-lg', // Visual feedback during movement
+        isSelected && !isLocked && 'z-[100]',
+        isMoving && 'is-moving z-[100] ring-2 ring-[var(--accent)] shadow-lg pointer-events-none', // Visual feedback during movement
         isResizing && 'ring-2 ring-[var(--accent)] shadow-lg z-[100]'
       )}
     >
