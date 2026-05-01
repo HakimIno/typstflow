@@ -1,12 +1,13 @@
 import { useDesignerStore } from '@/store/designer-store';
 import { Editor } from '@monaco-editor/react';
-import { AlertCircle, Braces, CheckCircle2, ChevronRight, Copy, Database, Search, X } from 'lucide-react';
+import { AlertCircle, Box, Braces, CheckCircle2, ChevronRight, Copy, Database, Hash, List, Search, Type, X } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { extractJsonPaths, getValueType, formatBinding } from '@/lib/utils/json-path';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { clsx } from 'clsx';
 import { DesignerInput } from '../shared/DesignerInput';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 export const DataPanel = memo(function DataPanel() {
   const { sampleData, setSampleData, theme } = useDesignerStore(
@@ -20,6 +21,8 @@ export const DataPanel = memo(function DataPanel() {
   const [jsonString, setJsonString] = useState(JSON.stringify(sampleData, null, 2));
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const parentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setJsonString(JSON.stringify(sampleData, null, 2));
@@ -33,6 +36,52 @@ export const DataPanel = memo(function DataPanel() {
     if (!searchQuery) return allPaths;
     return allPaths.filter(p => p.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [allPaths, searchQuery]);
+
+
+  type VirtualItem =
+    | { type: 'header'; label: string; id: string }
+    | { type: 'field'; path: string; dataType: string; id: string };
+
+  const virtualDataItems = useMemo(() => {
+    const groups: Record<string, { paths: string[], label: string }> = {
+      'string': { paths: [], label: 'Strings' },
+      'number': { paths: [], label: 'Numbers' },
+      'boolean': { paths: [], label: 'Booleans' },
+      'object': { paths: [], label: 'Objects' },
+      'array': { paths: [], label: 'Arrays' },
+      'undefined': { paths: [], label: 'Other' }
+    };
+
+    filteredPaths.forEach(path => {
+      const dataType = getValueType(sampleData, path);
+      groups[dataType].paths.push(path);
+    });
+
+    const result: VirtualItem[] = [];
+    Object.entries(groups).forEach(([key, group]) => {
+      if (group.paths.length > 0) {
+        result.push({ type: 'header', label: group.label, id: `header-${key}` });
+        if (!collapsedGroups[group.label]) {
+          group.paths.forEach(path => {
+            result.push({
+              type: 'field',
+              path,
+              dataType: getValueType(sampleData, path),
+              id: `field-${path}`
+            });
+          });
+        }
+      }
+    });
+    return result;
+  }, [filteredPaths, sampleData, collapsedGroups]);
+
+  const virtualizer = useVirtualizer({
+    count: virtualDataItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => virtualDataItems[index]?.type === 'header' ? 28 : 36,
+    overscan: 10,
+  });
 
   const handleJsonChange = (val: string | undefined) => {
     const value = val || '';
@@ -192,20 +241,56 @@ export const DataPanel = memo(function DataPanel() {
               <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide">
+          <div
+            ref={parentRef}
+            className="flex-1 overflow-y-auto scrollbar-hide"
+          >
             {filteredPaths.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] p-8 text-center">
                 <Database className="w-8 h-8 mb-2 opacity-20" />
                 <p className="text-[10px]">No data fields found.</p>
               </div>
             ) : (
-              filteredPaths.map((path) => (
-                <ExplorerItem
-                  key={path}
-                  path={path}
-                  type={getValueType(sampleData, path)}
-                />
-              ))
+              <div
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const item = virtualDataItems[virtualRow.index];
+                  if (!item) return null;
+
+                  return (
+                    <div
+                      key={virtualRow.key}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                        padding: '0 8px',
+                      }}
+                    >
+                      {item.type === 'header' ? (
+                        <ExplorerHeader
+                          label={item.label}
+                          isCollapsed={!!collapsedGroups[item.label]}
+                          onToggle={() => setCollapsedGroups(prev => ({ ...prev, [item.label]: !prev[item.label] }))}
+                        />
+                      ) : (
+                        <ExplorerItem
+                          path={item.path}
+                          type={item.dataType}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
 
@@ -214,6 +299,40 @@ export const DataPanel = memo(function DataPanel() {
     </div>
   );
 });
+
+function ExplorerHeader({
+  label,
+  isCollapsed,
+  onToggle
+}: {
+  label: string;
+  isCollapsed: boolean;
+  onToggle: () => void
+}) {
+  const Icon = label === 'Strings' ? Type :
+    label === 'Numbers' ? Hash :
+      label === 'Objects' ? Braces :
+        label === 'Arrays' ? List : Database;
+
+  return (
+    <div
+      className="flex items-center gap-2 py-1 px-1.5 mb-1 mt-2 first:mt-1 cursor-pointer group/header"
+      onClick={onToggle}
+    >
+      <div className="flex items-center gap-1.5">
+        <ChevronRight className={clsx(
+          "w-3 h-3 text-[var(--text-muted)] transition-transform duration-200",
+          !isCollapsed && "rotate-90"
+        )} />
+        <Icon className="w-3 h-3 text-[var(--text-muted)] group-hover/header:text-[var(--text-secondary)] transition-colors" />
+        <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.15em] group-hover/header:text-[var(--text-secondary)] transition-colors">
+          {label}
+        </span>
+      </div>
+      <div className="flex-1 h-px bg-[var(--border-subtle)] opacity-50" />
+    </div>
+  );
+}
 
 function ExplorerItem({ path, type }: { path: string; type: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -242,11 +361,16 @@ function ExplorerItem({ path, type }: { path: string; type: string }) {
     });
   }, [path]);
 
+  const Icon = type === 'string' ? Type :
+    type === 'number' ? Hash :
+      type === 'object' ? Braces :
+        type === 'array' ? List : Database;
+
   return (
     <div
       ref={ref}
       className={clsx(
-        "group flex items-center gap-2 p-1.5 hover:bg-[var(--bg-hover)] rounded transition-colors cursor-pointer border border-transparent hover:border-[var(--border-default)]",
+        "group flex items-center gap-2.5 px-2 py-1 rounded transition-all cursor-grab active:cursor-grabbing hover:bg-[var(--bg-widget)] border border-transparent hover:border-[var(--border-subtle)] hover:shadow-sm",
         isDragging && "opacity-40 grayscale"
       )}
       onClick={() => {
@@ -254,18 +378,20 @@ function ExplorerItem({ path, type }: { path: string; type: string }) {
       }}
     >
       <div className={clsx(
-        "w-4 h-4 rounded border border-[var(--border-default)] flex items-center justify-center text-[8px] font-bold uppercase shrink-0 shadow-sm",
+        "w-5 h-5 p-0.5 rounded-full bg-[var(--bg-widget)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] transition-all shadow-sm",
       )}>
-        {type.charAt(0)}
+        <Icon className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors" />
       </div>
+
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-mono text-[var(--text-primary)] truncate font-bold">{path}</p>
-        <p className="text-[8px] text-[var(--text-muted)] truncate font-medium">
+        <p className="text-[11px] font-bold text-[var(--text-primary)] truncate transition-colors group-hover:text-[var(--accent)]">{path}</p>
+        <p className="text-[9px] text-[var(--text-muted)] truncate font-medium uppercase tracking-wider">
           {type}
         </p>
       </div>
-      <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[var(--bg-surface)] rounded text-[var(--text-muted)] transition-all">
-        <Copy className="w-3 h-3" />
+
+      <button className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-[var(--bg-surface)] rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] transition-all">
+        <Copy className="w-3.5 h-3.5" />
       </button>
     </div>
   );
