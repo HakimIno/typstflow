@@ -7,6 +7,37 @@ import { useDesignerStore } from '@/store/designer-store';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { useEffect, useRef } from 'react';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
+import type { ComponentNode } from '@/types/schema';
+
+interface PageOffset {
+  id: string;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  element: HTMLElement;
+}
+
+interface DragSourceData {
+  type: 'canvas-item' | 'new-component';
+  id?: string;
+  zone: string;
+  pageId?: string;
+  width?: number;
+  height?: number;
+  dragOffsetX?: number;
+  dragOffsetY?: number;
+  component?: ComponentNode;
+}
+
+interface WasmSnapResult {
+  dx: number;
+  dy: number;
+  guides: {
+    is_vertical: boolean;
+    position: number;
+  }[];
+}
 
 let wasmEngineCache: typeof LayoutEngineType | null = null;
 const getLayoutEngine = async () => {
@@ -36,14 +67,7 @@ export function DragMonitor() {
     initialClientX: number;
     initialClientY: number;
     lastSnapTime: number;
-    pageOffsets: {
-      id: string;
-      top: number;
-      left: number;
-      width: number;
-      height: number;
-      element: HTMLElement;
-    }[];
+    pageOffsets: PageOffset[];
   }>({
     containerRect: null,
     containerElement: null,
@@ -61,7 +85,7 @@ export function DragMonitor() {
   useEffect(() => {
     return monitorForElements({
       onDragStart: ({ source, location }) => {
-        const data = source.data as any;
+        const data = source.data as unknown as DragSourceData;
         if (data.type === 'canvas-item' || data.type === 'new-component') {
           const container = document.querySelector('[data-paper-container]') as HTMLElement;
           if (!container) return;
@@ -92,12 +116,12 @@ export function DragMonitor() {
           const scrollContainer = container.parentElement?.parentElement as HTMLElement;
           const scrollRect = scrollContainer?.getBoundingClientRect();
           const pageElements = document.querySelectorAll('[data-paper-container]');
-          const offsets: any[] = [];
+          const offsets: PageOffset[] = [];
 
           for (const el of pageElements) {
             const r = (el as Element).getBoundingClientRect();
             offsets.push({
-              id: (el as HTMLElement).dataset.pageId,
+              id: (el as HTMLElement).dataset.pageId || '',
               top: r.top - scrollRect.top + scrollContainer.scrollTop,
               left: r.left - scrollRect.left + scrollContainer.scrollLeft,
               width: r.width,
@@ -111,10 +135,10 @@ export function DragMonitor() {
           getLayoutEngine().then((layoutEngine) => {
             layoutEngine.initWasm().then(() => {
               try {
-                const nodes: any[] = [];
+                const nodes: Parameters<typeof layoutEngine.loadNodes>[0] = [];
 
                 // Add Global Zones (Header, Footer)
-                for (const [zKey, zone] of Object.entries(schema.zones) as [string, any][]) {
+                for (const [zKey, zone] of Object.entries(schema.zones)) {
                   const yOffset = LayoutEngine.calculateZoneOffset(zKey, schema);
                   for (const c of zone.components) {
                     if (c.id === data.id) continue;
@@ -194,7 +218,7 @@ export function DragMonitor() {
       onDrag: ({ location, source }) => {
         const cache = dragRef.current;
         if (!cache.containerElement) return;
-        const data = source.data as any;
+        const data = source.data as unknown as DragSourceData;
         const { schema } = useDesignerStore.getState();
 
         // 1. FAST HYBRID PAGE DETECTION (Using Cached Offsets)
@@ -232,30 +256,16 @@ export function DragMonitor() {
         root.style.setProperty('--drag-dy', `${pxDeltaY / cache.zoom}px`);
 
         // 4. SNAPPING (Async WASM Engine)
+        // 3. SNAPPING (Async WASM Engine)
         const width = data.width || data.component?.width || 0;
         const height = data.height || data.component?.height || 0;
-
-        // 5. SYNCHRONOUS STORE UPDATE (For reliable drops)
-        // We update the store immediately with raw coordinates so that onDrop
-        // always has access to the most recent position, even if WASM snapping is slow.
-        if (
-          rawX !== cache.lastSentX ||
-          rawY !== cache.lastSentY ||
-          pageId !== useDesignerStore.getState().dragState.activePageId
-        ) {
-          useDesignerStore.getState().updateLastSnapped(rawX, rawY, pageId || null);
-          cache.lastSentX = rawX;
-          cache.lastSentY = rawY;
-        }
-
-        // 6. SNAPPING (Async WASM Engine)
 
         const updateTransientVisuals = (
           guidesX: number[],
           guidesY: number[],
           x: number,
           y: number,
-          pInfo: any
+          pInfo: PageOffset
         ) => {
           // Calculate absolute offsets for the global overlay
           const pageTopPx = pInfo.top;
@@ -290,7 +300,7 @@ export function DragMonitor() {
           }
         };
 
-        // 60 FPS Throttling for Snapping
+        // 60 FPS Throttling for Snapping & Store Updates
         const now = Date.now();
         if (cache.lastSnapTime && now - cache.lastSnapTime < 16) return;
         cache.lastSnapTime = now;
@@ -307,7 +317,7 @@ export function DragMonitor() {
             zoneFilter = `body:${pageId}`;
           }
 
-          let wasmSnap: any = null;
+          let wasmSnap: WasmSnapResult | null = null;
           try {
             wasmSnap = layoutEngine.findSnaps(
               data.id || 'new',
@@ -326,11 +336,11 @@ export function DragMonitor() {
             snapX = rawX + wasmSnap.dx;
             snapY = rawY + wasmSnap.dy;
             activeGuidesX = wasmSnap.guides
-              .filter((g: any) => g.is_vertical)
-              .map((g: any) => g.position);
+              .filter((g) => g.is_vertical)
+              .map((g) => g.position);
             activeGuidesY = wasmSnap.guides
-              .filter((g: any) => !g.is_vertical)
-              .map((g: any) => g.position);
+              .filter((g) => !g.is_vertical)
+              .map((g) => g.position);
           } else {
             const snap = SnapEngine.calculateSnap(
               rawX,
@@ -349,15 +359,19 @@ export function DragMonitor() {
             activeGuidesY = snap.activeGuidesY;
           }
 
-          // Adjust CSS Variables with Snap Offset
+          // Adjust CSS Variables with Snap Offset (High Performance Visual Path)
           const snapOffsetX = LayoutEngine.mmToPx(snapX - rawX);
           const snapOffsetY = LayoutEngine.mmToPx(snapY - rawY);
+          const root = document.documentElement;
+          const pxDeltaX = location.current.input.clientX - cache.initialClientX;
+          const pxDeltaY = location.current.input.clientY - cache.initialClientY;
+          
           root.style.setProperty('--drag-dx', `${(pxDeltaX + snapOffsetX) / cache.zoom}px`);
           root.style.setProperty('--drag-dy', `${(pxDeltaY + snapOffsetY) / cache.zoom}px`);
 
           updateTransientVisuals(activeGuidesX, activeGuidesY, snapX, snapY, activePageInfo);
 
-          // Update store with final snapped position (Still important for visual precision)
+          // Update store only once with the final snapped position
           useDesignerStore.getState().updateLastSnapped(snapX, snapY, pageId || null);
         });
       },

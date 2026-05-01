@@ -164,6 +164,9 @@ impl LayoutEngine {
             return Ok(serde_wasm_bindgen::to_value(&Vec::<SnapResult>::new())?);
         }
 
+        const GRID_SIZE: f64 = 0.1;
+
+        // Search area slightly larger than threshold
         let x_min = (x - threshold).min(x + width + threshold);
         let x_max = (x - threshold).max(x + width + threshold);
         let y_min = (y - threshold).min(y + height + threshold);
@@ -171,8 +174,8 @@ impl LayoutEngine {
 
         let search_area = AABB::from_corners([x_min, y_min], [x_max, y_max]);
 
-        let mut best_dx = 0.0;
-        let mut best_dy = 0.0;
+        let mut best_dx = None;
+        let mut best_dy = None;
         let mut min_dx = threshold;
         let mut min_dy = threshold;
         let mut guides = Vec::new();
@@ -184,6 +187,7 @@ impl LayoutEngine {
         let center_x = x + width / 2.0;
         let center_y = y + height / 2.0;
 
+        // 1. Element Snapping Pass
         for node in self.tree.locate_in_envelope_intersecting(&search_area) {
             if node.id == id { continue; }
             if let Some(ref z) = zone_filter {
@@ -198,78 +202,104 @@ impl LayoutEngine {
             let n_center_y = node.y + node.height / 2.0;
 
             // X-axis snapping
-            let x_edges = [n_left, n_right, n_center_x];
-            let my_x_edges = [(left, 0.0), (right, width), (center_x, width / 2.0)];
+            let x_targets = [n_left, n_right, n_center_x];
+            let my_x_points = [left, right, center_x];
 
-            for target_x in x_edges.iter() {
-                for (my_x, _offset) in my_x_edges.iter() {
+            for &target_x in x_targets.iter() {
+                for &my_x in my_x_points.iter() {
                     let dx = target_x - my_x;
                     if dx.abs() < min_dx {
                         min_dx = dx.abs();
-                        best_dx = dx;
+                        best_dx = Some(dx);
                     }
                 }
             }
 
             // Y-axis snapping
-            let y_edges = [n_top, n_bottom, n_center_y];
-            let my_y_edges = [(top, 0.0), (bottom, height), (center_y, height / 2.0)];
+            let y_targets = [n_top, n_bottom, n_center_y];
+            let my_y_points = [top, bottom, center_y];
 
-            for target_y in y_edges.iter() {
-                for (my_y, _offset) in my_y_edges.iter() {
+            for &target_y in y_targets.iter() {
+                for &my_y in my_y_points.iter() {
                     let dy = target_y - my_y;
                     if dy.abs() < min_dy {
                         min_dy = dy.abs();
-                        best_dy = dy;
+                        best_dy = Some(dy);
                     }
                 }
             }
         }
 
-        // Apply best deltas and collect guides
-        let final_x = x + best_dx;
-        let final_y = y + best_dy;
-        let final_left = final_x;
-        let final_right = final_x + width;
-        let final_center_x = final_x + width / 2.0;
-        let final_top = final_y;
-        let final_bottom = final_y + height;
-        let final_center_y = final_y + height / 2.0;
+        // 2. Grid Snapping Fallback (If no element snap found)
+        let final_dx = match best_dx {
+            Some(dx) => dx,
+            None => {
+                let snapped_x = (x / GRID_SIZE).round() * GRID_SIZE;
+                snapped_x - x
+            }
+        };
 
-        // Re-scan with exact matches (tolerance 0.01) to build guide lines
-        for node in self.tree.locate_in_envelope_intersecting(&search_area) {
-            if node.id == id { continue; }
-            if let Some(ref z) = zone_filter {
-                if &node.zone != z { continue; }
+        let final_dy = match best_dy {
+            Some(dy) => dy,
+            None => {
+                let snapped_y = (y / GRID_SIZE).round() * GRID_SIZE;
+                snapped_y - y
             }
+        };
 
-            let n_left = node.x;
-            let n_right = node.x + node.width;
-            let n_top = node.y;
-            let n_bottom = node.y + node.height;
-            let n_center_x = node.x + node.width / 2.0;
-            let n_center_y = node.y + node.height / 2.0;
+        // 3. Build Guide Lines for exact matches
+        let snapped_x_pos = x + final_dx;
+        let snapped_y_pos = y + final_dy;
+        
+        let final_left = snapped_x_pos;
+        let final_right = snapped_x_pos + width;
+        let final_center_x = snapped_x_pos + width / 2.0;
+        let final_top = snapped_y_pos;
+        let final_bottom = snapped_y_pos + height;
+        let final_center_y = snapped_y_pos + height / 2.0;
 
-            let tol = 0.01;
+        let tol = 0.001; // mm precision for guide matching
 
-            if (final_left - n_left).abs() < tol || (final_left - n_right).abs() < tol || (final_left - n_center_x).abs() < tol {
-                guides.push(SnapLine { is_vertical: true, position: final_left });
-            }
-            if (final_right - n_left).abs() < tol || (final_right - n_right).abs() < tol || (final_right - n_center_x).abs() < tol {
-                guides.push(SnapLine { is_vertical: true, position: final_right });
-            }
-            if (final_center_x - n_center_x).abs() < tol {
-                guides.push(SnapLine { is_vertical: true, position: final_center_x });
-            }
+        // Only show guides for element snapping, not grid snapping
+        if best_dx.is_some() || best_dy.is_some() {
+            for node in self.tree.locate_in_envelope_intersecting(&search_area) {
+                if node.id == id { continue; }
+                if let Some(ref z) = zone_filter {
+                    if &node.zone != z { continue; }
+                }
 
-            if (final_top - n_top).abs() < tol || (final_top - n_bottom).abs() < tol || (final_top - n_center_y).abs() < tol {
-                guides.push(SnapLine { is_vertical: false, position: final_top });
-            }
-            if (final_bottom - n_top).abs() < tol || (final_bottom - n_bottom).abs() < tol || (final_bottom - n_center_y).abs() < tol {
-                guides.push(SnapLine { is_vertical: false, position: final_bottom });
-            }
-            if (final_center_y - n_center_y).abs() < tol {
-                guides.push(SnapLine { is_vertical: false, position: final_center_y });
+                let n_left = node.x;
+                let n_right = node.x + node.width;
+                let n_top = node.y;
+                let n_bottom = node.y + node.height;
+                let n_center_x = node.x + node.width / 2.0;
+                let n_center_y = node.y + node.height / 2.0;
+
+                // Vertical Guides (X)
+                if best_dx.is_some() {
+                    if (final_left - n_left).abs() < tol || (final_left - n_right).abs() < tol || (final_left - n_center_x).abs() < tol {
+                        guides.push(SnapLine { is_vertical: true, position: final_left });
+                    }
+                    if (final_right - n_left).abs() < tol || (final_right - n_right).abs() < tol || (final_right - n_center_x).abs() < tol {
+                        guides.push(SnapLine { is_vertical: true, position: final_right });
+                    }
+                    if (final_center_x - n_center_x).abs() < tol {
+                        guides.push(SnapLine { is_vertical: true, position: final_center_x });
+                    }
+                }
+
+                // Horizontal Guides (Y)
+                if best_dy.is_some() {
+                    if (final_top - n_top).abs() < tol || (final_top - n_bottom).abs() < tol || (final_top - n_center_y).abs() < tol {
+                        guides.push(SnapLine { is_vertical: false, position: final_top });
+                    }
+                    if (final_bottom - n_top).abs() < tol || (final_bottom - n_bottom).abs() < tol || (final_bottom - n_center_y).abs() < tol {
+                        guides.push(SnapLine { is_vertical: false, position: final_bottom });
+                    }
+                    if (final_center_y - n_center_y).abs() < tol {
+                        guides.push(SnapLine { is_vertical: false, position: final_center_y });
+                    }
+                }
             }
         }
 
@@ -278,17 +308,15 @@ impl LayoutEngine {
             if a.is_vertical != b.is_vertical {
                 a.is_vertical.cmp(&b.is_vertical)
             } else {
-                a.position.partial_cmp(&b.position).unwrap()
+                a.position.partial_cmp(&b.position).unwrap_or(std::cmp::Ordering::Equal)
             }
         });
-        guides.dedup_by(|a, b| a.is_vertical == b.is_vertical && (a.position - b.position).abs() < 0.01);
+        guides.dedup_by(|a, b| a.is_vertical == b.is_vertical && (a.position - b.position).abs() < tol);
 
-        let result = SnapResult {
-            dx: best_dx,
-            dy: best_dy,
+        Ok(serde_wasm_bindgen::to_value(&SnapResult {
+            dx: final_dx,
+            dy: final_dy,
             guides,
-        };
-
-        Ok(serde_wasm_bindgen::to_value(&result)?)
+        })?)
     }
 }

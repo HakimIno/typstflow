@@ -60,7 +60,7 @@ interface DesignerState {
   lockedComponentIds: string[];
 
   // Preview / Data Binding
-  sampleData: Record<string, any>;
+  sampleData: Record<string, unknown>;
   previewPages: string[];
   previewStatus: 'idle' | 'compiling' | 'error';
   previewError: string | null;
@@ -120,7 +120,7 @@ interface DesignerState {
   ) => void;
   updateSchema: (updates: Partial<LayoutSchema>) => void;
   setDragState: (updates: Partial<DesignerState['dragState']>) => void;
-  setSampleData: (data: Record<string, any>) => void;
+  setSampleData: (data: Record<string, unknown>) => void;
   setZoom: (zoom: number) => void;
   setViewMode: (mode: 'design' | 'preview' | 'split') => void;
   setActiveTab: (tab: 'palette' | 'outline' | 'data') => void;
@@ -342,14 +342,24 @@ export const useDesignerStore = create<DesignerState>()(
         }),
 
       updateLastSnapped: (x, y, pageId) =>
-        set((state) => ({
-          dragState: {
-            ...state.dragState,
-            lastSnappedX: x,
-            lastSnappedY: y,
-            activePageId: pageId,
-          },
-        })),
+        set((state) => {
+          // Optimization: Only update if the change is significant (> 0.01mm)
+          // or if the page changed. This drastically reduces React re-renders during high-frequency drags.
+          const dx = Math.abs(x - (state.dragState.lastSnappedX || 0));
+          const dy = Math.abs(y - (state.dragState.lastSnappedY || 0));
+          if (dx < 0.01 && dy < 0.01 && pageId === state.dragState.activePageId) {
+            return state;
+          }
+
+          return {
+            dragState: {
+              ...state.dragState,
+              lastSnappedX: x,
+              lastSnappedY: y,
+              activePageId: pageId,
+            },
+          };
+        }),
 
       updateComponent: (id, updates, skipHistory) =>
         set((state) => {
@@ -571,7 +581,8 @@ export const useDesignerStore = create<DesignerState>()(
 
       addPage: () =>
         set((state) => {
-          const newPageId = `page-${state.schema.pages.length + 1}`;
+          const uniqueId = Math.random().toString(36).substring(2, 9);
+          const newPageId = `page-${uniqueId}`;
           const newPage = {
             id: newPageId,
             name: `Page ${state.schema.pages.length + 1}`,
@@ -613,8 +624,9 @@ export const useDesignerStore = create<DesignerState>()(
           const newPages = [...state.schema.pages];
           if (targetCount > currentCount) {
             for (let i = currentCount; i < targetCount; i++) {
+              const uniqueId = Math.random().toString(36).substring(2, 9);
               newPages.push({
-                id: `page-${i + 1}`,
+                id: `page-${uniqueId}`,
                 name: `Page ${i + 1}`,
                 body: { id: 'body', minHeight: '237mm', components: [] },
               });

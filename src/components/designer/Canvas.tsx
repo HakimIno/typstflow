@@ -27,7 +27,8 @@ export const Canvas = memo(function Canvas() {
   const paperRef = useRef<HTMLDivElement>(null);
   const [scrollPos, setScrollPos] = useState({ x: 0, y: 0 });
 
-  // Track which elements and pages are visible in the current viewport
+  // ✅ visibleIds ตอนนี้เป็น Set<string> | null
+  // null = ยังไม่คำนวณ → Zone จะ render ทุก element (ป้องกัน element หายตอน mount)
   const { visibleIds, visiblePageIds } = useVirtualElements(scrollRef, zoom, schema, activePageId);
 
   const updateScrollPos = useCallback(() => {
@@ -110,7 +111,10 @@ export const Canvas = memo(function Canvas() {
               <TransientOverlay />
 
               {(schema.pages || []).map((page, pIdx) => {
-                const isPageVisible = visiblePageIds.has(page.id);
+                // ✅ null = ยังไม่คำนวณ → show ทุก page
+                // Set = คำนวณแล้ว → filter ตามปกติ
+                const isPageVisible =
+                  visiblePageIds === null || visiblePageIds.has(page.id);
 
                 return (
                   <div
@@ -130,7 +134,7 @@ export const Canvas = memo(function Canvas() {
                       className={clsx(
                         'bg-white border border-slate-300 absolute top-0 left-0 shadow-2xl origin-top-left flex-shrink-0 rounded-[4px] contain-page high-perf-gpu',
                         !isDraggingGlobal && 'transition-all duration-300',
-                        activePageId === page.id && 'ring-2 ring-[var(--accent)] ring-offset-4'
+                        activePageId === page.id && 'ring-2 ring-[var(--accent)] ring-offset-2'
                       )}
                       style={{
                         width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
@@ -138,59 +142,67 @@ export const Canvas = memo(function Canvas() {
                         transform: `scale(${zoom})`,
                       }}
                     >
-                      {/* Virtualization logic: Only render contents if page is visible */}
+                      {isPageVisible ? (
+                        <>
+                          <div className="absolute -left-16 top-0 text-[10px] font-bold text-slate-400 opacity-60 uppercase tracking-widest pointer-events-none">
+                            Page {pIdx + 1}
+                          </div>
 
-                      <>
-                        <div className="absolute -left-16 top-0 text-[10px] font-bold text-slate-400 opacity-60 uppercase tracking-widest pointer-events-none">
-                          Page {pIdx + 1}
-                        </div>
+                          {/* Margin Guides */}
+                          <div
+                            className="absolute border border-[var(--accent)] border-dashed pointer-events-none z-10 opacity-30"
+                            style={{
+                              top: `${LayoutEngine.mmToPx(marginTop)}px`,
+                              bottom: `${LayoutEngine.mmToPx(marginBottom)}px`,
+                              left: `${LayoutEngine.mmToPx(marginLeft)}px`,
+                              right: `${LayoutEngine.mmToPx(marginRight)}px`,
+                            }}
+                          />
 
-                        {/* Margin Guides */}
+                          <SelectionMarquee pageId={page.id} />
+                          <SelectionToolbar pageId={page.id} />
+
+                          <div className="flex flex-col gap-0 absolute inset-0 z-20">
+                            <Zone
+                              zoneKey="header"
+                              label="Report Header"
+                              components={schema.zones.header.components}
+                              minHeight={schema.zones.header.minHeight}
+                              resizeEdge="bottom"
+                              visibleIds={visibleIds}
+                              pageIndex={pIdx}
+                            />
+                            <Zone
+                              zoneKey="body"
+                              label="Detail Band"
+                              components={page.body.components}
+                              pageId={page.id}
+                              minHeight={page.body.minHeight}
+                              resizeEdge="none"
+                              visibleIds={visibleIds}
+                              pageIndex={pIdx}
+                            />
+                            <Zone
+                              zoneKey="footer"
+                              label="Page Footer"
+                              components={schema.zones.footer.components}
+                              minHeight={schema.zones.footer.minHeight}
+                              resizeEdge="top"
+                              visibleIds={visibleIds}
+                              pageIndex={pIdx}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        // ✅ Placeholder ขนาดเท่ากัน เพื่อ scroll ไม่กระตุก
+                        // ไม่ unmount เลย แค่ render div เปล่าแทน
                         <div
-                          className="absolute border border-[var(--accent)] border-dashed pointer-events-none z-10 opacity-30"
                           style={{
-                            top: `${LayoutEngine.mmToPx(marginTop)}px`,
-                            bottom: `${LayoutEngine.mmToPx(marginBottom)}px`,
-                            left: `${LayoutEngine.mmToPx(marginLeft)}px`,
-                            right: `${LayoutEngine.mmToPx(marginRight)}px`,
+                            width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
+                            height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
                           }}
                         />
-
-                        <SelectionMarquee pageId={page.id} />
-                        <SelectionToolbar pageId={page.id} />
-
-                        <div className="flex flex-col gap-0 absolute inset-0 z-20">
-                          <Zone
-                            zoneKey="header"
-                            label="Report Header"
-                            components={schema.zones.header.components}
-                            minHeight={schema.zones.header.minHeight}
-                            resizeEdge="bottom"
-                            visibleIds={visibleIds}
-                            pageIndex={pIdx}
-                          />
-                          <Zone
-                            zoneKey="body"
-                            label="Detail Band"
-                            components={page.body.components}
-                            pageId={page.id}
-                            minHeight={page.body.minHeight}
-                            resizeEdge="none"
-                            visibleIds={visibleIds}
-                            pageIndex={pIdx}
-                          />
-                          <Zone
-                            zoneKey="footer"
-                            label="Page Footer"
-                            components={schema.zones.footer.components}
-                            minHeight={schema.zones.footer.minHeight}
-                            resizeEdge="top"
-                            visibleIds={visibleIds}
-                            pageIndex={pIdx}
-                          />
-                        </div>
-                      </>
-                      ))
+                      )}
 
                       {/* Remove Page Button */}
                       {schema.pages.length > 1 && (

@@ -1,5 +1,5 @@
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
-import type { LayoutSchema } from '@/types/schema';
+import type { LayoutSchema, ComponentNode } from '@/types/schema';
 
 export interface SnapPoint {
   value: number; // mm
@@ -44,7 +44,7 @@ export const SnapEngine = {
     pointsY.push({ value: pageHeight / 2, type: 'center', originId: 'page' });
 
     // 2. Component Points
-    const addComponentPoints = (c: any) => {
+    const addComponentPoints = (c: ComponentNode) => {
       if (c.id === draggedId) return;
 
       const cx = c.x || 0;
@@ -101,6 +101,8 @@ export const SnapEngine = {
     const activeGuidesX: number[] = [];
     const activeGuidesY: number[] = [];
 
+    const GRID_SIZE = 0.1;
+
     // Snap X
     const draggedPointsX = [
       { val: x, name: 'left' },
@@ -108,6 +110,7 @@ export const SnapEngine = {
       { val: x + width / 2, name: 'center' },
     ];
 
+    let foundX = false;
     for (const dp of draggedPointsX) {
       for (const sp of points.x) {
         if (Math.abs(dp.val - sp.value) < SNAP_THRESHOLD) {
@@ -115,10 +118,16 @@ export const SnapEngine = {
           if (dp.name === 'right') snappedX = sp.value - width;
           if (dp.name === 'center') snappedX = sp.value - width / 2;
           activeGuidesX.push(sp.value);
+          foundX = true;
           break;
         }
       }
-      if (activeGuidesX.length > 0) break;
+      if (foundX) break;
+    }
+
+    // Grid Snap X fallback
+    if (!foundX) {
+      snappedX = Math.round(x / GRID_SIZE) * GRID_SIZE;
     }
 
     // Snap Y
@@ -128,6 +137,7 @@ export const SnapEngine = {
       { val: y + height / 2, name: 'center' },
     ];
 
+    let foundY = false;
     for (const dp of draggedPointsY) {
       for (const sp of points.y) {
         if (Math.abs(dp.val - sp.value) < SNAP_THRESHOLD) {
@@ -135,10 +145,16 @@ export const SnapEngine = {
           if (dp.name === 'bottom') snappedY = sp.value - height;
           if (dp.name === 'center') snappedY = sp.value - height / 2;
           activeGuidesY.push(sp.value);
+          foundY = true;
           break;
         }
       }
-      if (activeGuidesY.length > 0) break;
+      if (foundY) break;
+    }
+
+    // Grid Snap Y fallback
+    if (!foundY) {
+      snappedY = Math.round(y / GRID_SIZE) * GRID_SIZE;
     }
 
     return { snappedX, snappedY, activeGuidesX, activeGuidesY };

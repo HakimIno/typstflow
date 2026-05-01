@@ -16,7 +16,7 @@ interface ZoneProps {
   pageId?: string;
   minHeight?: string;
   resizeEdge?: 'top' | 'bottom' | 'none';
-  visibleIds?: Set<string>;
+  visibleIds?: Set<string> | null;
   pageIndex?: number;
 }
 
