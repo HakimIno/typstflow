@@ -16,46 +16,71 @@ const SHORTCUTS = [
   { label: 'Deselect', key: 'Esc' },
 ];
 
-export const ShortcutGuide = memo(function ShortcutGuide() {
-  const [isOpen, setIsOpen] = useState(false);
+interface Props {
+  forcedOpen?: boolean;
+  onClose?: () => void;
+}
+
+export const ShortcutGuide = memo(function ShortcutGuide({ forcedOpen, onClose }: Props) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = forcedOpen ?? internalOpen;
+
+  const handleClose = () => {
+    if (forcedOpen && onClose) {
+      onClose();
+    } else {
+      setInternalOpen(false);
+    }
+  };
 
   return (
     <div className="relative">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={clsx(
-          'flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium transition-colors',
-          isOpen
-            ? 'bg-[var(--accent)] text-white'
-            : 'text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)]'
-        )}
-      >
-        <Keyboard className="w-3.5 h-3.5" />
-        Shortcuts
-      </button>
+      {!forcedOpen && (
+        <button
+          type="button"
+          onClick={() => setInternalOpen(!internalOpen)}
+          className={clsx(
+            'flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium transition-colors',
+            internalOpen
+              ? 'bg-[var(--accent)] text-white'
+              : 'text-[var(--text-secondary)] hover:bg-white/5 hover:text-[var(--text-primary)]'
+          )}
+        >
+          <Keyboard className="w-3.5 h-3.5" />
+          Shortcuts
+        </button>
+      )}
 
       {isOpen && (
         <>
+          {!forcedOpen && (
+            <div
+              className="fixed inset-0 z-[100] bg-transparent"
+              onClick={handleClose}
+              onKeyDown={(e) => e.key === 'Escape' && handleClose()}
+              tabIndex={-1}
+              role="presentation"
+            />
+          )}
           <div
-            className="fixed inset-0 z-[100]"
-            onClick={() => setIsOpen(false)}
-            onKeyDown={(e) => e.key === 'Escape' && setIsOpen(false)}
-            tabIndex={-1}
-            role="presentation"
-          />
-          <div className="absolute right-0 mt-2 w-56 pro-panel z-[101] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            className={clsx(
+              'w-56 pro-panel z-[101] overflow-hidden animate-in fade-in zoom-in-95 duration-200',
+              forcedOpen ? 'relative shadow-2xl' : 'absolute right-0 mt-2'
+            )}
+          >
             <div className="px-3 py-2 border-b border-[var(--border-default)] flex items-center justify-between bg-white/5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                 Keyboard Shortcuts
               </span>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="text-[var(--text-muted)] hover:text-white"
-              >
-                <X className="w-3 h-3" />
-              </button>
+              {!forcedOpen && (
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="text-[var(--text-muted)] hover:text-white"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
             <div className="p-1.5">
               {SHORTCUTS.map((s) => (

@@ -2,9 +2,9 @@
 
 import { useDesignerStore } from '@/store/designer-store';
 import { memo } from 'react';
+import { HelpMenu } from './HelpMenu';
 import { InsertMenu } from './InsertMenu';
 import { SettingsMenu } from './SettingsMenu';
-import { ShortcutGuide } from './ShortcutGuide';
 import { ViewSwitcher } from './ViewSwitcher';
 
 export const TopHeader = memo(function TopHeader() {
@@ -31,7 +31,7 @@ export const TopHeader = memo(function TopHeader() {
             </button>
           ))}
           <InsertMenu />
-          {['Format', 'View', 'Tools', 'Help'].map((item) => (
+          {['Format', 'View', 'Tools'].map((item) => (
             <button
               key={item}
               type="button"
@@ -40,15 +40,15 @@ export const TopHeader = memo(function TopHeader() {
               {item}
             </button>
           ))}
+          <HelpMenu />
         </nav>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 mr-80">
         <ViewSwitcher />
       </div>
 
       <div className="flex items-center gap-2">
-        <ShortcutGuide />
         <SettingsMenu />
       </div>
     </header>
