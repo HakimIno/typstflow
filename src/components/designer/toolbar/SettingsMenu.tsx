@@ -37,7 +37,7 @@ export const SettingsMenu = memo(function SettingsMenu() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1.5 w-64 bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-2xl z-[100] rounded-lg overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="absolute right-0 top-full mt-1.5 w-64 pro-panel z-[100] overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
           <div className="px-3 py-2 border-b border-[var(--border-default)] bg-[var(--bg-widget)]">
             <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
               Application Settings

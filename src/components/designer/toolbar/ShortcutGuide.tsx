@@ -44,7 +44,7 @@ export const ShortcutGuide = memo(function ShortcutGuide() {
             tabIndex={-1}
             role="presentation"
           />
-          <div className="absolute right-0 mt-2 w-56 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.4)] z-[101] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="absolute right-0 mt-2 w-56 pro-panel z-[101] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="px-3 py-2 border-b border-[var(--border-default)] flex items-center justify-between bg-white/5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                 Keyboard Shortcuts
