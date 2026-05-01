@@ -5,9 +5,11 @@ import { TablePreview } from './TablePreview';
 
 interface Props {
   component: ComponentNode;
+  pageIndex?: number;
+  totalPages?: number;
 }
 
-export function ComponentPreview({ component }: Props) {
+export function ComponentPreview({ component, pageIndex = 0, totalPages = 1 }: Props) {
   const sampleData = useDesignerStore((state) => state.sampleData);
 
   switch (component.type) {
@@ -147,6 +149,25 @@ export function ComponentPreview({ component }: Props) {
           )}
         </div>
       );
+    case 'page-number': {
+      const format = (component as any).format || 'Page {{page}} of {{pageTotal}}';
+      const displayText = format
+        .replace(/\{\{page\}\}/g, String(pageIndex + 1))
+        .replace(/\{\{pageTotal\}\}/g, String(totalPages));
+
+      return (
+        <div
+          className="text-slate-900 w-full h-full flex items-center justify-center font-mono"
+          style={{
+            fontSize: `${component.style?.fontSize || 9}pt`,
+            fontWeight: component.style?.fontWeight || 'medium',
+            textAlign: component.align || 'center',
+          }}
+        >
+          {displayText}
+        </div>
+      );
+    }
     default:
       return <div className="p-2 text-[10px] italic text-slate-400">Block: {component.type}</div>;
   }

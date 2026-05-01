@@ -85,6 +85,8 @@ pub enum ComponentNode {
     Columns(ColumnsComponent),
     #[serde(rename = "page-break-indicator")]
     PageBreakIndicator(PageBreakIndicatorComponent),
+    #[serde(rename = "page-number")]
+    PageNumber(PageNumberComponent),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -363,4 +365,13 @@ pub struct PageBreakIndicatorComponent {
     pub label: Option<String>,
     pub style: Option<String>,
     pub show_page_number: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PageNumberComponent {
+    #[serde(flatten)]
+    pub base: BaseComponent,
+    pub format: String,
+    pub style: Option<TextStyle>,
 }

@@ -26,6 +26,7 @@ interface Props {
   component: ComponentNode;
   zoneKey: 'header' | 'body' | 'footer';
   pageId?: string;
+  pageIndex?: number;
 }
 
 const RESIZE_HANDLES = [
@@ -43,6 +44,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   component,
   zoneKey,
   pageId,
+  pageIndex = 0,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
@@ -392,7 +394,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       {/* Content Preview */}
       {!isEditing && (
         <div ref={previewRef} className="w-full h-full relative pointer-events-none">
-          <ComponentPreview component={component} />
+          <ComponentPreview
+            component={component}
+            pageIndex={pageIndex}
+            totalPages={useDesignerStore.getState().schema.pages.length}
+          />
         </div>
       )}
 

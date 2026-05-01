@@ -157,6 +157,7 @@ fn render_component(comp: &ComponentNode, data: &Value, offset_x: &str, offset_y
         ComponentNode::Barcode(c) => render_barcode(c, offset_x, offset_y, prefix),
         ComponentNode::Qr(c) => render_qr(c, offset_x, offset_y, prefix),
         ComponentNode::PageBreakIndicator(c) => render_page_break_indicator(c, offset_x, offset_y, prefix),
+        ComponentNode::PageNumber(c) => render_page_number(c, offset_x, offset_y, prefix),
         ComponentNode::Repeater(c) => render_placeholder_box("REPEATER (NESTED)", &c.base, "", data, offset_x, offset_y, prefix),
         ComponentNode::Columns(c) => render_placeholder_box("COLUMNS (LAYOUT)", &c.base, "", data, offset_x, offset_y, prefix),
     }
@@ -694,6 +695,23 @@ fn render_page_break_indicator(c: &PageBreakIndicatorComponent, offset_x: &str, 
             stroke, escape_typst(label), stroke
         )
     };
+
+    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
+}
+
+fn render_page_number(c: &PageNumberComponent, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+    let s = c.style.as_ref();
+    let size = s.and_then(|st| st.font_size).unwrap_or(9.0);
+    let weight = s.and_then(|st| st.font_weight.clone()).unwrap_or("regular".to_string());
+    let align = c.base.align.as_deref().unwrap_or("center");
+
+    let display = c.format.replace("{{page}}", "#counter(page).display()")
+                          .replace("{{pageTotal}}", "#counter(page).final().at(0)");
+
+    let body = format!(
+        "#set align({})\n#text(size: {}pt, weight: \"{}\")[#context [{}]]",
+        align, size, weight, display
+    );
 
     wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }

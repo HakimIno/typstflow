@@ -122,6 +122,21 @@ export class TypstGenerator {
           this.resolveBinding((comp as any).value || '')
         );
 
+      case 'page-number': {
+        const align = comp.align || 'center';
+        const weight = comp.style?.fontWeight === 'bold' ? 'bold' : 'regular';
+        const size = comp.style?.fontSize || 9;
+        const format = (comp as any).format || 'Page X of Y';
+
+        let display = (comp as any).format || 'Page {{page}} of {{pageTotal}}';
+
+        // Convert our {{page}} placeholders to Typst context commands
+        display = display
+          .replace(/\{\{page\}\}/g, '#counter(page).display()')
+          .replace(/\{\{pageTotal\}\}/g, '#counter(page).final().at(0)');
+
+        return `#set align(${align})\n#text(size: ${size}pt, weight: "${weight}")[#context [${display}]]`;
+      }
       default:
         return `// [${comp.type}] not implemented`;
     }

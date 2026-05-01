@@ -65,7 +65,8 @@ export type ComponentNode =
   | BarcodeComponent
   | QRComponent
   | SummaryBoxComponent
-  | PageBreakIndicatorComponent;
+  | PageBreakIndicatorComponent
+  | PageNumberComponent;
 
 export interface BaseComponent {
   id: string;
@@ -313,6 +314,12 @@ export interface PageBreakIndicatorComponent extends BaseComponent {
   label?: string; // Optional label like "Continued on next page..."
   style?: 'solid' | 'dashed' | 'dotted';
   showPageNumber?: boolean; // Show "Page X of Y"
+}
+
+export interface PageNumberComponent extends BaseComponent {
+  type: 'page-number';
+  format: string; // "{{page}}", "{{pageTotal}}", "หน้าที่ {{page}} / {{pageTotal}}"
+  style: TextStyle;
 }
 
 // --- Supporting Types ---

@@ -3,6 +3,7 @@ import type {
   BarcodeComponent,
   ComponentNode,
   ImageComponent,
+  PageNumberComponent,
   QRComponent,
   TableComponent,
   TextComponent,
@@ -26,6 +27,8 @@ const isTable = (c: ComponentNode): c is TableComponent => c.type === 'table';
 const isImage = (c: ComponentNode): c is ImageComponent => c.type === 'image';
 const isBarcode = (c: ComponentNode): c is BarcodeComponent =>
   c.type === 'barcode' || c.type === 'qr';
+const isPageNumber = (c: ComponentNode): c is PageNumberComponent =>
+  c.type === 'page-number';
 
 export const PropertiesPanel = memo(function PropertiesPanel() {
   const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
@@ -299,6 +302,27 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               component={selectedComponent}
               onUpdate={(updates) => updateComponent(selectedComponent.id, updates as any)}
             />
+          )}
+          {isPageNumber(selectedComponent) && (
+            <div className="flex flex-col border-b border-[var(--border-default)]">
+              <div className="px-3 py-1 flex items-center justify-between text-[10px] bg-white/[0.01]">
+                <span className="font-bold text-[var(--text-secondary)] uppercase tracking-tighter">
+                  Numbering Format
+                </span>
+                <div className="text-[9px] text-[var(--text-muted)] italic">
+                  Use {'{{page}}'} and {'{{pageTotal}}'}
+                </div>
+              </div>
+              <div className="px-3 pb-2">
+                <DesignerInput
+                  type="text"
+                  value={selectedComponent.format || ''}
+                  onChange={(v) => updateComponent(selectedComponent.id, { format: v })}
+                  placeholder="หน้าที่ {{page}} / {{pageTotal}}"
+                  className="w-full"
+                />
+              </div>
+            </div>
           )}
         </section>
 

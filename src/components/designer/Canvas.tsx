@@ -212,7 +212,7 @@ export const Canvas = memo(function Canvas() {
                             e.stopPropagation();
                             useDesignerStore.getState().removePage(page.id);
                           }}
-                          className="absolute -right-12 top-0 p-2 bg-white rounded-full shadow-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                          className="absolute -right-12 top-0 p-2 rounded-full shadow-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
                           title="Remove Page"
                         >
                           <Trash2 className="w-4 h-4" />

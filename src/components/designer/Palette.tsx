@@ -8,6 +8,7 @@ import {
   Columns,
   EllipseIcon,
   FileDown,
+  Hash,
   Image,
   LayoutDashboard,
   ListTree,
@@ -56,6 +57,7 @@ const CATEGORIES = [
       { type: 'columns', label: 'Columns', icon: Columns },
       { type: 'spacer', label: 'Space', icon: Space },
       { type: 'repeater', label: 'Repeater', icon: ListTree },
+      { type: 'page-number', label: 'Page Number', icon: Hash },
       { type: 'page-break-indicator', label: 'Page Break', icon: FileDown },
     ],
   },
@@ -214,6 +216,15 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: Palet
             type: 'page-break-indicator',
             width: 210,
             height: 2,
+          };
+        case 'page-number':
+          return {
+            ...base,
+            type: 'page-number',
+            format: 'Page X of Y',
+            style: { fontSize: 9, fontWeight: 'medium' },
+            width: 35,
+            height: 6,
           };
         default:
           return { ...base, type: 'text', content: '', height: 10 };

@@ -89,7 +89,13 @@ export const Zone = memo(function Zone({
                 return visibleIds.has(lookupId);
               })
               .map((comp) => (
-                <ComponentWrapper key={comp.id} component={comp} zoneKey={zoneKey} pageId={pageId} />
+                <ComponentWrapper
+                  key={comp.id}
+                  component={comp}
+                  zoneKey={zoneKey}
+                  pageId={pageId}
+                  pageIndex={pageIndex}
+                />
               ))}
           </div>
         )}
