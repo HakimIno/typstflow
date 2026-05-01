@@ -8,7 +8,9 @@ import { useEffect, useState } from 'react';
 export function useZoneDropTarget(
   zoneKey: 'header' | 'body' | 'footer',
   contentRef: React.RefObject<HTMLDivElement | null>,
-  pageId?: string
+  pageId?: string,
+  groupId?: string,
+  groupType?: 'header' | 'footer'
 ) {
   const [isDraggedOver, setIsDraggedOver] = useState(false);
   const addComponent = useDesignerStore((state) => state.addComponent);
@@ -20,7 +22,7 @@ export function useZoneDropTarget(
 
     return dropTargetForElements({
       element: el,
-      getData: () => ({ zoneKey, pageId }),
+      getData: () => ({ zoneKey, pageId, groupId, groupType }),
       canDrop: () => true,
       onDragEnter: () => {
         setIsDraggedOver(true);
@@ -41,7 +43,18 @@ export function useZoneDropTarget(
         const _zoom = Number.parseFloat(container?.dataset.zoom || '1');
         const finalX = state.dragState.lastSnappedX;
         const finalY = state.dragState.lastSnappedY;
-        const zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, state.schema, pageId);
+        
+        // Calculate offset including group bands
+        let zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, state.schema, pageId);
+        if (groupId && groupType) {
+          // Add offset of the group band itself
+          // This is a simplified version, in a real layout engine we'd calculate the exact Y of the band.
+          // For now, we'll assume the offset is passed or calculated.
+          // Since we render them in order in Canvas.tsx, we need a way to find their absolute Y.
+          const bandEl = el.closest('[data-zone-label]'); // assuming we add this
+          // Better: calculate based on heights of preceding zones
+          zoneOffsetMm = LayoutEngine.calculateBandOffset(groupId, groupType, state.schema, pageId);
+        }
 
         if (data.type === 'new-component') {
           addComponent(
@@ -52,7 +65,9 @@ export function useZoneDropTarget(
               x: finalX,
               y: finalY - zoneOffsetMm,
             },
-            pageId
+            pageId,
+            groupId,
+            groupType
           );
         } else if (data.id) {
           // Commit to history
@@ -69,7 +84,11 @@ export function useZoneDropTarget(
                 localY,
                 data.pageId,
                 pageId,
-                false
+                false,
+                data.groupId,
+                groupId,
+                data.groupType,
+                groupType
               );
             }
           } else {
@@ -82,7 +101,11 @@ export function useZoneDropTarget(
               finalY - zoneOffsetMm,
               data.pageId,
               pageId,
-              false
+              false,
+              data.groupId,
+              groupId,
+              data.groupType,
+              groupType
             );
           }
         }

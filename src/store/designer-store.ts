@@ -20,7 +20,7 @@ import {
   INVOICE_WITH_PAGE_BREAKS_TEMPLATE,
 } from '../lib/templates/invoice-with-page-breaks';
 import { TAX_INVOICE_SAMPLE_DATA, TAX_INVOICE_TEMPLATE } from '../lib/templates/tax-invoice';
-import type { ComponentNode, LayoutSchema } from '../types/schema';
+import type { ComponentNode, GroupDefinition, LayoutSchema, Zone } from '../types/schema';
 
 type ZoneKey = 'header' | 'body' | 'footer';
 
@@ -40,6 +40,7 @@ interface DesignerState {
 
   // Selection
   selectedComponentIds: string[];
+  selectedGroupId: string | null;
   selectedZone: ZoneKey | null;
   clipboard: ComponentNode[] | null;
   selectedCell: {
@@ -87,7 +88,13 @@ interface DesignerState {
   };
 
   // Actions
-  addComponent: (zoneKey: ZoneKey, component: ComponentNode, pageId?: string) => void;
+  addComponent: (
+    zoneKey: ZoneKey,
+    component: Partial<ComponentNode>,
+    pageId?: string,
+    groupId?: string,
+    groupType?: 'header' | 'footer'
+  ) => void;
   updateComponent: (id: string, updates: Partial<ComponentNode>, skipHistory?: boolean) => void;
   removeComponent: (id: string) => void;
   removeComponents: (ids: string[]) => void;
@@ -98,9 +105,13 @@ interface DesignerState {
     newIndex: number,
     x?: number,
     y?: number,
-    fromPageId?: string,
-    toPageId?: string,
-    skipHistory?: boolean
+    fromPageId?: string | null,
+    toPageId?: string | null,
+    skipHistory?: boolean,
+    fromGroupId?: string,
+    toGroupId?: string,
+    fromGroupType?: 'header' | 'footer',
+    toGroupType?: 'header' | 'footer'
   ) => void;
   selectComponent: (id: string | null, multi?: boolean) => void;
   toggleComponentSelection: (id: string) => void;
@@ -114,11 +125,17 @@ interface DesignerState {
   setSelectedCells: (cells: DesignerState['selectedCells']) => void;
   updateZone: (
     zoneKey: ZoneKey,
-    updates: Partial<LayoutSchema['zones']['header']>,
+    updates: Partial<Zone>,
     pageId?: string,
-    skipHistory?: boolean
+    skipHistory?: boolean,
+    groupId?: string,
+    groupType?: 'header' | 'footer'
   ) => void;
+  setSelectedZone: (zone: ZoneKey | null) => void;
   updateSchema: (updates: Partial<LayoutSchema>) => void;
+  updateGroup: (id: string, updates: Partial<GroupDefinition>) => void;
+  selectGroup: (id: string | null) => void;
+  nudgeSelected: (dx: number, dy: number) => void;
   setDragState: (updates: Partial<DesignerState['dragState']>) => void;
   setSampleData: (data: Record<string, unknown>) => void;
   setZoom: (zoom: number) => void;
@@ -136,6 +153,7 @@ interface DesignerState {
   ) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setPrimaryColor: (color: string) => void;
+  loadStressTest: (pages?: number, components?: number) => void;
 
   // Page Actions
   addPage: () => void;
@@ -157,7 +175,9 @@ interface DesignerState {
   copySelected: () => void;
   paste: () => void;
   duplicateSelected: () => void;
-  nudgeSelected: (dx: number, dy: number) => void;
+  // Group Actions
+  addGroup: (field: string) => void;
+  removeGroup: (id: string) => void;
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
 }
@@ -198,6 +218,7 @@ const BLANK_SCHEMA: LayoutSchema = {
       body: { id: 'body', minHeight: '237mm', components: [] },
     },
   ],
+  groups: [],
   variables: [],
   dataSchema: [],
   metadata: {
@@ -212,24 +233,25 @@ export const useDesignerStore = create<DesignerState>()(
   persist(
     (set) => ({
       schema: BLANK_SCHEMA,
-      viewMode: 'design',
+      viewMode: 'design' as DesignerState['viewMode'],
       zoom: 1.0,
-      activeTab: 'palette',
-      activePageId: 'page-1',
+      activeTab: 'palette' as DesignerState['activeTab'],
+      activePageId: 'page-1' as DesignerState['activePageId'],
       isSidebarOpen: true,
       isRightSidebarOpen: true,
-      theme: 'dark',
+      theme: 'dark' as DesignerState['theme'],
       primaryColor: '#8B5CF6',
       selectedComponentIds: [],
-      selectedZone: null,
-      clipboard: null,
-      selectedCell: null,
-      selectedCells: null,
+      selectedGroupId: null as DesignerState['selectedGroupId'],
+      selectedZone: null as DesignerState['selectedZone'],
+      clipboard: null as DesignerState['clipboard'],
+      selectedCell: null as DesignerState['selectedCell'],
+      selectedCells: null as DesignerState['selectedCells'],
       hiddenComponentIds: [],
       lockedComponentIds: [],
       sampleData: {},
       previewPages: [],
-      previewStatus: 'idle',
+      previewStatus: 'idle' as DesignerState['previewStatus'],
       previewError: null,
       history: [BLANK_SCHEMA],
       historyIndex: 0,
@@ -305,7 +327,7 @@ export const useDesignerStore = create<DesignerState>()(
         set({ schema, history: [schema], historyIndex: 0, activePageId: schema.pages[0]?.id });
       },
 
-      addComponent: (zoneKey, component, pageId) =>
+      addComponent: (zoneKey, component, pageId, groupId, groupType) =>
         set((state) => {
           const id = `${component.type}-${Math.random().toString(36).substring(2, 9)}`;
           const newComponent = {
@@ -315,11 +337,23 @@ export const useDesignerStore = create<DesignerState>()(
             y: component.y ?? state.dragState.lastSnappedY ?? 10,
             width: component.width ?? 100,
             height: component.height ?? 20,
-          };
+          } as ComponentNode;
 
           const newSchema = { ...state.schema };
 
-          if (zoneKey === 'body') {
+          if (groupId && groupType) {
+            newSchema.groups = state.schema.groups.map((g) => {
+              if (g.id !== groupId) return g;
+              const zone = groupType === 'header' ? g.header : g.footer;
+              return {
+                ...g,
+                [groupType]: {
+                  ...zone,
+                  components: [...zone.components, newComponent],
+                },
+              };
+            });
+          } else if (zoneKey === 'body') {
             const targetPageId = pageId || state.activePageId || state.schema.pages[0]?.id;
             newSchema.pages = state.schema.pages.map((p) =>
               p.id === targetPageId
@@ -377,6 +411,8 @@ export const useDesignerStore = create<DesignerState>()(
           return pushHistory(state, schema);
         }),
 
+      setSelectedZone: (zone: ZoneKey | null) => set({ selectedZone: zone }),
+
       removeComponent: (id) =>
         set((state) => {
           const { schema, changed } = removeComponentFromSchema(state.schema, id);
@@ -391,21 +427,69 @@ export const useDesignerStore = create<DesignerState>()(
           return { ...pushHistory(state, schema), selectedComponentIds: [] };
         }),
 
-      moveComponent: (id, fromZone, toZone, newIndex, x, y, fromPageId, toPageId, skipHistory) =>
+      moveComponent: (
+        id,
+        _fromZone,
+        toZone,
+        newIndex,
+        x,
+        y,
+        _fromPageId,
+        toPageId,
+        skipHistory = false,
+        _fromGroupId,
+        toGroupId,
+        _fromGroupType,
+        toGroupType
+      ) =>
         set((state) => {
-          const { schema: newSchema, changed } = moveComponentInSchema(
-            state.schema,
-            id,
-            fromZone as any,
-            toZone as any,
-            newIndex as any,
-            x,
-            y,
-            fromPageId,
-            toPageId
-          );
+          // 1. Remove from source (handled by helper)
+          const { schema: schemaWithoutComp } = removeComponentFromSchema(state.schema, id);
+          
+          // 2. Find component to get its data
+          const component = findComponentInSchema(state.schema, id);
+          if (!component) return state;
 
-          if (!changed) return state;
+          const updatedComp: ComponentNode = {
+            ...component,
+            ...(x !== undefined ? { x } : {}),
+            ...(y !== undefined ? { y } : {}),
+          };
+
+          // 3. Insert into destination
+          let newSchema = { ...schemaWithoutComp };
+
+          if (toGroupId && toGroupType) {
+            newSchema.groups = schemaWithoutComp.groups.map((g) => {
+              if (g.id !== toGroupId) return g;
+              const zone = toGroupType === 'header' ? g.header : g.footer;
+              const nextComps = [...zone.components];
+              const insertAt = newIndex === -1 ? nextComps.length : Math.max(0, Math.min(newIndex, nextComps.length));
+              nextComps.splice(insertAt, 0, updatedComp);
+              return {
+                ...g,
+                [toGroupType]: { ...zone, components: nextComps },
+              };
+            });
+          } else if (toZone === 'body') {
+            const targetPageId = toPageId || state.activePageId || state.schema.pages[0]?.id;
+            newSchema.pages = schemaWithoutComp.pages.map((p) => {
+              if (p.id !== targetPageId) return p;
+              const nextComps = [...p.body.components];
+              const insertAt = newIndex === -1 ? nextComps.length : Math.max(0, Math.min(newIndex, nextComps.length));
+              nextComps.splice(insertAt, 0, updatedComp);
+              return { ...p, body: { ...p.body, components: nextComps } };
+            });
+          } else {
+            const nextComps = [...schemaWithoutComp.zones[toZone].components];
+            const insertAt = newIndex === -1 ? nextComps.length : Math.max(0, Math.min(newIndex, nextComps.length));
+            nextComps.splice(insertAt, 0, updatedComp);
+            newSchema.zones = {
+              ...schemaWithoutComp.zones,
+              [toZone]: { ...schemaWithoutComp.zones[toZone], components: nextComps },
+            };
+          }
+
           if (skipHistory) return { schema: newSchema };
           return pushHistory(state, newSchema);
         }),
@@ -490,28 +574,56 @@ export const useDesignerStore = create<DesignerState>()(
 
       setSelectedCells: (cells) => set({ selectedCells: cells }),
 
-      updateSchema: (updates: Partial<LayoutSchema>) =>
+      updateSchema: (updates) =>
+        set((state) => pushHistory(state, { ...state.schema, ...updates })),
+
+      updateGroup: (id, updates) =>
         set((state) => {
-          const newSchema = { ...state.schema, ...updates };
-          return pushHistory(state, newSchema);
+          const newGroups = state.schema.groups.map((g) => (g.id === id ? { ...g, ...updates } : g));
+          return pushHistory(state, { ...state.schema, groups: newGroups });
         }),
 
-      updateZone: (zoneKey, updates, pageId, skipHistory) =>
+      selectGroup: (id) =>
+        set((state) => ({
+          selectedGroupId: id,
+          selectedComponentIds: id ? [] : state.selectedComponentIds,
+          selectedZone: null,
+        })),
+
+      updateZone: (zoneKey: ZoneKey, updates: Partial<Zone>, pageId?: string, skipHistory?: boolean, groupId?: string, groupType?: 'header' | 'footer') =>
         set((state) => {
-          const newSchema = { ...state.schema };
+          if (groupId) {
+            // Update group zone
+            const newGroups = state.schema.groups.map((g) => {
+              if (g.id === groupId) {
+                const zone = groupType === 'header' ? g.header : g.footer;
+                return {
+                  ...g,
+                  [groupType || 'header']: { ...zone, ...updates },
+                };
+              }
+              return g;
+            });
+            const newSchema = { ...state.schema, groups: newGroups };
+            if (skipHistory) return { schema: newSchema };
+            return pushHistory(state, newSchema);
+          }
+
+          const schema = { ...state.schema };
           if (zoneKey === 'body') {
-            const targetPageId = pageId || state.activePageId || state.schema.pages[0]?.id;
-            newSchema.pages = state.schema.pages.map((p) =>
-              p.id === targetPageId ? { ...p, body: { ...p.body, ...updates } } : p
-            );
+            const page = schema.pages.find((p) => p.id === (pageId || state.activePageId || state.schema.pages[0].id));
+            if (page) {
+              page.body = { ...page.body, ...updates };
+            }
           } else {
-            newSchema.zones = {
-              ...state.schema.zones,
-              [zoneKey]: { ...state.schema.zones[zoneKey], ...updates },
+            (schema.zones as any)[zoneKey] = {
+              ...schema.zones[zoneKey as 'header' | 'footer'],
+              ...updates,
             };
           }
-          if (skipHistory) return { schema: newSchema };
-          return pushHistory(state, newSchema);
+
+          if (skipHistory) return { schema };
+          return pushHistory(state, schema);
         }),
 
       undo: () =>
@@ -534,27 +646,27 @@ export const useDesignerStore = create<DesignerState>()(
           };
         }),
 
-      setSampleData: (data) => set({ sampleData: data }),
-      setZoom: (zoom) => set({ zoom: Math.max(0.2, Math.min(zoom, 3.0)) }),
-      setViewMode: (mode) =>
-        set({
+      setSampleData: (data: Record<string, unknown>) => set({ sampleData: data }),
+      setZoom: (zoom: number) => set({ zoom: Math.max(0.2, Math.min(zoom, 3.0)) }),
+      setViewMode: (mode: 'design' | 'preview' | 'split') =>
+        set((state) => ({
           viewMode: mode,
-          zoom: mode === 'split' ? 0.65 : 1.0,
-        }),
-      setActiveTab: (tab) => set({ activeTab: tab, isSidebarOpen: true }),
-      setActivePage: (pageId) => set({ activePageId: pageId }),
-      setSidebarOpen: (open) => set({ isSidebarOpen: open }),
+          isRightSidebarOpen: mode === 'preview' || mode === 'split' ? true : state.isRightSidebarOpen,
+        })),
+      setActiveTab: (tab: 'palette' | 'outline' | 'data' | 'ai') => set({ activeTab: tab, isSidebarOpen: true }),
+      setActivePage: (pageId: string | null) => set({ activePageId: pageId }),
+      setSidebarOpen: (open: boolean) => set({ isSidebarOpen: open }),
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
-      setRightSidebarOpen: (open) => set({ isRightSidebarOpen: open }),
+      setRightSidebarOpen: (open: boolean) => set({ isRightSidebarOpen: open }),
       toggleRightSidebar: () => set((state) => ({ isRightSidebarOpen: !state.isRightSidebarOpen })),
-      setDragState: (updates) =>
+      setDragState: (updates: Partial<DesignerState['dragState']>) =>
         set((state) => ({
           dragState: { ...state.dragState, ...updates },
         })),
-      setTheme: (theme) => set({ theme }),
-      setPrimaryColor: (color) => set({ primaryColor: color }),
+      setTheme: (theme: 'dark' | 'light') => set({ theme }),
+      setPrimaryColor: (color: string) => set({ primaryColor: color }),
 
-      toggleComponentVisibility: (id) =>
+      toggleComponentVisibility: (id: string) =>
         set((state) => {
           const isHidden = state.hiddenComponentIds.includes(id);
           const newHidden = isHidden
@@ -563,7 +675,7 @@ export const useDesignerStore = create<DesignerState>()(
           return { hiddenComponentIds: newHidden };
         }),
 
-      toggleComponentLock: (id) =>
+      toggleComponentLock: (id: string) =>
         set((state) => {
           const isLocked = state.lockedComponentIds.includes(id);
           const newLocked = isLocked
@@ -572,7 +684,7 @@ export const useDesignerStore = create<DesignerState>()(
           return { lockedComponentIds: newLocked };
         }),
 
-      renameComponent: (id, name) =>
+      renameComponent: (id: string, name: string) =>
         set((state) => {
           const { schema, changed } = mapComponentInSchema(
             state.schema,
@@ -599,7 +711,7 @@ export const useDesignerStore = create<DesignerState>()(
           return { ...pushHistory(state, newSchema), activePageId: newPageId };
         }),
 
-      removePage: (id) =>
+      removePage: (id: string) =>
         set((state) => {
           if (state.schema.pages.length <= 1) return state;
           const newPages = state.schema.pages.filter((p) => p.id !== id);
@@ -609,7 +721,7 @@ export const useDesignerStore = create<DesignerState>()(
           return { ...pushHistory(state, newSchema), activePageId: newActiveId };
         }),
 
-      reorderPage: (id, newIndex) =>
+      reorderPage: (id: string, newIndex: number) =>
         set((state) => {
           const pages = [...state.schema.pages];
           const oldIndex = pages.findIndex((p) => p.id === id);
@@ -619,7 +731,7 @@ export const useDesignerStore = create<DesignerState>()(
           return pushHistory(state, { ...state.schema, pages });
         }),
 
-      setPageCount: (count) =>
+      setPageCount: (count: number) =>
         set((state) => {
           const targetCount = Math.max(1, count);
           const currentCount = state.schema.pages.length;
@@ -647,7 +759,7 @@ export const useDesignerStore = create<DesignerState>()(
           return { ...pushHistory(state, newSchema), activePageId: newActiveId };
         }),
 
-      bringToFront: (id) =>
+      bringToFront: (id: string) =>
         set((state) => {
           const { schema, changed } = reorderComponentInSchema(state.schema, id, (comps, idx) => {
             const next = [...comps];
@@ -659,7 +771,7 @@ export const useDesignerStore = create<DesignerState>()(
           return pushHistory(state, schema);
         }),
 
-      sendToBack: (id) =>
+      sendToBack: (id: string) =>
         set((state) => {
           const { schema, changed } = reorderComponentInSchema(state.schema, id, (comps, idx) => {
             const next = [...comps];
@@ -671,7 +783,7 @@ export const useDesignerStore = create<DesignerState>()(
           return pushHistory(state, schema);
         }),
 
-      moveUp: (id) =>
+      moveUp: (id: string) =>
         set((state) => {
           const { schema, changed } = reorderComponentInSchema(state.schema, id, (comps, idx) => {
             if (idx >= comps.length - 1) return null;
@@ -792,7 +904,7 @@ export const useDesignerStore = create<DesignerState>()(
           };
         }),
 
-      nudgeSelected: (dx, dy) =>
+      nudgeSelected: (dx: number, dy: number) =>
         set((state) => {
           if (state.selectedComponentIds.length === 0) return state;
 
@@ -817,11 +929,38 @@ export const useDesignerStore = create<DesignerState>()(
           }
 
           if (!anyChanged) return state;
-          // We don't push to history for every nudge step (high frequency)
-          // But nudge via keyboard is usually 1 step at a time, so maybe we should?
-          // Let's push to history to allow undoing nudges.
           return pushHistory(state, newSchema);
         }),
+
+      addGroup: (field: string) =>
+        set((state) => {
+          const groupId = `group-${Math.random().toString(36).substring(2, 9)}`;
+          const newGroup: GroupDefinition = {
+            id: groupId,
+            name: `Group by ${field.split('.').pop()}`,
+            field,
+            header: { id: `${groupId}-header`, components: [], minHeight: '15mm' },
+            footer: { id: `${groupId}-footer`, components: [], minHeight: '15mm' },
+            sortBy: 'asc' as const,
+          };
+
+          const newSchema = {
+            ...state.schema,
+            groups: [...(state.schema.groups || []), newGroup],
+          };
+
+          return pushHistory(state, newSchema);
+        }),
+
+      removeGroup: (id: string) =>
+        set((state) => {
+          const newSchema = {
+            ...state.schema,
+            groups: state.schema.groups.filter((g) => g.id !== id),
+          };
+          return pushHistory(state, newSchema);
+        }),
+
     }),
     {
       name: 'designer-storage',

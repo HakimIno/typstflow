@@ -71,13 +71,14 @@ export const COMPLEX_TABLE_TEMPLATE: LayoutSchema = {
       },
     },
   ],
+  groups: [],
   variables: [],
   dataSchema: [],
   metadata: {
-    title: 'Inventory Status Report',
+    title: 'Complex Table Template',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    author: 'Antigravity',
+    author: 'TypstFlow',
   },
 };
 

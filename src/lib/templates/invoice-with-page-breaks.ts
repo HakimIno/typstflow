@@ -161,12 +161,11 @@ export const INVOICE_WITH_PAGE_BREAKS_TEMPLATE: LayoutSchema = {
           {
             id: 'products-table',
             type: 'table',
-            dataSource: '{{invoice.items}}',
             x: 0,
             y: 35,
             width: 180,
             height: 120,
-            pageBreakBefore: false,
+            dataSource: '{{invoice.items}}',
             showHeader: true,
             repeatHeaderOnPage: true,
             columns: [
@@ -260,11 +259,12 @@ export const INVOICE_WITH_PAGE_BREAKS_TEMPLATE: LayoutSchema = {
     },
     { path: 'invoice.items', type: 'array', required: true, description: 'รายการสินค้า/บริการ' },
   ],
+  groups: [],
   metadata: {
-    title: 'Multi-page Professional Invoice',
+    title: 'Invoice with Page Breaks',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    author: 'TypstFlow System',
+    author: 'TypstFlow',
   },
 };
 

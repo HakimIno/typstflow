@@ -172,6 +172,24 @@ export const Canvas = memo(function Canvas() {
                               visibleIds={visibleIds}
                               pageIndex={pIdx}
                             />
+
+                            {/* Group Headers */}
+                            {(schema.groups || []).map((group, gIdx) => (
+                              <Zone
+                                key={`group-h-${group.id}`}
+                                zoneKey="body" // We use body logic for components but it's a separate zone in group
+                                label={`Group Header: ${group.name}`}
+                                components={group.header.components}
+                                minHeight={group.header.minHeight}
+                                resizeEdge="bottom"
+                                visibleIds={visibleIds}
+                                pageIndex={pIdx}
+                                isGroupBand
+                                groupType="header"
+                                groupId={group.id}
+                              />
+                            ))}
+
                             <Zone
                               zoneKey="body"
                               label="Detail Band"
@@ -182,6 +200,24 @@ export const Canvas = memo(function Canvas() {
                               visibleIds={visibleIds}
                               pageIndex={pIdx}
                             />
+
+                            {/* Group Footers (Reverse order for nested feel) */}
+                            {[...(schema.groups || [])].reverse().map((group, gIdx) => (
+                              <Zone
+                                key={`group-f-${group.id}`}
+                                zoneKey="body"
+                                label={`Group Footer: ${group.name} (Summary)`}
+                                components={group.footer.components}
+                                minHeight={group.footer.minHeight}
+                                resizeEdge="top"
+                                visibleIds={visibleIds}
+                                pageIndex={pIdx}
+                                isGroupBand
+                                groupType="footer"
+                                groupId={group.id}
+                              />
+                            ))}
+
                             <Zone
                               zoneKey="footer"
                               label="Page Footer"

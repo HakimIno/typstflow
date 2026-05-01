@@ -11,7 +11,9 @@ export function useZoneResize(
   initialMinHeight: string,
   components: ComponentNode[],
   resizeEdge: 'top' | 'bottom' | 'none' = 'bottom',
-  pageId?: string
+  pageId?: string,
+  groupId?: string,
+  groupType?: 'header' | 'footer'
 ) {
   const [isResizing, setIsResizing] = useState(false);
   const initialHeightMm = Number.parseFloat(initialMinHeight || '50');
@@ -61,12 +63,17 @@ export function useZoneResize(
 
     let maxConstraint = pageHeightMm;
     if (zoneKey === 'header') {
-      const footerHeight = Number.parseFloat(schema.zones.footer.minHeight || '50');
-      maxConstraint = pageHeightMm - footerHeight - minBodyHeight;
-    } else if (zoneKey === 'footer') {
-      const headerHeight = Number.parseFloat(schema.zones.header.minHeight || '50');
-      maxConstraint = pageHeightMm - headerHeight - minBodyHeight;
-    }
+        const footerHeight = Number.parseFloat(schema.zones.footer.minHeight || '50');
+        // Subtract all group band heights
+        const groupHeights = (schema.groups || []).reduce((acc, g) => 
+          acc + Number.parseFloat(g.header.minHeight || '0') + Number.parseFloat(g.footer.minHeight || '0'), 0);
+        maxConstraint = pageHeightMm - footerHeight - minBodyHeight - groupHeights;
+      } else if (zoneKey === 'footer') {
+        const headerHeight = Number.parseFloat(schema.zones.header.minHeight || '50');
+        const groupHeights = (schema.groups || []).reduce((acc, g) => 
+          acc + Number.parseFloat(g.header.minHeight || '0') + Number.parseFloat(g.footer.minHeight || '0'), 0);
+        maxConstraint = pageHeightMm - headerHeight - minBodyHeight - groupHeights;
+      }
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const deltaY = moveEvent.clientY - startY;
@@ -84,12 +91,12 @@ export function useZoneResize(
 
       setLocalHeight(snappedHeight);
       heightRef.current = snappedHeight;
-      updateZone(zoneKey, { minHeight: `${snappedHeight}mm` }, pageId, true);
+      updateZone(zoneKey, { minHeight: `${snappedHeight}mm` }, pageId, true, groupId, groupType);
     };
 
     const onMouseUp = () => {
       setIsResizing(false);
-      updateZone(zoneKey, { minHeight: `${heightRef.current}mm` }, pageId, false);
+      updateZone(zoneKey, { minHeight: `${heightRef.current}mm` }, pageId, false, groupId, groupType);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };

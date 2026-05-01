@@ -359,11 +359,12 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
   ],
   variables: [],
   dataSchema: [],
+  groups: [],
   metadata: {
-    title: 'Professional Tax Invoice',
+    title: 'Tax Invoice',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    author: 'Antigravity Designer',
+    author: 'TypstFlow',
   },
 };
 

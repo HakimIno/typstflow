@@ -24,9 +24,11 @@ const MINIMAL_SCHEMA: LayoutSchema = {
     footer: { id: 'footer', components: [] },
   },
   pages: [{ id: 'page-1', name: 'Page 1', body: { id: 'body', components: [] } }],
+  groups: [],
   variables: [],
   dataSchema: [],
   metadata: {
+    title: 'Test Report',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     author: 'test',

@@ -42,7 +42,7 @@ describe('Keyboard Actions (Store)', () => {
     const bodyComps = finalStore.schema.pages[0].body.components;
 
     expect(bodyComps).toHaveLength(2);
-    const pasted = bodyComps.find((c) => c.content === 'Original' && c.id !== bodyComps[0].id);
+    const pasted = bodyComps.find((c) => (c as any).content === 'Original' && c.id !== bodyComps[0].id);
     expect(pasted).toBeDefined();
     expect(pasted?.x).toBe(15); // 10 + 5 offset
     expect(pasted?.y).toBe(15); // 10 + 5 offset

@@ -49,7 +49,6 @@ export const indexedDBStorage = {
 
       request.onsuccess = () => {
         const value = request.result;
-        // Zustand's createJSONStorage expects a string or null
         resolve(value ? JSON.stringify(value) : null);
       };
       request.onerror = () => reject(request.error);
@@ -67,7 +66,7 @@ export const indexedDBStorage = {
     // Use a debounced approach for setItem to ensure smoothness during interactions
     return new Promise((resolve) => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      
+
       debounceTimer = setTimeout(async () => {
         try {
           const db = await getDB();

@@ -64,9 +64,10 @@ function makeSchema(): LayoutSchema {
         body: { id: 'body-2', components: [makeText('p2-b1'), makeText('p2-b2')] },
       },
     ],
+    groups: [],
     variables: [],
     dataSchema: [],
-    metadata: { createdAt: '', updatedAt: '', author: 'test' },
+    metadata: { title: 'Test Report', createdAt: '', updatedAt: '', author: 'test' },
   };
 }
 

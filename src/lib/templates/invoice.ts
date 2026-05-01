@@ -166,13 +166,14 @@ export const INVOICE_TEMPLATE: LayoutSchema = {
       },
     },
   ],
+  groups: [],
   variables: [],
   dataSchema: [],
   metadata: {
-    title: 'Standard Pro Invoice',
+    title: 'Standard Invoice',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    author: 'Antigravity Pro',
+    author: 'TypstFlow',
   },
 };
 

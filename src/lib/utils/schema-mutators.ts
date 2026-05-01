@@ -67,6 +67,12 @@ export function findComponentInSchema(schema: LayoutSchema, id: string): Compone
     const found = page.body.components.find((c) => c.id === id);
     if (found) return found;
   }
+  for (const group of schema.groups || []) {
+    const headerFound = group.header.components.find((c) => c.id === id);
+    if (headerFound) return headerFound;
+    const footerFound = group.footer.components.find((c) => c.id === id);
+    if (footerFound) return footerFound;
+  }
   return null;
 }
 
@@ -118,8 +124,29 @@ export function mapComponentInSchema(
     return page;
   });
 
+  if (changed) return { schema: { ...schema, pages: newPages }, changed: true };
+
+  // 3. Group bands
+  const newGroups = (schema.groups || []).map((group) => {
+    const hIdx = group.header.components.findIndex((c) => c.id === id);
+    if (hIdx !== -1) {
+      const next = [...group.header.components];
+      next[hIdx] = transform(group.header.components[hIdx]);
+      changed = true;
+      return { ...group, header: { ...group.header, components: next } };
+    }
+    const fIdx = group.footer.components.findIndex((c) => c.id === id);
+    if (fIdx !== -1) {
+      const next = [...group.footer.components];
+      next[fIdx] = transform(group.footer.components[fIdx]);
+      changed = true;
+      return { ...group, footer: { ...group.footer, components: next } };
+    }
+    return group;
+  });
+
   if (!changed) return { schema, changed: false };
-  return { schema: { ...schema, pages: newPages }, changed: true };
+  return { schema: { ...schema, groups: newGroups }, changed: true };
 }
 
 // ─── Remove ────────────────────────────────────────────────────────────────
@@ -157,8 +184,23 @@ export function removeComponentFromSchema(schema: LayoutSchema, id: string): Mut
     return page;
   });
 
+  if (changed) return { schema: { ...schema, pages: newPages }, changed: true };
+
+  // 3. Group bands
+  const newGroups = (schema.groups || []).map((group) => {
+    if (group.header.components.some((c) => c.id === id)) {
+      changed = true;
+      return { ...group, header: { ...group.header, components: group.header.components.filter((c) => c.id !== id) } };
+    }
+    if (group.footer.components.some((c) => c.id === id)) {
+      changed = true;
+      return { ...group, footer: { ...group.footer, components: group.footer.components.filter((c) => c.id !== id) } };
+    }
+    return group;
+  });
+
   if (!changed) return { schema, changed: false };
-  return { schema: { ...schema, pages: newPages }, changed: true };
+  return { schema: { ...schema, groups: newGroups }, changed: true };
 }
 
 /**
@@ -193,35 +235,30 @@ export function removeComponentsFromSchema(schema: LayoutSchema, ids: string[]):
     return page;
   });
 
+  // 3. Group bands
+  const newGroups = (schema.groups || []).map((group) => {
+    const nextHeader = group.header.components.filter((c) => !idSet.has(c.id));
+    const nextFooter = group.footer.components.filter((c) => !idSet.has(c.id));
+    
+    if (nextHeader.length !== group.header.components.length || nextFooter.length !== group.footer.components.length) {
+      anyChanged = true;
+      return {
+        ...group,
+        header: { ...group.header, components: nextHeader },
+        footer: { ...group.footer, components: nextFooter },
+      };
+    }
+    return group;
+  });
+
   if (!anyChanged) return { schema, changed: false };
-  return { schema: { ...schema, zones: updatedZones, pages: newPages }, changed: true };
+  return { schema: { ...schema, zones: updatedZones, pages: newPages, groups: newGroups }, changed: true };
 }
 
 // ─── Reorder ───────────────────────────────────────────────────────────────
 
 /**
  * Reorder a component within its zone using a transform callback.
- *
- * The `reorder` callback receives a **copy** of the components array and the
- * index of the target component. Return a new array to apply the reorder, or
- * return `null` to signal a no-op (e.g. component is already at boundary).
- *
- * @example
- * // Bring to front (move to end of array)
- * reorderComponentInSchema(schema, id, (comps, idx) => {
- *   const next = [...comps];
- *   const [comp] = next.splice(idx, 1);
- *   next.push(comp);
- *   return next;
- * });
- *
- * // Move up one step — null = already at top
- * reorderComponentInSchema(schema, id, (comps, idx) => {
- *   if (idx >= comps.length - 1) return null;
- *   const next = [...comps];
- *   [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
- *   return next;
- * });
  */
 export function reorderComponentInSchema(
   schema: LayoutSchema,
@@ -260,18 +297,35 @@ export function reorderComponentInSchema(
     return page;
   });
 
+  if (changed) return { schema: { ...schema, pages: newPages }, changed: true };
+
+  // 3. Group bands
+  const newGroups = (schema.groups || []).map((group) => {
+    const hIdx = group.header.components.findIndex((c) => c.id === id);
+    if (hIdx !== -1) {
+      const result = reorder([...group.header.components], hIdx);
+      if (result !== null) {
+        changed = true;
+        return { ...group, header: { ...group.header, components: result } };
+      }
+    }
+    const fIdx = group.footer.components.findIndex((c) => c.id === id);
+    if (fIdx !== -1) {
+      const result = reorder([...group.footer.components], fIdx);
+      if (result !== null) {
+        changed = true;
+        return { ...group, footer: { ...group.footer, components: result } };
+      }
+    }
+    return group;
+  });
+
   if (!changed) return { schema, changed: false };
-  return { schema: { ...schema, pages: newPages }, changed: true };
+  return { schema: { ...schema, groups: newGroups }, changed: true };
 }
 
 /**
  * Move a component from one zone/page to another, or reorder within the same zone.
- *
- * Handles:
- * - Cross-zone movement (e.g. Header to Body)
- * - Cross-page movement (e.g. Page 1 to Page 2)
- * - Intra-zone reordering
- * - Absolute position updates (x, y)
  */
 export function moveComponentInSchema(
   schema: LayoutSchema,
@@ -284,14 +338,11 @@ export function moveComponentInSchema(
   _fromPageId?: string | null,
   toPageId?: string | null
 ): MutationResult {
-  // 1. Extract the component from source
   let component: ComponentNode | null = null;
   const { schema: schemaWithoutComp, changed: removed } = removeComponentFromSchema(schema, id);
 
   if (!removed) return { schema, changed: false };
 
-  // Find the original to get its data (we need it to apply x, y)
-  // We search in original schema because it's already removed from schemaWithoutComp
   component = findComponentInSchema(schema, id);
   if (!component) return { schema, changed: false };
 
@@ -301,7 +352,6 @@ export function moveComponentInSchema(
     ...(y !== undefined ? { y } : {}),
   };
 
-  // 2. Insert into destination
   const nextSchema = { ...schemaWithoutComp };
 
   if (toZone === 'body') {

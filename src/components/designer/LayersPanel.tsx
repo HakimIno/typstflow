@@ -39,13 +39,15 @@ import { DesignerInput } from '../shared/DesignerInput';
 type RenderItem =
   | { type: 'header-label'; label: string; zoneKey: string }
   | { type: 'page-separator'; pageId: string; index: number }
-  | { type: 'zone-header'; zoneKey: string; label: string; pageId?: string; count: number }
+  | { type: 'zone-header'; zoneKey: string; label: string; pageId?: string; count: number; groupId?: string; groupType?: 'header' | 'footer' }
   | {
       type: 'component';
       component: ComponentNode;
       zoneKey: string;
       index: number;
       pageId?: string;
+      groupId?: string;
+      groupType?: 'header' | 'footer';
     };
 
 // --- Components ---
@@ -137,7 +139,7 @@ const LayerItem = memo(
         element: el,
         getData: ({ input, element }) =>
           attachClosestEdge(
-            { id: component.id, zoneKey, index, type: 'layer-item', pageId },
+            { id: component.id, zoneKey, index, type: 'layer-item', pageId, groupId: (component as any).groupId, groupType: (component as any).groupType },
             { input, element, allowedEdges: ['top', 'bottom'] }
           ),
         onDragEnter: ({ self }) => setClosestEdge(extractClosestEdge(self.data)),
@@ -281,7 +283,33 @@ function useFlattenedLayers(collapsedGroups: Set<string>) {
       }
     }
 
-    // 2. Pages
+    // 2. Groups (Headers)
+    for (const group of schema.groups || []) {
+      const gHeaderKey = `group-${group.id}-header`;
+      items.push({
+        type: 'zone-header',
+        zoneKey: 'header',
+        label: `Group Header: ${group.field}`,
+        groupId: group.id,
+        groupType: 'header',
+        count: group.header.components.length,
+      });
+      if (!collapsedGroups.has(gHeaderKey) && group.header.components.length > 0) {
+        const reversed = [...group.header.components].reverse();
+        for (let i = 0; i < reversed.length; i++) {
+          items.push({
+            type: 'component',
+            component: reversed[i],
+            zoneKey: 'header',
+            index: group.header.components.length - 1 - i,
+            groupId: group.id,
+            groupType: 'header',
+          });
+        }
+      }
+    }
+
+    // 3. Pages (Detail Band)
     for (let pIdx = 0; pIdx < schema.pages.length; pIdx++) {
       const page = schema.pages[pIdx];
       items.push({ type: 'page-separator', pageId: page.id, index: pIdx });
@@ -310,7 +338,35 @@ function useFlattenedLayers(collapsedGroups: Set<string>) {
       }
     }
 
-    // 3. Footer
+    // 4. Groups (Footers) - Rendered in same order as headers but at bottom
+    const groups = schema.groups || [];
+    for (let i = groups.length - 1; i >= 0; i--) {
+      const group = groups[i];
+      const gFooterKey = `group-${group.id}-footer`;
+      items.push({
+        type: 'zone-header',
+        zoneKey: 'footer',
+        label: `Group Footer: ${group.field}`,
+        groupId: group.id,
+        groupType: 'footer',
+        count: group.footer.components.length,
+      });
+      if (!collapsedGroups.has(gFooterKey) && group.footer.components.length > 0) {
+        const reversed = [...group.footer.components].reverse();
+        for (let j = 0; j < reversed.length; j++) {
+          items.push({
+            type: 'component',
+            component: reversed[j],
+            zoneKey: 'footer',
+            index: group.footer.components.length - 1 - j,
+            groupId: group.id,
+            groupType: 'footer',
+          });
+        }
+      }
+    }
+
+    // 5. Footer
     const footerComps = schema.zones.footer.components;
     items.push({
       type: 'zone-header',
@@ -338,6 +394,10 @@ function useFlattenedLayers(collapsedGroups: Set<string>) {
 
 export const LayersPanel = memo(function LayersPanel() {
   const moveComponent = useDesignerStore((state) => state.moveComponent);
+  const selectedGroupId = useDesignerStore((state) => state.selectedGroupId);
+  const selectedZone = useDesignerStore((state) => state.selectedZone);
+  const setSelectedZone = useDesignerStore((state) => state.setSelectedZone);
+
   const isEmpty = useDesignerStore(
     (state) =>
       Object.values(state.schema.zones).every((z) => z.components.length === 0) &&
@@ -399,7 +459,12 @@ export const LayersPanel = memo(function LayersPanel() {
           undefined,
           undefined,
           sourceData.pageId,
-          destData.pageId
+          destData.pageId,
+          false,
+          sourceData.groupId,
+          destData.groupId,
+          sourceData.groupType,
+          destData.groupType
         );
       },
     });
@@ -408,11 +473,26 @@ export const LayersPanel = memo(function LayersPanel() {
   return (
     <div className="flex flex-col h-full bg-[var(--bg-surface)]">
       {/* Header */}
-      <div className="p-3 flex items-center gap-2 border-b border-[var(--border-default)] bg-[var(--bg-widget)] shrink-0">
-        <Layers className="w-3.5 h-3.5 text-[var(--accent)]" />
-        <h2 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-          Layers
-        </h2>
+      <div className="p-3 flex items-center justify-between border-b border-[var(--border-default)] bg-[var(--bg-widget)] shrink-0">
+        <div className="flex items-center gap-2">
+          <Layers className="w-3.5 h-3.5 text-[var(--accent)]" />
+          <h2 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            Layers
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const expression = prompt('Enter group expression (e.g. data.customer.name):', 'item.id');
+            if (expression) {
+              useDesignerStore.getState().addGroup(expression);
+            }
+          }}
+          className="p-1 hover:bg-[var(--bg-hover)] rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
+          title="Add Group"
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider">+ Group</span>
+        </button>
       </div>
 
       {/* Virtualized List Container */}
@@ -460,27 +540,56 @@ export const LayersPanel = memo(function LayersPanel() {
                   )}
 
                   {item.type === 'zone-header' && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toggleGroup(item.zoneKey === 'body' ? `body-${item.pageId}` : item.zoneKey)
-                      }
-                      className="w-full h-full flex items-center gap-1.5 px-2 text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all group"
+                    <div 
+                      className={clsx(
+                        "w-full h-full flex items-center gap-1.5 transition-all cursor-pointer group border-l-2",
+                        selectedGroupId === item.groupId && item.groupId 
+                          ? "bg-[var(--accent-glow)] text-[var(--accent)] border-[var(--accent)] shadow-sm" 
+                          : selectedZone === (item.zoneKey === 'body' ? `body-${item.pageId}` : item.zoneKey) && !item.groupId
+                            ? "bg-[var(--bg-widget)] text-[var(--text-primary)] border-[var(--accent)]"
+                            : "text-[var(--text-muted)] hover:text-[var(--text-secondary)] border-transparent hover:bg-white/[0.02]"
+                      )}
+                      onClick={() => {
+                        if (item.groupId) {
+                          useDesignerStore.getState().selectGroup(item.groupId);
+                        } else {
+                          setSelectedZone(item.zoneKey as any);
+                          useDesignerStore.getState().selectGroup(null);
+                        }
+                      }}
                     >
-                      <div className="p-0.5 rounded-sm bg-[var(--bg-widget)] group-hover:bg-[var(--bg-hover)] transition-colors">
-                        {collapsedGroups.has(
-                          item.zoneKey === 'body' ? `body-${item.pageId}` : item.zoneKey
-                        ) ? (
-                          <ChevronRight className="w-3 h-3" />
-                        ) : (
-                          <ChevronDown className="w-3 h-3" />
-                        )}
-                      </div>
-                      {item.label}
-                      <div className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] text-[9px] bg-[var(--bg-widget)] text-[var(--text-muted)] px-1 rounded-full font-bold">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const key = item.groupId 
+                            ? `group-${item.groupId}-${item.groupType}` 
+                            : (item.zoneKey === 'body' ? `body-${item.pageId}` : item.zoneKey);
+                          toggleGroup(key);
+                        }}
+                        className="pl-2 pr-1 h-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all"
+                      >
+                        <div className="p-0.5 rounded-sm bg-black/10 group-hover:bg-black/20 transition-colors">
+                          {collapsedGroups.has(
+                            item.groupId 
+                              ? `group-${item.groupId}-${item.groupType}` 
+                              : (item.zoneKey === 'body' ? `body-${item.pageId}` : item.zoneKey)
+                          ) ? (
+                            <ChevronRight className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          )}
+                        </div>
+                      </button>
+                      
+                      <span className="text-[9px] font-bold uppercase tracking-widest flex-1">
+                        {item.label}
+                      </span>
+
+                      <div className="mr-2 flex items-center justify-center min-w-[18px] h-[18px] text-[9px] bg-black/5 text-[var(--text-muted)] px-1 rounded-full font-bold">
                         {item.count}
                       </div>
-                    </button>
+                    </div>
                   )}
 
                   {item.type === 'component' && (

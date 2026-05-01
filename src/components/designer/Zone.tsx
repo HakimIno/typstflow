@@ -18,6 +18,9 @@ interface ZoneProps {
   resizeEdge?: 'top' | 'bottom' | 'none';
   visibleIds?: Set<string> | null;
   pageIndex?: number;
+  isGroupBand?: boolean;
+  groupType?: 'header' | 'footer';
+  groupId?: string;
 }
 
 export const Zone = memo(function Zone({
@@ -29,6 +32,9 @@ export const Zone = memo(function Zone({
   resizeEdge = 'bottom',
   visibleIds,
   pageIndex,
+  isGroupBand,
+  groupType,
+  groupId,
 }: ZoneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -38,16 +44,22 @@ export const Zone = memo(function Zone({
     minHeight || '50',
     components,
     resizeEdge,
-    pageId
+    pageId,
+    groupId,
+    groupType
   );
-  const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef, pageId);
+  const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef, pageId, groupId, groupType);
 
   return (
     <div
       ref={containerRef}
+      data-is-group-band={isGroupBand}
+      data-group-id={groupId}
+      data-group-type={groupType}
       style={resizeEdge === 'none' ? { flex: 1 } : { height: `${localHeight}mm` }}
       className={clsx(
         'relative border-b last:border-b-0 border-dashed border-slate-200 transition-colors group/zone bg-transparent',
+        isGroupBand && (groupType === 'header' ? 'bg-indigo-500/[0.03]' : 'bg-fuchsia-500/[0.03]'),
         isDraggedOver && 'bg-[var(--accent-glow)]/50',
         isResizing && 'ring-1 ring-[var(--accent)] z-50 shadow-lg'
       )}
@@ -57,7 +69,8 @@ export const Zone = memo(function Zone({
         <div className="absolute inset-y-0 right-0 w-px bg-[var(--border-default)]" />
         <span
           className={clsx(
-            'text-[8px] font-medium uppercase tracking-[0.1em] text-[var(--text-muted)] whitespace-nowrap'
+            'text-[8px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] whitespace-nowrap px-1 py-4 rounded-l-md',
+            isGroupBand && (groupType === 'header' ? 'text-indigo-400 bg-indigo-500/10' : 'text-fuchsia-400 bg-fuchsia-500/10')
           )}
           style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
         >

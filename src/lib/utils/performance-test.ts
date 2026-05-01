@@ -51,6 +51,7 @@ export function generateStressTestSchema(pageCount = 50, componentsPerPage = 20)
       header: { id: 'header-zone', components: [] },
       footer: { id: 'footer-zone', components: [] },
     },
+    groups: [],
     pages,
     variables: [],
     dataSchema: [],

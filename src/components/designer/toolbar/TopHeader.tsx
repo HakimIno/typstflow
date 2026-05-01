@@ -15,10 +15,9 @@ export const TopHeader = memo(function TopHeader() {
 
   return (
     <header className="h-[40px] bg-[var(--bg-surface)] backdrop-blur-2xl flex items-center justify-between px-3 border-b border-[var(--border-default)]">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full" />
-          <span className="text-[11px] font-bold  tracking-tight">TypstFlow</span>
+          <img src="/logo.png" alt="Logo" className="w-7 h-7 bg-white rounded-full" />
         </div>
 
         <nav className="flex items-center gap-1">

@@ -9,6 +9,7 @@ export interface LayoutSchema {
     footer: Zone;
   };
   pages: PageDefinition[];
+  groups: GroupDefinition[]; // New: Data grouping bands
   variables: VariableDefinition[]; // user-defined reusable values
   dataSchema: DataFieldDefinition[]; // expected input data shape
   metadata: {
@@ -17,6 +18,17 @@ export interface LayoutSchema {
     updatedAt: string;
     author: string;
   };
+}
+
+export interface GroupDefinition {
+  id: string;
+  name: string;
+  field: string; // The binding path to group by, e.g. "item.category"
+  header: Zone;  // Zone rendered when a group starts
+  footer: Zone;  // Zone rendered when a group ends (for summaries)
+  sortBy?: 'asc' | 'desc';
+  filterBy?: string; // New: Filter expression for the group
+  repeatHeaderOnPage?: boolean;
 }
 
 export interface PageDefinition {
@@ -87,6 +99,7 @@ export interface BaseComponent {
 export interface TextComponent extends BaseComponent {
   type: 'text';
   content: string; // "{{customer.name}}" or static
+  format?: FormatType;
   style: TextStyle;
 }
 

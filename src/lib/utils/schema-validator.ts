@@ -47,6 +47,19 @@ export const LayoutSchemaValidator = z
       footer: ZoneSchema,
     }),
     pages: z.array(PageSchema).default([]),
+    groups: z
+      .array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          field: z.string(),
+          header: ZoneSchema,
+          footer: ZoneSchema,
+          sortBy: z.enum(['asc', 'desc']).optional(),
+          repeatHeaderOnPage: z.boolean().optional(),
+        })
+      )
+      .default([]),
     fonts: z.array(
       z.object({
         family: z.string(),

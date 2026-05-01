@@ -18,6 +18,8 @@ import { VariablePicker } from './VariablePicker';
 import { AlignmentProperties } from './properties/AlignmentProperties';
 import { GeometryProperties } from './properties/GeometryProperties';
 import { ImageProperties } from './properties/ImageProperties';
+import { GroupProperties } from './properties/GroupProperties';
+import { FormatPicker, type FormatType } from './properties/FormatPicker';
 import { PropertyRow, SectionHeader } from './properties/Shared';
 import { TypographyProperties } from './properties/TypographyProperties';
 
@@ -32,6 +34,7 @@ const isPageNumber = (c: ComponentNode): c is PageNumberComponent =>
 
 export const PropertiesPanel = memo(function PropertiesPanel() {
   const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
+  const selectedGroupId = useDesignerStore((state) => state.selectedGroupId);
   const zones = useDesignerStore((state) => state.schema.zones);
   const pages = useDesignerStore((state) => state.schema.pages);
   const fullSchema = useDesignerStore((state) => state.schema);
@@ -62,6 +65,20 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
     return null;
   }, [selectedComponentIds, zones, pages]);
+
+  if (selectedGroupId) {
+    return (
+      <div className="h-full flex flex-col bg-[var(--bg-surface)]">
+        <div className="h-8 min-h-[32px] bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
+          <Layers className="w-3 h-3 text-[var(--accent)]" />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Group Settings</span>
+        </div>
+        <div className="flex-1 overflow-auto border-l border-[var(--border-default)]">
+          <GroupProperties groupId={selectedGroupId} />
+        </div>
+      </div>
+    );
+  }
 
   if (!selectedComponent) {
     return (
@@ -262,6 +279,13 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 placeholder="Type static text or {{binding}}..."
                 className="bg-transparent"
               />
+              <div className="flex flex-col border-t border-[var(--border-default)]">
+                <SectionHeader label="Display Format" />
+                <FormatPicker 
+                  currentValue={selectedComponent.format || 'text'}
+                  onSelect={(format) => updateComponent(selectedComponent.id, { format })}
+                />
+              </div>
             </div>
           )}
           {isTable(selectedComponent) && (

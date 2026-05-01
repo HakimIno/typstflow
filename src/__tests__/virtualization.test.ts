@@ -9,17 +9,17 @@ describe('Virtualization Coordinate Logic', () => {
   it('should calculate correct absolute Y for components across pages', () => {
     const schema = {
       zones: {
-        header: { minHeight: '30mm', components: [{ id: 'h1', x: 0, y: 5 }] },
-        footer: { minHeight: '30mm', components: [{ id: 'f1', x: 0, y: 5 }] },
+        header: { minHeight: '30mm', components: [{ id: 'h1', x: 0, y: 5 }] as any[] },
+        footer: { minHeight: '30mm', components: [{ id: 'f1', x: 0, y: 5 }] as any[] },
       },
       pages: [
         {
           id: 'p1',
-          body: { minHeight: '237mm', components: [{ id: 'b1', x: 0, y: 10 }] },
+          body: { minHeight: '237mm', components: [{ id: 'b1', x: 0, y: 10 }] as any[] },
         },
         {
           id: 'p2',
-          body: { minHeight: '237mm', components: [{ id: 'b2', x: 0, y: 10 }] },
+          body: { minHeight: '237mm', components: [{ id: 'b2', x: 0, y: 10 }] as any[] },
         },
       ],
     };
@@ -61,11 +61,11 @@ describe('Virtualization Coordinate Logic', () => {
   it('should handle empty pages without errors', () => {
     const schema = {
       zones: {
-        header: { minHeight: '30mm', components: [] },
-        footer: { minHeight: '30mm', components: [] },
+        header: { minHeight: '30mm', components: [] as any[] },
+        footer: { minHeight: '30mm', components: [] as any[] },
       },
       pages: [
-        { id: 'p1', body: { minHeight: '237mm', components: [] } },
+        { id: 'p1', body: { minHeight: '237mm', components: [] as any[] } },
       ],
     };
 

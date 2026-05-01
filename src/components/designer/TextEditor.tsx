@@ -73,14 +73,42 @@ export function TextEditor({
     return extractJsonPaths(sampleData);
   }, [sampleData]);
 
-  const filteredPaths = useMemo(() => {
-    if (!searchQuery) return allPaths.slice(0, 50);
-    return allPaths.filter((p) => p.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 50);
-  }, [allPaths, searchQuery]);
+  const suggestions = useMemo(() => {
+    const aggregateFuncs = ['SUM(', 'COUNT(', 'AVG(', 'MIN(', 'MAX('];
+    
+    // Check if user is typing a function
+    const funcMatch = searchQuery.match(/^(SUM|COUNT|AVG|MIN|MAX)\((.*)$/i);
+    if (funcMatch) {
+      const funcName = funcMatch[1].toUpperCase();
+      const subQuery = funcMatch[2];
+      
+      const numericPaths = allPaths.filter(p => getValueType(sampleData, p) === 'number' || p.includes('[*]'));
+      const filtered = subQuery 
+        ? numericPaths.filter(p => p.toLowerCase().includes(subQuery.toLowerCase()))
+        : numericPaths;
+        
+      return filtered.map(p => `${funcName}(${p})`).slice(0, 50);
+    }
+
+    const filtered = searchQuery
+      ? allPaths.filter((p) => p.toLowerCase().includes(searchQuery.toLowerCase()))
+      : allPaths;
+
+    // Merge aggregate starters with normal paths
+    return [
+      ...aggregateFuncs.filter(f => f.toLowerCase().includes(searchQuery.toLowerCase())),
+      ...filtered
+    ].slice(0, 50);
+  }, [allPaths, searchQuery, sampleData]);
 
   const groupedPaths = useMemo(() => {
-    return groupPathsByParent(filteredPaths);
-  }, [filteredPaths]);
+    // If it's a function suggestion, don't group or group under 'Functions'
+    const isFunc = suggestions.some(s => s.includes('('));
+    if (isFunc) {
+      return [{ name: 'Functions & Data', paths: suggestions }];
+    }
+    return groupPathsByParent(suggestions);
+  }, [suggestions]);
 
   const getCurrentBinding = useCallback(() => {
     if (!editorRef.current) return null;
@@ -162,12 +190,12 @@ export function TextEditor({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (!isOpen || filteredPaths.length === 0) {
+      if (!isOpen || suggestions.length === 0) {
         if (e.key === 'Tab') {
           const currentBinding = getCurrentBinding();
-          if (currentBinding !== null && filteredPaths.length > 0) {
+          if (currentBinding !== null && suggestions.length > 0) {
             e.preventDefault();
-            insertPath(filteredPaths[0]);
+            insertPath(suggestions[0]);
             return;
           }
         }
@@ -181,17 +209,17 @@ export function TextEditor({
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setSelectedIndex((prev) => (prev + 1) % filteredPaths.length);
+          setSelectedIndex((prev) => (prev + 1) % suggestions.length);
           break;
         case 'ArrowUp':
           e.preventDefault();
-          setSelectedIndex((prev) => (prev - 1 + filteredPaths.length) % filteredPaths.length);
+          setSelectedIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
           break;
         case 'Enter':
         case 'Tab':
           e.preventDefault();
-          if (filteredPaths[selectedIndex]) {
-            insertPath(filteredPaths[selectedIndex]);
+          if (suggestions[selectedIndex]) {
+            insertPath(suggestions[selectedIndex]);
           }
           break;
         case 'Escape':
@@ -200,7 +228,7 @@ export function TextEditor({
           break;
       }
     },
-    [isOpen, filteredPaths, selectedIndex, getCurrentBinding, onExit, insertPath]
+    [isOpen, suggestions, selectedIndex, getCurrentBinding, onExit, insertPath]
   );
 
   // Highlight variables in the text with colorful parts
@@ -337,7 +365,7 @@ export function TextEditor({
       {/* Dropdown Portal */}
       {portalContainer &&
         isOpen &&
-        filteredPaths.length > 0 &&
+        suggestions.length > 0 &&
         ReactDOM.createPortal(
           <>
             <button
@@ -368,7 +396,7 @@ export function TextEditor({
                       </div>
                     )}
                     {group.paths.map((path) => {
-                      const globalIndex = filteredPaths.indexOf(path);
+                      const globalIndex = suggestions.indexOf(path);
                       const isSelected = globalIndex === selectedIndex;
                       const type = getValueType(sampleData, path);
                       return (
@@ -408,7 +436,7 @@ export function TextEditor({
               </div>
               <div className="px-2 py-1.5 bg-[var(--bg-widget)] border-t border-[var(--border-default)] flex items-center justify-between">
                 <span className="text-[9px] font-medium text-slate-400 uppercase tracking-tighter">
-                  {filteredPaths.length} Results
+                  {suggestions.length} Results
                 </span>
                 <div className="flex gap-2">
                   <kbd className="px-1 text-[8px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[var(--text-muted)]">

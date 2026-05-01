@@ -247,21 +247,71 @@ export const LayoutEngine = {
 
   /**
    * Calculates the cumulative Y offset (mm) from the top of the page to the start of a specific zone.
+   * Now includes support for dynamic grouping bands.
    */
   calculateZoneOffset(zoneKey: string, schema: any, pageId?: string): number {
     let offset = 0;
 
-    // Order: Header -> Body -> Footer
+    // Order: Header -> [Group Headers] -> Body -> [Group Footers] -> Footer
     if (zoneKey === 'header') return 0;
 
-    offset += parseTypstUnit(schema.zones.header.minHeight);
+    // 1. Report Header
+    offset += parseTypstUnit(schema.zones.header.minHeight || '0mm');
+
+    // 2. Group Headers (if target is body or footer)
+    if (zoneKey === 'body' || zoneKey === 'footer') {
+      for (const group of schema.groups || []) {
+        offset += parseTypstUnit(group.header.minHeight || '0mm');
+      }
+    }
+
     if (zoneKey === 'body') return offset;
 
-    // If it's the footer, we need the height of the specific page's body
+    // 3. Detail Band (Body)
+    const page = pageId ? schema.pages.find((p: any) => p.id === pageId) : schema.pages[0];
+    const bodyHeight = page ? parseTypstUnit(page.body.minHeight || '0mm') : 0;
+    offset += bodyHeight;
+
+    // 4. Group Footers
     if (zoneKey === 'footer') {
+      for (const group of schema.groups || []) {
+        offset += parseTypstUnit(group.footer.minHeight || '0mm');
+      }
+    }
+
+    return offset;
+  },
+
+  /**
+   * Calculates the specific Y offset for a grouping band.
+   */
+  calculateBandOffset(
+    groupId: string,
+    groupType: 'header' | 'footer',
+    schema: any,
+    pageId?: string
+  ): number {
+    let offset = parseTypstUnit(schema.zones.header.minHeight || '0mm');
+
+    if (groupType === 'header') {
+      for (const group of schema.groups || []) {
+        if (group.id === groupId) return offset;
+        offset += parseTypstUnit(group.header.minHeight || '0mm');
+      }
+    } else {
+      // Header + All Group Headers + Body
+      for (const group of schema.groups || []) {
+        offset += parseTypstUnit(group.header.minHeight || '0mm');
+      }
       const page = pageId ? schema.pages.find((p: any) => p.id === pageId) : schema.pages[0];
-      const bodyHeight = page ? parseTypstUnit(page.body.minHeight) : 0;
-      return offset + bodyHeight;
+      offset += page ? parseTypstUnit(page.body.minHeight || '0mm') : 0;
+
+      // Group Footers are rendered in REVERSE order in Canvas.tsx
+      const reversedGroups = [...(schema.groups || [])].reverse();
+      for (const group of reversedGroups) {
+        if (group.id === groupId) return offset;
+        offset += parseTypstUnit(group.footer.minHeight || '0mm');
+      }
     }
 
     return offset;
