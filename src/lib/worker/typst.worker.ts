@@ -130,8 +130,9 @@ function walkComponents(components: any[]) {
 function injectImagesIntoSchema(schema: any): any {
   if (!bridge || !schema?.zones) return schema;
 
-  // Deep clone so we don't mutate React/Zustand state
-  const s: any = JSON.parse(JSON.stringify(schema));
+  // We can mutate the schema directly because the worker receives 
+  // a structured clone of the data, so it won't affect the main thread.
+  const s = schema;
 
   bridge.clear_images();
 

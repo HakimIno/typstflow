@@ -4,6 +4,7 @@ import { ImageIcon, Link, Loader2, Upload, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { PropertyRow, SectionHeader } from './Shared';
+import { optimizeImage } from '@/lib/utils/image-optimizer';
 
 interface ImagePropertiesProps {
   component: ImageComponent;
@@ -54,20 +55,38 @@ function ImageUploader({
   const previewSrc = component.srcData || (component.src?.startsWith('http') ? '' : '');
 
   const handleFile = useCallback(
-    (file: File) => {
+    async (file: File) => {
       setError(null);
-      if (file.size > 8 * 1024 * 1024) {
-        setError('File too large (max 8 MB)');
-        return;
+      setLoading(true);
+      try {
+        // Optimization step: Resize and compress to WebP
+        const { dataUrl, mimeType } = await optimizeImage(file);
+        onUpdate({ 
+          src: file.name, 
+          srcData: dataUrl, 
+          mimeType 
+        });
+      } catch (err: any) {
+        console.error('Image optimization failed:', err);
+        setError('Failed to process image');
+        
+        // Fallback: Use original data URL if optimization fails (but only if it's not too huge)
+        if (file.size <= 5 * 1024 * 1024) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            onUpdate({ 
+              src: file.name, 
+              srcData: e.target?.result as string, 
+              mimeType: file.type || 'image/png' 
+            });
+          };
+          reader.readAsDataURL(file);
+        } else {
+          setError('File too large and optimization failed');
+        }
+      } finally {
+        setLoading(false);
       }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        const mimeType = file.type || 'image/png';
-        onUpdate({ src: file.name, srcData: dataUrl, mimeType });
-      };
-      reader.onerror = () => setError('Failed to read file');
-      reader.readAsDataURL(file);
     },
     [onUpdate]
   );
@@ -100,18 +119,13 @@ function ImageUploader({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
       if (!blob.type.startsWith('image/')) throw new Error('URL is not an image');
-      if (blob.size > 8 * 1024 * 1024) throw new Error('Image too large (max 8 MB)');
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        onUpdate({ src: url, srcData: dataUrl, mimeType: blob.type });
-        setLoading(false);
-      };
-      reader.onerror = () => {
-        setError('Failed to decode image');
-        setLoading(false);
-      };
-      reader.readAsDataURL(blob);
+      
+      // We also optimize URL images
+      const file = new File([blob], 'url-image', { type: blob.type });
+      const { dataUrl, mimeType } = await optimizeImage(file);
+      
+      onUpdate({ src: url, srcData: dataUrl, mimeType });
+      setLoading(false);
     } catch (err: any) {
       setError(err.message || 'Failed to load URL');
       setLoading(false);
@@ -156,7 +170,7 @@ function ImageUploader({
             onClick={handleClear}
             className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-0.5 transition-all"
           >
-            <X className="w-2.5 h-2.5" />
+            {loading ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <X className="w-2.5 h-2.5" />}
           </button>
         </div>
       ) : (
@@ -164,13 +178,18 @@ function ImageUploader({
           type="button"
           className="mx-3 my-2 rounded border-2 border-dashed border-[var(--border-default)] flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-[var(--border-accent)] hover:bg-[var(--accent-glow)] transition-all"
           style={{ height: 64 }}
-          onClick={() => tab === 'upload' && fileRef.current?.click()}
+          onClick={() => tab === 'upload' && !loading && fileRef.current?.click()}
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
+          disabled={loading}
         >
-          <ImageIcon className="w-4 h-4 text-[var(--text-muted)]" />
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />
+          ) : (
+            <ImageIcon className="w-4 h-4 text-[var(--text-muted)]" />
+          )}
           <span className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-widest">
-            No Image
+            {loading ? 'Optimizing...' : 'No Image'}
           </span>
         </button>
       )}
@@ -187,12 +206,13 @@ function ImageUploader({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-[var(--border-default)] rounded text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider transition-all"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-[var(--border-default)] rounded text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider transition-all disabled:opacity-50"
           >
             <Upload className="w-3 h-3" />
             Browse file…
           </button>
-          <p className="mt-1 text-[8px] text-slate-300 text-center">PNG, JPG, WebP — max 8 MB</p>
+          <p className="mt-1 text-[8px] text-slate-300 text-center">PNG, JPG, WebP — optimized on upload</p>
         </div>
       )}
 
@@ -206,6 +226,7 @@ function ImageUploader({
               onKeyDown={(e) => e.key === 'Enter' && handleUrlLoad()}
               placeholder="https://example.com/logo.png"
               className="flex-1 font-mono text-[9px]"
+              disabled={loading}
             />
             <button
               type="button"
