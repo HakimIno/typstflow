@@ -34,22 +34,38 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { DesignerInput } from '../shared/DesignerInput';
 
-const ComponentIcon = ({ type }: { type: string }) => {
-  switch (type) {
-    case 'text':
-      return <Type className="w-3.5 h-3.5" />;
-    case 'image':
-      return <ImageIcon className="w-3.5 h-3.5" />;
-    case 'table':
-      return <Table className="w-3.5 h-3.5" />;
-    case 'line':
-      return <Square className="w-3.5 h-3.5" />;
-    case 'qrcode':
-    case 'barcode':
-      return <QrCode className="w-3.5 h-3.5" />;
-    default:
-      return <Layers className="w-3.5 h-3.5" />;
-  }
+const ComponentIcon = ({ type, isSelected }: { type: string; isSelected?: boolean }) => {
+  const iconClass = clsx(
+    'w-3.5 h-3.5 transition-transform duration-200',
+    isSelected ? 'scale-110' : 'group-hover:scale-110'
+  );
+
+  const containerClass = clsx(
+    'p-1 rounded-md shrink-0 flex items-center justify-center transition-all duration-200',
+    isSelected
+      ? 'bg-[var(--accent)] text-white shadow-[0_0_8px_rgba(0,111,238,0.3)]'
+      : 'bg-[var(--bg-widget)] text-[var(--text-secondary)] group-hover:bg-[var(--bg-hover)] group-hover:text-[var(--text-primary)]'
+  );
+
+  const getIcon = () => {
+    switch (type) {
+      case 'text':
+        return <Type className={iconClass} />;
+      case 'image':
+        return <ImageIcon className={iconClass} />;
+      case 'table':
+        return <Table className={iconClass} />;
+      case 'line':
+        return <Square className={iconClass} />;
+      case 'qrcode':
+      case 'barcode':
+        return <QrCode className={iconClass} />;
+      default:
+        return <Layers className={iconClass} />;
+    }
+  };
+
+  return <div className={containerClass}>{getIcon()}</div>;
 };
 
 const LayerItem = memo(
@@ -123,86 +139,57 @@ const LayerItem = memo(
       <div
         ref={ref}
         className={clsx(
-          'w-full group relative flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-all duration-200 border-y-0 border-r-0 border-l-2',
+          'w-full group relative flex items-center gap-2 px-2 py-1 cursor-pointer transition-all duration-200 select-none border-l-2',
           isSelected
-            ? 'bg-blue-500/10 border-blue-500 text-blue-500'
-            : 'border-transparent text-slate-400 hover:bg-slate-50/50 hover:text-slate-200',
-          isDragging && 'opacity-40 grayscale'
+            ? 'bg-[var(--accent-glow)] border-[var(--accent)]'
+            : 'border-transparent hover:bg-[var(--bg-widget)]',
+          isDragging && 'opacity-40 grayscale',
+          isHidden && 'opacity-50'
         )}
         onClick={() => selectComponent(component.id)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            selectComponent(component.id);
-          }
-        }}
         // biome-ignore lint/a11y/useSemanticElements: Nested buttons are illegal in HTML
         role="button"
         tabIndex={0}
       >
         {/* Drop Indicator */}
         {closestEdge === 'top' && (
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 z-10" />
+          <div className="absolute top-0 left-1 right-1 h-0.5 bg-[var(--accent)] z-10 rounded-full" />
         )}
         {closestEdge === 'bottom' && (
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 z-10" />
+          <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-[var(--accent)] z-10 rounded-full" />
         )}
 
-        <GripVertical className="w-3 h-3 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+        <div className="relative flex items-center gap-2 flex-1 min-w-0">
+          <GripVertical className="w-3 h-3 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 -ml-1" />
+          
+          <ComponentIcon type={component.type} isSelected={isSelected} />
 
-        <div
-          className={clsx(
-            'p-1 rounded-md shrink-0',
-            isSelected ? 'bg-blue-500/20' : 'bg-slate-100/10'
-          )}
-        >
-          <ComponentIcon type={component.type} />
+          <div className="flex-1 min-w-0">
+            {isEditing ? (
+              <DesignerInput
+                autoFocus
+                variant="ghost"
+                className="text-[11.5px] font-semibold p-0 text-[var(--text-primary)]"
+                value={name}
+                onChange={(v) => setName(v)}
+                onBlur={handleRename}
+                onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+              />
+            ) : (
+              <span
+                className={clsx(
+                  "block text-[11.5px] font-semibold truncate transition-colors",
+                  isSelected ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]"
+                )}
+                onDoubleClick={() => setIsEditing(true)}
+              >
+                {component.name || (component.type === 'text' ? component.content : component.type)}
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex-1 min-w-0 overflow-hidden">
-          {isEditing ? (
-            <DesignerInput
-              autoFocus
-              variant="ghost"
-              className="text-[11.5px] font-medium p-0"
-              value={name}
-              onChange={(v) => setName(v)}
-              onBlur={handleRename}
-              onKeyDown={(e) => e.key === 'Enter' && handleRename()}
-            />
-          ) : (
-            <span
-              className="block text-[11.5px] font-medium truncate"
-              onDoubleClick={() => setIsEditing(true)}
-            >
-              {component.name || (component.type === 'text' ? component.content : component.type)}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              moveUp(component.id);
-            }}
-            className="p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-slate-200"
-            title="Move Up"
-          >
-            <ChevronUp className="w-3 h-3" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              moveDown(component.id);
-            }}
-            className="p-1 hover:bg-slate-800 rounded text-slate-500 hover:text-slate-200"
-            title="Move Down"
-          >
-            <ChevronDown className="w-3 h-3" />
-          </button>
-          <div className="w-px h-3 bg-slate-800 mx-0.5" />
+        <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-all duration-200 scale-95 group-hover:scale-100 origin-right">
           <button
             type="button"
             onClick={(e) => {
@@ -210,12 +197,12 @@ const LayerItem = memo(
               toggleVisibility(component.id);
             }}
             className={clsx(
-              'p-1 hover:bg-slate-800 rounded',
-              isHidden && 'text-blue-500 opacity-100'
+              'p-1.5 hover:bg-[var(--bg-hover)] rounded-md transition-colors',
+              isHidden ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             )}
             title={isHidden ? 'Show' : 'Hide'}
           >
-            {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+            {isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           </button>
           <button
             type="button"
@@ -224,12 +211,12 @@ const LayerItem = memo(
               toggleLock(component.id);
             }}
             className={clsx(
-              'p-1 hover:bg-slate-800 rounded',
-              isLocked && 'text-orange-500 opacity-100'
+              'p-1.5 hover:bg-[var(--bg-hover)] rounded-md transition-colors',
+              isLocked ? 'text-orange-500' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             )}
             title={isLocked ? 'Unlock' : 'Lock'}
           >
-            {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+            {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w.3.5 h-3.5" />}
           </button>
           <button
             type="button"
@@ -239,10 +226,10 @@ const LayerItem = memo(
                 useDesignerStore.getState().removeComponents([component.id]);
               }
             }}
-            className="p-1 hover:bg-red-500/20 hover:text-red-500 rounded text-slate-500"
+            className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-md text-[var(--text-muted)] transition-colors"
             title="Delete"
           >
-            <Trash2 className="w-3 h-3" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -276,17 +263,19 @@ const ZoneGroup = memo(
     if (components.length === 0) return null;
 
     return (
-      <div className="mb-2">
+      <div className="mb-0.5">
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors"
+          className="w-full flex items-center gap-1.5 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all group"
         >
-          {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          <div className="p-0.5 rounded-sm bg-[var(--bg-widget)] group-hover:bg-[var(--bg-hover)] transition-colors">
+            {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          </div>
           {label}
-          <span className="ml-auto text-[9px] bg-slate-100 px-1.5 rounded-full lowercase font-medium">
+          <div className="ml-auto flex items-center justify-center min-w-[18px] h-[18px] text-[9px] bg-[var(--bg-widget)] text-[var(--text-muted)] px-1 rounded-full font-bold">
             {components.length}
-          </span>
+          </div>
         </button>
 
         {isOpen && (
@@ -367,13 +356,16 @@ export const LayersPanel = memo(function LayersPanel() {
         <ZoneGroup zoneKey="header" label="Report Header (Global)" />
 
         {pageIds.map((pageId, idx) => (
-          <div key={pageId} className="mt-4 first:mt-0">
-            <div className="px-3 py-1 flex items-center gap-2 bg-slate-100/30">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          <div key={pageId} className="mt-0 first:mt-0">
+            <div className="px-2 py-1 flex items-center gap-2 bg-[var(--bg-widget)] sticky top-0 z-10 backdrop-blur-md border-y border-[var(--border-subtle)]">
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">
                 Page {idx + 1}
               </span>
+              <div className="flex-1 h-px bg-[var(--border-subtle)]" />
             </div>
-            <ZoneGroup zoneKey="body" label="Detail Band" pageId={pageId} />
+            <div className="py-0.5">
+              <ZoneGroup zoneKey="body" label="Detail Band" pageId={pageId} />
+            </div>
           </div>
         ))}
 
@@ -382,12 +374,13 @@ export const LayersPanel = memo(function LayersPanel() {
         </div>
 
         {isEmpty && (
-          <div className="flex flex-col items-center justify-center h-48 px-8 text-center">
-            <div className="w-10 h-10 rounded-full bg-[var(--bg-widget)] flex items-center justify-center mb-3">
-              <Layers className="w-5 h-5 text-[var(--text-muted)]" />
+          <div className="flex flex-col items-center justify-center h-64 px-10 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--bg-widget)] flex items-center justify-center mb-4 shadow-sm border border-[var(--border-subtle)]">
+              <Layers className="w-6 h-6 text-[var(--text-muted)] opacity-50" />
             </div>
-            <p className="text-[10px] text-[var(--text-muted)]">
-              No layers yet. Add components from the palette.
+            <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-1">No Layers Found</h3>
+            <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+              Start building your report by dragging components from the palette onto the canvas.
             </p>
           </div>
         )}

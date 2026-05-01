@@ -1,16 +1,17 @@
 'use client';
 
 import { useDesignerStore } from '@/store/designer-store';
-import { clsx } from 'clsx';
+import { Editor } from '@monaco-editor/react';
 import { AlertCircle, Braces, CheckCircle2, X } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 export const DataPanel = memo(function DataPanel() {
-  const { sampleData, setSampleData } = useDesignerStore(
+  const { sampleData, setSampleData, theme } = useDesignerStore(
     useShallow((state) => ({
       sampleData: state.sampleData,
       setSampleData: state.setSampleData,
+      theme: state.theme,
     }))
   );
   const [jsonString, setJsonString] = useState(JSON.stringify(sampleData, null, 2));
@@ -21,15 +22,16 @@ export const DataPanel = memo(function DataPanel() {
     setJsonString(JSON.stringify(sampleData, null, 2));
   }, [sampleData]);
 
-  const handleJsonChange = (val: string) => {
-    setJsonString(val);
+  const handleJsonChange = (val: string | undefined) => {
+    const value = val || '';
+    setJsonString(value);
     try {
-      if (!val.trim()) {
+      if (!value.trim()) {
         setSampleData({});
         setError(null);
         return;
       }
-      const parsed = JSON.parse(val);
+      const parsed = JSON.parse(value);
       setSampleData(parsed);
       setError(null);
     } catch (e: any) {
@@ -89,35 +91,77 @@ export const DataPanel = memo(function DataPanel() {
       </div>
 
       <div className="flex-1 relative overflow-hidden group">
-        <textarea
+        <Editor
+          height="100%"
+          defaultLanguage="json"
+          theme={theme === 'dark' ? 'typstflow-dark' : 'light'}
           value={jsonString}
-          onChange={(e) => handleJsonChange(e.target.value)}
-          spellCheck={false}
-          className={clsx(
-            'absolute inset-0 w-full h-full p-4 font-mono text-[11px] resize-none focus:ring-0 border-none transition-colors text-[var(--text-primary)] outline-none',
-            error ? 'bg-red-500/5' : 'bg-transparent group-hover:bg-[var(--bg-hover)]'
-          )}
-          placeholder='{ "key": "value" }'
+          onChange={handleJsonChange}
+          beforeMount={(monaco) => {
+            monaco.editor.defineTheme('typstflow-dark', {
+              base: 'vs-dark',
+              inherit: true,
+              rules: [
+                { token: 'string.key.json', foreground: '7dd3fc', fontStyle: 'bold' },
+                { token: 'string.value.json', foreground: '4ade80' },
+                { token: 'number', foreground: 'fbbf24' },
+                { token: 'keyword', foreground: 'c084fc' },
+                { token: 'comment', foreground: '71717a' },
+              ],
+              colors: {
+                'editor.background': '#00000000',
+                'editor.foreground': '#ecedee',
+                'editorLineNumber.foreground': '#3f3f46',
+                'editorLineNumber.activeForeground': '#71717a',
+                'editor.lineHighlightBackground': '#ffffff03',
+                'editor.selectionBackground': '#006fee30',
+                'editor.inactiveSelectionBackground': '#006fee15',
+                'editorIndentGuide.background': '#18181b',
+                'editorIndentGuide.activeBackground': '#27272a',
+              },
+            });
+          }}
+          options={{
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            fontSize: 11,
+            lineNumbers: 'on',
+            lineNumbersMinChars: 2,
+            lineDecorationsWidth: 5,
+            glyphMargin: false,
+            folding: true,
+            showFoldingControls: 'mouseover',
+            renderLineHighlight: 'all',
+            tabSize: 2,
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            padding: { top: 12, bottom: 12 },
+            scrollbar: {
+              vertical: 'hidden',
+              horizontal: 'hidden',
+            },
+            hideCursorInOverviewRuler: true,
+            overviewRulerBorder: false,
+          }}
         />
 
         {/* Error/Success Indicator */}
-        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+        <div className="absolute bottom-3 right-3 flex items-center gap-2 z-10 pointer-events-none">
           {error ? (
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--bg-surface)] border border-red-500/20 rounded shadow-sm text-red-400 animate-in fade-in slide-in-from-right-2">
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--bg-surface-solid)] border border-red-500/20 rounded shadow-lg text-red-400 animate-in fade-in slide-in-from-right-2">
               <AlertCircle className="w-3 h-3" />
-              <span className="text-[9px] font-bold uppercase">Invalid JSON</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider">Invalid JSON</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--bg-surface)] border border-green-500/20 rounded shadow-sm text-[var(--green)]">
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--bg-surface-solid)] border border-green-500/20 rounded shadow-lg text-[var(--green)]">
               <CheckCircle2 className="w-3 h-3" />
-              <span className="text-[9px] font-bold uppercase">Valid Data</span>
+              <span className="text-[9px] font-bold uppercase tracking-wider">Valid Data</span>
             </div>
           )}
         </div>
       </div>
 
       {error && (
-        <div className="p-2 bg-red-600 text-white text-[9px] font-mono whitespace-pre-wrap break-all border-t border-red-700">
+        <div className="p-2 bg-red-600/90 backdrop-blur-md text-white text-[9px] font-mono whitespace-pre-wrap break-all border-t border-red-700/50 max-h-24 overflow-y-auto">
           {error}
         </div>
       )}
