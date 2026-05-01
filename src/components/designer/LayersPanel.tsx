@@ -1,7 +1,6 @@
 'use client';
 
 import { useDesignerStore } from '@/store/designer-store';
-import { useShallow } from 'zustand/react/shallow';
 import type { ComponentNode } from '@/types/schema';
 import {
   type Edge,
@@ -32,6 +31,7 @@ import {
   Unlock,
 } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { DesignerInput } from '../shared/DesignerInput';
 
 const ComponentIcon = ({ type }: { type: string }) => {
@@ -250,68 +250,73 @@ const LayerItem = memo(
   }
 );
 
-const ZoneGroup = memo(({
-  zoneKey,
-  label,
-  pageId,
-}: {
-  zoneKey: string;
-  label: string;
-  pageId?: string;
-}) => {
-  const [isOpen, setIsOpen] = useState(true);
-  const components = useDesignerStore(useShallow((state) => {
-    if (zoneKey === 'body') {
-      const page = pageId 
-        ? state.schema.pages.find(p => p.id === pageId)
-        : state.schema.pages[0];
-      return page?.body.components ?? [];
-    }
-    return state.schema.zones[zoneKey as 'header' | 'footer'].components;
-  }));
+const ZoneGroup = memo(
+  ({
+    zoneKey,
+    label,
+    pageId,
+  }: {
+    zoneKey: string;
+    label: string;
+    pageId?: string;
+  }) => {
+    const [isOpen, setIsOpen] = useState(true);
+    const components = useDesignerStore(
+      useShallow((state) => {
+        if (zoneKey === 'body') {
+          const page = pageId
+            ? state.schema.pages.find((p) => p.id === pageId)
+            : state.schema.pages[0];
+          return page?.body.components ?? [];
+        }
+        return state.schema.zones[zoneKey as 'header' | 'footer'].components;
+      })
+    );
 
-  if (components.length === 0) return null;
+    if (components.length === 0) return null;
 
-  return (
-    <div className="mb-2">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors"
-      >
-        {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-        {label}
-        <span className="ml-auto text-[9px] bg-slate-100 px-1.5 rounded-full lowercase font-medium">
-          {components.length}
-        </span>
-      </button>
+    return (
+      <div className="mb-2">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors"
+        >
+          {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          {label}
+          <span className="ml-auto text-[9px] bg-slate-100 px-1.5 rounded-full lowercase font-medium">
+            {components.length}
+          </span>
+        </button>
 
-      {isOpen && (
-        <div className="space-y-px">
-          {[...components].reverse().map((c, idx) => {
-            const actualIndex = components.length - 1 - idx;
-            return (
-              <LayerItem
-                key={c.id}
-                component={c}
-                zoneKey={zoneKey}
-                index={actualIndex}
-                pageId={pageId}
-              />
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-});
+        {isOpen && (
+          <div className="space-y-px">
+            {[...components].reverse().map((c, idx) => {
+              const actualIndex = components.length - 1 - idx;
+              return (
+                <LayerItem
+                  key={c.id}
+                  component={c}
+                  zoneKey={zoneKey}
+                  index={actualIndex}
+                  pageId={pageId}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+);
 
 export const LayersPanel = memo(function LayersPanel() {
   const pageIds = useDesignerStore(useShallow((state) => state.schema.pages.map((p) => p.id)));
   const moveComponent = useDesignerStore((state) => state.moveComponent);
-  const isEmpty = useDesignerStore((state) => 
-    Object.values(state.schema.zones).every((z) => z.components.length === 0) &&
-    state.schema.pages.every((p) => p.body.components.length === 0)
+  const isEmpty = useDesignerStore(
+    (state) =>
+      Object.values(state.schema.zones).every((z) => z.components.length === 0) &&
+      state.schema.pages.every((p) => p.body.components.length === 0)
   );
 
   useEffect(() => {
@@ -359,10 +364,7 @@ export const LayersPanel = memo(function LayersPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
-        <ZoneGroup
-          zoneKey="header"
-          label="Report Header (Global)"
-        />
+        <ZoneGroup zoneKey="header" label="Report Header (Global)" />
 
         {pageIds.map((pageId, idx) => (
           <div key={pageId} className="mt-4 first:mt-0">
@@ -371,19 +373,12 @@ export const LayersPanel = memo(function LayersPanel() {
                 Page {idx + 1}
               </span>
             </div>
-            <ZoneGroup
-              zoneKey="body"
-              label="Detail Band"
-              pageId={pageId}
-            />
+            <ZoneGroup zoneKey="body" label="Detail Band" pageId={pageId} />
           </div>
         ))}
 
         <div className="mt-4">
-          <ZoneGroup
-            zoneKey="footer"
-            label="Page Footer (Global)"
-          />
+          <ZoneGroup zoneKey="footer" label="Page Footer (Global)" />
         </div>
 
         {isEmpty && (

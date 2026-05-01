@@ -127,7 +127,6 @@ export function PreviewPane() {
           </span>
         </div>
       </div>
-
     </div>
   );
 }

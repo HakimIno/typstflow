@@ -144,4 +144,3 @@ export const SnapEngine = {
     return { snappedX, snappedY, activeGuidesX, activeGuidesY };
   },
 };
-

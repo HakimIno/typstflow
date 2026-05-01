@@ -8,13 +8,7 @@ import type {
   TextComponent,
 } from '@/types/schema';
 import { clsx } from 'clsx';
-import {
-  FileDown,
-  FileText,
-  Layers,
-  Sliders,
-  Trash2,
-} from 'lucide-react';
+import { FileDown, FileText, Layers, Sliders, Trash2 } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { DesignerInput } from '../shared/DesignerInput';
 import { TablePropertiesPanel } from './TablePropertiesPanel';
@@ -123,7 +117,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   min={1}
                   max={100}
                   value={pages.length}
-                  onChange={(v) => useDesignerStore.getState().setPageCount(Number.parseInt(v) || 1)}
+                  onChange={(v) =>
+                    useDesignerStore.getState().setPageCount(Number.parseInt(v) || 1)
+                  }
                   mono
                 />
                 <div className="flex gap-1">

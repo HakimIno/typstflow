@@ -12,15 +12,15 @@ interface RulerProps {
 
 /**
  * High-Performance CSS Ruler
- * 
+ *
  * Instead of rendering thousands of DIV elements (one per mm),
- * this uses CSS linear-gradients to draw ticks. 
+ * this uses CSS linear-gradients to draw ticks.
  * This is 100x faster and results in 0% React diffing overhead.
  */
 export const Ruler = memo(({ orientation, length, scrollPos = 0, zoom = 1.0 }: RulerProps) => {
   const isHorizontal = orientation === 'horizontal';
   const pxPerMm = LayoutEngine.mmToPx(1) * zoom;
-  
+
   // Define tick colors
   const tickColor = 'var(--text-muted)';
   const majorTickColor = 'var(--text-secondary)';
@@ -44,13 +44,11 @@ export const Ruler = memo(({ orientation, length, scrollPos = 0, zoom = 1.0 }: R
           ? `${pxPerMm * 10}px 12px, ${pxPerMm * 5}px 8px, ${pxPerMm}px 4px`
           : `12px ${pxPerMm * 10}px, 8px ${pxPerMm * 5}px, 4px ${pxPerMm}px`,
         backgroundRepeat: isHorizontal ? 'repeat-x' : 'repeat-y',
-        backgroundPosition: isHorizontal
-          ? `${-scrollPos}px bottom`
-          : `right ${-scrollPos}px`,
+        backgroundPosition: isHorizontal ? `${-scrollPos}px bottom` : `right ${-scrollPos}px`,
       }}
     >
       {/* Major labels (Rendered sparingly) */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none"
         style={{
           transform: isHorizontal ? `translateX(${-scrollPos}px)` : `translateY(${-scrollPos}px)`,

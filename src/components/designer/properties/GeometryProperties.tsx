@@ -15,20 +15,10 @@ export function GeometryProperties({ x, y, width, height, onUpdate }: GeometryPr
       <SectionHeader label="Geometry (mm)" />
       <div className="grid grid-cols-2">
         <PropertyRow label="X Pos">
-          <DesignerInput
-            type="number"
-            step="1"
-            value={x || 0}
-            onChange={(v) => onUpdate('x', v)}
-          />
+          <DesignerInput type="number" step="1" value={x || 0} onChange={(v) => onUpdate('x', v)} />
         </PropertyRow>
         <PropertyRow label="Y Pos">
-          <DesignerInput
-            type="number"
-            step="1"
-            value={y || 0}
-            onChange={(v) => onUpdate('y', v)}
-          />
+          <DesignerInput type="number" step="1" value={y || 0} onChange={(v) => onUpdate('y', v)} />
         </PropertyRow>
         <PropertyRow label="Width">
           <DesignerInput

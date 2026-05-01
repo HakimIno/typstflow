@@ -283,7 +283,12 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
                     align: 'right',
                     style: { fontWeight: 'bold' },
                   },
-                  { id: 'val-cgst', content: '14%', align: 'center', style: { fontWeight: 'bold' } }, // Following the image style of 14%
+                  {
+                    id: 'val-cgst',
+                    content: '14%',
+                    align: 'center',
+                    style: { fontWeight: 'bold' },
+                  }, // Following the image style of 14%
                 ],
               },
               {
@@ -298,7 +303,12 @@ export const TAX_INVOICE_TEMPLATE: LayoutSchema = {
                     align: 'right',
                     style: { fontWeight: 'bold' },
                   },
-                  { id: 'val-sgst', content: '14%', align: 'center', style: { fontWeight: 'bold' } },
+                  {
+                    id: 'val-sgst',
+                    content: '14%',
+                    align: 'center',
+                    style: { fontWeight: 'bold' },
+                  },
                 ],
               },
               {

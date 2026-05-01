@@ -1,9 +1,9 @@
+import { SNAP_GRID_MM, getDpiRatio, mmToPx, pxToMm } from '@/lib/constants';
 /**
  * @file constants.test.ts
  * Tests for src/lib/constants.ts — DPI conversion functions
  */
 import { describe, expect, it } from 'vitest';
-import { mmToPx, pxToMm, getDpiRatio, SNAP_GRID_MM } from '@/lib/constants';
 
 const DPI = 96;
 const MM_PER_INCH = 25.4;

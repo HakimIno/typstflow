@@ -205,7 +205,11 @@ export const INVOICE_WITH_PAGE_BREAKS_TEMPLATE: LayoutSchema = {
             height: 35,
             rows: [
               { label: 'ยอดรวม (Subtotal)', value: '{{invoice.subtotal}}', style: 'normal' },
-              { label: 'ส่วนลด (Discount)', value: '{{invoice.discount_total}}', style: 'highlight' },
+              {
+                label: 'ส่วนลด (Discount)',
+                value: '{{invoice.discount_total}}',
+                style: 'highlight',
+              },
               { label: 'ภาษีมูลค่าเพิ่ม 7% (VAT)', value: '{{invoice.vat_amount}}', style: 'normal' },
               { label: 'ยอดเงินสุทธิ (TOTAL)', value: '{{invoice.total}}', style: 'total' },
             ],

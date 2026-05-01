@@ -1,3 +1,12 @@
+import {
+  findComponentInSchema,
+  getZoneComponents,
+  mapComponentInSchema,
+  removeComponentFromSchema,
+  removeComponentsFromSchema,
+  reorderComponentInSchema,
+} from '@/lib/utils/schema-mutators';
+import type { ComponentNode, LayoutSchema, TextComponent } from '@/types/schema';
 /**
  * @file schema-mutators.test.ts
  * Comprehensive unit tests for src/lib/utils/schema-mutators.ts
@@ -11,15 +20,6 @@
  * - reorderComponentInSchema: bringToFront, sendToBack, moveUp, moveDown, boundary, null no-op
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  findComponentInSchema,
-  getZoneComponents,
-  mapComponentInSchema,
-  removeComponentFromSchema,
-  removeComponentsFromSchema,
-  reorderComponentInSchema,
-} from '@/lib/utils/schema-mutators';
-import type { ComponentNode, LayoutSchema, TextComponent } from '@/types/schema';
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────
 
@@ -74,7 +74,9 @@ function makeSchema(): LayoutSchema {
 
 describe('getZoneComponents', () => {
   let schema: LayoutSchema;
-  beforeEach(() => { schema = makeSchema(); });
+  beforeEach(() => {
+    schema = makeSchema();
+  });
 
   it('returns header components', () => {
     const comps = getZoneComponents(schema, 'header');
@@ -111,7 +113,9 @@ describe('getZoneComponents', () => {
 
 describe('findComponentInSchema', () => {
   let schema: LayoutSchema;
-  beforeEach(() => { schema = makeSchema(); });
+  beforeEach(() => {
+    schema = makeSchema();
+  });
 
   it('finds component in header', () => {
     expect(findComponentInSchema(schema, 'h1')?.id).toBe('h1');
@@ -149,11 +153,14 @@ describe('findComponentInSchema', () => {
 
 describe('mapComponentInSchema', () => {
   let schema: LayoutSchema;
-  beforeEach(() => { schema = makeSchema(); });
+  beforeEach(() => {
+    schema = makeSchema();
+  });
 
   it('transforms a component in the header zone', () => {
     const { schema: next, changed } = mapComponentInSchema(schema, 'h1', (c) => ({
-      ...c, x: 99,
+      ...c,
+      x: 99,
     }));
     expect(changed).toBe(true);
     expect(next.zones.header.components[0].x).toBe(99);
@@ -163,7 +170,8 @@ describe('mapComponentInSchema', () => {
 
   it('transforms a component in the footer zone', () => {
     const { schema: next, changed } = mapComponentInSchema(schema, 'f1', (c) => ({
-      ...c, y: 42,
+      ...c,
+      y: 42,
     }));
     expect(changed).toBe(true);
     expect(next.zones.footer.components[0].y).toBe(42);
@@ -171,7 +179,8 @@ describe('mapComponentInSchema', () => {
 
   it('transforms a component in page-1 body', () => {
     const { schema: next, changed } = mapComponentInSchema(schema, 'b2', (c) => ({
-      ...c, width: 200,
+      ...c,
+      width: 200,
     }));
     expect(changed).toBe(true);
     const bodyComps = next.pages[0].body.components;
@@ -181,7 +190,8 @@ describe('mapComponentInSchema', () => {
 
   it('transforms a component in page-2 body', () => {
     const { schema: next, changed } = mapComponentInSchema(schema, 'p2-b1', (c) => ({
-      ...c, height: 55,
+      ...c,
+      height: 55,
     }));
     expect(changed).toBe(true);
     expect(next.pages[1].body.components[0].height).toBe(55);
@@ -213,7 +223,7 @@ describe('mapComponentInSchema', () => {
   it('only the modified page changes reference', () => {
     const { schema: next } = mapComponentInSchema(schema, 'b1', (c) => ({ ...c, x: 5 }));
     expect(next.pages[0]).not.toBe(schema.pages[0]); // page-1 changed
-    expect(next.pages[1]).toBe(schema.pages[1]);     // page-2 unchanged
+    expect(next.pages[1]).toBe(schema.pages[1]); // page-2 unchanged
   });
 });
 
@@ -221,7 +231,9 @@ describe('mapComponentInSchema', () => {
 
 describe('removeComponentFromSchema', () => {
   let schema: LayoutSchema;
-  beforeEach(() => { schema = makeSchema(); });
+  beforeEach(() => {
+    schema = makeSchema();
+  });
 
   it('removes a component from header', () => {
     const { schema: next, changed } = removeComponentFromSchema(schema, 'h1');
@@ -263,7 +275,9 @@ describe('removeComponentFromSchema', () => {
 
 describe('removeComponentsFromSchema', () => {
   let schema: LayoutSchema;
-  beforeEach(() => { schema = makeSchema(); });
+  beforeEach(() => {
+    schema = makeSchema();
+  });
 
   it('removes multiple components from the same zone', () => {
     const { schema: next, changed } = removeComponentsFromSchema(schema, ['b1', 'b3']);
@@ -316,7 +330,9 @@ describe('removeComponentsFromSchema', () => {
 
 describe('reorderComponentInSchema', () => {
   let schema: LayoutSchema;
-  beforeEach(() => { schema = makeSchema(); });
+  beforeEach(() => {
+    schema = makeSchema();
+  });
 
   // bringToFront helper
   const bringToFront = (comps: ComponentNode[], idx: number): ComponentNode[] => {
@@ -433,8 +449,8 @@ describe('reorderComponentInSchema', () => {
       const { schema: next } = reorderComponentInSchema(schema, 'b1', bringToFront);
       expect(next.zones.header).toBe(schema.zones.header); // unchanged
       expect(next.zones.footer).toBe(schema.zones.footer); // unchanged
-      expect(next.pages[0]).not.toBe(schema.pages[0]);     // changed
-      expect(next.pages[1]).toBe(schema.pages[1]);          // unchanged
+      expect(next.pages[0]).not.toBe(schema.pages[0]); // changed
+      expect(next.pages[1]).toBe(schema.pages[1]); // unchanged
     });
 
     it('works on footer zone', () => {
@@ -446,7 +462,11 @@ describe('reorderComponentInSchema', () => {
           footer: { id: 'footer', components: [makeText('f1'), makeText('f2')] },
         },
       };
-      const { schema: next, changed } = reorderComponentInSchema(schemaWithFooter, 'f1', bringToFront);
+      const { schema: next, changed } = reorderComponentInSchema(
+        schemaWithFooter,
+        'f1',
+        bringToFront
+      );
       expect(changed).toBe(true);
       expect(next.zones.footer.components.map((c) => c.id)).toEqual(['f2', 'f1']);
     });
@@ -457,12 +477,16 @@ describe('reorderComponentInSchema', () => {
 
 describe('Integration — simulating store action patterns', () => {
   let schema: LayoutSchema;
-  beforeEach(() => { schema = makeSchema(); });
+  beforeEach(() => {
+    schema = makeSchema();
+  });
 
   it('updateComponent pattern: partial update via mapComponentInSchema', () => {
     const updates: Partial<ComponentNode> = { x: 10, y: 20 };
     const { schema: next, changed } = mapComponentInSchema(
-      schema, 'b1', (c) => ({ ...c, ...updates } as ComponentNode)
+      schema,
+      'b1',
+      (c) => ({ ...c, ...updates }) as ComponentNode
     );
     expect(changed).toBe(true);
     const updated = next.pages[0].body.components[0];

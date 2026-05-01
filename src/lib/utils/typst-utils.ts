@@ -5,7 +5,7 @@
 
 /**
  * Escapes characters that have special meaning in Typst markup.
- * 
+ *
  * Active characters in Typst:
  * # - Starts a command
  * \ - Escape character
@@ -22,22 +22,22 @@
 export function escapeTypst(str: string | null | undefined): string {
   if (str === null || str === undefined) return '';
   const input = String(str);
-  
+
   // Note: We MUST escape the backslash FIRST, otherwise we'll escape the backslashes
   // we add for other characters later.
   return input
-    .replace(/\\/g, '\\\\')    // Backslash \
-    .replace(/#/g, '\\#')      // Commands #
-    .replace(/\*/g, '\\*')     // Bold *
-    .replace(/_/g, '\\_')      // Italic _
-    .replace(/\[/g, '\\[')     // Left bracket [
-    .replace(/\]/g, '\\]')     // Right bracket ]
-    .replace(/~/g, '\\~')      // Non-breaking space ~
-    .replace(/@/g, '\\@')      // Citations @
-    .replace(/\$/g, '\\$')     // Math $
-    .replace(/</g, '\\<')      // Less than <
-    .replace(/>/g, '\\>')      // Greater than >
-    .replace(/`/g, '\\`');     // Backticks `
+    .replace(/\\/g, '\\\\') // Backslash \
+    .replace(/#/g, '\\#') // Commands #
+    .replace(/\*/g, '\\*') // Bold *
+    .replace(/_/g, '\\_') // Italic _
+    .replace(/\[/g, '\\[') // Left bracket [
+    .replace(/\]/g, '\\]') // Right bracket ]
+    .replace(/~/g, '\\~') // Non-breaking space ~
+    .replace(/@/g, '\\@') // Citations @
+    .replace(/\$/g, '\\$') // Math $
+    .replace(/</g, '\\<') // Less than <
+    .replace(/>/g, '\\>') // Greater than >
+    .replace(/`/g, '\\`'); // Backticks `
 }
 
 /**

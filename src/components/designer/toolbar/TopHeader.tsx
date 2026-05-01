@@ -4,6 +4,7 @@ import { useDesignerStore } from '@/store/designer-store';
 import { memo } from 'react';
 import { InsertMenu } from './InsertMenu';
 import { SettingsMenu } from './SettingsMenu';
+import { ShortcutGuide } from './ShortcutGuide';
 import { ViewSwitcher } from './ViewSwitcher';
 
 export const TopHeader = memo(function TopHeader() {
@@ -46,7 +47,8 @@ export const TopHeader = memo(function TopHeader() {
         <ViewSwitcher />
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <ShortcutGuide />
         <SettingsMenu />
       </div>
     </header>

@@ -1,10 +1,10 @@
 'use client';
 
 import { useDesignerStore } from '@/store/designer-store';
-import { useShallow } from 'zustand/react/shallow';
 import { clsx } from 'clsx';
 import { AlertCircle, Braces, CheckCircle2, X } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 export const DataPanel = memo(function DataPanel() {
   const { sampleData, setSampleData } = useDesignerStore(

@@ -35,7 +35,14 @@ export function DragMonitor() {
     initialClientX: number;
     initialClientY: number;
     lastSnapTime: number;
-    pageOffsets: { id: string, top: number, left: number, width: number, height: number, element: HTMLElement }[];
+    pageOffsets: {
+      id: string;
+      top: number;
+      left: number;
+      width: number;
+      height: number;
+      element: HTMLElement;
+    }[];
   }>({
     containerRect: null,
     containerElement: null,
@@ -86,23 +93,23 @@ export function DragMonitor() {
           const pageElements = document.querySelectorAll('[data-paper-container]');
           const offsets: any[] = [];
 
-          pageElements.forEach((el: any) => {
-            const r = el.getBoundingClientRect();
+          for (const el of pageElements) {
+            const r = (el as Element).getBoundingClientRect();
             offsets.push({
-              id: el.dataset.pageId,
+              id: (el as HTMLElement).dataset.pageId,
               top: r.top - scrollRect.top + scrollContainer.scrollTop,
               left: r.left - scrollRect.left + scrollContainer.scrollLeft,
               width: r.width,
               height: r.height,
-              element: el
+              element: el as HTMLElement,
             });
-          });
+          }
 
           // 2. Load Rust WASM Layout Engine (All pages and zones)
           getLayoutEngine().then((layoutEngine) => {
             layoutEngine.initWasm().then(() => {
               const nodes: any[] = [];
-              
+
               // Add Global Zones (Header, Footer)
               for (const [zKey, zone] of Object.entries(schema.zones) as [string, any][]) {
                 const yOffset = LayoutEngine.calculateZoneOffset(zKey, schema);
@@ -124,7 +131,7 @@ export function DragMonitor() {
                 // We use a composite key for the zone to distinguish between bodies of different pages
                 const zoneKey = `body:${page.id}`;
                 const bodyOffset = LayoutEngine.calculateZoneOffset('body', schema, page.id);
-                
+
                 for (const c of page.body.components) {
                   if (c.id === data.id) continue;
                   nodes.push({
@@ -137,7 +144,7 @@ export function DragMonitor() {
                   });
                 }
               }
-              
+
               layoutEngine.loadNodes(nodes);
             });
           });
@@ -175,7 +182,7 @@ export function DragMonitor() {
             lastSnappedX: startPos.x,
             lastSnappedY: startPos.y,
             activeGuides: { vertical: [], horizontal: [] },
-            activePageId: data.pageId || (offsets[0]?.id) || null,
+            activePageId: data.pageId || offsets[0]?.id || null,
           });
         }
       },
@@ -190,12 +197,15 @@ export function DragMonitor() {
         if (!scrollContainer) return;
 
         const scrollRect = scrollContainer.getBoundingClientRect();
-        const scrollX = location.current.input.clientX - scrollRect.left + scrollContainer.scrollLeft;
+        const scrollX =
+          location.current.input.clientX - scrollRect.left + scrollContainer.scrollLeft;
         const scrollY = location.current.input.clientY - scrollRect.top + scrollContainer.scrollTop;
 
         // Find page using cached offsets - NO DOM LOOKUPS HERE
-        const activePageInfo = cache.pageOffsets.find(p => scrollY >= p.top - 16 && scrollY <= p.top + p.height + 16)
-          || cache.pageOffsets[0];
+        const activePageInfo =
+          cache.pageOffsets.find(
+            (p) => scrollY >= p.top - 16 && scrollY <= p.top + p.height + 16
+          ) || cache.pageOffsets[0];
 
         const pageId = activePageInfo.id;
 
@@ -221,9 +231,13 @@ export function DragMonitor() {
         const height = data.height || data.component?.height || 0;
 
         // 5. SYNCHRONOUS STORE UPDATE (For reliable drops)
-        // We update the store immediately with raw coordinates so that onDrop 
+        // We update the store immediately with raw coordinates so that onDrop
         // always has access to the most recent position, even if WASM snapping is slow.
-        if (rawX !== cache.lastSentX || rawY !== cache.lastSentY || pageId !== useDesignerStore.getState().dragState.activePageId) {
+        if (
+          rawX !== cache.lastSentX ||
+          rawY !== cache.lastSentY ||
+          pageId !== useDesignerStore.getState().dragState.activePageId
+        ) {
           useDesignerStore.getState().updateLastSnapped(rawX, rawY, pageId || null);
           cache.lastSentX = rawX;
           cache.lastSentY = rawY;
@@ -231,7 +245,13 @@ export function DragMonitor() {
 
         // 6. SNAPPING (Async WASM Engine)
 
-        const updateTransientVisuals = (guidesX: number[], guidesY: number[], x: number, y: number, pInfo: any) => {
+        const updateTransientVisuals = (
+          guidesX: number[],
+          guidesY: number[],
+          x: number,
+          y: number,
+          pInfo: any
+        ) => {
           // Calculate absolute offsets for the global overlay
           const pageTopPx = pInfo.top;
           const pageLeftPx = pInfo.left;
@@ -243,13 +263,17 @@ export function DragMonitor() {
               if (guidesX[i] !== undefined) {
                 vG.style.left = `${pageLeftPx + LayoutEngine.mmToPx(guidesX[i])}px`;
                 vG.style.display = 'block';
-              } else { vG.style.display = 'none'; }
+              } else {
+                vG.style.display = 'none';
+              }
             }
             if (hG) {
               if (guidesY[i] !== undefined) {
                 hG.style.top = `${pageTopPx + LayoutEngine.mmToPx(guidesY[i])}px`;
                 hG.style.display = 'block';
-              } else { hG.style.display = 'none'; }
+              } else {
+                hG.style.display = 'none';
+              }
             }
           }
           const pill = document.getElementById('drag-coord-pill');
@@ -278,17 +302,41 @@ export function DragMonitor() {
             zoneFilter = `body:${pageId}`;
           }
 
-          const wasmSnap = layoutEngine.findSnaps(data.id || 'new', rawX, rawY, width, height, 5, zoneFilter);
+          const wasmSnap = layoutEngine.findSnaps(
+            data.id || 'new',
+            rawX,
+            rawY,
+            width,
+            height,
+            5,
+            zoneFilter
+          );
 
           if (wasmSnap) {
             snapX = rawX + wasmSnap.dx;
             snapY = rawY + wasmSnap.dy;
-            activeGuidesX = wasmSnap.guides.filter((g: any) => g.is_vertical).map((g: any) => g.position);
-            activeGuidesY = wasmSnap.guides.filter((g: any) => !g.is_vertical).map((g: any) => g.position);
+            activeGuidesX = wasmSnap.guides
+              .filter((g: any) => g.is_vertical)
+              .map((g: any) => g.position);
+            activeGuidesY = wasmSnap.guides
+              .filter((g: any) => !g.is_vertical)
+              .map((g: any) => g.position);
           } else {
-            const snap = SnapEngine.calculateSnap(rawX, rawY, width, height, data.id || 'new', schema, false, pageId, { x: cache.snapPointsX, y: cache.snapPointsY });
-            snapX = snap.snappedX; snapY = snap.snappedY;
-            activeGuidesX = snap.activeGuidesX; activeGuidesY = snap.activeGuidesY;
+            const snap = SnapEngine.calculateSnap(
+              rawX,
+              rawY,
+              width,
+              height,
+              data.id || 'new',
+              schema,
+              false,
+              pageId,
+              { x: cache.snapPointsX, y: cache.snapPointsY }
+            );
+            snapX = snap.snappedX;
+            snapY = snap.snappedY;
+            activeGuidesX = snap.activeGuidesX;
+            activeGuidesY = snap.activeGuidesY;
           }
 
           // Adjust CSS Variables with Snap Offset
@@ -315,8 +363,12 @@ export function DragMonitor() {
           root.style.removeProperty('--drag-dy');
 
           // Clean up all transient overlays
-          const overlays = document.querySelectorAll('[id^="v-guide-"], [id^="h-guide-"], [id^="drag-coord-pill-"]');
-          overlays.forEach(el => (el as HTMLElement).style.display = 'none');
+          const overlays = document.querySelectorAll(
+            '[id^="v-guide-"], [id^="h-guide-"], [id^="drag-coord-pill"]'
+          );
+          for (const el of overlays) {
+            (el as HTMLElement).style.display = 'none';
+          }
         });
 
         useDesignerStore.getState().setDragState({

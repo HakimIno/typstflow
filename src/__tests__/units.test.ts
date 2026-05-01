@@ -1,9 +1,9 @@
+import { parseTypstUnit } from '@/lib/utils/units';
 /**
  * @file units.test.ts
  * Tests for src/lib/utils/units.ts — parseTypstUnit()
  */
 import { describe, expect, it } from 'vitest';
-import { parseTypstUnit } from '@/lib/utils/units';
 
 describe('parseTypstUnit', () => {
   it('returns 0 for undefined input', () => {

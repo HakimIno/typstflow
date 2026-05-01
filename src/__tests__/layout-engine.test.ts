@@ -1,3 +1,4 @@
+import { LayoutEngine } from '@/lib/engine/layout-engine';
 /**
  * @file layout-engine.test.ts
  * Tests for src/lib/engine/layout-engine.ts
@@ -6,7 +7,6 @@
  * setupDpiMonitoring) are excluded — they require a real browser environment.
  */
 import { describe, expect, it } from 'vitest';
-import { LayoutEngine } from '@/lib/engine/layout-engine';
 
 describe('LayoutEngine.snap', () => {
   it('snaps to 0.1mm grid by default', () => {

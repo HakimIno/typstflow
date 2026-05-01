@@ -15,15 +15,16 @@ class AgentLogger {
       ...entry,
       timestamp: new Date().toISOString(),
     };
-    
+
     this.logs.unshift(fullEntry);
-    
+
     if (this.logs.length > this.MAX_LOGS) {
       this.logs.pop();
     }
-    
+
     // Also log to console for development
-    const color = entry.source === 'ai-agent' ? 'color: #8b5cf6; font-weight: bold' : 'color: #64748b';
+    const color =
+      entry.source === 'ai-agent' ? 'color: #8b5cf6; font-weight: bold' : 'color: #64748b';
     console.log(`%c[${entry.source}]`, color, entry.message, entry.details || '');
   }
 

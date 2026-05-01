@@ -15,7 +15,7 @@ export function ImageProperties({ component, onUpdate }: ImagePropertiesProps) {
     <>
       <SectionHeader label="Content & Image" />
       <ImageUploader component={component} onUpdate={onUpdate} />
-      
+
       <SectionHeader label="Image Settings" />
       <PropertyRow label="Fit Mode">
         <select

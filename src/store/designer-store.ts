@@ -1,8 +1,8 @@
 import { indexedDBStorage } from '@/lib/async-storage';
 import { agentLogger } from '@/lib/utils/agent-logger';
 import { generateStressTestSchema } from '@/lib/utils/performance-test';
-import { validateAndRepairSchema } from '@/lib/utils/schema-validator';
 import {
+  findComponentInSchema,
   getZoneComponents,
   mapComponentInSchema,
   moveComponentInSchema,
@@ -10,6 +10,7 @@ import {
   removeComponentsFromSchema,
   reorderComponentInSchema,
 } from '@/lib/utils/schema-mutators';
+import { validateAndRepairSchema } from '@/lib/utils/schema-validator';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { COMPLEX_SAMPLE_DATA, COMPLEX_TABLE_TEMPLATE } from '../lib/templates/complex-table';
@@ -40,6 +41,7 @@ interface DesignerState {
   // Selection
   selectedComponentIds: string[];
   selectedZone: ZoneKey | null;
+  clipboard: ComponentNode[] | null;
   selectedCell: {
     tableId: string;
     section: 'header' | 'footer' | 'data';
@@ -129,7 +131,9 @@ interface DesignerState {
   setRightSidebarOpen: (open: boolean) => void;
   undo: () => void;
   redo: () => void;
-  loadTemplate: (name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks' | 'tax-invoice') => void;
+  loadTemplate: (
+    name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks' | 'tax-invoice'
+  ) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setPrimaryColor: (color: string) => void;
 
@@ -148,6 +152,12 @@ interface DesignerState {
   moveUp: (id: string) => void;
   moveDown: (id: string) => void;
   updateLastSnapped: (x: number, y: number, pageId: string | null) => void;
+
+  // Keyboard/Clipboard Actions
+  copySelected: () => void;
+  paste: () => void;
+  duplicateSelected: () => void;
+  nudgeSelected: (dx: number, dy: number) => void;
 }
 
 const MAX_HISTORY = 50;
@@ -210,6 +220,7 @@ export const useDesignerStore = create<DesignerState>()(
       primaryColor: '#8B5CF6',
       selectedComponentIds: [],
       selectedZone: null,
+      clipboard: null,
       selectedCell: null,
       selectedCells: null,
       hiddenComponentIds: [],
@@ -237,7 +248,11 @@ export const useDesignerStore = create<DesignerState>()(
       },
 
       loadTemplate: (name) => {
-        agentLogger.log({ source: 'ai-agent', level: 'action', message: `Loading template: ${name}` });
+        agentLogger.log({
+          source: 'ai-agent',
+          level: 'action',
+          message: `Loading template: ${name}`,
+        });
         if (name === 'invoice') {
           set({
             schema: INVOICE_TEMPLATE,
@@ -277,7 +292,11 @@ export const useDesignerStore = create<DesignerState>()(
       },
 
       loadStressTest: (pages?: number, components?: number) => {
-        agentLogger.log({ source: 'system', level: 'info', message: `Generating stress test schema: ${pages} pages` });
+        agentLogger.log({
+          source: 'system',
+          level: 'info',
+          message: `Generating stress test schema: ${pages} pages`,
+        });
         const schema = generateStressTestSchema(pages, components);
         set({ schema, history: [schema], historyIndex: 0, activePageId: schema.pages[0]?.id });
       },
@@ -301,12 +320,12 @@ export const useDesignerStore = create<DesignerState>()(
             newSchema.pages = state.schema.pages.map((p) =>
               p.id === targetPageId
                 ? {
-                  ...p,
-                  body: {
-                    ...p.body,
-                    components: [...p.body.components, newComponent],
-                  },
-                }
+                    ...p,
+                    body: {
+                      ...p.body,
+                      components: [...p.body.components, newComponent],
+                    },
+                  }
                 : p
             );
           } else {
@@ -337,7 +356,7 @@ export const useDesignerStore = create<DesignerState>()(
           const { schema, changed } = mapComponentInSchema(
             state.schema,
             id,
-            (c) => ({ ...c, ...updates } as ComponentNode),
+            (c) => ({ ...c, ...updates }) as ComponentNode
           );
           if (!changed) return state;
           if (skipHistory) return { schema };
@@ -358,17 +377,7 @@ export const useDesignerStore = create<DesignerState>()(
           return { ...pushHistory(state, schema), selectedComponentIds: [] };
         }),
 
-      moveComponent: (
-        id,
-        fromZone,
-        toZone,
-        newIndex,
-        x,
-        y,
-        fromPageId,
-        toPageId,
-        skipHistory
-      ) =>
+      moveComponent: (id, fromZone, toZone, newIndex, x, y, fromPageId, toPageId, skipHistory) =>
         set((state) => {
           const { schema: newSchema, changed } = moveComponentInSchema(
             state.schema,
@@ -379,7 +388,7 @@ export const useDesignerStore = create<DesignerState>()(
             x,
             y,
             fromPageId,
-            toPageId,
+            toPageId
           );
 
           if (!changed) return state;
@@ -457,11 +466,11 @@ export const useDesignerStore = create<DesignerState>()(
           selectedCell: cell,
           selectedCells: cell
             ? {
-              tableId: cell.tableId,
-              section: cell.section,
-              rowIds: [cell.rowId],
-              cellIndices: [cell.cellIdx],
-            }
+                tableId: cell.tableId,
+                section: cell.section,
+                rowIds: [cell.rowId],
+                cellIndices: [cell.cellIdx],
+              }
             : null,
         }),
 
@@ -554,7 +563,7 @@ export const useDesignerStore = create<DesignerState>()(
           const { schema, changed } = mapComponentInSchema(
             state.schema,
             id,
-            (c) => ({ ...c, name } as ComponentNode),
+            (c) => ({ ...c, name }) as ComponentNode
           );
           if (!changed) return state;
           return pushHistory(state, schema);
@@ -617,63 +626,185 @@ export const useDesignerStore = create<DesignerState>()(
           const newSchema = { ...state.schema, pages: newPages };
           const newActiveId = newPages.some((p) => p.id === state.activePageId)
             ? state.activePageId
-            : (newPages[newPages.length - 1]?.id || null);
+            : newPages[newPages.length - 1]?.id || null;
 
           return { ...pushHistory(state, newSchema), activePageId: newActiveId };
         }),
 
       bringToFront: (id) =>
         set((state) => {
-          const { schema, changed } = reorderComponentInSchema(
-            state.schema,
-            id,
-            (comps, idx) => { const next = [...comps]; const [c] = next.splice(idx, 1); next.push(c); return next; },
-          );
+          const { schema, changed } = reorderComponentInSchema(state.schema, id, (comps, idx) => {
+            const next = [...comps];
+            const [c] = next.splice(idx, 1);
+            next.push(c);
+            return next;
+          });
           if (!changed) return state;
           return pushHistory(state, schema);
         }),
 
       sendToBack: (id) =>
         set((state) => {
-          const { schema, changed } = reorderComponentInSchema(
-            state.schema,
-            id,
-            (comps, idx) => { const next = [...comps]; const [c] = next.splice(idx, 1); next.unshift(c); return next; },
-          );
+          const { schema, changed } = reorderComponentInSchema(state.schema, id, (comps, idx) => {
+            const next = [...comps];
+            const [c] = next.splice(idx, 1);
+            next.unshift(c);
+            return next;
+          });
           if (!changed) return state;
           return pushHistory(state, schema);
         }),
 
       moveUp: (id) =>
         set((state) => {
-          const { schema, changed } = reorderComponentInSchema(
-            state.schema,
-            id,
-            (comps, idx) => {
-              if (idx >= comps.length - 1) return null;
-              const next = [...comps];
-              [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-              return next;
-            },
-          );
+          const { schema, changed } = reorderComponentInSchema(state.schema, id, (comps, idx) => {
+            if (idx >= comps.length - 1) return null;
+            const next = [...comps];
+            [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+            return next;
+          });
           if (!changed) return state;
           return pushHistory(state, schema);
         }),
 
-      moveDown: (id) =>
+      moveDown: (id: string) => {
         set((state) => {
-          const { schema, changed } = reorderComponentInSchema(
-            state.schema,
-            id,
-            (comps, idx) => {
-              if (idx <= 0) return null;
-              const next = [...comps];
-              [next[idx], next[idx - 1]] = [next[idx - 1], next[idx]];
-              return next;
-            },
-          );
+          const { schema, changed } = reorderComponentInSchema(state.schema, id, (comps, idx) => {
+            if (idx <= 0) return null;
+            const next = [...comps];
+            [next[idx], next[idx - 1]] = [next[idx - 1], next[idx]];
+            return next;
+          });
           if (!changed) return state;
           return pushHistory(state, schema);
+        });
+      },
+
+      copySelected: () =>
+        set((state) => {
+          if (state.selectedComponentIds.length === 0) return state;
+          const selectedComps = state.selectedComponentIds
+            .map((id) => findComponentInSchema(state.schema, id))
+            .filter((c): c is ComponentNode => c !== null);
+
+          if (selectedComps.length === 0) return state;
+          return { clipboard: selectedComps };
+        }),
+
+      paste: () =>
+        set((state) => {
+          if (!state.clipboard || state.clipboard.length === 0) return state;
+
+          const newSchema = { ...state.schema };
+          const targetPageId = state.activePageId || state.schema.pages[0]?.id;
+          const newIds: string[] = [];
+
+          // Create copies with new IDs and slight offset
+          const copies = state.clipboard.map((c) => {
+            const newId = `${c.type}-${Math.random().toString(36).substring(2, 9)}`;
+            newIds.push(newId);
+            return {
+              ...c,
+              id: newId,
+              x: (c.x || 0) + 5,
+              y: (c.y || 0) + 5,
+            };
+          });
+
+          // Always paste into active page body for now to keep it simple
+          newSchema.pages = state.schema.pages.map((p) =>
+            p.id === targetPageId
+              ? {
+                  ...p,
+                  body: {
+                    ...p.body,
+                    components: [...p.body.components, ...copies],
+                  },
+                }
+              : p
+          );
+
+          return {
+            ...pushHistory(state, newSchema),
+            selectedComponentIds: newIds,
+            selectedZone: 'body',
+          };
+        }),
+
+      duplicateSelected: () =>
+        set((state) => {
+          if (state.selectedComponentIds.length === 0) return state;
+          const selectedComps = state.selectedComponentIds
+            .map((id) => findComponentInSchema(state.schema, id))
+            .filter((c): c is ComponentNode => c !== null);
+
+          if (selectedComps.length === 0) return state;
+
+          const newSchema = { ...state.schema };
+          const newIds: string[] = [];
+
+          const copies = selectedComps.map((c) => {
+            const newId = `${c.type}-${Math.random().toString(36).substring(2, 9)}`;
+            newIds.push(newId);
+            return {
+              ...c,
+              id: newId,
+              x: (c.x || 0) + 5,
+              y: (c.y || 0) + 5,
+            };
+          });
+
+          // Duplicate into the same zones/pages they came from would be complex,
+          // let's just duplicate into the active page body for now as a baseline
+          const targetPageId = state.activePageId || state.schema.pages[0]?.id;
+          newSchema.pages = state.schema.pages.map((p) =>
+            p.id === targetPageId
+              ? {
+                  ...p,
+                  body: {
+                    ...p.body,
+                    components: [...p.body.components, ...copies],
+                  },
+                }
+              : p
+          );
+
+          return {
+            ...pushHistory(state, newSchema),
+            selectedComponentIds: newIds,
+            selectedZone: 'body',
+          };
+        }),
+
+      nudgeSelected: (dx, dy) =>
+        set((state) => {
+          if (state.selectedComponentIds.length === 0) return state;
+
+          let newSchema = state.schema;
+          let anyChanged = false;
+
+          for (const id of state.selectedComponentIds) {
+            const { schema: updatedSchema, changed } = mapComponentInSchema(
+              newSchema,
+              id,
+              (c) =>
+                ({
+                  ...c,
+                  x: (c.x || 0) + dx,
+                  y: (c.y || 0) + dy,
+                }) as ComponentNode
+            );
+            if (changed) {
+              newSchema = updatedSchema;
+              anyChanged = true;
+            }
+          }
+
+          if (!anyChanged) return state;
+          // We don't push to history for every nudge step (high frequency)
+          // But nudge via keyboard is usually 1 step at a time, so maybe we should?
+          // Let's push to history to allow undoing nudges.
+          return pushHistory(state, newSchema);
         }),
     }),
     {
@@ -723,7 +854,11 @@ export const useDesignerStore = create<DesignerState>()(
             });
             state.schema = validSchema;
           }
-          agentLogger.log({ source: 'system', level: 'info', message: 'Designer state rehydrated' });
+          agentLogger.log({
+            source: 'system',
+            level: 'info',
+            message: 'Designer state rehydrated',
+          });
         }
       },
     }

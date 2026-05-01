@@ -33,14 +33,15 @@ export const SelectionMarquee = memo(function SelectionMarquee({
       if (!paper) return;
 
       const isInsidePaper = paper.contains(target);
-      const isComponent = target.closest('[data-designer-component]') || target.closest('[data-drag-handle]');
+      const isComponent =
+        target.closest('[data-designer-component]') || target.closest('[data-drag-handle]');
       const isToolbar = target.closest('[data-toolbar]');
 
       if (!isInsidePaper || isComponent || isToolbar || e.button !== 0) return;
 
       const rect = paper.getBoundingClientRect();
       paperRectRef.current = rect;
-      
+
       const x = (e.clientX - rect.left) / zoom;
       const y = (e.clientY - rect.top) / zoom;
 

@@ -1,14 +1,11 @@
-import type { LayoutSchema, ComponentNode } from '@/types/schema';
+import type { ComponentNode, LayoutSchema } from '@/types/schema';
 
 /**
  * Generates a massive schema for stress testing.
  * @param pageCount Number of pages (default 50)
  * @param componentsPerPage Number of components on each page (default 20)
  */
-export function generateStressTestSchema(
-  pageCount = 50,
-  componentsPerPage = 20
-): LayoutSchema {
+export function generateStressTestSchema(pageCount = 50, componentsPerPage = 20): LayoutSchema {
   const pages = [];
 
   for (let i = 0; i < pageCount; i++) {

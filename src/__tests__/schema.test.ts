@@ -1,3 +1,15 @@
+import type {
+  BaseComponent,
+  ComponentNode,
+  ImageComponent,
+  LayoutSchema,
+  LineComponent,
+  PageConfig,
+  PageDefinition,
+  TableComponent,
+  TextComponent,
+  Zone,
+} from '@/types/schema';
 /**
  * @file schema.test.ts
  * Tests for src/types/schema.ts — validates structural integrity of the LayoutSchema
@@ -6,18 +18,6 @@
  * we depend on remain stable as the project evolves.
  */
 import { describe, expect, it } from 'vitest';
-import type {
-  LayoutSchema,
-  Zone,
-  ComponentNode,
-  TextComponent,
-  TableComponent,
-  ImageComponent,
-  LineComponent,
-  BaseComponent,
-  PageConfig,
-  PageDefinition,
-} from '@/types/schema';
 
 // ─── Helper factories ────────────────────────────────────────────────────────
 
@@ -118,7 +118,9 @@ describe('PageConfig', () => {
   });
 
   it('margin values use unit strings', () => {
-    const cfg = makePageConfig({ margin: { top: '2cm', bottom: '1in', left: '20mm', right: '56pt' } });
+    const cfg = makePageConfig({
+      margin: { top: '2cm', bottom: '1in', left: '20mm', right: '56pt' },
+    });
     expect(cfg.margin.top).toBe('2cm');
     expect(cfg.margin.bottom).toBe('1in');
   });
@@ -140,7 +142,7 @@ describe('Zone', () => {
 describe('ComponentNode discriminated union', () => {
   it('text component has correct shape', () => {
     const comp: TextComponent = {
-      ...makeBase({ type: 'text' }) as TextComponent,
+      ...(makeBase({ type: 'text' }) as TextComponent),
       type: 'text',
       content: 'Hello',
       style: { fontSize: 12, fontWeight: 'bold' },
@@ -152,7 +154,7 @@ describe('ComponentNode discriminated union', () => {
 
   it('line component has correct shape', () => {
     const comp: LineComponent = {
-      ...makeBase({ type: 'line' }) as LineComponent,
+      ...(makeBase({ type: 'line' }) as LineComponent),
       type: 'line',
       style: 'solid',
       color: '#000000',
@@ -164,7 +166,7 @@ describe('ComponentNode discriminated union', () => {
 
   it('image component has correct shape', () => {
     const comp: ImageComponent = {
-      ...makeBase({ type: 'image' }) as ImageComponent,
+      ...(makeBase({ type: 'image' }) as ImageComponent),
       type: 'image',
       src: 'https://example.com/img.png',
       fit: 'contain',
@@ -175,12 +177,10 @@ describe('ComponentNode discriminated union', () => {
 
   it('table component has dataSource and columns', () => {
     const comp: TableComponent = {
-      ...makeBase({ type: 'table' }) as TableComponent,
+      ...(makeBase({ type: 'table' }) as TableComponent),
       type: 'table',
       dataSource: '{{invoice.items}}',
-      columns: [
-        { id: 'col-1', header: 'Description', field: 'description', width: '1fr' },
-      ],
+      columns: [{ id: 'col-1', header: 'Description', field: 'description', width: '1fr' }],
       style: {},
       showHeader: true,
       repeatHeaderOnPage: false,
@@ -213,7 +213,7 @@ describe('BindingExpression pattern', () => {
     const bindingPattern = /\{\{(.+?)\}\}/g;
     const match = content.match(bindingPattern);
     expect(match).not.toBeNull();
-    expect(match![0]).toBe('{{invoice.customer.name}}');
+    expect(match?.[0]).toBe('{{invoice.customer.name}}');
   });
 
   it('allows mixed static + binding content', () => {

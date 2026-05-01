@@ -25,7 +25,7 @@ export class TypstGenerator {
 
     // Zones
     typst += '\n// --- Report Base ---\n';
-    
+
     // 1. Header (Global)
     typst += this.renderZone('header', this.schema.zones.header);
 
@@ -33,7 +33,7 @@ export class TypstGenerator {
     for (let i = 0; i < this.schema.pages.length; i++) {
       const page = this.schema.pages[i];
       typst += this.renderZone(`body-page-${i + 1}`, page.body);
-      
+
       // Add pagebreak if not the last page
       if (i < this.schema.pages.length - 1) {
         typst += '\n#pagebreak()\n';

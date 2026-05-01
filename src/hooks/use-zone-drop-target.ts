@@ -13,7 +13,6 @@ export function useZoneDropTarget(
   const [isDraggedOver, setIsDraggedOver] = useState(false);
   const addComponent = useDesignerStore((state) => state.addComponent);
   const moveComponent = useDesignerStore((state) => state.moveComponent);
-  const setDragState = useDesignerStore((state) => state.setDragState);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -89,7 +88,7 @@ export function useZoneDropTarget(
         }
       },
     });
-  }, [zoneKey, pageId, addComponent, moveComponent, setDragState, contentRef]);
+  }, [zoneKey, pageId, addComponent, moveComponent, contentRef]);
 
   return { isDraggedOver };
 }

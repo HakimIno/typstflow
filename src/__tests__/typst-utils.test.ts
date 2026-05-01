@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { escapeTypst } from '../lib/utils/typst-utils';
 
 describe('Typst Sanitization (escapeTypst)', () => {

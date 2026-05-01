@@ -5,13 +5,13 @@ import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
+import { Plus, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { DragMonitor } from './DragMonitor';
 import { Ruler } from './Ruler';
 import { SelectionMarquee } from './SelectionMarquee';
 import { SelectionToolbar } from './SelectionToolbar';
 import { TransientOverlay } from './TransientOverlay';
-import { Plus, X } from 'lucide-react';
 import { Zone } from './Zone';
 
 export const Canvas = memo(function Canvas() {
@@ -26,10 +26,10 @@ export const Canvas = memo(function Canvas() {
   const updateScrollPos = useCallback(() => {
     if (scrollRef.current) {
       const { scrollLeft, scrollTop } = scrollRef.current;
-      // We use the raw scroll values. The 64px (16mm * 4) padding is added 
+      // We use the raw scroll values. The 64px (16mm * 4) padding is added
       // to align with the drafting area's starting position.
       setScrollPos({
-        x: scrollLeft - 64, 
+        x: scrollLeft - 64,
         y: scrollTop - 48,
       });
     }
@@ -100,14 +100,14 @@ export const Canvas = memo(function Canvas() {
             ref={scrollRef}
             onScroll={handleScroll}
             className={clsx(
-              "flex-1 overflow-auto p-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform bg-[var(--bg-canvas-dots)]",
-              isDraggingGlobal && "is-dragging-components"
+              'flex-1 overflow-auto p-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform bg-[var(--bg-canvas-dots)]',
+              isDraggingGlobal && 'is-dragging-components'
             )}
           >
             <div className="min-w-max min-h-max pl-16 pr-16 pb-24 pt-12 flex flex-col items-start gap-8 relative">
               {/* Global Overlays (Singleton for Performance) */}
               <TransientOverlay />
-              
+
               {(schema.pages || []).map((page, pIdx) => (
                 <div
                   key={`wrapper-${page.id}`}
@@ -196,7 +196,7 @@ export const Canvas = memo(function Canvas() {
               ))}
 
               {/* Add Page Button (Minimal Version) */}
-              <div 
+              <div
                 className="flex justify-center pt-4"
                 style={{ width: `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px` }}
               >

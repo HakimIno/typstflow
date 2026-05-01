@@ -1,3 +1,5 @@
+import { TypstGenerator } from '@/lib/engine/typst-generator';
+import type { LayoutSchema } from '@/types/schema';
 /**
  * @file typst-generator.test.ts
  * Tests for src/lib/engine/typst-generator.ts — TypstGenerator
@@ -6,8 +8,6 @@
  * Does NOT test WASM rendering (integration test only).
  */
 import { describe, expect, it } from 'vitest';
-import { TypstGenerator } from '@/lib/engine/typst-generator';
-import type { LayoutSchema } from '@/types/schema';
 
 const MINIMAL_SCHEMA: LayoutSchema = {
   id: 'test-report',
@@ -225,7 +225,16 @@ describe('TypstGenerator — multi-page output', () => {
         body: {
           id: 'body',
           components: [
-            { id: 'text-p1', type: 'text', x: 0, y: 0, width: 100, height: 10, content: 'Page 1 content', style: {} },
+            {
+              id: 'text-p1',
+              type: 'text',
+              x: 0,
+              y: 0,
+              width: 100,
+              height: 10,
+              content: 'Page 1 content',
+              style: {},
+            },
           ],
         },
       },
@@ -235,7 +244,16 @@ describe('TypstGenerator — multi-page output', () => {
         body: {
           id: 'body',
           components: [
-            { id: 'text-p2', type: 'text', x: 0, y: 0, width: 100, height: 10, content: 'Page 2 content', style: {} },
+            {
+              id: 'text-p2',
+              type: 'text',
+              x: 0,
+              y: 0,
+              width: 100,
+              height: 10,
+              content: 'Page 2 content',
+              style: {},
+            },
           ],
         },
       },
@@ -284,7 +302,10 @@ describe('TypstGenerator — image component (remote vs local)', () => {
   });
 
   it('renders #image() for remote URLs', () => {
-    const output = new TypstGenerator(makeImageSchema('https://example.com/logo.png'), {}).generate();
+    const output = new TypstGenerator(
+      makeImageSchema('https://example.com/logo.png'),
+      {}
+    ).generate();
     expect(output).toContain('#image("https://example.com/logo.png"');
   });
 

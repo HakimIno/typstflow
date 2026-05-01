@@ -42,12 +42,10 @@ export interface MutationResult {
 export function getZoneComponents(
   schema: LayoutSchema,
   zoneKey: ZoneKey,
-  pageId?: string | null,
+  pageId?: string | null
 ): ComponentNode[] {
   if (zoneKey === 'body') {
-    const page = pageId
-      ? schema.pages.find((p) => p.id === pageId)
-      : schema.pages[0];
+    const page = pageId ? schema.pages.find((p) => p.id === pageId) : schema.pages[0];
     return page?.body.components ?? [];
   }
   return schema.zones[zoneKey].components;
@@ -60,10 +58,7 @@ export function getZoneComponents(
  * Checks global zones (header, footer) first, then all page bodies.
  * Returns null when not found.
  */
-export function findComponentInSchema(
-  schema: LayoutSchema,
-  id: string,
-): ComponentNode | null {
+export function findComponentInSchema(schema: LayoutSchema, id: string): ComponentNode | null {
   for (const key of GLOBAL_ZONE_KEYS) {
     const found = schema.zones[key].components.find((c) => c.id === id);
     if (found) return found;
@@ -91,7 +86,7 @@ export function findComponentInSchema(
 export function mapComponentInSchema(
   schema: LayoutSchema,
   id: string,
-  transform: (comp: ComponentNode) => ComponentNode,
+  transform: (comp: ComponentNode) => ComponentNode
 ): MutationResult {
   // 1. Global zones — short-circuit on first match
   for (const key of GLOBAL_ZONE_KEYS) {
@@ -133,10 +128,7 @@ export function mapComponentInSchema(
  * Remove a single component by ID from any zone in the schema.
  * Checks global zones first, then page bodies.
  */
-export function removeComponentFromSchema(
-  schema: LayoutSchema,
-  id: string,
-): MutationResult {
+export function removeComponentFromSchema(schema: LayoutSchema, id: string): MutationResult {
   // 1. Global zones
   for (const key of GLOBAL_ZONE_KEYS) {
     const original = schema.zones[key].components;
@@ -173,10 +165,7 @@ export function removeComponentFromSchema(
  * Remove multiple components by their IDs in a single schema pass.
  * More efficient than calling removeComponentFromSchema multiple times.
  */
-export function removeComponentsFromSchema(
-  schema: LayoutSchema,
-  ids: string[],
-): MutationResult {
+export function removeComponentsFromSchema(schema: LayoutSchema, ids: string[]): MutationResult {
   if (ids.length === 0) return { schema, changed: false };
 
   const idSet = new Set(ids);
@@ -237,7 +226,7 @@ export function removeComponentsFromSchema(
 export function reorderComponentInSchema(
   schema: LayoutSchema,
   id: string,
-  reorder: (components: ComponentNode[], index: number) => ComponentNode[] | null,
+  reorder: (components: ComponentNode[], index: number) => ComponentNode[] | null
 ): MutationResult {
   // 1. Global zones
   for (const key of GLOBAL_ZONE_KEYS) {
@@ -277,7 +266,7 @@ export function reorderComponentInSchema(
 
 /**
  * Move a component from one zone/page to another, or reorder within the same zone.
- * 
+ *
  * Handles:
  * - Cross-zone movement (e.g. Header to Body)
  * - Cross-page movement (e.g. Page 1 to Page 2)
@@ -287,20 +276,20 @@ export function reorderComponentInSchema(
 export function moveComponentInSchema(
   schema: LayoutSchema,
   id: string,
-  fromZone: ZoneKey,
+  _fromZone: ZoneKey,
   toZone: ZoneKey,
   newIndex: number,
   x?: number,
   y?: number,
-  fromPageId?: string | null,
-  toPageId?: string | null,
+  _fromPageId?: string | null,
+  toPageId?: string | null
 ): MutationResult {
   // 1. Extract the component from source
   let component: ComponentNode | null = null;
   const { schema: schemaWithoutComp, changed: removed } = removeComponentFromSchema(schema, id);
-  
+
   if (!removed) return { schema, changed: false };
-  
+
   // Find the original to get its data (we need it to apply x, y)
   // We search in original schema because it's already removed from schemaWithoutComp
   component = findComponentInSchema(schema, id);
@@ -313,11 +302,11 @@ export function moveComponentInSchema(
   };
 
   // 2. Insert into destination
-  let nextSchema = { ...schemaWithoutComp };
+  const nextSchema = { ...schemaWithoutComp };
 
   if (toZone === 'body') {
     const targetPageId = toPageId || schema.pages[0]?.id;
-    nextSchema.pages = schemaWithoutComp.pages.map(p => {
+    nextSchema.pages = schemaWithoutComp.pages.map((p) => {
       if (p.id !== targetPageId) return p;
       const nextComps = [...p.body.components];
       const insertAt = Math.max(0, Math.min(newIndex, nextComps.length));
@@ -330,7 +319,7 @@ export function moveComponentInSchema(
     nextComps.splice(insertAt, 0, updatedComp);
     nextSchema.zones = {
       ...schemaWithoutComp.zones,
-      [toZone]: { ...schemaWithoutComp.zones[toZone], components: nextComps }
+      [toZone]: { ...schemaWithoutComp.zones[toZone], components: nextComps },
     };
   }
 

@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 
 import { useDraggable } from '@/hooks/use-draggable';
 import { useResizable } from '@/hooks/use-resizable';
@@ -53,24 +52,24 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const isSelected = useDesignerStore((state) => state.selectedComponentIds.includes(component.id));
   const isDraggingGlobal = useDesignerStore((state) => state.dragState.isDragging);
   const draggedComponentId = useDesignerStore((state) => state.dragState.draggedComponentId);
-  
+
   const selectComponent = useDesignerStore((state) => state.selectComponent);
   const toggleComponentSelection = useDesignerStore((state) => state.toggleComponentSelection);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
   const addComponent = useDesignerStore((state) => state.addComponent);
   const removeComponent = useDesignerStore((state) => state.removeComponent);
   const removeComponents = useDesignerStore((state) => state.removeComponents);
-  
+
   const isHidden = useDesignerStore((state) => state.hiddenComponentIds.includes(component.id));
   const isLocked = useDesignerStore((state) => state.lockedComponentIds.includes(component.id));
-  
+
   const sampleData = useDesignerStore((state) => state.sampleData);
-  
+
   const bringToFront = useDesignerStore((state) => state.bringToFront);
   const sendToBack = useDesignerStore((state) => state.sendToBack);
   const moveUp = useDesignerStore((state) => state.moveUp);
   const moveDown = useDesignerStore((state) => state.moveDown);
-  
+
   const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -184,59 +183,6 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const width = LayoutEngine.mmToPx(localBounds.width);
   const height = LayoutEngine.mmToPx(localBounds.height);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement | HTMLTextAreaElement>) => {
-    // Handle editing mode key events
-    if (isEditing) {
-      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        // We let TextEditor's internal logic handle Enter first
-        // It will call onExit if no autocomplete is active
-        return;
-      }
-      if (e.key === 'Escape') {
-        setIsEditing(false);
-      }
-      return;
-    }
-
-    if (!isSelected || isLocked) return;
-
-    const step = e.shiftKey ? 5 : 1;
-    let newX = component.x || 0;
-    let newY = component.y || 0;
-
-    switch (e.key) {
-      case 'ArrowLeft':
-        newX -= step;
-        break;
-      case 'ArrowRight':
-        newX += step;
-        break;
-      case 'ArrowUp':
-        newY -= step;
-        break;
-      case 'ArrowDown':
-        newY += step;
-        break;
-      case 'Delete':
-      case 'Backspace':
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-        if (selectedComponentIds.length > 1) {
-          removeComponents(selectedComponentIds);
-        } else {
-          removeComponent(component.id);
-        }
-        break;
-      default:
-        return;
-    }
-
-    e.preventDefault();
-    updateComponent(component.id, {
-      x: LayoutEngine.snap(Math.max(0, newX)),
-      y: LayoutEngine.snap(Math.max(0, newY)),
-    });
-  };
-
   const isMoving =
     isDraggingGlobal &&
     (draggedComponentId === component.id ||
@@ -245,8 +191,17 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   return (
     <div
       ref={ref}
-      onKeyDown={!isEditing ? handleKeyDown : undefined}
       onDoubleClick={handleDoubleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectComponent(component.id);
+        }
+      }}
+      tabIndex={0}
+      // biome-ignore lint/a11y/useSemanticElements: Nested buttons are required for component actions
+      role="button"
+      aria-label={`Component ${component.type} ${component.name || ''}`}
       onClick={(e) => {
         e.stopPropagation();
         if (!isEditing) {
@@ -300,7 +255,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           ref={editorContainerRef}
           className="absolute inset-0 w-full h-full bg-white shadow-2xl z-[60] overflow-hidden border-2 border-blue-600"
           onClick={(e) => e.stopPropagation()}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(e) => e.stopPropagation()}
+          role="presentation"
           style={{
             // Keep text in the same position
             display: 'flex',

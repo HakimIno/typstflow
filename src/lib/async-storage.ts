@@ -28,8 +28,16 @@ function getDB(): Promise<IDBDatabase> {
   });
 }
 
+// In-memory fallback for environments without IndexedDB (e.g., SSR, Node.js tests)
+const memoryStorage: Record<string, any> = {};
+
 export const indexedDBStorage = {
   getItem: async (name: string): Promise<string | null> => {
+    if (typeof indexedDB === 'undefined') {
+      const value = memoryStorage[name];
+      return value ? JSON.stringify(value) : null;
+    }
+
     const db = await getDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(STORE_NAME, 'readonly');
@@ -44,6 +52,11 @@ export const indexedDBStorage = {
     });
   },
   setItem: async (name: string, value: string): Promise<void> => {
+    if (typeof indexedDB === 'undefined') {
+      memoryStorage[name] = JSON.parse(value);
+      return;
+    }
+
     const db = await getDB();
     const data = JSON.parse(value);
 
@@ -57,6 +70,11 @@ export const indexedDBStorage = {
     });
   },
   removeItem: async (name: string): Promise<void> => {
+    if (typeof indexedDB === 'undefined') {
+      delete memoryStorage[name];
+      return;
+    }
+
     const db = await getDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(STORE_NAME, 'readwrite');
