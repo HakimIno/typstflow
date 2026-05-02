@@ -280,14 +280,10 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             className="w-full h-full"
             placeholder=""
             inline={true}
+            textStyle={component.style}
             style={{
-              fontSize: `${component.style?.fontSize || 10}pt`,
-              lineHeight: component.style?.lineHeight || 1.2,
-              letterSpacing: component.style?.letterSpacing || 'normal',
               textAlign: component.align === 'justify' ? 'left' : component.align || 'left',
-              fontFamily: 'Sarabun, sans-serif',
               color: '#1e293b', // Force readable dark color on white background
-              fontWeight: component.style?.fontWeight === 'bold' ? 'bold' : 'normal',
               // Prevent layout shift
               minHeight: `${component.height || 20}px`,
               display: 'block',

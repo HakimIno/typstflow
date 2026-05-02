@@ -1,3 +1,4 @@
+import { clsx } from 'clsx';
 import { resolveBindings } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode, TableComponent } from '@/types/schema';
@@ -16,14 +17,19 @@ export function ComponentPreview({ component, pageIndex = 0, totalPages = 1 }: P
     case 'text':
       return (
         <div
-          className="text-slate-900 w-full h-full overflow-hidden"
+          className="w-full h-full overflow-hidden"
           style={{
             fontSize: `${component.style?.fontSize || 10}pt`,
             fontWeight: component.style?.fontWeight || 'regular',
+            fontStyle: component.style?.italic ? 'italic' : 'normal',
+            textDecoration: component.style?.underline ? 'underline' : 'none',
+            color: component.style?.color || '#0f172a',
             textAlign: component.align || 'left',
-            lineHeight: '1.2',
-            fontFamily: 'Sarabun, "Noto Sans Thai", sans-serif',
+            lineHeight: component.style?.lineHeight || '1.2',
+            letterSpacing: component.style?.letterSpacing || 'normal',
+            fontFamily: `${component.style?.fontFamily || 'Sarabun'}, "Noto Sans Thai", sans-serif`,
             wordBreak: 'break-word',
+            whiteSpace: 'pre-wrap',
           }}
         >
           {resolveBindings(component.content || '', sampleData) || (
@@ -33,15 +39,23 @@ export function ComponentPreview({ component, pageIndex = 0, totalPages = 1 }: P
       );
     case 'table':
       return <TablePreview component={component as TableComponent} />;
-    case 'line':
+    case 'line': {
+      const thickness = (component as any).thickness || '1pt';
+      const color = (component as any).color || '#0f172a';
+      const lineStyle = (component as any).style || 'solid';
+      
       return (
-        <div className="w-full h-full flex flex-col justify-center px-1">
+        <div className="w-full h-full flex flex-col justify-center">
           <div
-            className="border-t border-slate-900"
-            style={{ borderTopWidth: (component as any).thickness || '1pt' }}
+            style={{ 
+              borderTopWidth: thickness,
+              borderTopColor: color,
+              borderTopStyle: lineStyle === 'dotted' ? 'dotted' : lineStyle === 'dashed' ? 'dashed' : 'solid'
+            }}
           />
         </div>
       );
+    }
     case 'spacer':
       return (
         <div className="bg-slate-50/50 border border-dashed border-slate-200 flex items-center justify-center text-[8px] font-bold uppercase tracking-tight text-slate-400 w-full h-full">
@@ -157,14 +171,41 @@ export function ComponentPreview({ component, pageIndex = 0, totalPages = 1 }: P
 
       return (
         <div
-          className="text-slate-900 w-full h-full flex items-center justify-center font-mono"
+          className="w-full h-full flex items-center justify-center"
           style={{
             fontSize: `${component.style?.fontSize || 9}pt`,
             fontWeight: component.style?.fontWeight || 'medium',
+            fontStyle: component.style?.italic ? 'italic' : 'normal',
+            textDecoration: component.style?.underline ? 'underline' : 'none',
+            color: component.style?.color || '#0f172a',
             textAlign: component.align || 'center',
+            lineHeight: component.style?.lineHeight || '1.2',
+            letterSpacing: component.style?.letterSpacing || 'normal',
+            fontFamily: `${component.style?.fontFamily || 'Sarabun'}, "Noto Sans Thai", sans-serif`,
           }}
         >
           {displayText}
+        </div>
+      );
+    }
+    case 'summary-box': {
+      const rows = (component as any).rows || [];
+      return (
+        <div className="w-full h-full bg-slate-50 border border-slate-200 rounded p-2 flex flex-col gap-1 overflow-hidden">
+          {rows.map((row: any, i: number) => (
+            <div key={i} className={clsx(
+              "flex justify-between items-center text-[8px]",
+              row.style === 'total' ? "font-bold text-slate-900 border-t border-slate-300 pt-1 mt-1" : "text-slate-600"
+            )}>
+              <span>{row.label}</span>
+              <span className="font-mono">{resolveBindings(row.value, sampleData)}</span>
+            </div>
+          ))}
+          {rows.length === 0 && (
+            <div className="flex-1 flex items-center justify-center text-[8px] text-slate-400 italic">
+              Empty Summary Box
+            </div>
+          )}
         </div>
       );
     }

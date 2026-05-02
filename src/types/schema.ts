@@ -105,6 +105,7 @@ export interface TextComponent extends BaseComponent {
 
 export interface TextStyle {
   fontSize?: number;
+  fontFamily?: string;
   fontWeight?: 'regular' | 'medium' | 'bold';
   color?: string; // hex
   italic?: boolean;

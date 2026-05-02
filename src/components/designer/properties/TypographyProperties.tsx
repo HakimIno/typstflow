@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { Bold } from 'lucide-react';
+import { Bold, Italic, Underline } from 'lucide-react';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { PropertyRow, SectionHeader } from './Shared';
 
@@ -8,10 +8,35 @@ interface TypographyPropertiesProps {
   onUpdateStyle: (updates: any) => void;
 }
 
+const FONTS = [
+  { id: 'Sarabun', name: 'Sarabun' },
+  { id: 'Noto Sans Thai', name: 'Noto Sans Thai' },
+  { id: 'Inter', name: 'Inter (UI)' },
+  { id: 'Noto Serif Thai', name: 'Noto Serif Thai' },
+  { id: 'Noto Sans Mono', name: 'Noto Sans Mono' },
+  { id: 'sans-serif', name: 'System Sans' },
+  { id: 'serif', name: 'System Serif' },
+];
+
 export function TypographyProperties({ style, onUpdateStyle }: TypographyPropertiesProps) {
   return (
     <section>
       <SectionHeader label="Typography" />
+      
+      <PropertyRow label="Font Family">
+        <select
+          value={style?.fontFamily || 'Sarabun'}
+          onChange={(e) => onUpdateStyle({ fontFamily: e.target.value })}
+          className="w-full bg-[var(--bg-widget)] border border-[var(--border-default)] text-[10px] text-[var(--text-primary)] rounded-[4px] px-1.5 py-1 focus:outline-none focus:border-[var(--accent)]"
+        >
+          {FONTS.map((font) => (
+            <option key={font.id} value={font.id}>
+              {font.name}
+            </option>
+          ))}
+        </select>
+      </PropertyRow>
+
       <PropertyRow label="Font Size (pt)">
         <DesignerInput
           type="number"
@@ -21,6 +46,67 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
           onChange={(v) => onUpdateStyle({ fontSize: Number.parseInt(v) || 10 })}
         />
       </PropertyRow>
+
+      <PropertyRow label="Style">
+        <div className="flex gap-1">
+          <button
+            type="button"
+            title="Bold"
+            onClick={() => onUpdateStyle({ fontWeight: style?.fontWeight === 'bold' ? 'regular' : 'bold' })}
+            className={clsx(
+              'w-7 h-7 flex items-center justify-center border rounded-[4px] transition-all',
+              style?.fontWeight === 'bold'
+                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+            )}
+          >
+            <Bold className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            title="Italic"
+            onClick={() => onUpdateStyle({ italic: !style?.italic })}
+            className={clsx(
+              'w-7 h-7 flex items-center justify-center border rounded-[4px] transition-all',
+              style?.italic
+                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+            )}
+          >
+            <Italic className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            title="Underline"
+            onClick={() => onUpdateStyle({ underline: !style?.underline })}
+            className={clsx(
+              'w-7 h-7 flex items-center justify-center border rounded-[4px] transition-all',
+              style?.underline
+                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+            )}
+          >
+            <Underline className="w-3 h-3" />
+          </button>
+        </div>
+      </PropertyRow>
+
+      <PropertyRow label="Color">
+        <div className="flex gap-1.5 items-center">
+          <div 
+            className="w-5 h-5 rounded border border-[var(--border-default)]"
+            style={{ backgroundColor: style?.color || '#000000' }}
+          />
+          <DesignerInput
+            type="text"
+            value={style?.color || '#000000'}
+            onChange={(v) => onUpdateStyle({ color: v })}
+            mono
+            placeholder="#000000"
+          />
+        </div>
+      </PropertyRow>
+
       <PropertyRow label="Line Height">
         <DesignerInput
           type="number"
@@ -31,6 +117,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
           onChange={(v) => onUpdateStyle({ lineHeight: Number.parseFloat(v) || 1.2 })}
         />
       </PropertyRow>
+      
       <PropertyRow label="Spacing (em)">
         <DesignerInput
           type="text"
@@ -39,24 +126,6 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
           mono
           placeholder="0.05em"
         />
-      </PropertyRow>
-      <PropertyRow label="Weight">
-        <button
-          type="button"
-          onClick={() =>
-            onUpdateStyle({
-              fontWeight: style?.fontWeight === 'bold' ? 'regular' : 'bold',
-            })
-          }
-          className={clsx(
-            'px-2 py-0.5 border text-[10px] font-bold transition-all',
-            style?.fontWeight === 'bold'
-              ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-              : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-          )}
-        >
-          <Bold className="w-3 h-3" />
-        </button>
       </PropertyRow>
     </section>
   );

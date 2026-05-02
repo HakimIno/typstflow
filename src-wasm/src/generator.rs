@@ -177,14 +177,21 @@ fn render_text(c: &TextComponent, data: &Value, offset_x: &str, offset_y: &str, 
     if tracking.is_empty() { tracking = "0pt".to_string(); }
     let justify = s.and_then(|st| st.justify).unwrap_or(false);
 
-    let body = if content.contains('#') && !content.contains("\\#") {
-        content
+    let color = s.and_then(|st| st.color.as_deref()).unwrap_or("#000000");
+    let font = s.and_then(|st| st.font_family.as_deref()).unwrap_or("Sarabun");
+    let style = if s.and_then(|st| st.italic).unwrap_or(false) { "italic" } else { "normal" };
+    let underline = s.and_then(|st| st.underline).unwrap_or(false);
+
+    let mut body = format!(
+        "#set align({})\n#set par(leading: {}em, justify: {})\n#text(size: {}pt, font: (\"{}\", \"Sarabun\", \"sans-serif\"), weight: \"{}\", style: \"{}\", fill: {}, tracking: {})",
+        align, leading, justify, size, font, weight, style, format_color(color), tracking
+    );
+
+    if underline {
+        body.push_str(&format!("[#underline[{}]]", escape_typst(&content)));
     } else {
-        format!(
-            "#set align({})\n#set par(leading: {}em, justify: {})\n#text(size: {}pt, weight: \"{}\", tracking: {})[{}]",
-            align, leading, justify, size, weight, tracking, escape_typst(&content)
-        )
-    };
+        body.push_str(&format!("[{}]", escape_typst(&content)));
+    }
 
     wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
@@ -576,15 +583,21 @@ fn render_vline(vl: &VLineConfig) -> String {
 fn render_line(c: &LineComponent, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let color = c.color.as_deref().unwrap_or("black");
     let thickness = c.thickness.as_deref().unwrap_or("1pt");
+    let style = c.style.as_deref().unwrap_or("solid");
     
     // If thickness is > 2pt (likely a background bar), use a rectangle for better alignment
-    // Lines in Typst grow from center, while Rects grow from top-left.
-    let is_heavy = thickness.ends_with("mm") || thickness.ends_with("pt") && thickness.trim_end_matches("pt").parse::<f32>().unwrap_or(0.0) > 2.0;
+    let is_heavy = thickness.ends_with("mm") || thickness.ends_with("cm") || 
+                  (thickness.ends_with("pt") && thickness.trim_end_matches("pt").parse::<f32>().unwrap_or(0.0) > 2.0);
 
-    let body = if is_heavy {
+    let body = if is_heavy && style == "solid" {
         format!("#rect(width: 100%, height: 100%, fill: {}, stroke: none)", format_color(color))
     } else {
-        format!("#line(length: 100%, stroke: {} + {})", thickness, format_color(color))
+        let dash = match style {
+            "dashed" => "dash: \"dashed\"",
+            "dotted" => "dash: \"dotted\"",
+            _ => "dash: none",
+        };
+        format!("#line(length: 100%, stroke: (paint: {}, thickness: {}, {}))", format_color(color), thickness, dash)
     };
     wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
@@ -617,28 +630,32 @@ fn render_summary_box(c: &SummaryBoxComponent, data: &Value, offset_x: &str, off
     let mut rows_typst = String::new();
     for row in &c.rows {
         if row.separator.unwrap_or(false) {
-            rows_typst.push_str("  table.hline(stroke: 0.5pt + gray),\n");
+            rows_typst.push_str("    table.hline(stroke: 0.5pt + gray.lighten(50%)),\n");
         }
         let val = resolve_binding(&row.value, data);
         let style = row.style.as_deref().unwrap_or("normal");
         let is_total = style == "total";
         let is_highlight = style == "highlight";
         
-        let weight = if is_total || is_highlight { "bold" } else { "regular" };
-        let size = if is_total { "12" } else { "10" };
-        let color = if is_total { format_color("#2563eb") } else if is_highlight { format_color("#3b82f6") } else { format_color("#1e293b") };
-        let bg = if is_total { format_color("#eff6ff") } else { "none".to_string() };
+        let mut label_text = escape_typst(&row.label);
+        let mut value_text = escape_typst(&val);
+        
+        if is_total {
+            label_text = format!("*{}*", label_text);
+            value_text = format!("*{}*", value_text);
+        }
+
+        let fill = if is_highlight { "fill: yellow.lighten(80%)," } else { "" };
 
         rows_typst.push_str(&format!(
-            "  table.cell(inset: 5pt, fill: {})[#text(size: 9pt, fill: gray.darken(20%))[{} :]],\n",
-            bg, escape_typst(&row.label)
-        ));
-        rows_typst.push_str(&format!(
-            "  table.cell(inset: 5pt, align: right, fill: {})[#text(weight: \"{}\", size: {}pt, fill: {})[{}]],\n",
-            bg, weight, size, color, escape_typst(&val)
+            "    grid.cell({})[{}], grid.cell({} align: right)[{}],\n",
+            fill, label_text, fill, value_text
         ));
     }
-    let body = format!("#table(columns: (1fr, auto), stroke: none, inset: 1pt,\n{})", rows_typst);
+    let body = format!(
+        "#rect(width: 100%, inset: 10pt, fill: white, stroke: 0.5pt + gray.lighten(50%))[\n  #grid(columns: (1fr, 1fr), gutter: 8pt,\n{})\n]", 
+        rows_typst
+    );
     wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
@@ -704,14 +721,25 @@ fn render_page_number(c: &PageNumberComponent, offset_x: &str, offset_y: &str, p
     let size = s.and_then(|st| st.font_size).unwrap_or(9.0);
     let weight = s.and_then(|st| st.font_weight.clone()).unwrap_or("regular".to_string());
     let align = c.base.align.as_deref().unwrap_or("center");
+    
+    let color = s.and_then(|st| st.color.as_deref()).unwrap_or("#000000");
+    let font = s.and_then(|st| st.font_family.as_deref()).unwrap_or("Sarabun");
+    let style = if s.and_then(|st| st.italic).unwrap_or(false) { "italic" } else { "normal" };
+    let underline = s.and_then(|st| st.underline).unwrap_or(false);
 
     let display = c.format.replace("{{page}}", "#counter(page).display()")
                           .replace("{{pageTotal}}", "#counter(page).final().at(0)");
 
-    let body = format!(
-        "#set align({})\n#text(size: {}pt, weight: \"{}\")[#context [{}]]",
-        align, size, weight, display
+    let mut body = format!(
+        "#set align({})\n#text(size: {}pt, font: \"{}\", weight: \"{}\", style: \"{}\", fill: {})",
+        align, size, font, weight, style, format_color(color)
     );
+
+    if underline {
+        body.push_str(&format!("[#context [#underline[{}]]]", display));
+    } else {
+        body.push_str(&format!("[#context [{}]]", display));
+    }
 
     wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }

@@ -10,6 +10,7 @@ import { clsx } from 'clsx';
 import { Box, FileText, Hash, List } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { TextStyle } from '@/types/schema';
 import ReactDOM from 'react-dom';
 
 interface TextEditorProps {
@@ -19,6 +20,7 @@ interface TextEditorProps {
   placeholder?: string;
   className?: string;
   style?: React.CSSProperties;
+  textStyle?: TextStyle;
   textareaClassName?: string;
   inline?: boolean; // For inline editor mode
   onExit?: () => void; // Called when user wants to finish editing
@@ -47,6 +49,7 @@ export function TextEditor({
   placeholder = 'Type static text or {{binding}}...',
   className = '',
   style = {},
+  textStyle = {},
   textareaClassName = '',
   inline = false,
   onExit,
@@ -263,9 +266,9 @@ export function TextEditor({
           </span>
         );
       }
-      // For literal text, we use slate-700 for good contrast since we removed font-bold
+      // For literal text, we use inherit color to respect the component style
       return (
-        <span key={i} className="text-slate-700">
+        <span key={i} style={{ color: 'inherit' }}>
           {part || ''}
         </span>
       );
@@ -297,11 +300,15 @@ export function TextEditor({
   }, [inline]); // Run once when inline mode is activated
 
   const sharedStyles: React.CSSProperties = {
-    fontFamily: style.fontFamily || 'Sarabun, sans-serif',
-    fontSize: style.fontSize || '11px',
-    lineHeight: style.lineHeight || 1.2,
-    letterSpacing: style.letterSpacing || 'normal',
-    textAlign: (style as any).textAlign || 'left',
+    fontFamily: `${textStyle.fontFamily || 'Sarabun'}, "Noto Sans Thai", sans-serif`,
+    fontSize: textStyle.fontSize ? `${textStyle.fontSize}pt` : '10pt',
+    lineHeight: textStyle.lineHeight || 1.2,
+    letterSpacing: textStyle.letterSpacing || 'normal',
+    fontWeight: textStyle.fontWeight || 'regular',
+    fontStyle: textStyle.italic ? 'italic' : 'normal',
+    textDecoration: textStyle.underline ? 'underline' : 'none',
+    color: textStyle.color || 'inherit',
+    textAlign: (textStyle as any).textAlign || 'left',
     padding: inline ? 0 : '8px',
     margin: 0,
     boxSizing: 'border-box',

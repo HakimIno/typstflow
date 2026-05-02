@@ -165,14 +165,25 @@ export class TypstGenerator {
         const align = comp.align || 'left';
         const weight = comp.style?.fontWeight === 'bold' ? 'bold' : 'regular';
         const size = comp.style?.fontSize || 10;
+        const style = comp.style?.italic ? 'italic' : 'normal';
+        const color = comp.style?.color || '#000000';
+        const font = comp.style?.fontFamily || 'Sarabun';
+        const tracking = comp.style?.letterSpacing || '0pt';
+        const leading = comp.style?.lineHeight ? `${(comp.style.lineHeight - 1) * 0.8}em` : '0.65em';
+
         let content = this.resolveBinding(comp.content, context, groupItems);
         
         if (comp.format && comp.format !== 'text') {
           content = `#fmt_${comp.format.replace('-', '_')}("${content}")`;
-          return `#set align(${align})\n#text(size: ${size}pt, weight: "${weight}")[${content}]`;
+        } else {
+          content = this.escapeTypst(content);
         }
-        
-        return `#set align(${align})\n#text(size: ${size}pt, weight: "${weight}")[${this.escapeTypst(content)}]`;
+
+        if (comp.style?.underline) {
+          content = `#underline[${content}]`;
+        }
+
+        return `#set align(${align})\n#par(leading: ${leading})[#text(size: ${size}pt, weight: "${weight}", style: "${style}", fill: rgb("${color}"), font: "${font}", tracking: ${tracking})[${content}]]`;
       }
 
       case 'image': {
@@ -191,9 +202,16 @@ export class TypstGenerator {
       case 'table':
         return this.renderTable(comp as any, context);
 
-      case 'line':
-        return `#line(length: 100%, stroke: ${(comp as any).thickness || '1pt'} + ${(comp as any).color || 'black'})`;
-
+      case 'line': {
+        const thickness = (comp as any).thickness || '1pt';
+        const color = (comp as any).color || 'black';
+        const lineStyle = (comp as any).style || 'solid';
+        let dash = 'none';
+        if (lineStyle === 'dashed') dash = '"dashed"';
+        if (lineStyle === 'dotted') dash = '"dotted"';
+        
+        return `#line(length: 100%, stroke: (paint: rgb("${color}"), thickness: ${thickness}, dash: ${dash}))`;
+      }
       case 'barcode':
       case 'qr':
         return this.renderPlaceholder(
@@ -205,16 +223,83 @@ export class TypstGenerator {
         const align = comp.align || 'center';
         const weight = comp.style?.fontWeight === 'bold' ? 'bold' : 'regular';
         const size = comp.style?.fontSize || 9;
+        const style = comp.style?.italic ? 'italic' : 'normal';
+        const color = comp.style?.color || '#000000';
+        const font = comp.style?.fontFamily || 'Sarabun';
         const format = (comp as any).format || 'Page {{page}} of {{pageTotal}}';
 
         let display = format
-          .replace(/\{\{page\}\}/g, '#counter(page).display()')
-          .replace(/\{\{pageTotal\}\}/g, '#counter(page).final().at(0)');
+          .replace(/\{\{page\}\}/g, ' #counter(page).display() ')
+          .replace(/\{\{pageTotal\}\}/g, ' #counter(page).final().at(0) ');
 
-        return `#set align(${align})\n#text(size: ${size}pt, weight: "${weight}")[#context [${display}]]`;
+        if (comp.style?.underline) {
+          display = `#underline[#context [${display}]]`;
+        } else {
+          display = `#context [${display}]`;
+        }
+
+        return `#set align(${align})\n#text(size: ${size}pt, weight: "${weight}", style: "${style}", fill: rgb("${color}"), font: "${font}")[${display}]`;
       }
+      case 'spacer':
+        return `#v(${(comp as any).height || 10}mm)`;
+
+      case 'page-break-indicator':
+        return '#pagebreak()';
+
+      case 'columns': {
+        const cols = (comp as any).columns || [];
+        const gridCols = cols.map((c: any) => c.width || '1fr').join(', ');
+        const contents = cols.map((c: any) => {
+          const body = (c.components || [])
+            .map((child: any) => this.renderComponent(child, context, groupItems))
+            .join('\n');
+          return `[${body}]`;
+        }).join(', ');
+        return `#grid(columns: (${gridCols}), gutter: 10pt, ${contents})`;
+      }
+
+      case 'repeater': {
+        const dataSourceExpr = (comp as any).dataSource || '';
+        const path = dataSourceExpr.replace(/\{\{|\}\}/g, '').trim();
+        const rawData = this.resolvePath(path, context || this.data);
+        const items = Array.isArray(rawData) ? rawData : [];
+        
+        return items.map((item, idx) => {
+          return (comp as any).children
+            .map((child: any) => this.renderComponent(child, item, items))
+            .join('\n');
+        }).join('\n');
+      }
+
+      case 'summary-box': {
+        const rows = (comp as any).rows || [];
+        const rowBody = rows.map((r: any) => {
+          const val = this.resolveBinding(r.value || '', context, groupItems);
+          const isTotal = r.style === 'total';
+          const isHighlight = r.style === 'highlight';
+          
+          let label = r.label;
+          let value = val;
+          
+          if (isTotal) {
+            label = `*${label}*`;
+            value = `*${value}*`;
+          }
+          
+          const fill = isHighlight ? 'fill: yellow.lighten(80%),' : '';
+          
+          return `grid.cell(${fill})[${label}], grid.cell(${fill} align: right)[${value}]`;
+        }).join(',\n    ');
+        
+        return `#rect(width: 100%, inset: 10pt, fill: white, stroke: 0.5pt + gray)[
+          #grid(columns: (1fr, 1fr), gutter: 8pt,
+            ${rowBody}
+          )
+        ]`;
+      }
+
       default:
-        return `// [${comp.type}] not implemented`;
+        return `// [${(comp as any).type}] not implemented`;
     }
   }
 

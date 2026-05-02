@@ -3,8 +3,10 @@ import type {
   BarcodeComponent,
   ComponentNode,
   ImageComponent,
+  LineComponent,
   PageNumberComponent,
   QRComponent,
+  SummaryBoxComponent,
   TableComponent,
   TextComponent,
 } from '@/types/schema';
@@ -18,6 +20,8 @@ import { VariablePicker } from './VariablePicker';
 import { AlignmentProperties } from './properties/AlignmentProperties';
 import { GeometryProperties } from './properties/GeometryProperties';
 import { ImageProperties } from './properties/ImageProperties';
+import { LineProperties } from './properties/LineProperties';
+import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
 import { GroupProperties } from './properties/GroupProperties';
 import { FormatPicker, type FormatType } from './properties/FormatPicker';
 import { PropertyRow, SectionHeader } from './properties/Shared';
@@ -27,6 +31,8 @@ import { TypographyProperties } from './properties/TypographyProperties';
 const isText = (c: ComponentNode): c is TextComponent => c.type === 'text';
 const isTable = (c: ComponentNode): c is TableComponent => c.type === 'table';
 const isImage = (c: ComponentNode): c is ImageComponent => c.type === 'image';
+const isLine = (c: ComponentNode): c is LineComponent => c.type === 'line';
+const isSummaryBox = (c: ComponentNode): c is SummaryBoxComponent => c.type === 'summary-box';
 const isBarcode = (c: ComponentNode): c is BarcodeComponent =>
   c.type === 'barcode' || c.type === 'qr';
 const isPageNumber = (c: ComponentNode): c is PageNumberComponent =>
@@ -276,6 +282,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 value={selectedComponent.content || ''}
                 onChange={(value) => updateComponent(selectedComponent.id, { content: value })}
                 sampleData={sampleData}
+                textStyle={selectedComponent.style}
                 placeholder="Type static text or {{binding}}..."
                 className="bg-transparent"
               />
@@ -347,6 +354,18 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 />
               </div>
             </div>
+          )}
+          {isLine(selectedComponent) && (
+            <LineProperties
+              component={selectedComponent}
+              onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
+            />
+          )}
+          {isSummaryBox(selectedComponent) && (
+            <SummaryBoxProperties
+              component={selectedComponent}
+              onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
+            />
           )}
         </section>
 

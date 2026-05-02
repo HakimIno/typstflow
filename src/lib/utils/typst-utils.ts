@@ -37,6 +37,7 @@ export function escapeTypst(str: string | null | undefined): string {
     .replace(/\$/g, '\\$') // Math $
     .replace(/</g, '\\<') // Less than <
     .replace(/>/g, '\\>') // Greater than >
+    .replace(/"/g, '\\"') // Double quote "
     .replace(/`/g, '\\`'); // Backticks `
 }
 

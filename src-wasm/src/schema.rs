@@ -114,6 +114,7 @@ pub struct TextComponent {
 #[serde(rename_all = "camelCase")]
 pub struct TextStyle {
     pub font_size: Option<f64>,
+    pub font_family: Option<String>,
     pub font_weight: Option<String>,
     pub color: Option<String>,
     pub italic: Option<bool>,
