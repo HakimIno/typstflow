@@ -95,5 +95,6 @@ export async function renderReportToPdf(schema: any, data: any): Promise<Uint8Ar
  * Generates the Typst source code for a report using the Rust generator.
  */
 export async function generateReportTypst(schema: any, data: any): Promise<string> {
+  console.log('[DEBUG] Generating Report Typst:', { schema, data });
   return callWorker('GENERATE_REPORT_TYPST', { schema, data });
 }

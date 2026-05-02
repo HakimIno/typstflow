@@ -99,6 +99,7 @@ pub struct BaseComponent {
     pub height: Option<f64>,
     pub align: Option<String>,
     pub visible: Option<String>,
+    pub format: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -138,6 +139,7 @@ pub struct TableCell {
     pub inset: Option<String>,
     pub stroke: Option<serde_json::Value>, // string or StrokeConfig object
     pub style: Option<TextStyle>,
+    pub format: Option<String>,
 }
 
 // --- Structured table row (maps to table.header / table.footer / data row) ---

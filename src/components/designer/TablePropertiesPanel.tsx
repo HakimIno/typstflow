@@ -27,6 +27,8 @@ import {
   Wand2,
 } from 'lucide-react';
 import type React from 'react';
+import { getValueType } from '@/lib/utils/json-path';
+import { getApplicableFormats } from '@/lib/utils/formatters';
 import { useEffect, useState } from 'react';
 import { DesignerInput, type DesignerInputProps } from '../shared/DesignerInput';
 
@@ -978,27 +980,27 @@ export function TablePropertiesPanel({ component }: Props) {
               onKeyDown={(e) => e.stopPropagation()}
               className="text-[9px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded px-0.5 h-5 outline-none cursor-pointer text-[var(--text-primary)]"
             >
-              <option value="text" className="bg-[var(--bg-surface)]">
-                Text
-              </option>
-              <option value="number" className="bg-[var(--bg-surface)]">
-                Number
-              </option>
-              <option value="currency-thb" className="bg-[var(--bg-surface)]">
-                ฿ THB
-              </option>
-              <option value="currency-usd" className="bg-[var(--bg-surface)]">
-                $ USD
-              </option>
-              <option value="percent" className="bg-[var(--bg-surface)]">
-                %
-              </option>
-              <option value="date-th" className="bg-[var(--bg-surface)]">
-                Date TH
-              </option>
-              <option value="date-en" className="bg-[var(--bg-surface)]">
-                Date EN
-              </option>
+              {(() => {
+                const dataType = col.field ? getValueType(sampleData, col.field) : 'string';
+                const applicable = getApplicableFormats(dataType);
+                const options = [
+                  { id: 'text', label: 'Text' },
+                  { id: 'number', label: 'Number' },
+                  { id: 'currency-thb', label: '฿ THB' },
+                  { id: 'currency-usd', label: '$ USD' },
+                  { id: 'percent', label: '%' },
+                  { id: 'date-th', label: 'Date TH' },
+                  { id: 'date-en', label: 'Date EN' },
+                  { id: 'boolean', label: 'Bool' },
+                ];
+                return options
+                  .filter(opt => applicable.includes(opt.id as any))
+                  .map(opt => (
+                    <option key={opt.id} value={opt.id} className="bg-[var(--bg-surface)]">
+                      {opt.label}
+                    </option>
+                  ));
+              })()}
             </select>
           </div>
         ))}

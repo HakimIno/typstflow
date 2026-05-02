@@ -94,15 +94,15 @@ export class TypstGenerator {
       sortedKeys.sort((a, b) => {
         const valA = a ?? '';
         const valB = b ?? '';
-        
+
         if (typeof valA === 'number' && typeof valB === 'number') {
           return group.sortBy === 'asc' ? valA - valB : valB - valA;
         }
-        
+
         const strA = String(valA);
         const strB = String(valB);
-        return group.sortBy === 'asc' 
-          ? strA.localeCompare(strB, undefined, { numeric: true }) 
+        return group.sortBy === 'asc'
+          ? strA.localeCompare(strB, undefined, { numeric: true })
           : strB.localeCompare(strA, undefined, { numeric: true });
       });
     }
@@ -112,10 +112,10 @@ export class TypstGenerator {
       const groupItems = groupsMap.get(key)!;
       // 1. Group Header (Pass groupItems for aggregates if needed)
       t += this.renderZone(`group-${group.id}-header`, group.header, groupItems[0], groupItems);
-      
+
       // 2. Nested Groups or Detail Band
       t += this.renderGroupLevel(index + 1, groupItems);
-      
+
       // 3. Group Footer (Pass groupItems for aggregates like SUM)
       t += this.renderZone(`group-${group.id}-footer`, group.footer, groupItems[0], groupItems);
     }
@@ -172,7 +172,7 @@ export class TypstGenerator {
         const leading = comp.style?.lineHeight ? `${(comp.style.lineHeight - 1) * 0.8}em` : '0.65em';
 
         let content = this.resolveBinding(comp.content, context, groupItems);
-        
+
         if (comp.format && comp.format !== 'text') {
           content = `#fmt_${comp.format.replace('-', '_')}("${content}")`;
         } else {
@@ -188,15 +188,20 @@ export class TypstGenerator {
 
       case 'image': {
         const src = (comp as any).src || '';
+        const isVirtual = src.startsWith('asset-');
         const isRemote =
           src.startsWith('http') || src.startsWith('https') || src.startsWith('data:');
-        if (!isRemote && src !== '') {
+
+        if (!isVirtual && !isRemote && src !== '') {
           return `#rect(width: 100%, height: 100%, fill: gray.lighten(95%), stroke: 0.5pt + gray)[
             #set align(center + horizon)
-            #text(size: 6pt, fill: gray.darken(30%))[FILE NOT FOUND: ${src}]
+            #text(size: 6pt, fill: gray.darken(30%))[FILE NOT FOUND]
           ]`;
         }
-        return `#image("${src}", width: 100%, height: 100%, fit: "contain")`;
+        if (src === '') {
+          return '#rect(width: 100%, height: 100%, fill: gray.lighten(80%))[#set align(center + horizon); #text(size: 6pt, fill: gray.darken(30%))[NO IMAGE]]';
+        }
+        return `#image("${src}", width: 100%, height: 100%, fit: "${(comp as any).fit || 'contain'}")`;
       }
 
       case 'table':
@@ -209,7 +214,7 @@ export class TypstGenerator {
         let dash = 'none';
         if (lineStyle === 'dashed') dash = '"dashed"';
         if (lineStyle === 'dotted') dash = '"dotted"';
-        
+
         return `#line(length: 100%, stroke: (paint: rgb("${color}"), thickness: ${thickness}, dash: ${dash}))`;
       }
       case 'barcode':
@@ -263,7 +268,7 @@ export class TypstGenerator {
         const path = dataSourceExpr.replace(/\{\{|\}\}/g, '').trim();
         const rawData = this.resolvePath(path, context || this.data);
         const items = Array.isArray(rawData) ? rawData : [];
-        
+
         return items.map((item, idx) => {
           return (comp as any).children
             .map((child: any) => this.renderComponent(child, item, items))
@@ -277,20 +282,20 @@ export class TypstGenerator {
           const val = this.resolveBinding(r.value || '', context, groupItems);
           const isTotal = r.style === 'total';
           const isHighlight = r.style === 'highlight';
-          
+
           let label = r.label;
           let value = val;
-          
+
           if (isTotal) {
             label = `*${label}*`;
             value = `*${value}*`;
           }
-          
+
           const fill = isHighlight ? 'fill: yellow.lighten(80%),' : '';
-          
+
           return `grid.cell(${fill})[${label}], grid.cell(${fill} align: right)[${value}]`;
         }).join(',\n    ');
-        
+
         return `#rect(width: 100%, inset: 10pt, fill: white, stroke: 0.5pt + gray)[
           #grid(columns: (1fr, 1fr), gutter: 8pt,
             ${rowBody}
@@ -374,7 +379,7 @@ export class TypstGenerator {
 
   private calculateAggregate(func: string, path: string, items: any[]): string {
     if (!items || items.length === 0) return '0';
-    
+
     const values = items.map(item => {
       const val = this.resolvePath(path, item);
       const num = typeof val === 'number' ? val : Number.parseFloat(String(val)) || 0;
@@ -399,7 +404,7 @@ export class TypstGenerator {
 
   private resolveBinding(expr: string, context?: any, groupItems?: any[]): string {
     if (!expr) return '';
-    
+
     // 1. Handle aggregates: {{SUM(price)}}
     let resolved = expr.replace(/\{\{(SUM|COUNT|AVG|MIN|MAX)\((.+?)\)\}\}/gi, (_, func, path) => {
       return this.calculateAggregate(func, path.trim(), groupItems || []);
@@ -420,22 +425,105 @@ export class TypstGenerator {
   private generateHelpers(): string {
     return `
 // --- Formatting Helpers ---
+#let add_commas(n) = {
+  let s = str(n)
+  let result = ""
+  let count = 0
+  let is_negative = s.starts-with("-")
+  let start_idx = if is_negative { 1 } else { 0 }
+  
+  for i in range(s.len() - 1, start_idx - 1, step: -1) {
+    if count > 0 and calc.rem(count, 3) == 0 {
+      result = "," + result
+    }
+    result = s.at(i) + result
+    count += 1
+  }
+  
+  if is_negative { "-" + result } else { result }
+}
+
 #let fmt_number(v) = {
-  if type(v) == "string" { v } else { str(v) }
+  let val = if type(v) == "string" { 
+    let trimmed = v.trim()
+    if trimmed == "" { 0 } else { 
+      let f = float(trimmed)
+      if f == none { trimmed } else { f }
+    }
+  } else { v }
+
+  if type(val) == "float" or type(val) == "integer" {
+    let s = str(val)
+    if s.contains(".") {
+      let parts = s.split(".")
+      let whole = add_commas(parts.at(0))
+      let decimal = parts.at(1)
+      if decimal == "0" or decimal == "00" {
+        whole
+      } else {
+        whole + "." + decimal.slice(0, calc.min(2, decimal.len()))
+      }
+    } else {
+      add_commas(s)
+    }
+  } else { str(v) }
 }
+
 #let fmt_currency_thb(v) = {
-  let num = if type(v) == "string" { float(v) } else { v }
-  "฿" + str(num)
+  let num = if type(v) == "string" { 
+    let trimmed = v.trim()
+    if trimmed == "" { 0 } else { float(trimmed) }
+  } else { v }
+  "฿" + fmt_number(num)
 }
+
 #let fmt_currency_usd(v) = {
-  let num = if type(v) == "string" { float(v) } else { v }
-  "$" + str(num)
+  let num = if type(v) == "string" { 
+    let trimmed = v.trim()
+    if trimmed == "" { 0 } else { float(trimmed) }
+  } else { v }
+  "$" + fmt_number(num)
 }
-#let fmt_date_th(v) = { v }
-#let fmt_date_en(v) = { v }
+
+#let fmt_date_th(v) = { 
+  if type(v) != "string" or v == "" { return str(v) }
+  let months = ("มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม")
+  if v.len() >= 10 {
+    let y = int(v.slice(0, 4))
+    let m = int(v.slice(5, 7))
+    let d = int(v.slice(8, 10))
+    if m >= 1 and m <= 12 {
+      return str(d) + " " + months.at(m - 1) + " " + str(y + 543)
+    }
+  }
+  v
+}
+
+#let fmt_date_en(v) = { 
+  if type(v) != "string" or v == "" { return str(v) }
+  let months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+  if v.len() >= 10 {
+    let y = int(v.slice(0, 4))
+    let m = int(v.slice(5, 7))
+    let d = int(v.slice(8, 10))
+    if m >= 1 and m <= 12 {
+      return str(d) + " " + months.at(m - 1) + " " + str(y)
+    }
+  }
+  v
+}
+
 #let fmt_percent(v) = {
-  let num = if type(v) == "string" { float(v) } else { v }
-  str(num) + "%"
+  let num = if type(v) == "string" { 
+    let trimmed = v.trim()
+    if trimmed == "" { 0 } else { float(trimmed) }
+  } else { v }
+  fmt_number(num) + "%"
+}
+
+#let fmt_boolean(v) = {
+  if v == true or v == "true" or v == "1" or v == "yes" { "Yes" }
+  else { "No" }
 }
 \n`;
   }

@@ -129,6 +129,7 @@ impl TypstBridge {
             .map_err(|e| JsValue::from_str(&format!("Data parse error: {} (line {}, col {})", e, e.line(), e.column())))?;
         
         let source_code = generator::generate_typst(&schema, &data);
+        web_sys::console::log_1(&format!("[DEBUG] Generated Typst Source:\n{}", source_code).into());
         self.render_svg(&source_code)
     }
 

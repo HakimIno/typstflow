@@ -107,7 +107,9 @@ function walkComponents(components: any[]) {
         // Swapping src here ensures the generator (Rust or TS) uses this exact path
         comp.src = virtualPath;
       } catch (e) {
-        console.warn(`[Worker] Failed to register image ${comp.id}:`, e);
+        console.warn(`[Worker] Failed to register image ${comp.id} (${comp.src}):`, e);
+        // Do NOT change comp.src if registration fails, 
+        // so the generator can show "FILE NOT FOUND" instead of crashing
       }
     }
 

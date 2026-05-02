@@ -1,8 +1,8 @@
-import { clsx } from 'clsx';
 import { resolveBindings } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode, TableComponent } from '@/types/schema';
 import { TablePreview } from './TablePreview';
+import { formatValue } from '@/lib/utils/formatters';
 
 interface Props {
   component: ComponentNode;
@@ -14,7 +14,11 @@ export function ComponentPreview({ component, pageIndex = 0, totalPages = 1 }: P
   const sampleData = useDesignerStore((state) => state.sampleData);
 
   switch (component.type) {
-    case 'text':
+    case 'text': {
+      const resolvedValue = resolveBindings(component.content || '', sampleData);
+      const hasBinding = (component.content || '').includes('{{');
+      const displayValue = hasBinding ? formatValue(resolvedValue, component.format) : resolvedValue;
+      
       return (
         <div
           className="w-full h-full overflow-hidden"
@@ -32,11 +36,12 @@ export function ComponentPreview({ component, pageIndex = 0, totalPages = 1 }: P
             whiteSpace: 'pre-wrap',
           }}
         >
-          {resolveBindings(component.content || '', sampleData) || (
+          {displayValue || (
             <span className="text-slate-300 italic">Empty text</span>
           )}
         </div>
       );
+    }
     case 'table':
       return <TablePreview component={component as TableComponent} />;
     case 'line': {
@@ -101,115 +106,69 @@ export function ComponentPreview({ component, pageIndex = 0, totalPages = 1 }: P
         </div>
       );
     }
+    case 'barcode':
     case 'qr':
       return (
-        <div className="w-full h-full border border-slate-400 bg-white flex flex-col items-center justify-center p-1 overflow-hidden relative shadow-sm">
-          <svg
-            className="w-full h-full text-slate-800 opacity-90"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            stroke="none"
-            role="img"
-          >
-            <title>QR Code preview</title>
-            <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h-3v2h3v-2zm-3 4h3v2h-3v-2zm-2-2h-2v-2h2v2zm0 2h2v2h-2v-2zm-2 2h-2v-2h2v2zm4 0h-2v2h2v-2z" />
-            <rect x="7" y="7" width="2" height="2" fill="currentColor" />
-            <rect x="17" y="7" width="2" height="2" fill="currentColor" />
-            <rect x="7" y="17" width="2" height="2" fill="currentColor" />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="bg-white/90 px-1.5 py-0.5 rounded shadow-sm text-[8px] font-bold text-slate-800 truncate max-w-[90%] border border-slate-200">
-              {resolveBindings((component as any).value || '', sampleData) || 'QR Code'}
-            </span>
+        <div className="w-full h-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+          <div className="text-center p-2">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{component.type}</div>
+            <div className="text-[8px] text-slate-400 font-mono truncate max-w-[150px]">
+              {resolveBindings((component as any).value || '', sampleData)}
+            </div>
           </div>
         </div>
       );
-    case 'barcode':
+    case 'summary-box':
       return (
-        <div className="w-full h-full border border-slate-400 bg-white flex flex-col p-0.5 overflow-hidden shadow-sm">
-          <div className="flex-1 flex flex-col items-center justify-end px-1">
-            <div className="w-full h-full flex items-end gap-[1px] opacity-80 justify-between overflow-hidden">
-              {/* Fake barcode lines distributed across width */}
-              {Array.from({ length: 40 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-slate-900 pointer-events-none"
-                  style={{
-                    height: i % 10 === 0 || i % 13 === 0 ? '100%' : '80%',
-                    width: i % 3 === 0 ? '3px' : i % 5 === 0 ? '1px' : '2px',
-                    minWidth: '1px',
-                  }}
-                />
-              ))}
+        <div className="w-full h-full p-2 bg-slate-50 border border-slate-200 rounded flex flex-col gap-1">
+          {(component as any).rows?.map((row: any, i: number) => (
+            <div key={i} className={clsx(
+              "flex justify-between items-center text-[9px]",
+              row.separator && "border-t border-slate-200 mt-1 pt-1",
+              row.style === 'total' && "font-bold text-[11px] text-blue-600"
+            )}>
+              <span className="text-slate-500">{row.label}</span>
+              <span className="font-medium">{resolveBindings(row.value, sampleData)}</span>
             </div>
-            <div className="text-[7.5px] font-mono leading-none font-medium text-slate-800 mt-0.5 truncate text-center w-full">
-              {resolveBindings((component as any).value || '', sampleData) || '123456789012'}
-            </div>
-          </div>
+          ))}
         </div>
       );
     case 'page-break-indicator':
       return (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-1 px-2 py-1 bg-slate-50 border border-dashed border-slate-300">
-          <div className="flex items-center gap-2 w-full">
-            <div className="flex-1 h-px bg-slate-400" />
-            <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
-              {(component as any).label || 'Page Break'}
-            </span>
-            <div className="flex-1 h-px bg-slate-400" />
+        <div className="w-full py-4 flex items-center justify-center gap-4 relative">
+          <div className="flex-1 h-[1px] bg-dashed border-t border-dashed border-blue-400 opacity-50" />
+          <div className="px-3 py-1 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-2">
+            <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Page Break</span>
+            {(component as any).showPageNumber && (
+              <span className="text-[9px] text-blue-400">Page {pageIndex + 1} / {totalPages}</span>
+            )}
           </div>
-          {(component as any).showPageNumber !== false && (
-            <div className="text-[6px] text-slate-400 font-mono">Page X of Y</div>
-          )}
+          <div className="flex-1 h-[1px] bg-dashed border-t border-dashed border-blue-400 opacity-50" />
         </div>
       );
     case 'page-number': {
-      const format = (component as any).format || 'Page {{page}} of {{pageTotal}}';
-      const displayText = format
-        .replace(/\{\{page\}\}/g, String(pageIndex + 1))
-        .replace(/\{\{pageTotal\}\}/g, String(totalPages));
-
+      const display = ((component as any).format || 'Page {{page}} of {{pageTotal}}')
+        .replace(/\{\{page\}\}/g, (pageIndex + 1).toString())
+        .replace(/\{\{pageTotal\}\}/g, totalPages.toString());
+      
       return (
         <div
-          className="w-full h-full flex items-center justify-center"
+          className="w-full h-full"
           style={{
             fontSize: `${component.style?.fontSize || 9}pt`,
-            fontWeight: component.style?.fontWeight || 'medium',
+            fontWeight: component.style?.fontWeight || 'regular',
             fontStyle: component.style?.italic ? 'italic' : 'normal',
             textDecoration: component.style?.underline ? 'underline' : 'none',
             color: component.style?.color || '#0f172a',
             textAlign: component.align || 'center',
-            lineHeight: component.style?.lineHeight || '1.2',
-            letterSpacing: component.style?.letterSpacing || 'normal',
             fontFamily: `${component.style?.fontFamily || 'Sarabun'}, "Noto Sans Thai", sans-serif`,
           }}
         >
-          {displayText}
-        </div>
-      );
-    }
-    case 'summary-box': {
-      const rows = (component as any).rows || [];
-      return (
-        <div className="w-full h-full bg-slate-50 border border-slate-200 rounded p-2 flex flex-col gap-1 overflow-hidden">
-          {rows.map((row: any, i: number) => (
-            <div key={i} className={clsx(
-              "flex justify-between items-center text-[8px]",
-              row.style === 'total' ? "font-bold text-slate-900 border-t border-slate-300 pt-1 mt-1" : "text-slate-600"
-            )}>
-              <span>{row.label}</span>
-              <span className="font-mono">{resolveBindings(row.value, sampleData)}</span>
-            </div>
-          ))}
-          {rows.length === 0 && (
-            <div className="flex-1 flex items-center justify-center text-[8px] text-slate-400 italic">
-              Empty Summary Box
-            </div>
-          )}
+          {display}
         </div>
       );
     }
     default:
-      return <div className="p-2 text-[10px] italic text-slate-400">Block: {component.type}</div>;
+      return <div>Preview for {component.type}</div>;
   }
 }

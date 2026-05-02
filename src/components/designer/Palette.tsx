@@ -166,7 +166,7 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: Palet
             height: 40,
           };
         case 'image':
-          return { ...base, type: 'image', src: '/logo.png', width: 40, height: 40 };
+          return { ...base, type: 'image', src: '/logo13.png', width: 40, height: 40 };
         case 'line':
           return { ...base, type: 'line', thickness: '1pt', color: 'black', width: 180, height: 2 };
         case 'barcode':

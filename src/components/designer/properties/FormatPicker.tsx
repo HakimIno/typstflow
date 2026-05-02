@@ -11,9 +11,12 @@ export type FormatType =
   | 'percent'
   | 'boolean';
 
+import { getApplicableFormats } from '@/lib/utils/formatters';
+
 interface FormatPickerProps {
   currentValue: string;
   onSelect: (format: FormatType) => void;
+  valueType?: string;
 }
 
 const FORMATS: { id: FormatType; label: string; icon: any; example: string }[] = [
@@ -27,10 +30,15 @@ const FORMATS: { id: FormatType; label: string; icon: any; example: string }[] =
   { id: 'boolean', label: 'Boolean', icon: CheckCircle, example: 'Yes/No' },
 ];
 
-export function FormatPicker({ currentValue, onSelect }: FormatPickerProps) {
+export function FormatPicker({ currentValue, onSelect, valueType }: FormatPickerProps) {
+  const applicableFormats = valueType ? getApplicableFormats(valueType) : null;
+  const filteredFormats = applicableFormats 
+    ? FORMATS.filter(f => applicableFormats.includes(f.id))
+    : FORMATS;
+
   return (
     <div className="grid grid-cols-2 gap-1.5 px-3 py-2.5">
-      {FORMATS.map((f) => (
+      {filteredFormats.map((f) => (
         <button
           key={f.id}
           type="button"

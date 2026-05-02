@@ -24,6 +24,7 @@ import { LineProperties } from './properties/LineProperties';
 import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
 import { GroupProperties } from './properties/GroupProperties';
 import { FormatPicker, type FormatType } from './properties/FormatPicker';
+import { getValueType } from '@/lib/utils/json-path';
 import { PropertyRow, SectionHeader } from './properties/Shared';
 import { TypographyProperties } from './properties/TypographyProperties';
 
@@ -286,13 +287,25 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 placeholder="Type static text or {{binding}}..."
                 className="bg-transparent"
               />
-              <div className="flex flex-col border-t border-[var(--border-default)]">
-                <SectionHeader label="Display Format" />
-                <FormatPicker 
-                  currentValue={selectedComponent.format || 'text'}
-                  onSelect={(format) => updateComponent(selectedComponent.id, { format })}
-                />
-              </div>
+              {(() => {
+                const hasBinding = (selectedComponent.content || '').includes('{{');
+                if (!hasBinding) return null;
+                
+                return (
+                  <div className="flex flex-col border-t border-[var(--border-default)]">
+                    <SectionHeader label="Display Format" />
+                    <FormatPicker 
+                      currentValue={selectedComponent.format || 'text'}
+                      valueType={(() => {
+                        const match = (selectedComponent.content || '').match(/\{\{([^}]+)\}\}/);
+                        if (match) return getValueType(sampleData, match[1].trim());
+                        return undefined;
+                      })()}
+                      onSelect={(format) => updateComponent(selectedComponent.id, { format })}
+                    />
+                  </div>
+                );
+              })()}
             </div>
           )}
           {isTable(selectedComponent) && (
