@@ -1,12 +1,14 @@
 'use client';
 
+import { dragSnapState } from '@/lib/engine/drag-snap-state';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
+import type { ZoneKey } from '@/types/schema';
 import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { useEffect, useState } from 'react';
 
 export function useZoneDropTarget(
-  zoneKey: 'header' | 'body' | 'footer',
+  zoneKey: ZoneKey,
   contentRef: React.RefObject<HTMLDivElement | null>,
   pageId?: string,
   groupId?: string,
@@ -36,25 +38,17 @@ export function useZoneDropTarget(
 
         const state = useDesignerStore.getState();
         const data = source.data as any;
-        const selector = pageId
-          ? `[data-paper-container][data-page-id="${pageId}"]`
-          : '[data-paper-container]';
-        const container = document.querySelector(selector) as HTMLElement;
-        const _zoom = Number.parseFloat(container?.dataset.zoom || '1');
-        const finalX = state.dragState.lastSnappedX;
-        const finalY = state.dragState.lastSnappedY;
-        
-        // Calculate offset including group bands
-        let zoneOffsetMm = LayoutEngine.calculateZoneOffset(zoneKey, state.schema, pageId);
-        if (groupId && groupType) {
-          // Add offset of the group band itself
-          // This is a simplified version, in a real layout engine we'd calculate the exact Y of the band.
-          // For now, we'll assume the offset is passed or calculated.
-          // Since we render them in order in Canvas.tsx, we need a way to find their absolute Y.
-          const bandEl = el.closest('[data-zone-label]'); // assuming we add this
-          // Better: calculate based on heights of preceding zones
-          zoneOffsetMm = LayoutEngine.calculateBandOffset(groupId, groupType, state.schema, pageId);
-        }
+
+        // ✅ Read from sync singleton — no RAF / store race.
+        const snap = dragSnapState.read();
+        const finalX = snap.snappedX;
+        const finalY = snap.snappedY;
+
+        // Group bands have their own offset; otherwise use cumulative zone offset.
+        const zoneOffsetMm =
+          groupId && groupType
+            ? LayoutEngine.calculateBandOffset(groupId, groupType, state.schema, pageId)
+            : LayoutEngine.calculateZoneOffset(zoneKey, state.schema, pageId);
 
         if (data.type === 'new-component') {
           addComponent(
@@ -111,7 +105,7 @@ export function useZoneDropTarget(
         }
       },
     });
-  }, [zoneKey, pageId, addComponent, moveComponent, contentRef]);
+  }, [zoneKey, pageId, groupId, groupType, addComponent, moveComponent, contentRef]);
 
   return { isDraggedOver };
 }

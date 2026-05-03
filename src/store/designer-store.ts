@@ -5,7 +5,6 @@ import {
   findComponentInSchema,
   getZoneComponents,
   mapComponentInSchema,
-  moveComponentInSchema,
   removeComponentFromSchema,
   removeComponentsFromSchema,
   reorderComponentInSchema,
@@ -20,9 +19,7 @@ import {
   INVOICE_WITH_PAGE_BREAKS_TEMPLATE,
 } from '../lib/templates/invoice-with-page-breaks';
 import { TAX_INVOICE_SAMPLE_DATA, TAX_INVOICE_TEMPLATE } from '../lib/templates/tax-invoice';
-import type { ComponentNode, GroupDefinition, LayoutSchema, Zone } from '../types/schema';
-
-type ZoneKey = 'header' | 'body' | 'footer';
+import type { ComponentNode, GroupDefinition, LayoutSchema, Zone, ZoneKey } from '../types/schema';
 
 interface DesignerState {
   // Schema
@@ -357,13 +354,7 @@ export const useDesignerStore = create<DesignerState>()(
             const targetPageId = pageId || state.activePageId || state.schema.pages[0]?.id;
             newSchema.pages = state.schema.pages.map((p) =>
               p.id === targetPageId
-                ? {
-                    ...p,
-                    body: {
-                      ...p.body,
-                      components: [...p.body.components, newComponent],
-                    },
-                  }
+                ? { ...p, body: { ...p.body, components: [...p.body.components, newComponent] } }
                 : p
             );
           } else {
@@ -437,15 +428,15 @@ export const useDesignerStore = create<DesignerState>()(
         _fromPageId,
         toPageId,
         skipHistory = false,
-        _fromGroupId,
-        toGroupId,
-        _fromGroupType,
-        toGroupType
+        _fromGroupId = undefined,
+        toGroupId = undefined,
+        _fromGroupType = undefined,
+        toGroupType = undefined
       ) =>
         set((state) => {
           // 1. Remove from source (handled by helper)
           const { schema: schemaWithoutComp } = removeComponentFromSchema(state.schema, id);
-          
+
           // 2. Find component to get its data
           const component = findComponentInSchema(state.schema, id);
           if (!component) return state;
@@ -457,14 +448,17 @@ export const useDesignerStore = create<DesignerState>()(
           };
 
           // 3. Insert into destination
-          let newSchema = { ...schemaWithoutComp };
+          const newSchema = { ...schemaWithoutComp };
 
           if (toGroupId && toGroupType) {
             newSchema.groups = schemaWithoutComp.groups.map((g) => {
               if (g.id !== toGroupId) return g;
               const zone = toGroupType === 'header' ? g.header : g.footer;
               const nextComps = [...zone.components];
-              const insertAt = newIndex === -1 ? nextComps.length : Math.max(0, Math.min(newIndex, nextComps.length));
+              const insertAt =
+                newIndex === -1
+                  ? nextComps.length
+                  : Math.max(0, Math.min(newIndex, nextComps.length));
               nextComps.splice(insertAt, 0, updatedComp);
               return {
                 ...g,
@@ -476,13 +470,19 @@ export const useDesignerStore = create<DesignerState>()(
             newSchema.pages = schemaWithoutComp.pages.map((p) => {
               if (p.id !== targetPageId) return p;
               const nextComps = [...p.body.components];
-              const insertAt = newIndex === -1 ? nextComps.length : Math.max(0, Math.min(newIndex, nextComps.length));
+              const insertAt =
+                newIndex === -1
+                  ? nextComps.length
+                  : Math.max(0, Math.min(newIndex, nextComps.length));
               nextComps.splice(insertAt, 0, updatedComp);
               return { ...p, body: { ...p.body, components: nextComps } };
             });
           } else {
             const nextComps = [...schemaWithoutComp.zones[toZone].components];
-            const insertAt = newIndex === -1 ? nextComps.length : Math.max(0, Math.min(newIndex, nextComps.length));
+            const insertAt =
+              newIndex === -1
+                ? nextComps.length
+                : Math.max(0, Math.min(newIndex, nextComps.length));
             nextComps.splice(insertAt, 0, updatedComp);
             newSchema.zones = {
               ...schemaWithoutComp.zones,
@@ -579,7 +579,9 @@ export const useDesignerStore = create<DesignerState>()(
 
       updateGroup: (id, updates) =>
         set((state) => {
-          const newGroups = state.schema.groups.map((g) => (g.id === id ? { ...g, ...updates } : g));
+          const newGroups = state.schema.groups.map((g) =>
+            g.id === id ? { ...g, ...updates } : g
+          );
           return pushHistory(state, { ...state.schema, groups: newGroups });
         }),
 
@@ -590,7 +592,14 @@ export const useDesignerStore = create<DesignerState>()(
           selectedZone: null,
         })),
 
-      updateZone: (zoneKey: ZoneKey, updates: Partial<Zone>, pageId?: string, skipHistory?: boolean, groupId?: string, groupType?: 'header' | 'footer') =>
+      updateZone: (
+        zoneKey: ZoneKey,
+        updates: Partial<Zone>,
+        pageId?: string,
+        skipHistory?: boolean,
+        groupId?: string,
+        groupType?: 'header' | 'footer'
+      ) =>
         set((state) => {
           if (groupId) {
             // Update group zone
@@ -611,7 +620,9 @@ export const useDesignerStore = create<DesignerState>()(
 
           const schema = { ...state.schema };
           if (zoneKey === 'body') {
-            const page = schema.pages.find((p) => p.id === (pageId || state.activePageId || state.schema.pages[0].id));
+            const page = schema.pages.find(
+              (p) => p.id === (pageId || state.activePageId || state.schema.pages[0].id)
+            );
             if (page) {
               page.body = { ...page.body, ...updates };
             }
@@ -651,9 +662,11 @@ export const useDesignerStore = create<DesignerState>()(
       setViewMode: (mode: 'design' | 'preview' | 'split') =>
         set((state) => ({
           viewMode: mode,
-          isRightSidebarOpen: mode === 'preview' || mode === 'split' ? true : state.isRightSidebarOpen,
+          isRightSidebarOpen:
+            mode === 'preview' || mode === 'split' ? true : state.isRightSidebarOpen,
         })),
-      setActiveTab: (tab: 'palette' | 'outline' | 'data' | 'ai') => set({ activeTab: tab, isSidebarOpen: true }),
+      setActiveTab: (tab: 'palette' | 'outline' | 'data' | 'ai') =>
+        set({ activeTab: tab, isSidebarOpen: true }),
       setActivePage: (pageId: string | null) => set({ activePageId: pageId }),
       setSidebarOpen: (open: boolean) => set({ isSidebarOpen: open }),
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
@@ -703,6 +716,7 @@ export const useDesignerStore = create<DesignerState>()(
             id: newPageId,
             name: `Page ${state.schema.pages.length + 1}`,
             body: { id: 'body', minHeight: '237mm', components: [] },
+            footer: { id: 'footer', minHeight: '20mm', components: [] },
           };
           const newSchema = {
             ...state.schema,
@@ -960,7 +974,6 @@ export const useDesignerStore = create<DesignerState>()(
           };
           return pushHistory(state, newSchema);
         }),
-
     }),
     {
       name: 'designer-storage',
@@ -972,10 +985,9 @@ export const useDesignerStore = create<DesignerState>()(
       },
       version: 3,
       migrate: (persistedState: any, version: number) => {
+        const state = persistedState as any;
         if (version < 2) {
-          const state = persistedState as any;
           if (state.schema && !state.schema.pages) {
-            // Transform legacy zones.body to pages array
             const bodyZone = state.schema.zones.body || {
               id: 'body',
               minHeight: '237mm',
@@ -986,16 +998,15 @@ export const useDesignerStore = create<DesignerState>()(
                 id: 'page-1',
                 name: 'Page 1',
                 body: bodyZone,
+                footer: { id: 'footer', minHeight: '20mm', components: [] },
               },
             ];
-            // Remove legacy body zone
             // @ts-ignore - Cleaning up legacy field
             (state.schema.zones as any).body = undefined;
             state.activePageId = 'page-1';
           }
-          return state;
         }
-        return persistedState;
+        return state;
       },
       onRehydrateStorage: () => (state) => {
         if (state) {

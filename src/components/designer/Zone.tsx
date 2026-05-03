@@ -16,7 +16,6 @@ interface ZoneProps {
   pageId?: string;
   minHeight?: string;
   resizeEdge?: 'top' | 'bottom' | 'none';
-  visibleIds?: Set<string> | null;
   pageIndex?: number;
   isGroupBand?: boolean;
   groupType?: 'header' | 'footer';
@@ -30,7 +29,6 @@ export const Zone = memo(function Zone({
   pageId,
   minHeight,
   resizeEdge = 'bottom',
-  visibleIds,
   pageIndex,
   isGroupBand,
   groupType,
@@ -70,7 +68,10 @@ export const Zone = memo(function Zone({
         <span
           className={clsx(
             'text-[8px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] whitespace-nowrap px-1 py-4 rounded-l-md',
-            isGroupBand && (groupType === 'header' ? 'text-indigo-400 bg-indigo-500/10' : 'text-fuchsia-400 bg-fuchsia-500/10')
+            isGroupBand &&
+              (groupType === 'header'
+                ? 'text-indigo-400 bg-indigo-500/10'
+                : 'text-fuchsia-400 bg-fuchsia-500/10')
           )}
           style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
         >
@@ -80,6 +81,10 @@ export const Zone = memo(function Zone({
 
       <div
         ref={contentRef}
+        data-zone-key={zoneKey}
+        data-page-id={pageId}
+        data-group-id={groupId}
+        data-group-type={groupType}
         className="relative w-full h-full bg-transparent overflow-visible min-h-[inherit]"
       >
         {components.length === 0 && !isDraggedOver ? (
@@ -95,21 +100,15 @@ export const Zone = memo(function Zone({
           </div>
         ) : (
           <div className="absolute inset-0 overflow-visible">
-            {components
-              .filter((comp) => {
-                if (!visibleIds) return true;
-                const lookupId = zoneKey === 'body' ? comp.id : `${comp.id}-p${pageIndex}`;
-                return visibleIds.has(lookupId);
-              })
-              .map((comp) => (
-                <ComponentWrapper
-                  key={comp.id}
-                  component={comp}
-                  zoneKey={zoneKey}
-                  pageId={pageId}
-                  pageIndex={pageIndex}
-                />
-              ))}
+            {components.map((comp) => (
+              <ComponentWrapper
+                key={comp.id}
+                component={comp}
+                zoneKey={zoneKey}
+                pageId={pageId}
+                pageIndex={pageIndex}
+              />
+            ))}
           </div>
         )}
       </div>

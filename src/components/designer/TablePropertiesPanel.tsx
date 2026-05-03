@@ -78,6 +78,7 @@ const MiniInput = (props: Omit<DesignerInputProps, 'variant'>) => (
 export function TablePropertiesPanel({ component }: Props) {
   const updateComponent = useDesignerStore((state) => state.updateComponent);
   const selectedCell = useDesignerStore((state) => state.selectedCell);
+  const sampleData = useDesignerStore((state) => state.sampleData);
   const _setSelectedCell = useDesignerStore((state) => state.setSelectedCell);
   const [activeTab, setActiveTab] = useState<TableTab>('columns');
   const [expandedColIndex, setExpandedColIndex] = useState<number | null>(null);

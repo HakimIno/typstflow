@@ -1,3 +1,4 @@
+import { clsx } from 'clsx';
 import { resolveBindings } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode, TableComponent } from '@/types/schema';

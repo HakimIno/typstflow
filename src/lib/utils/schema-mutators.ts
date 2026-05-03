@@ -11,7 +11,7 @@
  * - Immutable: always return new objects, never mutate input
  * - Tested: all functions have unit tests in schema-mutators.test.ts
  */
-import type { ComponentNode, LayoutSchema } from '@/types/schema';
+import type { ComponentNode, LayoutSchema, ZoneKey } from '@/types/schema';
 
 // ─── Internal ──────────────────────────────────────────────────────────────
 
@@ -19,8 +19,6 @@ type GlobalZoneKey = 'header' | 'footer';
 const GLOBAL_ZONE_KEYS: readonly GlobalZoneKey[] = ['header', 'footer'] as const;
 
 // ─── Public Types ──────────────────────────────────────────────────────────
-
-export type ZoneKey = GlobalZoneKey | 'body';
 
 /** Returned by every schema mutation function. */
 export interface MutationResult {
@@ -111,13 +109,13 @@ export function mapComponentInSchema(
     }
   }
 
-  // 2. Page bodies
+  // 2. Page bodies and per-page footers
   let changed = false;
   const newPages = schema.pages.map((page) => {
-    const idx = page.body.components.findIndex((c) => c.id === id);
-    if (idx !== -1) {
+    const bodyIdx = page.body.components.findIndex((c) => c.id === id);
+    if (bodyIdx !== -1) {
       const next = [...page.body.components];
-      next[idx] = transform(page.body.components[idx]);
+      next[bodyIdx] = transform(page.body.components[bodyIdx]);
       changed = true;
       return { ...page, body: { ...page.body, components: next } };
     }
@@ -173,13 +171,15 @@ export function removeComponentFromSchema(schema: LayoutSchema, id: string): Mut
     }
   }
 
-  // 2. Page bodies
+  // 2. Page bodies and per-page footers
   let changed = false;
   const newPages = schema.pages.map((page) => {
-    const original = page.body.components;
-    if (original.some((c) => c.id === id)) {
+    if (page.body.components.some((c) => c.id === id)) {
       changed = true;
-      return { ...page, body: { ...page.body, components: original.filter((c) => c.id !== id) } };
+      return {
+        ...page,
+        body: { ...page.body, components: page.body.components.filter((c) => c.id !== id) },
+      };
     }
     return page;
   });
@@ -190,11 +190,17 @@ export function removeComponentFromSchema(schema: LayoutSchema, id: string): Mut
   const newGroups = (schema.groups || []).map((group) => {
     if (group.header.components.some((c) => c.id === id)) {
       changed = true;
-      return { ...group, header: { ...group.header, components: group.header.components.filter((c) => c.id !== id) } };
+      return {
+        ...group,
+        header: { ...group.header, components: group.header.components.filter((c) => c.id !== id) },
+      };
     }
     if (group.footer.components.some((c) => c.id === id)) {
       changed = true;
-      return { ...group, footer: { ...group.footer, components: group.footer.components.filter((c) => c.id !== id) } };
+      return {
+        ...group,
+        footer: { ...group.footer, components: group.footer.components.filter((c) => c.id !== id) },
+      };
     }
     return group;
   });
@@ -226,11 +232,10 @@ export function removeComponentsFromSchema(schema: LayoutSchema, ids: string[]):
 
   // 2. Page bodies
   const newPages = schema.pages.map((page) => {
-    const original = page.body.components;
-    const filtered = original.filter((c) => !idSet.has(c.id));
-    if (filtered.length !== original.length) {
+    const filteredBody = page.body.components.filter((c) => !idSet.has(c.id));
+    if (filteredBody.length !== page.body.components.length) {
       anyChanged = true;
-      return { ...page, body: { ...page.body, components: filtered } };
+      return { ...page, body: { ...page.body, components: filteredBody } };
     }
     return page;
   });
@@ -239,8 +244,11 @@ export function removeComponentsFromSchema(schema: LayoutSchema, ids: string[]):
   const newGroups = (schema.groups || []).map((group) => {
     const nextHeader = group.header.components.filter((c) => !idSet.has(c.id));
     const nextFooter = group.footer.components.filter((c) => !idSet.has(c.id));
-    
-    if (nextHeader.length !== group.header.components.length || nextFooter.length !== group.footer.components.length) {
+
+    if (
+      nextHeader.length !== group.header.components.length ||
+      nextFooter.length !== group.footer.components.length
+    ) {
       anyChanged = true;
       return {
         ...group,
@@ -252,7 +260,10 @@ export function removeComponentsFromSchema(schema: LayoutSchema, ids: string[]):
   });
 
   if (!anyChanged) return { schema, changed: false };
-  return { schema: { ...schema, zones: updatedZones, pages: newPages, groups: newGroups }, changed: true };
+  return {
+    schema: { ...schema, zones: updatedZones, pages: newPages, groups: newGroups },
+    changed: true,
+  };
 }
 
 // ─── Reorder ───────────────────────────────────────────────────────────────

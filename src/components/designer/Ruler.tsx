@@ -47,14 +47,18 @@ export const Ruler = memo(({ orientation, length, scrollPos = 0, zoom = 1.0 }: R
         backgroundPosition: isHorizontal ? `${-scrollPos}px bottom` : `right ${-scrollPos}px`,
       }}
     >
-      {/* Major labels (Rendered sparingly) */}
+      {/* ✅ MAJOR FIX: Limit labels to prevent rendering 1000s of spans */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           transform: isHorizontal ? `translateX(${-scrollPos}px)` : `translateY(${-scrollPos}px)`,
         }}
       >
-        {Array.from({ length: Math.ceil(length / 50) + 1 }).map((_, i) => {
+        {Array.from({ length: Math.min(Math.ceil(length / 50) + 1, 100) }).map((_, i) => {
+          // ✅ Skip rendering most labels for very long rulers (1000+ pages)
+          // Only render every 10th label to save React rendering time
+          if (length > 10000 && i % 10 !== 0) return null;
+
           const val = i * 50;
           if (val > length) return null;
           return (

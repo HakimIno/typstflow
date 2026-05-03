@@ -20,6 +20,8 @@ export interface LayoutSchema {
   };
 }
 
+export type ZoneKey = 'header' | 'body' | 'footer';
+
 export interface GroupDefinition {
   id: string;
   name: string;
@@ -64,6 +66,7 @@ export interface Zone {
   padding?: string;
   showOnFirstPageOnly?: boolean; // for header
   showOnLastPageOnly?: boolean; // for footer
+  repeatOnEveryPage?: boolean; // New: Repeat this zone on every page (Global)
 }
 
 export type ComponentNode =

@@ -24,10 +24,13 @@ export const ZoneSchema = z.object({
   minHeight: z.string().optional(),
 });
 
+const DEFAULT_PAGE_FOOTER = { id: 'footer', minHeight: '20mm', components: [] };
+
 export const PageSchema = z.object({
   id: z.string(),
   name: z.string(),
   body: ZoneSchema,
+  footer: ZoneSchema.optional().default(DEFAULT_PAGE_FOOTER),
 });
 
 export const LayoutSchemaValidator = z

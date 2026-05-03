@@ -27,14 +27,18 @@ export class TypstGenerator {
     // Zones
     typst += '\n// --- Report Base ---\n';
 
-    // 1. Header (Global)
-    typst += this.renderZone('header', this.schema.zones.header);
+    // 1. Header (Static if not repeated)
+    if (!this.schema.zones.header.repeatOnEveryPage) {
+      typst += this.renderZone('header', this.schema.zones.header);
+    }
 
     // 2. Main Content (Groups + Pages/Body)
     typst += this.renderContent();
 
-    // 3. Footer (Global)
-    typst += this.renderZone('footer', this.schema.zones.footer);
+    // 3. Footer (Static if not repeated)
+    if (!this.schema.zones.footer.repeatOnEveryPage) {
+      typst += this.renderZone('footer', this.schema.zones.footer);
+    }
 
     return typst;
   }
@@ -123,11 +127,24 @@ export class TypstGenerator {
   }
 
   private generatePageSetup(): string {
-    const { page } = this.schema;
+    const { page, zones } = this.schema;
+    
+    let headerStr = '';
+    if (zones.header.repeatOnEveryPage) {
+      headerStr = `header: [${this.renderZone('header-repeated', zones.header)}],`;
+    }
+
+    let footerStr = '';
+    if (zones.footer.repeatOnEveryPage) {
+      footerStr = `footer: [${this.renderZone('footer-repeated', zones.footer)}],`;
+    }
+
     return `#set page(
   paper: "${page.size.toLowerCase()}",
   flipped: ${page.orientation === 'landscape'},
-  margin: (top: ${page.margin.top}, bottom: ${page.margin.bottom}, left: ${page.margin.left}, right: ${page.margin.right})
+  margin: (top: ${page.margin.top}, bottom: ${page.margin.bottom}, left: ${page.margin.left}, right: ${page.margin.right}),
+  ${headerStr}
+  ${footerStr}
 )\n`;
   }
 
