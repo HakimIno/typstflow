@@ -255,13 +255,20 @@ export const LayoutEngine = {
     // Order: Header -> [Group Headers] -> Body -> [Group Footers] -> Footer
     if (zoneKey === 'header') return 0;
 
-    // 1. Report Header
-    offset += parseTypstUnit(schema.zones.header.minHeight || '0mm');
+    const isFirstPage = !pageId || pageId === schema.pages[0]?.id;
+    const isLastPage = !pageId || pageId === schema.pages[schema.pages.length - 1]?.id;
+    const isHeaderRepeated = schema.zones.header?.repeatOnEveryPage === true;
+    const isFooterRepeated = schema.zones.footer?.repeatOnEveryPage === true;
+
+    // 1. Report Header (Only on first page unless repeated)
+    if (isHeaderRepeated || isFirstPage) {
+      offset += parseTypstUnit(schema.zones.header?.minHeight || '0mm');
+    }
 
     // 2. Group Headers (if target is body or footer)
     if (zoneKey === 'body' || zoneKey === 'footer') {
       for (const group of schema.groups || []) {
-        offset += parseTypstUnit(group.header.minHeight || '0mm');
+        offset += parseTypstUnit(group.header?.minHeight || '0mm');
       }
     }
 
@@ -275,7 +282,7 @@ export const LayoutEngine = {
     // 4. Group Footers
     if (zoneKey === 'footer') {
       for (const group of schema.groups || []) {
-        offset += parseTypstUnit(group.footer.minHeight || '0mm');
+        offset += parseTypstUnit(group.footer?.minHeight || '0mm');
       }
     }
 

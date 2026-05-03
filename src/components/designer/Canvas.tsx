@@ -179,6 +179,8 @@ export const Canvas = memo(function Canvas() {
                 return (
                   <div
                     key={`wrapper-${page.id}`}
+                    data-page-wrapper
+                    data-page-id={page.id}
                     style={{
                       width: `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
                       height: `${LayoutEngine.mmToPx(pageHeightMm) * zoom}px`,

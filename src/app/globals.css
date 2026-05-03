@@ -182,6 +182,12 @@
 
   .contain-page {
     contain: layout style;
+    position: relative;
+    z-index: 10;
+  }
+
+  [data-page-wrapper].is-drag-source {
+    z-index: 1000 !important;
   }
 
   .high-perf-gpu {

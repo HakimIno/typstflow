@@ -129,6 +129,11 @@ function walkComponents(components: any[]) {
  * Walk the schema, register image bytes in the WASM bridge registry, and
  * REPLACE comp.src with the virtual path "asset-{id}.{ext}".
  */
+/**
+ * Walk the schema, register image bytes in the WASM bridge registry, and
+ * REPLACE comp.src with the virtual path "asset-{id}.{ext}".
+ * Also injects dummy components into empty zones to force WASM bridge to render them.
+ */
 function injectImagesIntoSchema(schema: any): any {
   if (!bridge || !schema?.zones) return schema;
 
@@ -138,19 +143,43 @@ function injectImagesIntoSchema(schema: any): any {
 
   bridge.clear_images();
 
+  // Ensure Header/Footer repetition is explicitly defined for WASM bridge
+  if (s.zones.header.repeatOnEveryPage === undefined) s.zones.header.repeatOnEveryPage = false;
+  if (s.zones.footer.repeatOnEveryPage === undefined) s.zones.footer.repeatOnEveryPage = false;
+
   const zoneNames = ['header', 'footer'];
   for (const zoneName of zoneNames) {
     const zone = s.zones?.[zoneName];
-    if (zone?.components) {
-      walkComponents(zone.components);
+    if (zone) {
+      // FIX: Force blank pages/zones to render in WASM bridge by adding a tiny invisible spacer if empty
+      if (!zone.components || zone.components.length === 0) {
+        zone.components = [{
+          id: `dummy-${zoneName}`,
+          type: 'text',
+          content: '',
+          x: 0, y: 0, width: 1, height: 1
+        }];
+      } else {
+        walkComponents(zone.components);
+      }
     }
   }
 
   // Iterate over all pages for body components
   if (s.pages && Array.isArray(s.pages)) {
     for (const page of s.pages) {
-      if (page.body?.components) {
-        walkComponents(page.body.components);
+      if (page.body) {
+        // FIX: Force empty pages to render
+        if (!page.body.components || page.body.components.length === 0) {
+          page.body.components = [{
+            id: `dummy-body-${page.id}`,
+            type: 'text',
+            content: '',
+            x: 0, y: 0, width: 1, height: 1
+          }];
+        } else {
+          walkComponents(page.body.components);
+        }
       }
     }
   }

@@ -28,7 +28,7 @@ export class TypstGenerator {
     typst += '\n// --- Report Base ---\n';
 
     // 1. Header (Static if not repeated)
-    if (!this.schema.zones.header.repeatOnEveryPage) {
+    if (this.schema.zones.header.repeatOnEveryPage !== true) {
       typst += this.renderZone('header', this.schema.zones.header);
     }
 
@@ -36,7 +36,7 @@ export class TypstGenerator {
     typst += this.renderContent();
 
     // 3. Footer (Static if not repeated)
-    if (!this.schema.zones.footer.repeatOnEveryPage) {
+    if (this.schema.zones.footer.repeatOnEveryPage !== true) {
       typst += this.renderZone('footer', this.schema.zones.footer);
     }
 
@@ -130,12 +130,12 @@ export class TypstGenerator {
     const { page, zones } = this.schema;
     
     let headerStr = '';
-    if (zones.header.repeatOnEveryPage) {
+    if (zones.header.repeatOnEveryPage === true) {
       headerStr = `header: [${this.renderZone('header-repeated', zones.header)}],`;
     }
 
     let footerStr = '';
-    if (zones.footer.repeatOnEveryPage) {
+    if (zones.footer.repeatOnEveryPage === true) {
       footerStr = `footer: [${this.renderZone('footer-repeated', zones.footer)}],`;
     }
 
@@ -155,13 +155,23 @@ export class TypstGenerator {
   }
 
   private renderZone(label: string, zone: any, context?: any, groupItems?: any[]): string {
-    if (!zone || !zone.components || zone.components.length === 0) return '';
+    if (!zone) return '';
 
+    // Always render a block for the zone if it has a minHeight or components.
+    // This ensures that empty zones still occupy space and force page breaks correctly.
     let typst = `\n// Band: ${label.toUpperCase()}\n`;
     typst += `#block(width: 100%, height: ${zone.minHeight || 'auto'}, clip: true)[\n`;
-    for (const comp of zone.components) {
-      typst += `  ${this.renderComponent(comp, context, groupItems)}`;
+    
+    if (zone.components && zone.components.length > 0) {
+      for (const comp of zone.components) {
+        typst += `  ${this.renderComponent(comp, context, groupItems)}`;
+      }
+    } else {
+      // Add a small invisible element to ensure the block is not completely empty
+      // which sometimes causes Typst to skip it in certain layout contexts.
+      typst += '  #h(0pt)\n';
     }
+    
     typst += ']\n';
     return typst;
   }

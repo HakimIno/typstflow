@@ -83,6 +83,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     startY: number;
     pointerId: number;
     primaryId: string;
+    grabOffsetXmm: number;
+    grabOffsetYmm: number;
     initialPositions: Map<string, { x: number; y: number; element: HTMLElement }>;
   } | null>(null);
 
@@ -141,14 +143,27 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         }
       }
 
+      // Calculate grab offset in mm for accurate dropping
+      const rect = element.getBoundingClientRect();
+      const grabXpx = (e.clientX - rect.left) / currentZoom;
+      const grabYpx = (e.clientY - rect.top) / currentZoom;
+
       dragStateRef.current = {
         isActive: true,
         startX: e.clientX,
         startY: e.clientY,
         pointerId: e.pointerId,
         primaryId: component.id,
+        grabOffsetXmm: LayoutEngine.pxToMm(grabXpx),
+        grabOffsetYmm: LayoutEngine.pxToMm(grabYpx),
         initialPositions,
       };
+
+      // Add high z-index to source page wrapper so it's not covered by other pages during drag
+      const pageWrapper = element.closest('[data-page-wrapper]');
+      if (pageWrapper) {
+        pageWrapper.classList.add('is-drag-source');
+      }
 
       // Store original zone info for cross-zone detection
       const originalZone = {
@@ -195,84 +210,112 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
         const { startX, startY, initialPositions } = dragState;
 
-        // ✅ Detect target zone for cross-zone drop
-        const targetZone = detectZoneAtPoint(event.clientX, event.clientY);
+        // ✅ Detect target zone or page for drop
+        let targetZone = detectZoneAtPoint(event.clientX, event.clientY);
+        
+        // If no specific zone, try to find the page under the cursor
+        if (!targetZone) {
+          const elementsUnderPoint = document.elementsFromPoint(event.clientX, event.clientY);
+          const paperContainer = elementsUnderPoint.find(el => el.hasAttribute('data-paper-container'));
+          if (paperContainer) {
+            targetZone = {
+              zoneKey: 'body',
+              pageId: paperContainer.getAttribute('data-page-id') || undefined,
+              element: paperContainer as HTMLElement,
+              rect: paperContainer.getBoundingClientRect()
+            };
+          }
+        }
+
         const isCrossZone = targetZone && isDifferentZone(originalZone, targetZone);
 
-        if (isCrossZone && targetZone) {
-          // Use the same delta approach as same-zone drag so the grab offset is
-          // preserved — avoids the element snapping to the cursor's position.
-          const visualDeltaX = event.clientX - startX;
-          const visualDeltaY = event.clientY - startY;
-          const deltaXmm = LayoutEngine.pxToMm(visualDeltaX / currentZoom);
-          const deltaYmm = LayoutEngine.pxToMm(visualDeltaY / currentZoom);
+        if (targetZone) {
+          const { grabOffsetXmm, grabOffsetYmm, initialPositions, primaryId } = dragState;
+          const target = targetZone; // Const reference for TypeScript narrowing
+
+          // 1. Calculate the new position of the PRIMARY element using the target page's coordinate system
+          // This handles gaps between pages and separate containers correctly.
+          const dragOffsetXpx = LayoutEngine.mmToPx(grabOffsetXmm) * currentZoom;
+          const dragOffsetYpx = LayoutEngine.mmToPx(grabOffsetYmm) * currentZoom;
+
+          const primaryPos = LayoutEngine.calculateAbsolutePosition(
+            event.clientX,
+            event.clientY,
+            dragOffsetXpx,
+            dragOffsetYpx,
+            target.pageId
+          );
+
+          // Get the base mm offset of the target zone on the target page
+          const dstZoneOffset = LayoutEngine.calculateZoneOffset(
+            target.zoneKey,
+            store.schema,
+            target.pageId
+          );
+
+          // Calculate final X/Y relative to the target zone
+          const finalPrimaryX = primaryPos.x;
+          const finalPrimaryY = Math.max(0, primaryPos.rawY - dstZoneOffset);
+
+          // 2. Move all elements based on the primary element's new position
+          const primaryInitial = initialPositions.get(primaryId);
 
           for (const [dragId, pos] of initialPositions) {
             const compData = getComponentById(dragId, store.schema);
             if (!compData) continue;
 
-            // Zone Y offsets (mm from page top) for source and target
-            const srcOffset = LayoutEngine.calculateZoneOffset(
-              compData.zoneKey,
-              store.schema,
-              compData.pageId
-            );
-            const dstOffset = LayoutEngine.calculateZoneOffset(
-              targetZone.zoneKey,
-              store.schema,
-              targetZone.pageId
-            );
+            // Calculate this element's position relative to the primary element
+            const relX = primaryInitial ? pos.x - primaryInitial.x : 0;
+            const relY = primaryInitial ? pos.y - primaryInitial.y : 0;
 
-            // Convert absolute page position to target-zone-local position
-            const newX = Math.max(0, pos.x + deltaXmm);
-            const newY = Math.max(0, pos.y + srcOffset + deltaYmm - dstOffset);
+            const newX = finalPrimaryX + relX;
+            const newY = finalPrimaryY + relY;
 
-            // Get target zone length for new index
-            let targetZoneLength = 0;
-            if (targetZone.zoneKey === 'body' && targetZone.pageId) {
-              targetZoneLength =
-                store.schema.pages.find((p) => p.id === targetZone.pageId)?.body.components
-                  .length || 0;
-            } else if (targetZone.zoneKey !== 'body') {
-              targetZoneLength =
-                (store.schema.zones as any)[targetZone.zoneKey]?.components?.length || 0;
+            if (isCrossZone) {
+              // Cross-zone move
+              let targetZoneLength = 0;
+              if (target.zoneKey === 'body' && target.pageId) {
+                targetZoneLength =
+                  store.schema.pages.find((p) => p.id === target.pageId)?.body.components
+                    .length || 0;
+              } else if (target.zoneKey !== 'body') {
+                targetZoneLength =
+                  (store.schema.zones as any)[target.zoneKey]?.components?.length || 0;
+              }
+
+              store.moveComponent(
+                dragId,
+                compData.zoneKey as 'header' | 'body' | 'footer',
+                target.zoneKey as 'header' | 'body' | 'footer',
+                targetZoneLength,
+                newX,
+                newY,
+                compData.pageId || null,
+                target.pageId || null,
+                false,
+                undefined,
+                target.groupId
+              );
+            } else {
+              // Same zone move - just update position
+              store.updateComponent(dragId, { x: newX, y: newY });
             }
-
-            store.moveComponent(
-              dragId,
-              compData.zoneKey as 'header' | 'body' | 'footer',
-
-              targetZone.zoneKey as 'header' | 'body' | 'footer',
-              targetZoneLength,
-              newX,
-              newY,
-              compData.pageId || null,
-              targetZone.pageId || null,
-              false,
-              undefined,
-              targetZone.groupId
-            );
 
             pos.element.style.transform = '';
             pos.element.style.willChange = '';
             pos.element.style.transition = '';
           }
         } else {
-          // ✅ Same zone - just update position
+          // Fallback to delta if no target page detected
           const visualDeltaX = event.clientX - startX;
           const visualDeltaY = event.clientY - startY;
-          const transformPxX = visualDeltaX / currentZoom;
-          const transformPxY = visualDeltaY / currentZoom;
-
-          const deltaXmm = LayoutEngine.pxToMm(transformPxX);
-          const deltaYmm = LayoutEngine.pxToMm(transformPxY);
+          const deltaXmm = LayoutEngine.pxToMm(visualDeltaX / currentZoom);
+          const deltaYmm = LayoutEngine.pxToMm(visualDeltaY / currentZoom);
 
           for (const [dragId, pos] of initialPositions) {
             const newX = pos.x + deltaXmm;
             const newY = pos.y + deltaYmm;
-
             store.updateComponent(dragId, { x: newX, y: newY });
-
             pos.element.style.transform = '';
             pos.element.style.willChange = '';
             pos.element.style.transition = '';
@@ -280,6 +323,12 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         }
 
         // Cleanup
+        const element = ref.current;
+        const pageWrapper = element?.closest('[data-page-wrapper]');
+        if (pageWrapper) {
+          pageWrapper.classList.remove('is-drag-source');
+        }
+
         dragStateRef.current = null;
         document.body.classList.remove('is-dragging-components');
 
