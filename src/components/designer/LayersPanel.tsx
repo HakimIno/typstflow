@@ -64,15 +64,15 @@ type RenderItem =
 
 const ComponentIcon = memo(({ type, isSelected }: { type: string; isSelected?: boolean }) => {
   const iconClass = clsx(
-    'w-3.5 h-3.5 transition-transform duration-200',
+    'w-3.5 h-3.5 transition-all duration-200',
     isSelected ? 'scale-110' : 'group-hover:scale-110'
   );
 
   const containerClass = clsx(
-    'p-1 rounded-md shrink-0 flex items-center justify-center transition-all duration-200',
+    'w-6 h-6 rounded-md flex items-center justify-center shrink-0 border transition-all duration-300',
     isSelected
-      ? 'bg-[var(--accent)] text-white shadow-[0_0_8px_rgba(0,111,238,0.3)]'
-      : 'bg-[var(--bg-widget)] text-[var(--text-secondary)] group-hover:bg-[var(--bg-hover)] group-hover:text-[var(--text-primary)]'
+      ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-[0_0_12px_rgba(0,111,238,0.4)]'
+      : 'bg-[var(--bg-widget)] text-[var(--text-secondary)] border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]'
   );
 
   const getIcon = () => {
@@ -175,8 +175,10 @@ const LayerItem = memo(({
     <div
       ref={ref}
       className={clsx(
-        'w-full group relative flex items-center gap-2 px-2 py-1 cursor-pointer transition-all duration-200 select-none border-l-2 h-[32px]',
-        isSelected ? 'bg-[var(--accent-glow)] border-[var(--accent)]' : 'border-transparent hover:bg-[var(--bg-widget)]',
+        'w-[calc(100%-12px)] mx-auto group relative flex items-center gap-2.5 px-2.5 py-1.5 cursor-pointer transition-all duration-200 select-none rounded-lg h-[36px] my-0.5',
+        isSelected 
+          ? 'bg-[var(--accent-glow)] border border-[var(--accent)]/30 shadow-[0_2px_8px_rgba(0,0,0,0.05)]' 
+          : 'border border-transparent hover:bg-[var(--bg-widget)] hover:border-[var(--border-subtle)] hover:shadow-sm',
         isDragging && 'opacity-40 grayscale',
         isHidden && 'opacity-50'
       )}
@@ -184,10 +186,10 @@ const LayerItem = memo(({
       role="button"
       tabIndex={0}
     >
-      {closestEdge === 'top' && <div className="absolute top-0 left-1 right-1 h-0.5 bg-[var(--accent)] z-10 rounded-full" />}
-      {closestEdge === 'bottom' && <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-[var(--accent)] z-10 rounded-full" />}
+      {closestEdge === 'top' && <div className="absolute -top-1 left-2 right-2 h-0.5 bg-[var(--accent)] z-10 rounded-full" />}
+      {closestEdge === 'bottom' && <div className="absolute -bottom-1 left-2 right-2 h-0.5 bg-[var(--accent)] z-10 rounded-full" />}
 
-      <div className="relative flex items-center gap-2 flex-1 min-w-0 ml-4">
+      <div className="relative flex items-center gap-3 flex-1 min-w-0">
         <GripVertical className="w-3 h-3 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 -ml-1" />
         <ComponentIcon type={component.type} isSelected={isSelected} />
         <div className="flex-1 min-w-0">
@@ -195,22 +197,27 @@ const LayerItem = memo(({
             <DesignerInput
               autoFocus
               variant="ghost"
-              className="text-[11.5px] font-semibold p-0 text-[var(--text-primary)]"
+              className="text-[11px] font-bold p-0 text-[var(--text-primary)]"
               value={name}
               onChange={(v) => setName(v)}
               onBlur={handleRename}
               onKeyDown={(e) => e.key === 'Enter' && handleRename()}
             />
           ) : (
-            <span
-              className={clsx(
-                'block text-[11.5px] font-semibold truncate transition-colors',
-                isSelected ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
-              )}
-              onDoubleClick={() => setIsEditing(true)}
-            >
-              {component.name || (component.type === 'text' ? component.content : component.type)}
-            </span>
+            <div className="flex flex-col">
+              <span
+                className={clsx(
+                  'block text-[11px] font-bold truncate transition-colors leading-tight',
+                  isSelected ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
+                )}
+                onDoubleClick={() => setIsEditing(true)}
+              >
+                {component.name || (component.type === 'text' ? component.content : component.type)}
+              </span>
+              <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-wider font-medium opacity-60">
+                {component.type}
+              </span>
+            </div>
           )}
         </div>
       </div>
@@ -426,10 +433,10 @@ export const LayersPanel = memo(function LayersPanel() {
     getScrollElement: () => parentRef.current,
     estimateSize: (index) => {
       const item = flattenedLayers[index];
-      if (item.type === 'page-separator') return 24;
-      if (item.type === 'global-separator') return 28;
-      if (item.type === 'zone-header') return 28;
-      return 32; // Component
+      if (item.type === 'page-separator') return 32;
+      if (item.type === 'global-separator') return 36;
+      if (item.type === 'zone-header') return 34;
+      return 40; // Component (36px + margins)
     },
     overscan: 10,
   });
@@ -543,17 +550,26 @@ export const LayersPanel = memo(function LayersPanel() {
                   }}
                 >
                   {item.type === 'page-separator' && (
-                    <div className="px-2 py-1 flex items-center gap-2 bg-[var(--bg-widget)] border-y border-[var(--border-subtle)] h-full">
-                      <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">Page {item.index + 1}</span>
-                      <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                    <div className="px-3.5 py-1.5 flex items-center gap-2 mt-4 first:mt-2">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="w-1 h-1 rounded-full bg-[var(--accent)]" />
+                        <span className="text-[9px] font-black text-[var(--text-primary)] uppercase tracking-[0.2em]">
+                          Page {item.index + 1}
+                        </span>
+                      </div>
+                      <div className="flex-1 h-px bg-[var(--border-subtle)] opacity-40" />
                     </div>
                   )}
 
                   {item.type === 'global-separator' && (
-                    <div className="px-2 py-1.5 flex items-center gap-2 bg-gradient-to-r from-[var(--accent-glow)]/40 to-transparent border-y border-[var(--accent)]/30 h-full">
-                      <Globe className="w-3 h-3 text-[var(--accent)]" />
-                      <span className="text-[8px] font-black text-[var(--accent)] uppercase tracking-[0.2em]">{item.label}</span>
-                      <div className="flex-1 h-px bg-[var(--accent)]/20" />
+                    <div className="px-3.5 py-1.5 flex items-center gap-2 mt-4">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Globe className="w-3 h-3 text-[var(--accent)]" />
+                        <span className="text-[9px] font-black text-[var(--accent)] uppercase tracking-[0.2em]">
+                          {item.label}
+                        </span>
+                      </div>
+                      <div className="flex-1 h-px bg-[var(--accent)] opacity-20" />
                     </div>
                   )}
 
@@ -632,11 +648,11 @@ const ZoneHeader = memo(({
     <div
       ref={ref}
       className={clsx(
-        'w-full h-full flex items-center gap-1.5 transition-all cursor-pointer group border-l-2 relative',
+        'w-[calc(100%-8px)] mx-auto h-[calc(100%-4px)] my-0.5 flex items-center gap-2 px-1.5 transition-all cursor-pointer group rounded-md',
         isSelected
-          ? 'bg-[var(--accent-glow)] text-[var(--accent)] border-[var(--accent)] shadow-sm'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] border-transparent hover:bg-white/[0.02]',
-        isDraggedOver && 'bg-[var(--accent-glow)]/50 ring-1 ring-inset ring-[var(--accent)]'
+          ? 'bg-[var(--bg-widget)] text-[var(--accent)] border border-[var(--accent)]/20 shadow-sm'
+          : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-widget)]/50',
+        isDraggedOver && 'ring-2 ring-inset ring-[var(--accent)] bg-[var(--accent-glow)]/30'
       )}
       onClick={() => {
         if (item.groupId) {
@@ -654,18 +670,17 @@ const ZoneHeader = memo(({
           const key = item.groupId ? `group-${item.groupId}-${item.groupType}` : zoneId;
           toggleGroup(key);
         }}
-        className="pl-2 pr-1 h-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all"
+        className="p-1 h-6 w-6 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all"
       >
-        <div className="p-0.5 rounded-sm bg-black/10 group-hover:bg-black/20 transition-colors">
-          {collapsedGroups.has(item.groupId ? `group-${item.groupId}-${item.groupType}` : zoneId) ? (
-            <ChevronRight className="w-3 h-3" />
-          ) : (
-            <ChevronDown className="w-3 h-3" />
-          )}
-        </div>
+        <ChevronRight className={clsx(
+          "w-3.5 h-3.5 transition-transform duration-200",
+          !collapsedGroups.has(item.groupId ? `group-${item.groupId}-${item.groupType}` : zoneId) && "rotate-90"
+        )} />
       </button>
 
-      <span className="text-[9px] font-bold uppercase tracking-widest flex-1">{item.label}</span>
+      <span className="text-[10px] font-bold uppercase tracking-widest flex-1 opacity-80 group-hover:opacity-100 transition-opacity">
+        {item.label}
+      </span>
 
       {(item.zoneKey === 'header' || item.zoneKey === 'footer') && !item.groupId && (
         <button

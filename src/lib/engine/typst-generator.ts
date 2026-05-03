@@ -129,12 +129,12 @@ export class TypstGenerator {
   private generatePageSetup(): string {
     const { page, zones } = this.schema;
     
-    let headerStr = '';
+    let headerStr = 'header: none,';
     if (zones.header.repeatOnEveryPage === true) {
       headerStr = `header: [${this.renderZone('header-repeated', zones.header)}],`;
     }
 
-    let footerStr = '';
+    let footerStr = 'footer: none,';
     if (zones.footer.repeatOnEveryPage === true) {
       footerStr = `footer: [${this.renderZone('footer-repeated', zones.footer)}],`;
     }
@@ -260,17 +260,11 @@ export class TypstGenerator {
         const font = comp.style?.fontFamily || 'Sarabun';
         const format = (comp as any).format || 'Page {{page}} of {{pageTotal}}';
 
-        let display = format
-          .replace(/\{\{page\}\}/g, ' #counter(page).display() ')
-          .replace(/\{\{pageTotal\}\}/g, ' #counter(page).final().at(0) ');
+        const display = format
+          .replace(/\{\{page\}\}/g, '#counter(page).display()')
+          .replace(/\{\{pageTotal\}\}/g, '#str(counter(page).final().at(0))');
 
-        if (comp.style?.underline) {
-          display = `#underline[#context [${display}]]`;
-        } else {
-          display = `#context [${display}]`;
-        }
-
-        return `#set align(${align})\n#text(size: ${size}pt, weight: "${weight}", style: "${style}", fill: rgb("${color}"), font: "${font}")[${display}]`;
+        return `#set align(${align})\n#text(size: ${size}pt, weight: "${weight}", style: "${style}", fill: rgb("${color}"), font: "${font}")[#context ${display}]`;
       }
       case 'spacer':
         return `#v(${(comp as any).height || 10}mm)`;

@@ -67,6 +67,7 @@ pub struct Zone {
     pub padding: Option<String>,
     pub show_on_first_page_only: Option<bool>,
     pub show_on_last_page_only: Option<bool>,
+    pub repeat_on_every_page: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

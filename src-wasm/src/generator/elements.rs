@@ -141,7 +141,7 @@ pub fn render_page_number(c: &PageNumberComponent, offset_x: &str, offset_y: &st
         ));
     }
     
-    body.push_str(&format!("[#context [{}]]", display));
+    body.push_str(&format!("#context [{}]", display));
     wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 

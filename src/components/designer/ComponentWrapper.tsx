@@ -75,6 +75,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const _zoom = useDesignerStore((s) => s.zoom);
 
   const [isEditing, setIsEditing] = useState(false);
+  const totalPages = useDesignerStore((state) => state.schema.pages.length);
 
   // ✅ Ultra-fast pointer-based drag (Figma-style)
   const dragStateRef = useRef<{
@@ -655,7 +656,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           <ComponentPreview
             component={component}
             pageIndex={pageIndex}
-            totalPages={useDesignerStore.getState().schema.pages.length}
+            totalPages={totalPages}
           />
         </div>
       )}

@@ -50,10 +50,13 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
             t.push_str("\n#pagebreak(weak: true)\n");
         }
 
-        // --- RENDER HEADER (Global) ---
-        t.push_str(&format!("// --- PAGE {} HEADER ---\n", i + 1));
-        for comp in &schema.zones.header.components {
-            t.push_str(&render_component(comp, data, offset_x, header_offset_y, "#"));
+        // --- RENDER HEADER (Conditional) ---
+        let show_header = schema.zones.header.repeat_on_every_page.unwrap_or(false) || i == 0;
+        if show_header {
+            t.push_str(&format!("// --- PAGE {} HEADER ---\n", i + 1));
+            for comp in &schema.zones.header.components {
+                t.push_str(&render_component(comp, data, offset_x, header_offset_y, "#"));
+            }
         }
 
         // --- RENDER BODY (Page-Specific) ---
@@ -62,10 +65,13 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
             t.push_str(&render_component(comp, data, offset_x, &body_offset_y, "#"));
         }
 
-        // --- RENDER FOOTER (Global) ---
-        t.push_str(&format!("// --- PAGE {} FOOTER ---\n", i + 1));
-        for comp in &schema.zones.footer.components {
-            t.push_str(&render_component(comp, data, offset_x, &footer_offset_y, "#"));
+        // --- RENDER FOOTER (Conditional) ---
+        let show_footer = schema.zones.footer.repeat_on_every_page.unwrap_or(false) || i == schema.pages.len() - 1;
+        if show_footer {
+            t.push_str(&format!("// --- PAGE {} FOOTER ---\n", i + 1));
+            for comp in &schema.zones.footer.components {
+                t.push_str(&render_component(comp, data, offset_x, &footer_offset_y, "#"));
+            }
         }
     }
 
