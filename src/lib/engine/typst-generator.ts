@@ -20,6 +20,7 @@ export class TypstGenerator {
   generate(): string {
     const parts: string[] = [];
     parts.push('// TYPSTFLOW CORE GENERATOR v2.0\n');
+    parts.push('#import "@preview/codetastic:0.2.2": qrcode, ean13, ean8\n');
     parts.push(this.generatePageSetup());
     parts.push(this.generateFonts());
     parts.push(this.generateHelpers());
@@ -230,12 +231,18 @@ export class TypstGenerator {
 
         return `#line(length: 100%, stroke: (paint: rgb("${color}"), thickness: ${thickness}, dash: ${dash}))`;
       }
-      case 'barcode':
-      case 'qr':
-        return this.renderPlaceholder(
-          comp.type.toUpperCase(),
-          this.resolveBinding((comp as any).value || '', context, groupItems)
-        );
+      case 'barcode': {
+        const val = this.resolveBinding((comp as any).value || '', context, groupItems);
+        const sym = (comp as any).format || 'code128';
+        if (['ean13', 'ean8'].includes(sym)) {
+          return `#${sym}("${val}")`;
+        }
+        return this.renderPlaceholder(comp.type.toUpperCase(), val);
+      }
+      case 'qr': {
+        const val = this.resolveBinding((comp as any).value || '', context, groupItems);
+        return `#qrcode("${val}", width: 100%)`;
+      }
 
       case 'page-number': {
         const align = comp.align || 'center';

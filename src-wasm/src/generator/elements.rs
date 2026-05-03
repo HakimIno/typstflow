@@ -76,16 +76,21 @@ pub fn render_spacer(c: &SpacerComponent, offset_x: &str, offset_y: &str, prefix
 
 pub fn render_barcode(c: &BarcodeComponent, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let sym = &c.format;
+    let w = c.base.width.unwrap_or(40.0);
+    let _h = c.base.height.unwrap_or(20.0);
+    
     let body = match sym.to_lowercase().as_str() {
         "ean13" => format!("#ean13(\"{}\")", c.value),
         "ean8" => format!("#ean8(\"{}\")", c.value),
-        _ => format!("#rect(width: 100%, height: 100%, fill: red.lighten(80%))[Unsupported: {}]", sym),
+        "qrcode" => format!("#qrcode(\"{}\", width: {}mm)", c.value, w),
+        _ => format!("#rect(width: 100%, height: 100%, fill: red.lighten(90%), stroke: 0.5pt + red)[#set align(center + horizon); #text(size: 7pt, fill: red.darken(30%), weight: \"bold\")[Unsupported: {}]]", sym),
     };
     wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
 pub fn render_qr(c: &QRComponent, offset_x: &str, offset_y: &str, prefix: &str) -> String {
-    let body = format!("#qrcode(\"{}\")", c.value);
+    let w = c.base.width.unwrap_or(20.0);
+    let body = format!("#qrcode(\"{}\", width: {}mm)", c.value, w);
     wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 
