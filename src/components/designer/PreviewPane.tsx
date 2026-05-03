@@ -9,18 +9,20 @@ import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export function PreviewPane() {
-  // Granular selectors to prevent unnecessary re-renders
   const schema = useDesignerStore((state) => state.schema);
   const sampleData = useDesignerStore((state) => state.sampleData);
   const viewMode = useDesignerStore((state) => state.viewMode);
   const zoom = useDesignerStore((state) => state.zoom);
+  const isDragging = useDesignerStore((state) => state.dragState.isDragging);
   const [svgContent, setSvgContent] = useState<string[] | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Track the last rendered source to avoid redundant work
-
   useEffect(() => {
+    // Don't trigger a new render while the user is actively dragging.
+    // The schema updates after drop (onPointerUp) will fire a fresh render.
+    if (isDragging) return;
+
     let active = true;
 
     const performRender = async () => {
@@ -44,14 +46,13 @@ export function PreviewPane() {
       }
     };
 
-    // Low latency debounce - safe now that rendering is off-thread
     const timeoutId = setTimeout(performRender, 200);
 
     return () => {
       active = false;
       clearTimeout(timeoutId);
     };
-  }, [schema, sampleData]);
+  }, [schema, sampleData, isDragging]);
 
   const { width: pageWidthMm, height: pageHeightMm } = getPaperDimensions(
     schema.page.size,

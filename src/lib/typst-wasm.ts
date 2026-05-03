@@ -5,6 +5,12 @@ const pendingRequests = new Map<
 >();
 let workerReadyPromise: Promise<void> | null = null;
 let resolveWorkerReady: (() => void) | null = null;
+let isWorkerReady = false;
+let _idSeq = 0;
+
+function generateId(): string {
+  return `r${(++_idSeq).toString(36)}`;
+}
 
 function getWorker(): Worker {
   if (worker) return worker;
@@ -19,6 +25,8 @@ function getWorker(): Worker {
 
     if (type === 'READY') {
       resolveWorkerReady?.();
+      isWorkerReady = true;
+      workerReadyPromise = null; // Clear so future calls skip the await entirely
       return;
     }
 
@@ -42,10 +50,12 @@ function getWorker(): Worker {
 }
 
 async function callWorker(type: string, payload: any): Promise<any> {
-  const id = Math.random().toString(36).substring(7);
+  const id = generateId();
   const w = getWorker();
 
-  if (workerReadyPromise) {
+  // Only await the ready promise once — after it resolves, isWorkerReady
+  // is set and workerReadyPromise is nulled, so future calls skip this branch.
+  if (!isWorkerReady && workerReadyPromise) {
     await workerReadyPromise;
   }
 
@@ -56,10 +66,10 @@ async function callWorker(type: string, payload: any): Promise<any> {
 }
 
 /**
- * Initializes the Typst WASM engine (stub for compatibility).
+ * Initializes the Typst WASM engine (triggers worker startup).
  */
 export async function initTypst() {
-  getWorker(); // Trigger initialization
+  getWorker();
   return Promise.resolve();
 }
 
@@ -78,14 +88,14 @@ export async function renderToPdf(mainContent: string): Promise<Uint8Array> {
 }
 
 /**
- * Renders a full report to an SVG string using the new WASM-powered engine.
+ * Renders a full report to an SVG string using the WASM-powered engine.
  */
 export async function renderReportToSvg(schema: any, data: any): Promise<string> {
   return callWorker('RENDER_REPORT_SVG', { schema, data });
 }
 
 /**
- * Renders a full report to a PDF Uint8Array using the new WASM-powered engine.
+ * Renders a full report to a PDF Uint8Array using the WASM-powered engine.
  */
 export async function renderReportToPdf(schema: any, data: any): Promise<Uint8Array> {
   return callWorker('RENDER_REPORT_PDF', { schema, data });
@@ -95,6 +105,5 @@ export async function renderReportToPdf(schema: any, data: any): Promise<Uint8Ar
  * Generates the Typst source code for a report using the Rust generator.
  */
 export async function generateReportTypst(schema: any, data: any): Promise<string> {
-  console.log('[DEBUG] Generating Report Typst:', { schema, data });
   return callWorker('GENERATE_REPORT_TYPST', { schema, data });
 }

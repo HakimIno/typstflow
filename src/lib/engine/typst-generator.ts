@@ -18,67 +18,56 @@ export class TypstGenerator {
    * Generates the full Typst source code from the schema.
    */
   generate(): string {
-    let typst = '// TYPSTFLOW CORE GENERATOR v2.0\n';
+    const parts: string[] = [];
+    parts.push('// TYPSTFLOW CORE GENERATOR v2.0\n');
+    parts.push(this.generatePageSetup());
+    parts.push(this.generateFonts());
+    parts.push(this.generateHelpers());
+    parts.push('\n// --- Report Base ---\n');
 
-    typst += this.generatePageSetup();
-    typst += this.generateFonts();
-    typst += this.generateHelpers();
-
-    // Zones
-    typst += '\n// --- Report Base ---\n';
-
-    // 1. Header (Static if not repeated)
     if (this.schema.zones.header.repeatOnEveryPage !== true) {
-      typst += this.renderZone('header', this.schema.zones.header);
+      parts.push(this.renderZone('header', this.schema.zones.header));
     }
 
-    // 2. Main Content (Groups + Pages/Body)
-    typst += this.renderContent();
+    parts.push(this.renderContent());
 
-    // 3. Footer (Static if not repeated)
     if (this.schema.zones.footer.repeatOnEveryPage !== true) {
-      typst += this.renderZone('footer', this.schema.zones.footer);
+      parts.push(this.renderZone('footer', this.schema.zones.footer));
     }
 
-    return typst;
+    return parts.join('');
   }
 
   private renderContent(): string {
     const groups = this.schema.groups || [];
     if (groups.length === 0) {
-      // Standard behavior: Render all pages
-      let t = '';
+      const parts: string[] = [];
       for (let i = 0; i < this.schema.pages.length; i++) {
         const page = this.schema.pages[i];
-        t += this.renderZone(`body-page-${i + 1}`, page.body);
-        if (i < this.schema.pages.length - 1) t += '\n#pagebreak()\n';
+        parts.push(this.renderZone(`body-page-${i + 1}`, page.body));
+        if (i < this.schema.pages.length - 1) parts.push('\n#pagebreak()\n');
       }
-      return t;
+      return parts.join('');
     }
 
-    // Grouping behavior: Render nested loops
-    // We assume data is in 'items' for grouping, or the root object is an array
     return this.renderGroupLevel(0, this.data.items || []);
   }
 
   private renderGroupLevel(index: number, items: any[]): string {
     const group = this.schema.groups[index];
     if (!group) {
-      // Innermost level: Render the Detail Band (Body) for each item
-      let t = '';
+      const parts: string[] = [];
       for (const item of items) {
-        t += this.renderZone('detail-band', this.schema.pages[0].body, item);
+        parts.push(this.renderZone('detail-band', this.schema.pages[0].body, item));
       }
-      return t;
+      return parts.join('');
     }
 
-    // Grouping logic: Pre-group items by field
     let filteredItems = items;
     if (group.filterBy) {
-      filteredItems = items.filter(item => {
+      filteredItems = items.filter((item) => {
         try {
-          // Simple evaluation for filtering
-          return !!this.resolvePath(group.filterBy!, item);
+          return !!this.resolvePath(group.filterBy ?? '', item);
         } catch {
           return true;
         }
@@ -92,8 +81,7 @@ export class TypstGenerator {
       groupsMap.get(key)?.push(item);
     }
 
-    // Sort groups
-    let sortedKeys = Array.from(groupsMap.keys());
+    const sortedKeys = Array.from(groupsMap.keys());
     if (group.sortBy) {
       sortedKeys.sort((a, b) => {
         const valA = a ?? '';
@@ -111,24 +99,23 @@ export class TypstGenerator {
       });
     }
 
-    let t = '';
+    const parts: string[] = [];
     for (const key of sortedKeys) {
-      const groupItems = groupsMap.get(key)!;
-      // 1. Group Header (Pass groupItems for aggregates if needed)
-      t += this.renderZone(`group-${group.id}-header`, group.header, groupItems[0], groupItems);
-
-      // 2. Nested Groups or Detail Band
-      t += this.renderGroupLevel(index + 1, groupItems);
-
-      // 3. Group Footer (Pass groupItems for aggregates like SUM)
-      t += this.renderZone(`group-${group.id}-footer`, group.footer, groupItems[0], groupItems);
+      const groupItems = groupsMap.get(key) ?? [];
+      parts.push(
+        this.renderZone(`group-${group.id}-header`, group.header, groupItems[0], groupItems)
+      );
+      parts.push(this.renderGroupLevel(index + 1, groupItems));
+      parts.push(
+        this.renderZone(`group-${group.id}-footer`, group.footer, groupItems[0], groupItems)
+      );
     }
-    return t;
+    return parts.join('');
   }
 
   private generatePageSetup(): string {
     const { page, zones } = this.schema;
-    
+
     let headerStr = 'header: none,';
     if (zones.header.repeatOnEveryPage === true) {
       headerStr = `header: [${this.renderZone('header-repeated', zones.header)}],`;
@@ -157,23 +144,20 @@ export class TypstGenerator {
   private renderZone(label: string, zone: any, context?: any, groupItems?: any[]): string {
     if (!zone) return '';
 
-    // Always render a block for the zone if it has a minHeight or components.
-    // This ensures that empty zones still occupy space and force page breaks correctly.
-    let typst = `\n// Band: ${label.toUpperCase()}\n`;
-    typst += `#block(width: 100%, height: ${zone.minHeight || 'auto'}, clip: true)[\n`;
-    
+    const parts: string[] = [];
+    parts.push(`\n// Band: ${label.toUpperCase()}\n`);
+    parts.push(`#block(width: 100%, height: ${zone.minHeight || 'auto'}, clip: true)[\n`);
+
     if (zone.components && zone.components.length > 0) {
       for (const comp of zone.components) {
-        typst += `  ${this.renderComponent(comp, context, groupItems)}`;
+        parts.push(`  ${this.renderComponent(comp, context, groupItems)}`);
       }
     } else {
-      // Add a small invisible element to ensure the block is not completely empty
-      // which sometimes causes Typst to skip it in certain layout contexts.
-      typst += '  #h(0pt)\n';
+      parts.push('  #h(0pt)\n');
     }
-    
-    typst += ']\n';
-    return typst;
+
+    parts.push(']\n');
+    return parts.join('');
   }
 
   private renderComponent(comp: ComponentNode, context?: any, groupItems?: any[]): string {
@@ -196,7 +180,9 @@ export class TypstGenerator {
         const color = comp.style?.color || '#000000';
         const font = comp.style?.fontFamily || 'Sarabun';
         const tracking = comp.style?.letterSpacing || '0pt';
-        const leading = comp.style?.lineHeight ? `${(comp.style.lineHeight - 1) * 0.8}em` : '0.65em';
+        const leading = comp.style?.lineHeight
+          ? `${(comp.style.lineHeight - 1) * 0.8}em`
+          : '0.65em';
 
         let content = this.resolveBinding(comp.content, context, groupItems);
 
@@ -275,12 +261,14 @@ export class TypstGenerator {
       case 'columns': {
         const cols = (comp as any).columns || [];
         const gridCols = cols.map((c: any) => c.width || '1fr').join(', ');
-        const contents = cols.map((c: any) => {
-          const body = (c.components || [])
-            .map((child: any) => this.renderComponent(child, context, groupItems))
-            .join('\n');
-          return `[${body}]`;
-        }).join(', ');
+        const contents = cols
+          .map((c: any) => {
+            const body = (c.components || [])
+              .map((child: any) => this.renderComponent(child, context, groupItems))
+              .join('\n');
+            return `[${body}]`;
+          })
+          .join(', ');
         return `#grid(columns: (${gridCols}), gutter: 10pt, ${contents})`;
       }
 
@@ -290,32 +278,36 @@ export class TypstGenerator {
         const rawData = this.resolvePath(path, context || this.data);
         const items = Array.isArray(rawData) ? rawData : [];
 
-        return items.map((item, idx) => {
-          return (comp as any).children
-            .map((child: any) => this.renderComponent(child, item, items))
-            .join('\n');
-        }).join('\n');
+        return items
+          .map((_item: any, _idx: number) => {
+            return (comp as any).children
+              .map((child: any) => this.renderComponent(child, _item, items))
+              .join('\n');
+          })
+          .join('\n');
       }
 
       case 'summary-box': {
         const rows = (comp as any).rows || [];
-        const rowBody = rows.map((r: any) => {
-          const val = this.resolveBinding(r.value || '', context, groupItems);
-          const isTotal = r.style === 'total';
-          const isHighlight = r.style === 'highlight';
+        const rowBody = rows
+          .map((r: any) => {
+            const val = this.resolveBinding(r.value || '', context, groupItems);
+            const isTotal = r.style === 'total';
+            const isHighlight = r.style === 'highlight';
 
-          let label = r.label;
-          let value = val;
+            let label = r.label;
+            let value = val;
 
-          if (isTotal) {
-            label = `*${label}*`;
-            value = `*${value}*`;
-          }
+            if (isTotal) {
+              label = `*${label}*`;
+              value = `*${value}*`;
+            }
 
-          const fill = isHighlight ? 'fill: yellow.lighten(80%),' : '';
+            const fill = isHighlight ? 'fill: yellow.lighten(80%),' : '';
 
-          return `grid.cell(${fill})[${label}], grid.cell(${fill} align: right)[${value}]`;
-        }).join(',\n    ');
+            return `grid.cell(${fill})[${label}], grid.cell(${fill} align: right)[${value}]`;
+          })
+          .join(',\n    ');
 
         return `#rect(width: 100%, inset: 10pt, fill: white, stroke: 0.5pt + gray)[
           #grid(columns: (1fr, 1fr), gutter: 8pt,
@@ -335,12 +327,16 @@ export class TypstGenerator {
     const borderColor = style.borderColor || 'gray';
     const borderWidth = style.borderWidth || '0.5pt';
 
-    let t = '#table(\n    columns: (';
-    t += `${comp.columns.map((c: any) => (c.width || '1fr').replace('*', 'fr')).join(', ')}),\n`;
-    t += `    inset: 7pt, align: horizon, stroke: ${borderWidth} + ${borderColor},\n`;
+    // Use an array instead of string += to avoid O(n²) intermediate string allocations
+    const parts: string[] = [];
+    parts.push('#table(\n    columns: (');
+    parts.push(
+      `${comp.columns.map((c: any) => (c.width || '1fr').replace('*', 'fr')).join(', ')}),\n`
+    );
+    parts.push(`    inset: 7pt, align: horizon, stroke: ${borderWidth} + ${borderColor},\n`);
 
     if (comp.showHeader) {
-      t += `    fill: (x, y) => if y == 0 { ${headerBg} },\n`;
+      parts.push(`    fill: (x, y) => if y == 0 { ${headerBg} },\n`);
     }
 
     let currentY = 0;
@@ -350,9 +346,11 @@ export class TypstGenerator {
         const cs = col.colspan || 1;
         const rs = col.rowspan || 1;
         if (cs === 1 && rs === 1) {
-          t += `    [*${this.escapeTypst(col.header)}*],\n`;
+          parts.push(`    [*${this.escapeTypst(col.header)}*],\n`);
         } else {
-          t += `    table.cell(x: ${currentX}, y: ${currentY}, colspan: ${cs}, rowspan: ${rs})[*${this.escapeTypst(col.header)}*],\n`;
+          parts.push(
+            `    table.cell(x: ${currentX}, y: ${currentY}, colspan: ${cs}, rowspan: ${rs})[*${this.escapeTypst(col.header)}*],\n`
+          );
         }
         currentX += cs;
       }
@@ -376,16 +374,18 @@ export class TypstGenerator {
         }
 
         if (cs === 1 && rs === 1) {
-          t += `    [${val}],\n`;
+          parts.push(`    [${val}],\n`);
         } else {
-          t += `    table.cell(x: ${currentX}, y: ${currentY}, colspan: ${cs}, rowspan: ${rs})[${val}],\n`;
+          parts.push(
+            `    table.cell(x: ${currentX}, y: ${currentY}, colspan: ${cs}, rowspan: ${rs})[${val}],\n`
+          );
         }
         currentX += cs;
       }
       currentY += 1;
     }
 
-    return `${t})`;
+    return `${parts.join('')})`;
   }
 
   private renderPlaceholder(label: string, value: string): string {
@@ -401,7 +401,7 @@ export class TypstGenerator {
   private calculateAggregate(func: string, path: string, items: any[]): string {
     if (!items || items.length === 0) return '0';
 
-    const values = items.map(item => {
+    const values = items.map((item) => {
       const val = this.resolvePath(path, item);
       const num = typeof val === 'number' ? val : Number.parseFloat(String(val)) || 0;
       return num;
@@ -409,11 +409,16 @@ export class TypstGenerator {
 
     switch (func.toUpperCase()) {
       case 'SUM':
-        return values.reduce((a, b) => a + b, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return values
+          .reduce((a, b) => a + b, 0)
+          .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       case 'COUNT':
         return items.length.toString();
       case 'AVG':
-        return (values.reduce((a, b) => a + b, 0) / items.length).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return (values.reduce((a, b) => a + b, 0) / items.length).toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
       case 'MIN':
         return Math.min(...values).toLocaleString();
       case 'MAX':
@@ -425,13 +430,15 @@ export class TypstGenerator {
 
   private resolveBinding(expr: string, context?: any, groupItems?: any[]): string {
     if (!expr) return '';
+    // Fast path: skip regex entirely when there are no binding expressions
+    if (!expr.includes('{{')) return expr;
 
     // 1. Handle aggregates: {{SUM(price)}}
-    let resolved = expr.replace(/\{\{(SUM|COUNT|AVG|MIN|MAX)\((.+?)\)\}\}/gi, (_, func, path) => {
+    const resolved = expr.replace(/\{\{(SUM|COUNT|AVG|MIN|MAX)\((.+?)\)\}\}/gi, (_, func, path) => {
       return this.calculateAggregate(func, path.trim(), groupItems || []);
     });
 
-    // 2. Handle normal bindings
+    // 2. Handle normal bindings: {{field.path}}
     return resolved.replace(/\{\{(.+?)\}\}/g, (_, path) => {
       const val = this.resolvePath(path.trim(), context || this.data);
       return val !== undefined ? String(val) : `{{${path}}}`;
@@ -452,7 +459,7 @@ export class TypstGenerator {
   let count = 0
   let is_negative = s.starts-with("-")
   let start_idx = if is_negative { 1 } else { 0 }
-  
+
   for i in range(s.len() - 1, start_idx - 1, step: -1) {
     if count > 0 and calc.rem(count, 3) == 0 {
       result = "," + result
@@ -460,14 +467,14 @@ export class TypstGenerator {
     result = s.at(i) + result
     count += 1
   }
-  
+
   if is_negative { "-" + result } else { result }
 }
 
 #let fmt_number(v) = {
-  let val = if type(v) == "string" { 
+  let val = if type(v) == "string" {
     let trimmed = v.trim()
-    if trimmed == "" { 0 } else { 
+    if trimmed == "" { 0 } else {
       let f = float(trimmed)
       if f == none { trimmed } else { f }
     }
@@ -491,7 +498,7 @@ export class TypstGenerator {
 }
 
 #let fmt_currency_thb(v) = {
-  let num = if type(v) == "string" { 
+  let num = if type(v) == "string" {
     let trimmed = v.trim()
     if trimmed == "" { 0 } else { float(trimmed) }
   } else { v }
@@ -499,14 +506,14 @@ export class TypstGenerator {
 }
 
 #let fmt_currency_usd(v) = {
-  let num = if type(v) == "string" { 
+  let num = if type(v) == "string" {
     let trimmed = v.trim()
     if trimmed == "" { 0 } else { float(trimmed) }
   } else { v }
   "$" + fmt_number(num)
 }
 
-#let fmt_date_th(v) = { 
+#let fmt_date_th(v) = {
   if type(v) != "string" or v == "" { return str(v) }
   let months = ("มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม")
   if v.len() >= 10 {
@@ -520,7 +527,7 @@ export class TypstGenerator {
   v
 }
 
-#let fmt_date_en(v) = { 
+#let fmt_date_en(v) = {
   if type(v) != "string" or v == "" { return str(v) }
   let months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
   if v.len() >= 10 {
@@ -535,7 +542,7 @@ export class TypstGenerator {
 }
 
 #let fmt_percent(v) = {
-  let num = if type(v) == "string" { 
+  let num = if type(v) == "string" {
     let trimmed = v.trim()
     if trimmed == "" { 0 } else { float(trimmed) }
   } else { v }

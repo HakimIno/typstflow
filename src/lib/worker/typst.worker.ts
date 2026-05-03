@@ -2,7 +2,12 @@ import init, { TypstBridge } from '../wasm-bridge/typst_bridge';
 
 let bridge: TypstBridge | null = null;
 
-// Initialize the WASM module in the worker thread
+// Image cache: tracks which images are currently registered in the WASM bridge.
+// Key = "<compId>:<dataLength>:<first32chars>" — cheap but reliable identity check.
+// This avoids bridge.clear_images() + full re-decode on every render call.
+const imageCache = new Map<string, string>(); // cacheKey → virtualPath
+let lastImagesHash = '';
+
 async function initialize() {
   if (bridge) return;
   try {
@@ -17,39 +22,24 @@ async function initialize() {
   }
 }
 
-/**
- * Extract MIME type from a data URL (e.g., "data:image/webp;base64,..." -> "image/webp").
- */
 function getMimeFromDataUrl(dataUrl: string): string | undefined {
   const match = dataUrl.match(/^data:([^;]+);/);
   return match ? match[1] : undefined;
 }
 
-/**
- * Sniff the file extension from image magic bytes.
- * This is more reliable than trusting the MIME type header.
- */
 function sniffExtension(bytes: Uint8Array): string {
-  // PNG: 89 50 4E 47
   if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47)
     return 'png';
-  // JPEG: FF D8 FF
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpg';
-  // WebP: RIFF .... WEBP
   if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) {
     if (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50)
       return 'webp';
   }
-  // GIF: GIF8
   if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38)
     return 'gif';
-
   return 'png';
 }
 
-/**
- * Determine the file extension from a MIME type (fallback).
- */
 function getExtFromMime(mime?: string): string {
   if (!mime) return 'png';
   const mapping: Record<string, string> = {
@@ -63,9 +53,6 @@ function getExtFromMime(mime?: string): string {
   return mapping[mime] || 'png';
 }
 
-/**
- * Decode a base64 data URL ("data:image/png;base64,...") to a Uint8Array.
- */
 function dataUrlToBytes(dataUrl: string): Uint8Array {
   const comma = dataUrl.indexOf(',');
   if (comma === -1) throw new Error('Invalid data URL: missing comma');
@@ -78,110 +65,143 @@ function dataUrlToBytes(dataUrl: string): Uint8Array {
   return bytes;
 }
 
+function getImageCacheKey(compId: string, srcData: string): string {
+  // Length + prefix is fast and effectively unique for normal usage
+  return `${compId}:${srcData.length}:${srcData.slice(0, 32)}`;
+}
+
 /**
- * Recursively walk components to register images and swap src to virtual paths.
+ * Walk components, register new/changed images, and swap comp.src to virtual paths.
+ * Uses imageCache to skip re-decoding unchanged images.
  */
-function walkComponents(components: any[]) {
+function walkComponents(components: any[], activeCacheKeys: Set<string>): void {
   if (!components || !Array.isArray(components)) return;
 
   for (const comp of components) {
     if (comp.type === 'image' && comp.srcData) {
-      try {
-        const bytes = dataUrlToBytes(comp.srcData);
+      const cacheKey = getImageCacheKey(comp.id, comp.srcData);
+      const cached = imageCache.get(cacheKey);
 
-        // Sniff real extension from bytes instead of trusting headers
-        const sniffedExt = sniffExtension(bytes);
-
-        // Only fallback to MIME detection if sniffing didn't yield common binary formats
-        // (e.g. for SVGs which are text-based)
-        let ext = sniffedExt;
-        if (sniffedExt === 'png' && !comp.srcData.startsWith('data:image/png')) {
-          const mimeFromData = getMimeFromDataUrl(comp.srcData);
-          ext = getExtFromMime(mimeFromData || comp.mimeType);
+      if (cached) {
+        comp.src = cached;
+      } else {
+        try {
+          const bytes = dataUrlToBytes(comp.srcData);
+          const sniffedExt = sniffExtension(bytes);
+          let ext = sniffedExt;
+          if (sniffedExt === 'png' && !comp.srcData.startsWith('data:image/png')) {
+            const mimeFromData = getMimeFromDataUrl(comp.srcData);
+            ext = getExtFromMime(mimeFromData || comp.mimeType);
+          }
+          const virtualPath = `asset-${comp.id}.${ext}`;
+          bridge?.register_image(virtualPath, bytes);
+          imageCache.set(cacheKey, virtualPath);
+          comp.src = virtualPath;
+        } catch (e) {
+          console.warn(`[Worker] Failed to register image ${comp.id} (${comp.src}):`, e);
         }
-
-        const virtualPath = `asset-${comp.id}.${ext}`;
-
-        bridge?.register_image(virtualPath, bytes);
-
-        // Swapping src here ensures the generator (Rust or TS) uses this exact path
-        comp.src = virtualPath;
-      } catch (e) {
-        console.warn(`[Worker] Failed to register image ${comp.id} (${comp.src}):`, e);
-        // Do NOT change comp.src if registration fails, 
-        // so the generator can show "FILE NOT FOUND" instead of crashing
       }
+
+      if (comp.src) activeCacheKeys.add(cacheKey);
     }
 
     if (comp.type === 'repeater' && comp.children) {
-      walkComponents(comp.children);
+      walkComponents(comp.children, activeCacheKeys);
     } else if (comp.type === 'columns' && comp.columns) {
       for (const col of comp.columns) {
-        if (col.components) {
-          walkComponents(col.components);
-        }
+        if (col.components) walkComponents(col.components, activeCacheKeys);
       }
     }
   }
 }
 
 /**
- * Walk the schema, register image bytes in the WASM bridge registry, and
- * REPLACE comp.src with the virtual path "asset-{id}.{ext}".
+ * Build a cheap hash of all image identities in the schema.
+ * Used to detect whether any images have changed since the last render.
  */
+function computeImagesHash(schema: any): string {
+  const parts: string[] = [];
+  const collect = (comps: any[]) => {
+    for (const c of comps || []) {
+      if (c.type === 'image' && c.srcData) parts.push(`${c.id}:${c.srcData.length}`);
+      if (c.type === 'repeater') collect(c.children || []);
+      if (c.type === 'columns') {
+        for (const col of c.columns || []) collect(col.components || []);
+      }
+    }
+  };
+  collect(schema.zones?.header?.components || []);
+  collect(schema.zones?.footer?.components || []);
+  for (const p of schema.pages || []) collect(p.body?.components || []);
+  for (const g of schema.groups || []) {
+    collect(g.header?.components || []);
+    collect(g.footer?.components || []);
+  }
+  return parts.join('|');
+}
+
 /**
- * Walk the schema, register image bytes in the WASM bridge registry, and
- * REPLACE comp.src with the virtual path "asset-{id}.{ext}".
- * Also injects dummy components into empty zones to force WASM bridge to render them.
+ * Walk the schema, register image bytes in the WASM bridge (only if changed),
+ * and replace comp.src with virtual paths. Also injects dummy components into
+ * empty zones to force the WASM bridge to render them.
  */
 function injectImagesIntoSchema(schema: any): any {
   if (!bridge || !schema?.zones) return schema;
 
-  // We can mutate the schema directly because the worker receives 
-  // a structured clone of the data, so it won't affect the main thread.
   const s = schema;
 
-  bridge.clear_images();
+  // Only clear + re-register images when something has actually changed.
+  // Most renders (text edits, position moves) touch no images — skip entirely.
+  const currentHash = computeImagesHash(s);
+  const imagesChanged = currentHash !== lastImagesHash;
 
-  // Ensure Header/Footer repetition is explicitly defined for WASM bridge
+  if (imagesChanged) {
+    bridge.clear_images();
+    imageCache.clear();
+    lastImagesHash = currentHash;
+  }
+
   if (s.zones.header.repeatOnEveryPage === undefined) s.zones.header.repeatOnEveryPage = false;
   if (s.zones.footer.repeatOnEveryPage === undefined) s.zones.footer.repeatOnEveryPage = false;
 
-  const zoneNames = ['header', 'footer'];
-  for (const zoneName of zoneNames) {
+  const activeCacheKeys = new Set<string>();
+
+  for (const zoneName of ['header', 'footer'] as const) {
     const zone = s.zones?.[zoneName];
-    if (zone) {
-      // FIX: Force blank pages/zones to render in WASM bridge by adding a tiny invisible spacer if empty
-      if (!zone.components || zone.components.length === 0) {
-        zone.components = [{
-          id: `dummy-${zoneName}`,
-          type: 'text',
-          content: '',
-          x: 0, y: 0, width: 1, height: 1
-        }];
+    if (!zone) continue;
+    if (!zone.components || zone.components.length === 0) {
+      zone.components = [
+        { id: `dummy-${zoneName}`, type: 'text', content: '', x: 0, y: 0, width: 1, height: 1 },
+      ];
+    } else {
+      walkComponents(zone.components, activeCacheKeys);
+    }
+  }
+
+  if (s.pages && Array.isArray(s.pages)) {
+    for (const page of s.pages) {
+      if (!page.body) continue;
+      if (!page.body.components || page.body.components.length === 0) {
+        page.body.components = [
+          {
+            id: `dummy-body-${page.id}`,
+            type: 'text',
+            content: '',
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1,
+          },
+        ];
       } else {
-        walkComponents(zone.components);
+        walkComponents(page.body.components, activeCacheKeys);
       }
     }
   }
 
-  // Iterate over all pages for body components
-  if (s.pages && Array.isArray(s.pages)) {
-    for (const page of s.pages) {
-      if (page.body) {
-        // FIX: Force empty pages to render
-        if (!page.body.components || page.body.components.length === 0) {
-          page.body.components = [{
-            id: `dummy-body-${page.id}`,
-            type: 'text',
-            content: '',
-            x: 0, y: 0, width: 1, height: 1
-          }];
-        } else {
-          walkComponents(page.body.components);
-        }
-      }
-    }
+  // Prune stale entries from the local cache (not from WASM — bridge manages its own memory)
+  for (const key of imageCache.keys()) {
+    if (!activeCacheKeys.has(key)) imageCache.delete(key);
   }
 
   return s;
@@ -244,5 +264,4 @@ self.onmessage = async (e: MessageEvent) => {
   }
 };
 
-// Start initialization immediately
 initialize();

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { useResizable } from '@/hooks/use-resizable';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
@@ -51,15 +52,21 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const previewRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
-  // ✅ Use separate subscriptions for each value - this prevents re-renders when unrelated state changes
-  const isSelected = useDesignerStore((s) => s.selectedComponentIds.includes(component.id));
-  const _isDraggingGlobal = useDesignerStore((s) => s.dragState.isDragging);
-  const _draggedComponentId = useDesignerStore((s) => s.dragState.draggedComponentId);
-  const selectedIds = useDesignerStore((s) => s.selectedComponentIds);
-  const isHidden = useDesignerStore((s) => s.hiddenComponentIds.includes(component.id));
-  const isLocked = useDesignerStore((s) => s.lockedComponentIds.includes(component.id));
+  // Single subscription for all reactive data — useShallow does key-by-key comparison
+  // so this only re-renders when one of these specific values actually changes.
+  // Removes 10 separate subscriptions (and 3 unused ones: _isDraggingGlobal, _draggedComponentId, _zoom).
+  const { isSelected, selectedIds, isHidden, isLocked, totalPages, sampleData } = useDesignerStore(
+    useShallow((s) => ({
+      isSelected: s.selectedComponentIds.includes(component.id),
+      selectedIds: s.selectedComponentIds,
+      isHidden: s.hiddenComponentIds.includes(component.id),
+      isLocked: s.lockedComponentIds.includes(component.id),
+      totalPages: s.schema.pages.length,
+      sampleData: s.sampleData,
+    }))
+  );
 
-  // Use selectors for actions (these are stable references)
+  // Actions — stable Zustand references, won't cause re-renders
   const selectComponent = useDesignerStore((s) => s.selectComponent);
   const toggleComponentSelection = useDesignerStore((s) => s.toggleComponentSelection);
   const updateComponent = useDesignerStore((s) => s.updateComponent);
@@ -71,11 +78,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const moveUp = useDesignerStore((s) => s.moveUp);
   const moveDown = useDesignerStore((s) => s.moveDown);
 
-  const sampleData = useDesignerStore((s) => s.sampleData);
-  const _zoom = useDesignerStore((s) => s.zoom);
-
   const [isEditing, setIsEditing] = useState(false);
-  const totalPages = useDesignerStore((state) => state.schema.pages.length);
 
   // ✅ Ultra-fast pointer-based drag (Figma-style)
   const dragStateRef = useRef<{
@@ -213,17 +216,19 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
         // ✅ Detect target zone or page for drop
         let targetZone = detectZoneAtPoint(event.clientX, event.clientY);
-        
+
         // If no specific zone, try to find the page under the cursor
         if (!targetZone) {
           const elementsUnderPoint = document.elementsFromPoint(event.clientX, event.clientY);
-          const paperContainer = elementsUnderPoint.find(el => el.hasAttribute('data-paper-container'));
+          const paperContainer = elementsUnderPoint.find((el) =>
+            el.hasAttribute('data-paper-container')
+          );
           if (paperContainer) {
             targetZone = {
               zoneKey: 'body',
               pageId: paperContainer.getAttribute('data-page-id') || undefined,
               element: paperContainer as HTMLElement,
-              rect: paperContainer.getBoundingClientRect()
+              rect: paperContainer.getBoundingClientRect(),
             };
           }
         }
@@ -277,8 +282,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               let targetZoneLength = 0;
               if (target.zoneKey === 'body' && target.pageId) {
                 targetZoneLength =
-                  store.schema.pages.find((p) => p.id === target.pageId)?.body.components
-                    .length || 0;
+                  store.schema.pages.find((p) => p.id === target.pageId)?.body.components.length ||
+                  0;
               } else if (target.zoneKey !== 'body') {
                 targetZoneLength =
                   (store.schema.zones as any)[target.zoneKey]?.components?.length || 0;
@@ -501,13 +506,13 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         'transition-none cursor-default select-none group focus:outline-none high-perf-gpu',
         isSelected
           ? clsx(
-            'z-50 ring-2 ring-[var(--accent)] ring-inset shadow-md',
-            component.type === 'text' ? 'bg-white/[0.02]' : 'bg-white/10'
-          )
+              'z-50 ring-2 ring-[var(--accent)] ring-inset shadow-md',
+              component.type === 'text' ? 'bg-white/[0.02]' : 'bg-white/10'
+            )
           : clsx(
-            'z-10 ring-inset hover:ring-1 hover:ring-white/20',
-            component.type === 'text' ? 'bg-transparent' : 'bg-white/5 hover:bg-white/10'
-          ),
+              'z-10 ring-inset hover:ring-1 hover:ring-white/20',
+              component.type === 'text' ? 'bg-transparent' : 'bg-white/5 hover:bg-white/10'
+            ),
         isSelected && !isLocked && 'z-[100]',
         isMoving && 'is-moving z-[100] ring-2 ring-[var(--accent)] shadow-lg pointer-events-none',
         isResizing && 'ring-2 ring-[var(--accent)] shadow-lg z-[100]'
@@ -653,11 +658,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       {/* Content Preview */}
       {!isEditing && (
         <div ref={previewRef} className="w-full h-full relative pointer-events-none">
-          <ComponentPreview
-            component={component}
-            pageIndex={pageIndex}
-            totalPages={totalPages}
-          />
+          <ComponentPreview component={component} pageIndex={pageIndex} totalPages={totalPages} />
         </div>
       )}
 
@@ -672,21 +673,21 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             className={clsx(
               'absolute w-1.5 h-1.5 bg-white border border-[var(--accent)] z-50 shadow-sm',
               handle === 'top-left' &&
-              'top-0 left-0 -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize',
+                'top-0 left-0 -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize',
               handle === 'top-center' &&
-              'top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 cursor-ns-resize',
+                'top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 cursor-ns-resize',
               handle === 'top-right' &&
-              'top-0 right-0 translate-x-1/2 -translate-y-1/2 cursor-nesw-resize',
+                'top-0 right-0 translate-x-1/2 -translate-y-1/2 cursor-nesw-resize',
               handle === 'middle-left' &&
-              'top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize',
+                'top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize',
               handle === 'middle-right' &&
-              'top-1/2 right-0 translate-x-1/2 -translate-y-1/2 cursor-ew-resize',
+                'top-1/2 right-0 translate-x-1/2 -translate-y-1/2 cursor-ew-resize',
               handle === 'bottom-left' &&
-              'bottom-0 left-0 -translate-x-1/2 translate-y-1/2 cursor-nesw-resize',
+                'bottom-0 left-0 -translate-x-1/2 translate-y-1/2 cursor-nesw-resize',
               handle === 'bottom-center' &&
-              'bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 cursor-ns-resize',
+                'bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 cursor-ns-resize',
               handle === 'bottom-right' &&
-              'bottom-0 right-0 translate-x-1/2 translate-y-1/2 cursor-nwse-resize'
+                'bottom-0 right-0 translate-x-1/2 translate-y-1/2 cursor-nwse-resize'
             )}
           />
         ))}

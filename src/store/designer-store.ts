@@ -620,16 +620,14 @@ export const useDesignerStore = create<DesignerState>()(
 
           const schema = { ...state.schema };
           if (zoneKey === 'body') {
-            const page = schema.pages.find(
-              (p) => p.id === (pageId || state.activePageId || state.schema.pages[0].id)
+            const targetPageId = pageId || state.activePageId || state.schema.pages[0].id;
+            schema.pages = state.schema.pages.map((p) =>
+              p.id === targetPageId ? { ...p, body: { ...p.body, ...updates } } : p
             );
-            if (page) {
-              page.body = { ...page.body, ...updates };
-            }
           } else {
-            (schema.zones as any)[zoneKey] = {
-              ...schema.zones[zoneKey as 'header' | 'footer'],
-              ...updates,
+            schema.zones = {
+              ...state.schema.zones,
+              [zoneKey]: { ...state.schema.zones[zoneKey as 'header' | 'footer'], ...updates },
             };
           }
 
