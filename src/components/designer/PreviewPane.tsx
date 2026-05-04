@@ -7,6 +7,7 @@ import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Loading } from '../shared/Loading';
 
 export function PreviewPane() {
   const schema = useDesignerStore((state) => state.schema);
@@ -97,16 +98,22 @@ export function PreviewPane() {
             ))
           ) : (
             <div
-              className="relative bg-white shadow-2xl overflow-hidden border border-slate-400 flex flex-col items-center justify-center gap-4 text-slate-400 bg-slate-50/50"
+              className="relative overflow-hidden "
               style={{
                 width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
                 height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
               }}
             >
-              <Loader2 className="w-12 h-12 animate-spin opacity-20" />
-              <p className="text-[11px] font-bold uppercase tracking-widest opacity-40">
-                Compiling Report...
-              </p>
+              {/* Animated Background Blobs */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none ">
+                <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] rounded-full bg-blue-400/30 blur-[80px] animate-blob" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] rounded-full bg-purple-400/30 blur-[80px] animate-blob animation-delay-2000" />
+                <div className="absolute top-[20%] right-[10%] w-[60%] h-[60%] rounded-full bg-pink-400/20 blur-[80px] animate-blob animation-delay-4000" />
+              </div>
+
+              <div className="relative z-10 flex h-full items-center justify-center">
+                <Loading message={'Compiling Report...'} />
+              </div>
             </div>
           )}
         </div>
@@ -122,22 +129,6 @@ export function PreviewPane() {
         )}
       </div>
 
-      {/* Floating Status / Info */}
-      <div
-        className={clsx(
-          'absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-slate-800/90 text-white rounded-full shadow-lg border border-slate-700 flex items-center gap-3 transition-all duration-500',
-          isRendering && viewMode !== 'split'
-            ? 'opacity-100 translate-y-0'
-            : 'opacity-0 translate-y-4 pointer-events-none'
-        )}
-      >
-        <div className="flex items-center gap-2">
-          <RefreshCw className="w-3.5 h-3.5 text-blue-400 animate-spin" />
-          <span className="text-[10px] font-bold uppercase tracking-widest">
-            Rendering Live View
-          </span>
-        </div>
-      </div>
     </div>
   );
 }

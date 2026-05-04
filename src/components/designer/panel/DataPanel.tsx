@@ -1,7 +1,13 @@
 'use client';
 
 import { DesignerInput } from '@/components/shared/DesignerInput';
-import { extractJsonPaths, formatBinding, getValueType } from '@/lib/utils/json-path';
+import {
+  extractJsonPaths,
+  formatBinding,
+  getValueType,
+  resolvePath,
+  setNestedValue,
+} from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { Editor } from '@monaco-editor/react';
@@ -19,16 +25,18 @@ import {
   Search,
   Type,
 } from 'lucide-react';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { BasePanel } from './BasePanel';
 import { PanelHeader } from './PanelHeader';
 
 export const DataPanel = memo(function DataPanel() {
-  const { sampleData, setSampleData, theme } = useDesignerStore(
+  const { sampleData, setSampleData, schema, theme } = useDesignerStore(
     useShallow((state) => ({
       sampleData: state.sampleData,
       setSampleData: state.setSampleData,
+      schema: state.schema,
       theme: state.theme,
     }))
   );
@@ -37,7 +45,32 @@ export const DataPanel = memo(function DataPanel() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [hoveredItem, setHoveredItem] = useState<{
+    path: string;
+    type: string;
+    rect: DOMRect;
+  } | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
+
+  const handleFromSchema = useCallback(() => {
+    let result: Record<string, unknown> = {};
+    for (const field of schema.dataSchema) {
+      const defaultVal =
+        field.example !== undefined
+          ? field.example
+          : field.type === 'number'
+            ? 0
+            : field.type === 'boolean'
+              ? false
+              : field.type === 'array'
+                ? []
+                : field.type === 'date'
+                  ? '2024-01-01'
+                  : '';
+      result = setNestedValue(result, field.path, defaultVal);
+    }
+    setSampleData(result);
+  }, [schema.dataSchema, setSampleData]);
 
   useEffect(() => {
     setJsonString(JSON.stringify(sampleData, null, 2));
@@ -137,13 +170,24 @@ export const DataPanel = memo(function DataPanel() {
     <BasePanel>
       <PanelHeader
         actions={
-          <button
-            type="button"
-            onClick={loadExample}
-            className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold uppercase tracking-wider border border-[var(--border-subtle)] px-2 py-0.5 rounded-[4px] hover:bg-white/5 transition-colors"
-          >
-            Example
-          </button>
+          <div className="flex items-center gap-1.5">
+            {schema.dataSchema.length > 0 && (
+              <button
+                type="button"
+                onClick={handleFromSchema}
+                className="text-[9px] text-[var(--accent)] hover:text-[var(--text-primary)] font-bold uppercase tracking-wider border border-[var(--accent)]/40 px-2 py-0.5 rounded-[4px] hover:bg-[var(--accent)]/10 transition-colors"
+              >
+                From Schema
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={loadExample}
+              className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold uppercase tracking-wider border border-[var(--border-subtle)] px-2 py-0.5 rounded-[4px] hover:bg-white/5 transition-colors"
+            >
+              Example
+            </button>
+          </div>
         }
       >
         <div className="flex items-center gap-3">
@@ -299,7 +343,14 @@ export const DataPanel = memo(function DataPanel() {
                           }
                         />
                       ) : (
-                        <ExplorerItem path={item.path} type={item.dataType} />
+                        <ExplorerItem
+                          path={item.path}
+                          type={item.dataType}
+                          onHover={(rect) =>
+                            setHoveredItem({ path: item.path, type: item.dataType, rect })
+                          }
+                          onLeave={() => setHoveredItem(null)}
+                        />
                       )}
                     </div>
                   );
@@ -309,6 +360,16 @@ export const DataPanel = memo(function DataPanel() {
           </div>
         </div>
       )}
+      {hoveredItem &&
+        createPortal(
+          <FieldTooltip
+            path={hoveredItem.path}
+            type={hoveredItem.type}
+            rect={hoveredItem.rect}
+            sampleData={sampleData}
+          />,
+          document.body
+        )}
     </BasePanel>
   );
 });
@@ -356,14 +417,23 @@ function ExplorerHeader({
   );
 }
 
-function ExplorerItem({ path, type }: { path: string; type: string }) {
+function ExplorerItem({
+  path,
+  type,
+  onHover,
+  onLeave,
+}: {
+  path: string;
+  type: string;
+  onHover: (rect: DOMRect) => void;
+  onLeave: () => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-
     return draggable({
       element: el,
       getInitialData: () => ({
@@ -394,32 +464,26 @@ function ExplorerItem({ path, type }: { path: string; type: string }) {
             ? List
             : Database;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(formatBinding(path));
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleCopy();
-    }
-  };
+  const handleCopy = () => navigator.clipboard.writeText(formatBinding(path));
 
   return (
     <div
       ref={ref}
       className={clsx(
-        'group flex items-center gap-2.5 px-2 py-1 rounded transition-all cursor-grab active:cursor-grabbing hover:bg-[var(--bg-widget)] border border-transparent hover:border-[var(--border-subtle)] hover:shadow-sm w-full text-left outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]',
+        'group flex items-center gap-2.5 px-2 py-1 rounded-xl transition-all border border-transparent cursor-grab active:cursor-grabbing hover:bg-[var(--bg-widget)] hover:border-[var(--border-subtle)] hover:shadow-sm w-full text-left outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]',
         isDragging && 'opacity-40 grayscale'
       )}
       onClick={handleCopy}
-      onKeyDown={handleKeyDown}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleCopy();
+        }
+      }}
+      onMouseEnter={(e) => onHover((e.currentTarget as HTMLElement).getBoundingClientRect())}
+      onMouseLeave={onLeave}
     >
-      <div
-        className={clsx(
-          'w-5 h-5 p-0.5 rounded-full bg-[var(--bg-widget)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] transition-all shadow-sm'
-        )}
-      >
+      <div className="w-5 h-5 p-0.5 rounded-full bg-[var(--bg-widget)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] transition-all ">
         <Icon className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors" />
       </div>
 
@@ -434,7 +498,7 @@ function ExplorerItem({ path, type }: { path: string; type: string }) {
 
       <button
         type="button"
-        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-[var(--bg-surface)] rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] transition-all"
+        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-[var(--bg-surface)] rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] transition-all shrink-0"
         onClick={(e) => {
           e.stopPropagation();
           handleCopy();
@@ -442,6 +506,99 @@ function ExplorerItem({ path, type }: { path: string; type: string }) {
       >
         <Copy className="w-3.5 h-3.5" />
       </button>
+    </div>
+  );
+}
+
+function FieldTooltip({
+  path,
+  type,
+  rect,
+  sampleData,
+}: {
+  path: string;
+  type: string;
+  rect: DOMRect;
+  sampleData: Record<string, unknown>;
+}) {
+  const rawValue = resolvePath(sampleData, path);
+
+  const displayValue = (() => {
+    if (rawValue === undefined || rawValue === null) return '—';
+    if (typeof rawValue === 'object') {
+      const json = JSON.stringify(rawValue, null, 2);
+      return json.length > 300 ? `${json.slice(0, 300)}…` : json;
+    }
+    return String(rawValue);
+  })();
+
+  // Position to the right of the item, vertically centered on it
+  const TOOLTIP_H = 220;
+  const left = rect.right + 8;
+  const top = Math.min(
+    Math.max(8, rect.top + rect.height / 2 - TOOLTIP_H / 2),
+    window.innerHeight - TOOLTIP_H - 8
+  );
+  // Arrow vertical offset: where the item's center falls relative to tooltip top
+  const arrowTop = rect.top + rect.height / 2 - top;
+
+  const typeColor =
+    type === 'string'
+      ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30'
+      : type === 'number'
+        ? 'text-amber-400 bg-amber-400/10 border-amber-400/30'
+        : type === 'boolean'
+          ? 'text-purple-400 bg-purple-400/10 border-purple-400/30'
+          : type === 'array'
+            ? 'text-sky-400 bg-sky-400/10 border-sky-400/30'
+            : 'text-[var(--text-muted)] bg-white/5 border-[var(--border-subtle)]';
+
+  return (
+    <div className="fixed z-[9999] w-56 pointer-events-none" style={{ top, left }}>
+      {/* Arrow pointing left, aligned to the hovered item's center */}
+      <div
+        className="absolute -left-1.5 w-3 h-3 bg-[var(--bg-surface)] border-l border-t border-[var(--border-default)]"
+        style={{ top: arrowTop - 6, transform: 'rotate(-45deg)' }}
+      />
+
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="px-3 pt-3 pb-2 border-b border-[var(--border-subtle)] flex items-start justify-between gap-2">
+          <p className="text-[11px] font-bold text-[var(--text-primary)] break-all leading-tight">
+            {path}
+          </p>
+          <span
+            className={clsx(
+              'shrink-0 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border',
+              typeColor
+            )}
+          >
+            {type}
+          </span>
+        </div>
+
+        <div className="p-3 space-y-2.5">
+          {/* Binding expression */}
+          <div>
+            <p className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-wider mb-1">
+              Binding
+            </p>
+            <code className="block text-[10px] font-mono text-emerald-400 bg-black/20 px-2 py-1 rounded border border-[var(--border-subtle)] break-all">
+              {`{{${path}}}`}
+            </code>
+          </div>
+
+          {/* Current value */}
+          <div>
+            <p className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-wider mb-1">
+              Value
+            </p>
+            <div className="text-[10px] font-mono text-amber-300 bg-black/20 px-2 py-1.5 rounded border border-[var(--border-subtle)] max-h-28 overflow-y-auto whitespace-pre-wrap break-all">
+              {displayValue}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

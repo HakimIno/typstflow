@@ -220,3 +220,35 @@ export function groupPathsByParent(paths: string[]): PathGroup[] {
 export function getPathLabel(path: string): string {
   return path;
 }
+
+/**
+ * Immutably set a value at a dot-notation path in a nested object.
+ * Returns the original object unchanged if the path contains "[*]"
+ * (wildcard array paths cannot be edited directly).
+ */
+export function setNestedValue(
+  obj: Record<string, unknown>,
+  path: string,
+  value: unknown
+): Record<string, unknown> {
+  if (path.includes('[*]')) return obj;
+
+  const parts = path.split('.');
+  const result = { ...obj };
+  let cursor: Record<string, unknown> = result;
+
+  for (let i = 0; i < parts.length - 1; i++) {
+    const key = parts[i] as string;
+    const child = cursor[key];
+    const next: Record<string, unknown> =
+      child && typeof child === 'object' && !Array.isArray(child)
+        ? { ...(child as Record<string, unknown>) }
+        : {};
+    cursor[key] = next;
+    cursor = next;
+  }
+
+  const lastKey = parts[parts.length - 1] as string;
+  cursor[lastKey] = value;
+  return result;
+}
