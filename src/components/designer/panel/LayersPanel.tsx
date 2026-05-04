@@ -43,23 +43,23 @@ type RenderItem =
   | { type: 'page-separator'; pageId: string; index: number }
   | { type: 'global-separator'; label: string }
   | {
-      type: 'zone-header';
-      zoneKey: string;
-      label: string;
-      pageId?: string;
-      count: number;
-      groupId?: string;
-      groupType?: 'header' | 'footer';
-    }
+    type: 'zone-header';
+    zoneKey: string;
+    label: string;
+    pageId?: string;
+    count: number;
+    groupId?: string;
+    groupType?: 'header' | 'footer';
+  }
   | {
-      type: 'component';
-      component: ComponentNode;
-      zoneKey: string;
-      index: number;
-      pageId?: string;
-      groupId?: string;
-      groupType?: 'header' | 'footer';
-    };
+    type: 'component';
+    component: ComponentNode;
+    zoneKey: string;
+    index: number;
+    pageId?: string;
+    groupId?: string;
+    groupType?: 'header' | 'footer';
+  };
 
 // --- Components ---
 
@@ -552,7 +552,7 @@ export const LayersPanel = memo(function LayersPanel() {
       <div ref={parentRef} className="flex-1 overflow-y-auto scrollbar-hide py-1">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center h-64 px-10 text-center">
-            <div className="w-12 h-12 rounded-lg bg-[var(--bg-widget)] flex items-center justify-center mb-4 border border-[var(--border-subtle)]">
+            <div className="w-8 h-8 rounded-lg bg-[var(--bg-widget)] flex items-center justify-center mb-4 border border-[var(--border-subtle)]">
               <Layers className="w-4 h-4 text-[var(--text-muted)]" />
             </div>
             <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-1">
