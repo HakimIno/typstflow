@@ -1,7 +1,19 @@
 'use client';
 
 import { clsx } from 'clsx';
-import { Bot, ChevronDown, ListTree, Mic, Plus, RefreshCcw, Send, Sparkles, User, Wand2, Zap } from 'lucide-react';
+import {
+  Bot,
+  ChevronDown,
+  ListTree,
+  Mic,
+  Plus,
+  RefreshCcw,
+  Send,
+  Sparkles,
+  User,
+  Wand2,
+  Zap,
+} from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { BasePanel } from './BasePanel';
 import { PanelHeader } from './PanelHeader';

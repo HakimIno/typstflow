@@ -5,18 +5,16 @@ import { renderReportToSvg } from '@/lib/typst-wasm';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Loading } from '../shared/Loading';
 
 export function PreviewPane() {
   const schema = useDesignerStore((state) => state.schema);
   const sampleData = useDesignerStore((state) => state.sampleData);
-  const viewMode = useDesignerStore((state) => state.viewMode);
   const zoom = useDesignerStore((state) => state.zoom);
   const isDragging = useDesignerStore((state) => state.dragState.isDragging);
   const [svgContent, setSvgContent] = useState<string[] | null>(null);
-  const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,7 +26,6 @@ export function PreviewPane() {
 
     const performRender = async () => {
       try {
-        setIsRendering(true);
         setError(null);
 
         const result = await renderReportToSvg(schema, sampleData);
@@ -42,8 +39,6 @@ export function PreviewPane() {
         if (!active) return;
         console.error('Render error:', err);
         setError(err.message || 'Failed to render Typst');
-      } finally {
-        if (active) setIsRendering(false);
       }
     };
 
@@ -86,7 +81,7 @@ export function PreviewPane() {
               <div
                 key={idx}
                 className={clsx(
-                  'relative bg-white shadow-2xl overflow-hidden border border-slate-400'
+                  'relative bg-white shadow-xl overflow-hidden '
                 )}
                 style={{
                   width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
@@ -128,7 +123,6 @@ export function PreviewPane() {
           </div>
         )}
       </div>
-
     </div>
   );
 }

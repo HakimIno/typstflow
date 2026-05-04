@@ -42,7 +42,7 @@
 :root {
   /* Light Theme (HeroUI Pro Inspired) */
   --bg-app: #f8fafc;
-  --bg-surface: rgba(255, 255, 255, 0.9);
+  --bg-surface: rgba(255, 255, 255, 1);
   --bg-surface-solid: #ffffff;
   --bg-canvas: #e2e8f0;
   --bg-widget: rgba(0, 0, 0, 0.04);
@@ -63,7 +63,7 @@
 .dark {
   /* Dark Theme (HeroUI Pro Inspired) */
   --bg-app: #000000;
-  --bg-surface: rgba(24, 24, 27, 0.85);
+  --bg-surface: rgba(24, 24, 27, 1);
   --bg-surface-solid: #18181b;
   --bg-canvas: #09090b;
   --bg-widget: rgba(255, 255, 255, 0.06);
@@ -84,7 +84,7 @@
 .light {
   /* Explicit Light Theme Overrides */
   --bg-app: #f8fafc;
-  --bg-surface: rgba(255, 255, 255, 0.9);
+  --bg-surface: rgba(255, 255, 255, 1);
   --bg-surface-solid: #ffffff;
   --bg-canvas: #e2e8f0;
   --bg-widget: rgba(0, 0, 0, 0.04);

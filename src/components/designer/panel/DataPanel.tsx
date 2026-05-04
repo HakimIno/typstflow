@@ -281,7 +281,7 @@ export const DataPanel = memo(function DataPanel() {
             </div>
           </div>
           {error && (
-            <div className="p-2 bg-red-600 text-white text-[9px] font-mono whitespace-pre-wrap break-all max-h-24 overflow-y-auto">
+            <div className="p-2 bg-red-600 text-white text-[9px] whitespace-pre-wrap break-all max-h-24 overflow-y-auto">
               {error}
             </div>
           )}
@@ -583,7 +583,7 @@ function FieldTooltip({
             <p className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-wider mb-1">
               Binding
             </p>
-            <code className="block text-[10px] font-mono text-emerald-400 bg-black/20 px-2 py-1 rounded border border-[var(--border-subtle)] break-all">
+            <code className="block text-[10px] text-[var(--text-primary)]  px-2 py-1 rounded border border-[var(--border-subtle)] break-all">
               {`{{${path}}}`}
             </code>
           </div>
@@ -593,7 +593,7 @@ function FieldTooltip({
             <p className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-wider mb-1">
               Value
             </p>
-            <div className="text-[10px] font-mono text-amber-300 bg-black/20 px-2 py-1.5 rounded border border-[var(--border-subtle)] max-h-28 overflow-y-auto whitespace-pre-wrap break-all">
+            <div className="text-[10px]  px-2 py-1.5 rounded border border-[var(--border-subtle)] max-h-28 overflow-y-auto whitespace-pre-wrap break-all">
               {displayValue}
             </div>
           </div>

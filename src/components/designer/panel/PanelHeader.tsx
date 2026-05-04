@@ -22,7 +22,7 @@ export function PanelHeader({ title, icon: Icon, actions, children, onClose }: P
         {children || (
           <>
             {Icon && (
-              <div className="w-5 h-5 flex items-center justify-center">
+              <div className="w-5 h-5 flex items-center justify-center rounded p-1 bg-[var(--accent)]/10">
                 <Icon className="w-3.5 h-3.5 text-[var(--accent)]" />
               </div>
             )}
