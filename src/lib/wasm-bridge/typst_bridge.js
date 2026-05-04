@@ -129,9 +129,6 @@ export class TypstBridge {
         const ptr = this.__destroy_into_raw();
         wasm.__wbg_typstbridge_free(ptr, 0);
     }
-    /**
-     * Clear all registered images (call between renders if needed).
-     */
     clear_images() {
         wasm.typstbridge_clear_images(this.__wbg_ptr);
     }
@@ -169,8 +166,6 @@ export class TypstBridge {
         return this;
     }
     /**
-     * Register raw image bytes under a virtual filename.
-     * Call this before rendering when source uses #image("virtual-name.png").
      * @param {string} virtual_path
      * @param {Uint8Array} data
      */
@@ -265,6 +260,16 @@ export class TypstBridge {
             wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
         }
     }
+    /**
+     * Set the current date so datetime.today() returns the correct value.
+     * Call this from JS before each render: bridge.set_today(year, month, day).
+     * @param {number} year
+     * @param {number} month
+     * @param {number} day
+     */
+    set_today(year, month, day) {
+        wasm.typstbridge_set_today(this.__wbg_ptr, year, month, day);
+    }
 }
 if (Symbol.dispose) TypstBridge.prototype[Symbol.dispose] = TypstBridge.prototype.free;
 
@@ -343,6 +348,18 @@ function __wbg_get_imports() {
         __wbg_error_38bec0a78dd8ded8: function(arg0) {
             console.error(arg0);
         },
+        __wbg_getDate_bafac038eaae076e: function(arg0) {
+            const ret = arg0.getDate();
+            return ret;
+        },
+        __wbg_getFullYear_8f83597f7403c865: function(arg0) {
+            const ret = arg0.getFullYear();
+            return ret;
+        },
+        __wbg_getMonth_288607689622719c: function(arg0) {
+            const ret = arg0.getMonth();
+            return ret;
+        },
         __wbg_get_ed0642c4b9d31ddf: function() { return handleError(function (arg0, arg1) {
             const ret = Reflect.get(arg0, arg1);
             return ret;
@@ -393,6 +410,10 @@ function __wbg_get_imports() {
         },
         __wbg_log_4c0baeb8af2f8f89: function(arg0) {
             console.log(arg0);
+        },
+        __wbg_new_0_bfa2ef4bc447daa2: function() {
+            const ret = new Date();
+            return ret;
         },
         __wbg_new_4f9fafbb3909af72: function() {
             const ret = new Object();

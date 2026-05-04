@@ -23,21 +23,19 @@ export class TableEngine {
 export class TypstBridge {
     free(): void;
     [Symbol.dispose](): void;
-    /**
-     * Clear all registered images (call between renders if needed).
-     */
     clear_images(): void;
     generate_report_typst(schema_json: string, data_json: string): string;
     constructor();
-    /**
-     * Register raw image bytes under a virtual filename.
-     * Call this before rendering when source uses #image("virtual-name.png").
-     */
     register_image(virtual_path: string, data: Uint8Array): void;
     render_pdf(source_code: string): Uint8Array;
     render_report_pdf(schema_json: string, data_json: string): Uint8Array;
     render_report_svg(schema_json: string, data_json: string): string;
     render_svg(source_code: string): string;
+    /**
+     * Set the current date so datetime.today() returns the correct value.
+     * Call this from JS before each render: bridge.set_today(year, month, day).
+     */
+    set_today(year: number, month: number, day: number): void;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -56,8 +54,6 @@ export interface InitOutput {
     readonly qcms_profile_is_bogus: (a: number) => number;
     readonly lut_inverse_interp16: (a: number, b: number, c: number) => number;
     readonly lut_interp_linear16: (a: number, b: number, c: number) => number;
-    readonly __wbg_tableengine_free: (a: number, b: number) => void;
-    readonly tableengine_resolve: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly __wbg_typstbridge_free: (a: number, b: number) => void;
     readonly typstbridge_clear_images: (a: number) => void;
     readonly typstbridge_generate_report_typst: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
@@ -67,6 +63,7 @@ export interface InitOutput {
     readonly typstbridge_render_report_pdf: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly typstbridge_render_report_svg: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly typstbridge_render_svg: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly typstbridge_set_today: (a: number, b: number, c: number, d: number) => void;
     readonly __wbg_layoutengine_free: (a: number, b: number) => void;
     readonly layoutengine_clear: (a: number) => void;
     readonly layoutengine_find_snaps: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
@@ -75,6 +72,8 @@ export interface InitOutput {
     readonly layoutengine_new: () => number;
     readonly layoutengine_query_rect: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number];
     readonly layoutengine_remove_node: (a: number, b: number, c: number) => void;
+    readonly __wbg_tableengine_free: (a: number, b: number) => void;
+    readonly tableengine_resolve: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly qcms_enable_iccv4: () => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

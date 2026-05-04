@@ -21,7 +21,7 @@ pub fn paper_dimensions(size: &str, landscape: bool) -> (f64, f64) {
         "legal" => (215.9, 355.6),
         "b4" => (250.0, 353.0),
         "b5" => (176.0, 250.0),
-        _ => (210.0, 297.0), // Default A4
+        _ => (210.0, 297.0),
     };
     if landscape { (h, w) } else { (w, h) }
 }
@@ -46,60 +46,127 @@ pub fn resolve_path<'a>(path: &str, data: &'a Value) -> Option<&'a Value> {
     Some(current)
 }
 
+/// Resolve aggregate function: SUM, COUNT, AVG, MIN, MAX over a slice of items.
+pub fn resolve_aggregate(func: &str, path: &str, items: &[Value]) -> String {
+    let values: Vec<f64> = items.iter()
+        .filter_map(|item| resolve_path(path, item))
+        .filter_map(|v| match v {
+            Value::Number(n) => n.as_f64(),
+            Value::String(s) => s.parse::<f64>().ok(),
+            _ => None,
+        })
+        .collect();
+
+    match func.to_uppercase().as_str() {
+        "SUM" => {
+            let sum: f64 = values.iter().sum();
+            format!("{:.2}", sum)
+        }
+        "COUNT" => items.len().to_string(),
+        "AVG" => {
+            if values.is_empty() { return "0".to_string(); }
+            format!("{:.2}", values.iter().sum::<f64>() / values.len() as f64)
+        }
+        "MIN" => values.iter().cloned().fold(f64::INFINITY, f64::min).to_string(),
+        "MAX" => values.iter().cloned().fold(f64::NEG_INFINITY, f64::max).to_string(),
+        _ => "0".to_string(),
+    }
+}
+
+/// Resolve a binding expression, supporting:
+/// - Normal paths: {{field.path}}
+/// - Aggregates: {{SUM(field)}}, {{COUNT(field)}}, {{AVG(field)}}, {{MIN(field)}}, {{MAX(field)}}
+/// - Scoped lookup: tries local_data first, then global_data
+pub fn resolve_binding_with_aggregates(
+    expr: &str,
+    local: &Value,
+    global: &Value,
+    items: &[Value],
+) -> String {
+    if !expr.contains("{{") { return expr.to_string(); }
+
+    let mut result = String::new();
+    let mut remaining = expr;
+
+    while let Some(open) = remaining.find("{{") {
+        result.push_str(&remaining[..open]);
+        let after_open = &remaining[open + 2..];
+
+        if let Some(close) = after_open.find("}}") {
+            let inner = after_open[..close].trim();
+
+            let resolved = if let Some(paren_pos) = inner.find('(') {
+                let func = &inner[..paren_pos];
+                let rest = &inner[paren_pos + 1..];
+                if let Some(close_paren) = rest.rfind(')') {
+                    let path = rest[..close_paren].trim();
+                    match func.to_uppercase().as_str() {
+                        "SUM" | "COUNT" | "AVG" | "MIN" | "MAX" => {
+                            resolve_aggregate(func, path, items)
+                        }
+                        _ => format!("{{{{{}}}}}", inner),
+                    }
+                } else {
+                    format!("{{{{{}}}}}", inner)
+                }
+            } else {
+                // Normal binding — try local then global
+                let val_opt = resolve_path(inner, local)
+                    .or_else(|| resolve_path(inner, global));
+                val_opt
+                    .map(|v| match v {
+                        Value::String(s) => s.clone(),
+                        _ => v.to_string(),
+                    })
+                    .unwrap_or_else(|| format!("{{{{{}}}}}", inner))
+            };
+
+            result.push_str(&resolved);
+            remaining = &after_open[close + 2..];
+        } else {
+            result.push_str("{{");
+            remaining = after_open;
+        }
+    }
+
+    result.push_str(remaining);
+    result
+}
+
+#[allow(dead_code)]
 pub fn resolve_binding(expr: &str, data: &Value) -> String {
     resolve_binding_scoped(expr, data, data)
 }
 
 pub fn resolve_binding_scoped(expr: &str, local_data: &Value, global_data: &Value) -> String {
-    let mut result = String::new();
-    let mut last_end = 0;
-    let mut current = 0;
-    while let Some(start_offset) = expr[current..].find("{{") {
-        let start = current + start_offset;
-        if let Some(end_offset) = expr[start..].find("}}") {
-            let end = start + end_offset;
-            result.push_str(&expr[last_end..start]);
-            let path = expr[start + 2..end].trim().to_string();
-            let mut val_opt = resolve_path(&path, local_data);
-            if val_opt.is_none() {
-                val_opt = resolve_path(&path, global_data);
-            }
-            let value = val_opt
-                .map(|v| match v {
-                    Value::String(s) => s.clone(),
-                    _ => v.to_string()
-                })
-                .unwrap_or_else(|| format!("{{{{{}}}}}", path));
-            result.push_str(&value);
-            last_end = end + 2;
-            current = last_end;
-        } else { break; }
-    }
-    result.push_str(&expr[last_end..]);
-    result
+    resolve_binding_with_aggregates(expr, local_data, global_data, &[])
 }
 
+/// Escape characters that have special meaning in Typst markup.
+/// Canonical set used across the entire Rust generator — matches the TS typst-utils.ts escaper.
 pub fn escape_typst(s: &str) -> String {
-    s.replace("\\", "\\\\")
-     .replace("#", "\\#")
-     .replace("$", "\\$")
-     .replace("*", "\\*")
-     .replace("_", "\\_")
-     .replace("[", "\\[")
-     .replace("]", "\\]")
-     .replace("(", "\\(")
-     .replace(")", "\\)")
-     .replace("{", "\\{")
-     .replace("}", "\\}")
-     .replace("\"", "\\\"")
-     .replace("<", "\\<")
-     .replace(">", "\\>")
-     .replace("@", "\\@")
-     .replace("=", "\\=")
+    s.replace('\\', "\\\\")
+        .replace('#', "\\#")
+        .replace('$', "\\$")
+        .replace('*', "\\*")
+        .replace('_', "\\_")
+        .replace('[', "\\[")
+        .replace(']', "\\]")
+        .replace('(', "\\(")
+        .replace(')', "\\)")
+        .replace('{', "\\{")
+        .replace('}', "\\}")
+        .replace('"', "\\\"")
+        .replace('<', "\\<")
+        .replace('>', "\\>")
+        .replace('@', "\\@")
+        .replace('=', "\\=")
+        .replace('~', "\\~")
 }
 
+/// Escape only characters that are special inside Typst string literals ("...").
 pub fn escape_string_literal(s: &str) -> String {
-    s.replace("\\", "\\\\").replace("\"", "\\\"")
+    s.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 pub fn format_color(color: &str) -> String {
@@ -107,17 +174,59 @@ pub fn format_color(color: &str) -> String {
     if c.is_empty() { return "none".to_string(); }
     if c.starts_with('#') {
         format!("rgb(\"{}\")", c)
-    } else if c.starts_with("rgb(") || c.starts_with("rgba(") || c.contains('.') {
-        c.to_string()
     } else {
         c.to_string()
     }
 }
 
+/// Apply CSS-like text transform to a string.
+pub fn apply_text_transform(s: &str, transform: &str) -> String {
+    match transform {
+        "upper" | "uppercase" => s.to_uppercase(),
+        "lower" | "lowercase" => s.to_lowercase(),
+        "capitalize" | "title" => {
+            let mut chars = s.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+            }
+        }
+        _ => s.to_string(),
+    }
+}
+
+/// Emit a #place() + #block() wrapper for a component.
+/// offset_x/offset_y are zone origins (from page corner); x/y are component coords within the zone.
 pub fn wrap_placement(base: &BaseComponent, body: &str, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let x = base.x.unwrap_or(0.0);
     let y = base.y.unwrap_or(0.0);
     let w = base.width.unwrap_or(100.0);
     let h = base.height.unwrap_or(20.0);
-    format!("{}place(dx: {} + {}mm, dy: {} + {}mm)[#block(width: {}mm, height: {}mm, clip: false)[{}]]\n", prefix, offset_x, x, offset_y, y, w, h, body)
+
+    // Compute absolute mm positions, combining zone offset + component coord.
+    let offset_x_mm: f64 = offset_x.trim_end_matches("mm").trim().parse().unwrap_or(0.0);
+    let offset_y_mm: f64 = offset_y.trim_end_matches("mm").trim().parse().unwrap_or(0.0);
+    let abs_x = offset_x_mm + x;
+    let abs_y = offset_y_mm + y;
+
+    let mut out = String::new();
+    if base.page_break_before.unwrap_or(false) {
+        out.push_str("#pagebreak()\n");
+    }
+    out.push_str(&format!(
+        "{}place(dx: {}mm, dy: {}mm)[#block(width: {}mm, height: {}mm, clip: false)[{}]]\n",
+        prefix, abs_x, abs_y, w, h, body
+    ));
+    out
+}
+
+/// Check if a component should be rendered (respects `visible` binding).
+pub fn is_visible(base: &BaseComponent, local: &Value, global: &Value) -> bool {
+    match &base.visible {
+        None => true,
+        Some(expr) => {
+            let resolved = resolve_binding_scoped(expr, local, global);
+            !matches!(resolved.to_lowercase().trim(), "false" | "0" | "")
+        }
+    }
 }

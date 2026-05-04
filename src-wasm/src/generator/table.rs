@@ -3,7 +3,7 @@ use serde_json::Value;
 use super::utils::*;
 use std::collections::HashSet;
 
-pub fn render_table(c: &TableComponent, data: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let mut t = String::new();
     let cols = &c.columns;
     let style = c.style.as_ref();
@@ -122,7 +122,7 @@ pub fn render_table(c: &TableComponent, data: &Value, offset_x: &str, offset_y: 
         if let Some(detail_rows) = &c.detail_rows {
             for row in detail_rows {
                 for cell in &row.cells {
-                    let val = resolve_binding_scoped(&cell.content, item, data);
+                    let val = resolve_binding_scoped(&cell.content, item, global);
                     let format_func = cell.format.as_deref().unwrap_or("text").to_lowercase();
                     let content = if format_func != "text" {
                         format!("[#fmt_{}(\"{}\")]", format_func.replace("-", "_"), escape_string_literal(&val))
@@ -183,11 +183,14 @@ pub fn render_table(c: &TableComponent, data: &Value, offset_x: &str, offset_y: 
     };
 
     if is_static {
-        render_item(data, &mut t);
+        render_item(local, &mut t);
     } else {
         let path = c.data_source.replace("{{", "").replace("}}", "").trim().to_string();
-        if let Some(Value::Array(arr)) = resolve_path(&path, data) {
-            for item in arr {
+        let arr_opt = resolve_path(&path, local)
+            .or_else(|| resolve_path(&path, global));
+        if let Some(Value::Array(arr)) = arr_opt {
+            let arr = arr.clone();
+            for item in &arr {
                 render_item(item, &mut t);
             }
         }
@@ -213,7 +216,7 @@ pub fn render_table(c: &TableComponent, data: &Value, offset_x: &str, offset_y: 
         t.push_str(&format!("  table.footer(repeat: {},\n", repeat));
         for row in footer_rows {
             for cell in &row.cells {
-                let val = resolve_binding(&cell.content, data);
+                let val = resolve_binding_scoped(&cell.content, local, global);
                 let content = escape_typst(&val);
                 let cs = cell.colspan.unwrap_or(1);
                 let rs = cell.rowspan.unwrap_or(1);
@@ -239,7 +242,7 @@ pub fn render_table(c: &TableComponent, data: &Value, offset_x: &str, offset_y: 
             if row.separator.unwrap_or(false) {
                 t.push_str("  table.hline(stroke: 1pt + black),\n");
             }
-            let val = resolve_binding(&row.value, data);
+            let val = resolve_binding_scoped(&row.value, local, global);
             let escaped_label = escape_typst(&row.label);
             let escaped_val = escape_typst(&val);
             let weight = if row.style.as_deref() == Some("total") { "bold" } else { "regular" };

@@ -11,8 +11,23 @@ pub struct LayoutSchema {
     pub fonts: Vec<FontConfig>,
     pub zones: Zones,
     pub pages: Vec<PageDefinition>,
+    #[serde(default)]
+    pub groups: Vec<GroupDefinition>,
     pub variables: Vec<VariableDefinition>,
     pub data_schema: Vec<DataFieldDefinition>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupDefinition {
+    pub id: String,
+    pub name: String,
+    pub field: String,
+    pub filter_by: Option<String>,
+    pub sort_by: Option<String>,
+    pub header: Zone,
+    pub footer: Zone,
+    pub repeat_header_on_page: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -90,7 +105,7 @@ pub enum ComponentNode {
     PageNumber(PageNumberComponent),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BaseComponent {
     pub id: String,
@@ -101,6 +116,9 @@ pub struct BaseComponent {
     pub align: Option<String>,
     pub visible: Option<String>,
     pub format: Option<String>,
+    pub page_break_before: Option<bool>,
+    pub margin_top: Option<f64>,
+    pub margin_bottom: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -112,7 +130,7 @@ pub struct TextComponent {
     pub style: Option<TextStyle>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextStyle {
     pub font_size: Option<f64>,
@@ -124,10 +142,10 @@ pub struct TextStyle {
     pub line_height: Option<f64>,
     pub letter_spacing: Option<String>,
     pub justify: Option<bool>,
+    pub text_transform: Option<String>,
 }
 
-
-// --- Individual table cell (maps to Typst table.cell) ---
+// --- Individual table cell ---
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TableCell {
@@ -138,23 +156,23 @@ pub struct TableCell {
     pub align: Option<String>,
     pub fill: Option<String>,
     pub inset: Option<String>,
-    pub stroke: Option<serde_json::Value>, // string or StrokeConfig object
+    pub stroke: Option<serde_json::Value>,
     pub style: Option<TextStyle>,
     pub format: Option<String>,
 }
 
-// --- Structured table row (maps to table.header / table.footer / data row) ---
+// --- Structured table row ---
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TableRow {
     pub id: String,
-    pub r#type: String, // "header" | "data" | "footer"
+    pub r#type: String,
     pub cells: Vec<TableCell>,
     pub height: Option<String>,
     pub repeat: Option<bool>,
 }
 
-// --- Manual horizontal line (maps to table.hline) ---
+// --- Manual horizontal line ---
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HLineConfig {
@@ -163,10 +181,10 @@ pub struct HLineConfig {
     pub start: Option<u32>,
     pub end: Option<u32>,
     pub stroke: Option<String>,
-    pub position: Option<String>, // "top" | "bottom"
+    pub position: Option<String>,
 }
 
-// --- Manual vertical line (maps to table.vline) ---
+// --- Manual vertical line ---
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VLineConfig {
@@ -175,7 +193,7 @@ pub struct VLineConfig {
     pub start: Option<u32>,
     pub end: Option<u32>,
     pub stroke: Option<String>,
-    pub position: Option<String>, // "start" | "end"
+    pub position: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -190,11 +208,9 @@ pub struct TableComponent {
     pub repeat_header_on_page: Option<bool>,
     pub is_static: Option<bool>,
     pub summary_rows: Option<Vec<SummaryRow>>,
-    // --- New: Structured header/footer rows ---
     pub header_rows: Option<Vec<TableRow>>,
     pub detail_rows: Option<Vec<TableRow>>,
     pub footer_rows: Option<Vec<TableRow>>,
-    // --- New: Manual lines ---
     pub hlines: Option<Vec<HLineConfig>>,
     pub vlines: Option<Vec<VLineConfig>>,
 }
@@ -229,12 +245,11 @@ pub struct TableStyle {
     pub header_rows: Option<u32>,
     pub footer_rows: Option<u32>,
     pub row_heights: Option<Vec<String>>,
-    // --- New fields from TypeScript schema ---
     pub inset: Option<String>,
-    pub fill_pattern: Option<String>, // "none"|"striped-rows"|"striped-cols"|"checkerboard"|"header-only"
+    pub fill_pattern: Option<String>,
     pub striped_color1: Option<String>,
     pub striped_color2: Option<String>,
-    pub stroke: Option<serde_json::Value>, // string or StrokeConfig object
+    pub stroke: Option<serde_json::Value>,
     pub column_gutter: Option<String>,
     pub row_gutter: Option<String>,
     pub gutter: Option<String>,
@@ -261,7 +276,6 @@ pub struct ImageComponent {
     #[serde(flatten)]
     pub base: BaseComponent,
     pub src: String,
-    /// Base64 data URL (data:image/png;base64,...) — pre-registered in WASM image registry
     pub src_data: Option<String>,
     pub mime_type: Option<String>,
     pub fit: Option<String>,

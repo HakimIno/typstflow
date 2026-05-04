@@ -236,6 +236,8 @@ self.onmessage = async (e: MessageEvent) => {
       }
       case 'RENDER_REPORT_SVG': {
         const { schema, data } = payload;
+        const now = new Date();
+        bridge.set_today(now.getFullYear(), now.getMonth() + 1, now.getDate());
         const preparedSchema = injectImagesIntoSchema(schema);
         const svg = bridge.render_report_svg(JSON.stringify(preparedSchema), JSON.stringify(data));
         self.postMessage({ id, type: 'success', payload: svg });
@@ -243,6 +245,8 @@ self.onmessage = async (e: MessageEvent) => {
       }
       case 'RENDER_REPORT_PDF': {
         const { schema, data } = payload;
+        const now = new Date();
+        bridge.set_today(now.getFullYear(), now.getMonth() + 1, now.getDate());
         const preparedSchema = injectImagesIntoSchema(schema);
         const pdf = bridge.render_report_pdf(JSON.stringify(preparedSchema), JSON.stringify(data));
         self.postMessage({ id, type: 'success', payload: pdf }, {
