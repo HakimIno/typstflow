@@ -35,6 +35,7 @@ interface DesignerState {
   isRightSidebarOpen: boolean;
   theme: 'dark' | 'light';
   primaryColor: string;
+  canvasLayout: 'vertical' | 'grid';
 
   // Selection
   selectedComponentIds: string[];
@@ -152,6 +153,7 @@ interface DesignerState {
   setTheme: (theme: 'dark' | 'light') => void;
   setPrimaryColor: (color: string) => void;
   loadStressTest: (pages?: number, components?: number) => void;
+  setCanvasLayout: (layout: 'vertical' | 'grid') => void;
 
   // Page Actions
   addPage: () => void;
@@ -239,6 +241,7 @@ export const useDesignerStore = create<DesignerState>()(
       isRightSidebarOpen: true,
       theme: 'dark' as DesignerState['theme'],
       primaryColor: '#8B5CF6',
+      canvasLayout: 'vertical' as DesignerState['canvasLayout'],
       selectedComponentIds: [],
       selectedGroupId: null as DesignerState['selectedGroupId'],
       selectedZone: null as DesignerState['selectedZone'],
@@ -692,6 +695,7 @@ export const useDesignerStore = create<DesignerState>()(
         })),
       setTheme: (theme: 'dark' | 'light') => set({ theme }),
       setPrimaryColor: (color: string) => set({ primaryColor: color }),
+      setCanvasLayout: (layout: 'vertical' | 'grid') => set({ canvasLayout: layout }),
 
       toggleComponentVisibility: (id: string) =>
         set((state) => {

@@ -5,6 +5,7 @@ import { AlignmentTools } from './AlignmentTools';
 import { ToolbarActions } from './ToolbarActions';
 import { UndoRedoTools } from './UndoRedoTools';
 import { ZoomControls } from './ZoomControls';
+import { CanvasLayoutSwitcher } from './CanvasLayoutSwitcher';
 
 export const SubToolbar = memo(function SubToolbar() {
   return (
@@ -20,6 +21,8 @@ export const SubToolbar = memo(function SubToolbar() {
 
         <div className="flex items-center gap-0.5 p-0.5  bg-[var(--bg-widget)]  rounded-[var(--radius-md)]">
           <ZoomControls />
+          <div className="w-[1px] h-3 bg-[var(--border-default)] mx-1" />
+          <CanvasLayoutSwitcher />
         </div>
       </div>
 

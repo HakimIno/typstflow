@@ -16,15 +16,17 @@ import { TransientOverlay } from './TransientOverlay';
 import { Zone } from './Zone';
 
 // Constants for virtualization
-const VISIBLE_PAGE_BUFFER = 3; // Render N pages before/after visible area
-const PADDING_TOP_PX = 48;
-const GAP_BETWEEN_PAGES_PX = 32;
+const VISIBLE_PAGE_BUFFER = 4; // Increased for smoothness
+const PADDING_TOP_PX = 48; // pt-12 = 48px
+const GAP_VERTICAL_LIST = 32; // gap-8 = 32px
+const GAP_VERTICAL_GRID = 48; // gap-12 = 48px
 
 export const Canvas = memo(function Canvas() {
   const schema = useDesignerStore((state) => state.schema);
   const zoom = useDesignerStore((state) => state.zoom);
   const activePageId = useDesignerStore((state) => state.activePageId);
   const setActivePage = useDesignerStore((state) => state.setActivePage);
+  const canvasLayout = useDesignerStore((state) => state.canvasLayout);
   const isDraggingGlobal = useDesignerStore((state) => state.dragState.isDragging);
   const [mounted, setMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -54,20 +56,20 @@ export const Canvas = memo(function Canvas() {
         schema.page.size,
         schema.page.orientation
       );
+      const currentGap = (canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom;
       const pageHeightPx = LayoutEngine.mmToPx(pageHeightMm) * zoom;
-      const totalPageHeight = pageHeightPx + GAP_BETWEEN_PAGES_PX;
+      const totalPageHeight = pageHeightPx + currentGap;
+      const pagesPerRow = canvasLayout === 'grid' ? 2 : 1;
 
       // Find first visible page (O(1) calculation instead of loop)
-      const firstVisibleIdx = Math.max(
-        0,
-        Math.floor((scrollTop - PADDING_TOP_PX) / totalPageHeight) - VISIBLE_PAGE_BUFFER
-      );
+      const firstRowIdx = Math.floor((scrollTop - PADDING_TOP_PX) / totalPageHeight);
+      const firstVisibleIdx = Math.max(0, firstRowIdx * pagesPerRow - VISIBLE_PAGE_BUFFER * pagesPerRow);
 
       // Find last visible page based on viewport height
+      const lastRowIdx = Math.ceil((scrollTop + clientHeight - PADDING_TOP_PX) / totalPageHeight);
       const lastVisibleIdx = Math.min(
         schema.pages.length - 1,
-        Math.ceil((scrollTop + clientHeight - PADDING_TOP_PX) / totalPageHeight) +
-        VISIBLE_PAGE_BUFFER
+        (lastRowIdx + VISIBLE_PAGE_BUFFER) * pagesPerRow
       );
 
       setVisibleRange((prev) => {
@@ -78,7 +80,7 @@ export const Canvas = memo(function Canvas() {
         return prev;
       });
     }
-  }, [updateScrollPos, schema.page.size, schema.page.orientation, schema.pages.length, zoom]);
+  }, [updateScrollPos, schema.page.size, schema.page.orientation, schema.pages.length, zoom, canvasLayout]);
 
   useEffect(() => {
     setMounted(true);
@@ -103,8 +105,9 @@ export const Canvas = memo(function Canvas() {
     schema.page.orientation
   );
 
+  const currentGap = (canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom;
   const pageHeightPx = LayoutEngine.mmToPx(pageHeightMm);
-  const totalPageHeight = pageHeightPx * zoom + GAP_BETWEEN_PAGES_PX;
+  const totalPageHeight = pageHeightPx * zoom + currentGap;
 
   // ✅ Pre-calculate pages to render (memoized) - BEFORE early return to fix Hooks order
   const pagesToRender = useMemo(() => {
@@ -165,14 +168,29 @@ export const Canvas = memo(function Canvas() {
             {visibleRange.start > 0 && (
               <div
                 style={{
-                  height: `${visibleRange.start * totalPageHeight}px`,
-                  width: `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
+                  height: `${Math.floor(visibleRange.start / (canvasLayout === 'grid' ? 2 : 1)) * totalPageHeight}px`,
+                  width: canvasLayout === 'grid' 
+                    ? `${(LayoutEngine.mmToPx(pageWidthMm) * 2 * zoom) + 32}px` 
+                    : `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
                 }}
                 className="shrink-0"
               />
             )}
 
-            <div className="min-w-max min-h-max pl-16 pr-16 pb-24 pt-12 flex flex-col items-start gap-8 relative">
+            <div 
+              className={clsx(
+                "min-h-max pl-16 pr-16 pb-24 pt-12 relative",
+                canvasLayout === 'grid' ? "grid" : "flex flex-col items-start"
+              )}
+              style={{
+                display: canvasLayout === 'grid' ? 'grid' : 'flex',
+                gridTemplateColumns: canvasLayout === 'grid' 
+                  ? `repeat(2, ${LayoutEngine.mmToPx(pageWidthMm) * zoom}px)` 
+                  : undefined,
+                gap: `${currentGap}px ${canvasLayout === 'grid' ? 32 * zoom : 0}px`,
+                width: 'fit-content',
+              }}
+            >
               <TransientOverlay />
 
               {pagesToRender.map(({ page, pIdx }) => {
@@ -213,7 +231,7 @@ export const Canvas = memo(function Canvas() {
                         transform: `scale(${zoom})`,
                       }}
                     >
-                      <div className="absolute -left-16 top-0 text-[10px] font-bold text-slate-400 opacity-60 uppercase tracking-widest pointer-events-none">
+                      <div className="absolute left-0 -top-6 text-[10px] font-bold text-slate-400 opacity-60 uppercase tracking-widest pointer-events-none group-hover:opacity-100 transition-opacity">
                         Page {pIdx + 1}
                       </div>
 
@@ -349,7 +367,10 @@ export const Canvas = memo(function Canvas() {
                             e.stopPropagation();
                             useDesignerStore.getState().removePage(page.id);
                           }}
-                          className="absolute -right-12 top-0 p-2 rounded-full shadow-md text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                          className={clsx(
+                            'absolute p-2 rounded-full shadow-md text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100',
+                            canvasLayout === 'grid' ? 'right-0 -top-10' : '-right-12 top-0'
+                          )}
                           title="Remove Page"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -380,8 +401,10 @@ export const Canvas = memo(function Canvas() {
             {visibleRange.end < schema.pages.length - 1 && (
               <div
                 style={{
-                  height: `${(schema.pages.length - 1 - visibleRange.end) * totalPageHeight}px`,
-                  width: `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
+                  height: `${Math.ceil((schema.pages.length - 1 - visibleRange.end) / (canvasLayout === 'grid' ? 2 : 1)) * totalPageHeight}px`,
+                  width: canvasLayout === 'grid' 
+                    ? `${(LayoutEngine.mmToPx(pageWidthMm) * 2 * zoom) + 32}px` 
+                    : `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
                 }}
                 className="shrink-0"
               />

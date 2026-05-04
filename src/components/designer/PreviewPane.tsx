@@ -54,6 +54,8 @@ export function PreviewPane() {
     };
   }, [schema, sampleData, isDragging]);
 
+  const canvasLayout = useDesignerStore((state) => state.canvasLayout);
+
   const { width: pageWidthMm, height: pageHeightMm } = getPaperDimensions(
     schema.page.size,
     schema.page.orientation
@@ -64,9 +66,18 @@ export function PreviewPane() {
       {/* Precision Preview Area */}
       <div className="flex-1 overflow-auto p-8 scrollbar-thin transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform">
         <div
-          className="flex flex-col items-start gap-8 origin-top-left pl-16 pr-16"
+          className={clsx(
+            'origin-top-left pl-16 pr-16 pb-32',
+            canvasLayout === 'grid' ? 'grid' : 'flex flex-col items-start'
+          )}
           style={{
             transform: `scale(${zoom})`,
+            display: canvasLayout === 'grid' ? 'grid' : 'flex',
+            gridTemplateColumns:
+              canvasLayout === 'grid'
+                ? `repeat(2, ${LayoutEngine.mmToPx(pageWidthMm)}px)`
+                : undefined,
+            gap: canvasLayout === 'grid' ? '48px 32px' : '32px',
           }}
         >
           {svgContent ? (
