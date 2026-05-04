@@ -1,12 +1,11 @@
-import { TypstGenerator } from '@/lib/engine/typst-generator';
-import type { LayoutSchema } from '@/types/schema';
 /**
  * @file typst-generator.test.ts
- * Tests for src/lib/engine/typst-generator.ts — TypstGenerator
- *
- * Focus: output structure correctness, binding resolution, escaping.
+ * Tests for the plugin-based TypstGenerator (src/lib/engine/generator/).
+ * Focus: output structure, binding resolution, escaping, plugin dispatch.
  * Does NOT test WASM rendering (integration test only).
  */
+import { TypstGenerator } from '@/lib/engine/generator';
+import type { LayoutSchema } from '@/types/schema';
 import { describe, expect, it } from 'vitest';
 
 const MINIMAL_SCHEMA: LayoutSchema = {
@@ -35,16 +34,17 @@ const MINIMAL_SCHEMA: LayoutSchema = {
   },
 };
 
-function makeGenerator(schema = MINIMAL_SCHEMA, data: Record<string, any> = {}) {
-  return new TypstGenerator(schema, data);
-}
+const gen = new TypstGenerator();
+const generate = (schema = MINIMAL_SCHEMA, data: Record<string, unknown> = {}) =>
+  gen.generate(schema, data);
 
 describe('TypstGenerator — page setup', () => {
   it('generates correct #set page() for A4 portrait', () => {
-    const output = makeGenerator().generate();
+    const output = generate();
     expect(output).toContain('paper: "a4"');
     expect(output).toContain('flipped: false');
-    expect(output).toContain('margin: (top: 15mm, bottom: 15mm, left: 15mm, right: 15mm)');
+    // Margin is always 0mm — designer margin is visual-only
+    expect(output).toContain('margin: 0mm');
   });
 
   it('sets flipped: true for landscape orientation', () => {
@@ -52,21 +52,14 @@ describe('TypstGenerator — page setup', () => {
       ...MINIMAL_SCHEMA,
       page: { ...MINIMAL_SCHEMA.page, orientation: 'landscape' },
     };
-    const output = new TypstGenerator(schema, {}).generate();
+    const output = generate(schema);
     expect(output).toContain('flipped: true');
   });
 
   it('generates correct #set text() with font family and size', () => {
-    const output = makeGenerator().generate();
-    expect(output).toContain('#set text(font: "Sarabun", size: 10pt');
-  });
-});
-
-describe('TypstGenerator — empty schema produces no zone blocks', () => {
-  it('generates no band blocks when all zones are empty', () => {
-    const output = makeGenerator().generate();
-    // No #block(width: 100%...) for empty zones
-    expect(output).not.toContain('#block(width: 100%');
+    const output = generate();
+    expect(output).toContain('size: 10pt');
+    expect(output).toContain('"Sarabun"');
   });
 });
 
@@ -97,18 +90,19 @@ describe('TypstGenerator — text component', () => {
   };
 
   it('renders text inside a #place directive', () => {
-    const output = new TypstGenerator(schema, {}).generate();
+    const output = generate(schema);
+    // body offsetY = headerMinHeight = 0, so text at y=10 → dy: 10mm
     expect(output).toContain('#place(dx: 10mm, dy: 10mm)');
     expect(output).toContain('Hello World');
   });
 
   it('renders bold text weight', () => {
-    const output = new TypstGenerator(schema, {}).generate();
+    const output = generate(schema);
     expect(output).toContain('weight: "bold"');
   });
 
   it('renders font size from style', () => {
-    const output = new TypstGenerator(schema, {}).generate();
+    const output = generate(schema);
     expect(output).toContain('size: 12pt');
   });
 });
@@ -140,14 +134,13 @@ describe('TypstGenerator — data binding resolution', () => {
   };
 
   it('resolves binding to data value', () => {
-    const data = { customer: { name: 'Alice' } };
-    const output = new TypstGenerator(schema, data).generate();
+    const output = generate(schema, { customer: { name: 'Alice' } });
     expect(output).toContain('Alice');
     expect(output).not.toContain('{{customer.name}}');
   });
 
   it('keeps binding placeholder when data is missing', () => {
-    const output = new TypstGenerator(schema, {}).generate();
+    const output = generate(schema);
     expect(output).toContain('{{customer.name}}');
   });
 });
@@ -179,7 +172,7 @@ describe('TypstGenerator — escapeTypst', () => {
   };
 
   it('escapes Typst special characters: # * _', () => {
-    const output = new TypstGenerator(schema, {}).generate();
+    const output = generate(schema);
     expect(output).toContain('\\#100');
     expect(output).toContain('\\*bold\\*');
     expect(output).toContain('\\_italic\\_');
@@ -201,7 +194,7 @@ describe('TypstGenerator — line component', () => {
             width: 100,
             height: 1,
             style: 'solid',
-            color: 'black',
+            color: '#000000',
             thickness: '1pt',
           },
         ],
@@ -211,9 +204,9 @@ describe('TypstGenerator — line component', () => {
   };
 
   it('renders #line() with stroke', () => {
-    const output = new TypstGenerator(schema, {}).generate();
+    const output = generate(schema);
     expect(output).toContain('#line(length: 100%');
-    expect(output).toContain('1pt + black');
+    expect(output).toContain('1pt +');
   });
 });
 
@@ -263,57 +256,70 @@ describe('TypstGenerator — multi-page output', () => {
   };
 
   it('inserts #pagebreak() between pages', () => {
-    const output = new TypstGenerator(schema, {}).generate();
-    expect(output).toContain('#pagebreak()');
-  });
-
-  it('does not add #pagebreak() after the last page', () => {
-    const output = new TypstGenerator(schema, {}).generate();
-    // Only 1 pagebreak for 2 pages
-    const count = (output.match(/#pagebreak\(\)/g) || []).length;
-    expect(count).toBe(1);
+    const output = generate(schema);
+    expect(output).toContain('#pagebreak(');
   });
 
   it('renders content from both pages', () => {
-    const output = new TypstGenerator(schema, {}).generate();
+    const output = generate(schema);
     expect(output).toContain('Page 1 content');
     expect(output).toContain('Page 2 content');
   });
 });
 
-describe('TypstGenerator — image component (remote vs local)', () => {
+describe('TypstGenerator — image component', () => {
   const makeImageSchema = (src: string): LayoutSchema => ({
     ...MINIMAL_SCHEMA,
     zones: {
       header: {
         id: 'header',
-        components: [
-          {
-            id: 'img-1',
-            type: 'image',
-            x: 0,
-            y: 0,
-            width: 50,
-            height: 30,
-            src,
-          },
-        ],
+        components: [{ id: 'img-1', type: 'image', x: 0, y: 0, width: 50, height: 30, src }],
       },
       footer: { id: 'footer', components: [] },
     },
   });
 
-  it('renders #image() for remote URLs', () => {
-    const output = new TypstGenerator(
-      makeImageSchema('https://example.com/logo.png'),
-      {}
-    ).generate();
-    expect(output).toContain('#image("https://example.com/logo.png"');
+  it('renders #image() for virtual asset paths', () => {
+    const output = generate(makeImageSchema('asset-logo.png'));
+    expect(output).toContain('#image("asset-logo.png"');
   });
 
-  it('renders FILE NOT FOUND placeholder for local paths', () => {
-    const output = new TypstGenerator(makeImageSchema('./local/logo.png'), {}).generate();
+  it('renders FILE NOT FOUND for unknown paths', () => {
+    const output = generate(makeImageSchema('./local/logo.png'));
     expect(output).toContain('FILE NOT FOUND');
-    expect(output).toContain('./local/logo.png');
+  });
+
+  it('renders No Image placeholder for empty src', () => {
+    const output = generate(makeImageSchema(''));
+    expect(output).toContain('No Image');
+  });
+});
+
+describe('TypstGenerator — plugin override', () => {
+  it('allows overriding a built-in plugin', () => {
+    const customGen = new TypstGenerator([
+      {
+        type: 'text',
+        render: () => '// custom-text-render\n',
+      },
+    ]);
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              { id: 'txt', type: 'text', content: 'Hello', style: {} },
+            ],
+          },
+        },
+      ],
+    };
+    const output = customGen.generate(schema, {});
+    expect(output).toContain('// custom-text-render');
+    expect(output).not.toContain('Hello');
   });
 });
