@@ -272,9 +272,15 @@ const LayerItem = memo(
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (confirm('Delete this component?')) {
-                useDesignerStore.getState().removeComponents([component.id]);
-              }
+              useDesignerStore.getState().showDialog({
+                title: 'Delete Component',
+                message: `Are you sure you want to delete this ${component.type} component?`,
+                variant: 'danger',
+                confirmLabel: 'Delete',
+                onConfirm: () => {
+                  useDesignerStore.getState().removeComponents([component.id]);
+                },
+              });
             }}
             className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-md text-[var(--text-muted)] transition-colors"
           >
@@ -520,13 +526,19 @@ export const LayersPanel = memo(function LayersPanel() {
           <button
             type="button"
             onClick={() => {
-              const expression = prompt(
-                'Enter group expression (e.g. data.customer.name):',
-                'item.id'
-              );
-              if (expression) {
-                useDesignerStore.getState().addGroup(expression);
-              }
+              useDesignerStore.getState().showDialog({
+                title: 'Add Group',
+                message: 'Enter the data field path to group by (e.g. item.category)',
+                showInput: true,
+                inputPlaceholder: 'e.g. item.id',
+                initialValue: 'item.id',
+                confirmLabel: 'Add Group',
+                onConfirm: (val) => {
+                  if (val) {
+                    useDesignerStore.getState().addGroup(val);
+                  }
+                },
+              });
             }}
             className="p-1 hover:bg-[var(--bg-hover)] rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
             title="Add Group"
@@ -540,8 +552,8 @@ export const LayersPanel = memo(function LayersPanel() {
       <div ref={parentRef} className="flex-1 overflow-y-auto scrollbar-hide py-1">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center h-64 px-10 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-[var(--bg-widget)] flex items-center justify-center mb-4 shadow-sm border border-[var(--border-subtle)]">
-              <Layers className="w-6 h-6 text-[var(--text-muted)] opacity-50" />
+            <div className="w-12 h-12 rounded-lg bg-[var(--bg-widget)] flex items-center justify-center mb-4 border border-[var(--border-subtle)]">
+              <Layers className="w-4 h-4 text-[var(--text-muted)]" />
             </div>
             <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-1">
               No Layers Found

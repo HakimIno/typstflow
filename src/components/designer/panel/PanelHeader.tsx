@@ -17,7 +17,7 @@ export function PanelHeader({ title, icon: Icon, actions, children, onClose }: P
   const setSidebarOpen = useDesignerStore((state) => state.setSidebarOpen);
 
   return (
-    <div className="px-3 py-2.5 bg-white/5 flex items-center justify-between border-b border-[var(--border-default)] shrink-0 min-h-[42px]">
+    <div className="px-3 py-2 bg-white/5 flex items-center justify-between border-b border-[var(--border-default)] shrink-0 min-h-[40px]">
       <div className="flex items-center gap-2">
         {children || (
           <>

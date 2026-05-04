@@ -2,10 +2,10 @@
 
 import { memo } from 'react';
 import { AlignmentTools } from './AlignmentTools';
+import { CanvasLayoutSwitcher } from './CanvasLayoutSwitcher';
 import { ToolbarActions } from './ToolbarActions';
 import { UndoRedoTools } from './UndoRedoTools';
 import { ZoomControls } from './ZoomControls';
-import { CanvasLayoutSwitcher } from './CanvasLayoutSwitcher';
 
 export const SubToolbar = memo(function SubToolbar() {
   return (

@@ -9,6 +9,7 @@ import { AiPanel } from '@/components/designer/panel/AiPanel';
 import { DataPanel } from '@/components/designer/panel/DataPanel';
 import { LayersPanel } from '@/components/designer/panel/LayersPanel';
 import { Palette } from '@/components/designer/panel/Palette';
+import { AlertDialog } from '@/components/shared/AlertDialog';
 import { DesignerErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
@@ -168,6 +169,8 @@ export default function DesignerPage() {
           <span className="text-[9px]">V{schema.version}</span>
         </div>
       </footer>
+
+      <AlertDialog />
     </div>
   );
 }

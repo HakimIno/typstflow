@@ -63,7 +63,10 @@ export const Canvas = memo(function Canvas() {
 
       // Find first visible page (O(1) calculation instead of loop)
       const firstRowIdx = Math.floor((scrollTop - PADDING_TOP_PX) / totalPageHeight);
-      const firstVisibleIdx = Math.max(0, firstRowIdx * pagesPerRow - VISIBLE_PAGE_BUFFER * pagesPerRow);
+      const firstVisibleIdx = Math.max(
+        0,
+        firstRowIdx * pagesPerRow - VISIBLE_PAGE_BUFFER * pagesPerRow
+      );
 
       // Find last visible page based on viewport height
       const lastRowIdx = Math.ceil((scrollTop + clientHeight - PADDING_TOP_PX) / totalPageHeight);
@@ -80,7 +83,14 @@ export const Canvas = memo(function Canvas() {
         return prev;
       });
     }
-  }, [updateScrollPos, schema.page.size, schema.page.orientation, schema.pages.length, zoom, canvasLayout]);
+  }, [
+    updateScrollPos,
+    schema.page.size,
+    schema.page.orientation,
+    schema.pages.length,
+    zoom,
+    canvasLayout,
+  ]);
 
   useEffect(() => {
     setMounted(true);
@@ -169,24 +179,26 @@ export const Canvas = memo(function Canvas() {
               <div
                 style={{
                   height: `${Math.floor(visibleRange.start / (canvasLayout === 'grid' ? 2 : 1)) * totalPageHeight}px`,
-                  width: canvasLayout === 'grid' 
-                    ? `${(LayoutEngine.mmToPx(pageWidthMm) * 2 * zoom) + 32}px` 
-                    : `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
+                  width:
+                    canvasLayout === 'grid'
+                      ? `${LayoutEngine.mmToPx(pageWidthMm) * 2 * zoom + 32}px`
+                      : `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
                 }}
                 className="shrink-0"
               />
             )}
 
-            <div 
+            <div
               className={clsx(
-                "min-h-max pl-16 pr-16 pb-24 pt-12 relative",
-                canvasLayout === 'grid' ? "grid" : "flex flex-col items-start"
+                'min-h-max pl-16 pr-16 pb-24 pt-12 relative',
+                canvasLayout === 'grid' ? 'grid' : 'flex flex-col items-start'
               )}
               style={{
                 display: canvasLayout === 'grid' ? 'grid' : 'flex',
-                gridTemplateColumns: canvasLayout === 'grid' 
-                  ? `repeat(2, ${LayoutEngine.mmToPx(pageWidthMm) * zoom}px)` 
-                  : undefined,
+                gridTemplateColumns:
+                  canvasLayout === 'grid'
+                    ? `repeat(2, ${LayoutEngine.mmToPx(pageWidthMm) * zoom}px)`
+                    : undefined,
                 gap: `${currentGap}px ${canvasLayout === 'grid' ? 32 * zoom : 0}px`,
                 width: 'fit-content',
               }}
@@ -259,10 +271,10 @@ export const Canvas = memo(function Canvas() {
                           }
                           components={
                             schema.zones.header.repeatOnEveryPage ||
-                              (schema.zones.header.showOnFirstPageOnly && pIdx === 0) ||
-                              (!schema.zones.header.repeatOnEveryPage &&
-                                !schema.zones.header.showOnFirstPageOnly &&
-                                pIdx === 0)
+                            (schema.zones.header.showOnFirstPageOnly && pIdx === 0) ||
+                            (!schema.zones.header.repeatOnEveryPage &&
+                              !schema.zones.header.showOnFirstPageOnly &&
+                              pIdx === 0)
                               ? schema.zones.header.components
                               : []
                           }
@@ -334,11 +346,11 @@ export const Canvas = memo(function Canvas() {
                           }
                           components={
                             schema.zones.footer.repeatOnEveryPage ||
-                              (schema.zones.footer.showOnLastPageOnly &&
-                                pIdx === schema.pages.length - 1) ||
-                              (!schema.zones.footer.repeatOnEveryPage &&
-                                !schema.zones.footer.showOnLastPageOnly &&
-                                pIdx === 0)
+                            (schema.zones.footer.showOnLastPageOnly &&
+                              pIdx === schema.pages.length - 1) ||
+                            (!schema.zones.footer.repeatOnEveryPage &&
+                              !schema.zones.footer.showOnLastPageOnly &&
+                              pIdx === 0)
                               ? schema.zones.footer.components
                               : []
                           }
@@ -402,9 +414,10 @@ export const Canvas = memo(function Canvas() {
               <div
                 style={{
                   height: `${Math.ceil((schema.pages.length - 1 - visibleRange.end) / (canvasLayout === 'grid' ? 2 : 1)) * totalPageHeight}px`,
-                  width: canvasLayout === 'grid' 
-                    ? `${(LayoutEngine.mmToPx(pageWidthMm) * 2 * zoom) + 32}px` 
-                    : `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
+                  width:
+                    canvasLayout === 'grid'
+                      ? `${LayoutEngine.mmToPx(pageWidthMm) * 2 * zoom + 32}px`
+                      : `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
                 }}
                 className="shrink-0"
               />

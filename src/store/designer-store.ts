@@ -22,6 +22,23 @@ import {
 import { TAX_INVOICE_SAMPLE_DATA, TAX_INVOICE_TEMPLATE } from '../lib/templates/tax-invoice';
 import type { ComponentNode, GroupDefinition, LayoutSchema, Zone, ZoneKey } from '../types/schema';
 
+export interface DialogOptions {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: 'info' | 'danger' | 'warning' | 'success';
+  showInput?: boolean;
+  inputPlaceholder?: string;
+  initialValue?: string;
+  onConfirm?: (value?: string) => void;
+  onCancel?: () => void;
+}
+
+interface DialogState extends DialogOptions {
+  isOpen: boolean;
+}
+
 interface DesignerState {
   // Schema
   schema: LayoutSchema;
@@ -178,6 +195,11 @@ interface DesignerState {
   // Group Actions
   addGroup: (field: string) => void;
   removeGroup: (id: string) => void;
+  // Dialog
+  dialog: DialogState;
+  showDialog: (options: DialogOptions) => void;
+  hideDialog: () => void;
+
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
 }
@@ -271,6 +293,12 @@ export const useDesignerStore = create<DesignerState>()(
         },
         activePageId: null,
       },
+      dialog: {
+        isOpen: false,
+        title: '',
+        message: '',
+        variant: 'info',
+      },
       _hasHydrated: false,
       setHasHydrated: (state) => set({ _hasHydrated: state }),
 
@@ -317,6 +345,23 @@ export const useDesignerStore = create<DesignerState>()(
           });
         }
       },
+
+      showDialog: (options) =>
+        set({
+          dialog: {
+            variant: 'info',
+            ...options,
+            isOpen: true,
+          },
+        }),
+
+      hideDialog: () =>
+        set((state) => ({
+          dialog: {
+            ...state.dialog,
+            isOpen: false,
+          },
+        })),
 
       loadStressTest: (pages?: number, components?: number) => {
         agentLogger.log({

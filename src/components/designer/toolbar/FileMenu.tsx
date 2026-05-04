@@ -12,29 +12,32 @@ import { ToolbarButton } from './ToolbarButton';
 export function FileMenu() {
   const loadTemplate = useDesignerStore((state) => state.loadTemplate);
 
+  const showDialog = useDesignerStore((state) => state.showDialog);
+
   const handleNew = () => {
-    if (
-      confirm(
-        'Are you sure you want to start a new blank report? This will clear all current work.'
-      )
-    ) {
-      loadTemplate('blank');
-    }
+    showDialog({
+      title: 'Create New Report',
+      message:
+        'Are you sure you want to start a new blank report? This will clear all current work.',
+      variant: 'warning',
+      confirmLabel: 'New Report',
+      onConfirm: () => loadTemplate('blank'),
+    });
   };
 
   const handleReset = () => {
-    if (
-      confirm(
-        'CRITICAL RESET: This will clear ALL saved data, including history and preferences, and reload the application. Proceed?'
-      )
-    ) {
-      localStorage.clear();
-      // IndexedDB cleanup is more complex but clearing localStorage will trigger a re-render/reset in many cases
-      // if the persistence key is there.
-      // For this app, we use async-storage (IndexedDB).
-      window.indexedDB.deleteDatabase('typstflow-storage');
-      window.location.reload();
-    }
+    showDialog({
+      title: 'Critical System Reset',
+      message:
+        'This will clear ALL saved data, including history and preferences, and reload the application. This action cannot be undone.',
+      variant: 'danger',
+      confirmLabel: 'Hard Reset',
+      onConfirm: () => {
+        localStorage.clear();
+        window.indexedDB.deleteDatabase('typstflow-storage');
+        window.location.reload();
+      },
+    });
   };
 
   return (

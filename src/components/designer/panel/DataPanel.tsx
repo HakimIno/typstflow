@@ -398,15 +398,22 @@ function ExplorerItem({ path, type }: { path: string; type: string }) {
     navigator.clipboard.writeText(formatBinding(path));
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleCopy();
+    }
+  };
+
   return (
-    <button
-      ref={ref as any}
-      type="button"
+    <div
+      ref={ref}
       className={clsx(
-        'group flex items-center gap-2.5 px-2 py-1 rounded transition-all cursor-grab active:cursor-grabbing hover:bg-[var(--bg-widget)] border border-transparent hover:border-[var(--border-subtle)] hover:shadow-sm w-full text-left',
+        'group flex items-center gap-2.5 px-2 py-1 rounded transition-all cursor-grab active:cursor-grabbing hover:bg-[var(--bg-widget)] border border-transparent hover:border-[var(--border-subtle)] hover:shadow-sm w-full text-left outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]',
         isDragging && 'opacity-40 grayscale'
       )}
       onClick={handleCopy}
+      onKeyDown={handleKeyDown}
     >
       <div
         className={clsx(
@@ -428,9 +435,13 @@ function ExplorerItem({ path, type }: { path: string; type: string }) {
       <button
         type="button"
         className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-[var(--bg-surface)] rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] transition-all"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleCopy();
+        }}
       >
         <Copy className="w-3.5 h-3.5" />
       </button>
-    </button>
+    </div>
   );
 }

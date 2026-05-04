@@ -1,6 +1,5 @@
 'use client';
 
-import { useDesignerStore } from '@/store/designer-store';
 import { memo } from 'react';
 import { FileMenu } from './FileMenu';
 import { HelpMenu } from './HelpMenu';
@@ -9,7 +8,6 @@ import { SettingsMenu } from './SettingsMenu';
 import { ViewSwitcher } from './ViewSwitcher';
 
 export const TopHeader = memo(function TopHeader() {
-
   return (
     <header className="h-[40px] bg-[var(--bg-surface)] backdrop-blur-2xl flex items-center justify-between px-3 border-b border-[var(--border-default)]">
       <div className="flex items-center gap-2">

@@ -23,7 +23,12 @@ export const ToolbarActions = memo(function ToolbarActions() {
       downloadPdf(pdfBytes, `${schema.name || 'report'}.pdf`);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Failed to generate PDF. Check console for details.');
+      useDesignerStore.getState().showDialog({
+        title: 'Export Failed',
+        message: 'Failed to generate PDF. Check console for details.',
+        variant: 'danger',
+        confirmLabel: 'Close',
+      });
     } finally {
       setIsExporting(false);
     }
@@ -38,7 +43,12 @@ export const ToolbarActions = memo(function ToolbarActions() {
       downloadText(source, `${schema.name || 'report'}.typ`);
     } catch (error) {
       console.error('Download source failed:', error);
-      alert('Failed to generate source.');
+      useDesignerStore.getState().showDialog({
+        title: 'Download Failed',
+        message: 'Failed to generate Typst source file.',
+        variant: 'danger',
+        confirmLabel: 'Close',
+      });
     }
   };
 
