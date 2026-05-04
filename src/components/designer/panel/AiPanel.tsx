@@ -1,8 +1,10 @@
 'use client';
 
+import { type AgentMessage, useAiAgent } from '@/hooks/use-ai-agent';
 import { clsx } from 'clsx';
 import {
   Bot,
+  CheckCircle,
   ChevronDown,
   ListTree,
   Mic,
@@ -12,71 +14,67 @@ import {
   Sparkles,
   User,
   Wand2,
+  XCircle,
   Zap,
 } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { BasePanel } from './BasePanel';
 import { PanelHeader } from './PanelHeader';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
+function ToolCallBadge({ call }: { call: NonNullable<AgentMessage['toolCalls']>[number] }) {
+  return (
+    <div
+      className={clsx(
+        'flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium',
+        call.success
+          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+          : 'bg-red-500/10 text-red-400 border border-red-500/20'
+      )}
+    >
+      {call.success ? <CheckCircle className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}
+      {call.description}
+    </div>
+  );
 }
 
 export const AiPanel = memo(function AiPanel() {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content:
-        'Hello! I am your AI Design Assistant. How can I help you perfect your report today?',
-      timestamp: new Date(),
-    },
-  ]);
-  const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { messages, isLoading, sendMessage, clearMessages } = useAiAgent();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: These dependencies are needed to trigger scrolling when content updates.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new message or typing indicator
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages.length, isTyping]);
+  }, [messages.length, isLoading]);
 
   const handleSend = () => {
-    if (!input.trim()) return;
-
-    const userMsg: Message = {
-      id: Math.random().toString(),
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
+    const text = input.trim();
+    if (!text || isLoading) return;
     setInput('');
-    setIsTyping(true);
-
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMsg: Message = {
-        id: Math.random().toString(),
-        role: 'assistant',
-        content: `I've analyzed your request: "${userMsg.content}". I can help you with that! Would you like me to suggest some layout improvements or automatically bind your data fields?`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
-    }, 1500);
+    sendMessage(text);
   };
 
   const suggestions = [
-    { icon: Wand2, label: 'Fix Alignment', color: 'text-blue-400' },
-    { icon: Zap, label: 'Auto Layout', color: 'text-yellow-400' },
-    { icon: RefreshCcw, label: 'Reset Data', color: 'text-purple-400' },
+    {
+      icon: Wand2,
+      label: 'Invoice layout',
+      color: 'text-blue-400',
+      prompt: 'Create a basic invoice layout with company header, items table, and total',
+    },
+    {
+      icon: Zap,
+      label: 'Add table',
+      color: 'text-yellow-400',
+      prompt: 'Add a data table to the body with columns for name, quantity, price, and total',
+    },
+    {
+      icon: RefreshCcw,
+      label: 'Load template',
+      color: 'text-purple-400',
+      prompt: 'Load the invoice template',
+    },
   ];
 
   return (
@@ -118,7 +116,7 @@ export const AiPanel = memo(function AiPanel() {
 
             <div
               className={clsx(
-                'max-w-[85%] px-3 py-2 rounded-2xl text-[11px] leading-relaxed ',
+                'max-w-[85%] px-3 py-2 rounded-2xl text-[11px] leading-relaxed',
                 msg.role === 'user'
                   ? 'bg-[var(--accent)] text-white rounded-tr-none'
                   : 'bg-[var(--bg-widget)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-tl-none'
@@ -126,10 +124,18 @@ export const AiPanel = memo(function AiPanel() {
             >
               {msg.content}
             </div>
+
+            {msg.toolCalls && msg.toolCalls.length > 0 && (
+              <div className="max-w-[95%] flex flex-wrap gap-1 mt-0.5">
+                {msg.toolCalls.map((tc, i) => (
+                  <ToolCallBadge key={`${tc.name}-${i}`} call={tc} />
+                ))}
+              </div>
+            )}
           </div>
         ))}
 
-        {isTyping && (
+        {isLoading && (
           <div className="flex items-center gap-2 px-1">
             <div className="w-5 h-5 rounded-md bg-[var(--accent-glow)] flex items-center justify-center">
               <Bot className="w-3 h-3 text-[var(--accent)]" />
@@ -152,13 +158,15 @@ export const AiPanel = memo(function AiPanel() {
         )}
       </div>
 
-      {/* Suggestions */}
+      {/* Quick Suggestions */}
       <div className="px-3 py-2 flex items-center gap-1.5 overflow-x-auto scrollbar-none no-scrollbar">
         {suggestions.map((s) => (
           <button
             key={s.label}
             type="button"
-            className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[var(--bg-widget)] border border-[var(--border-subtle)] hover:border-[var(--accent)] transition-all whitespace-nowrap group"
+            disabled={isLoading}
+            onClick={() => sendMessage(s.prompt)}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-[var(--bg-widget)] border border-[var(--border-subtle)] hover:border-[var(--accent)] transition-all whitespace-nowrap group disabled:opacity-40"
           >
             <s.icon className={clsx('w-3 h-3', s.color)} />
             <span className="text-[9px] font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
@@ -170,8 +178,7 @@ export const AiPanel = memo(function AiPanel() {
 
       {/* Input Area */}
       <div className="p-0.5 bg-[var(--bg-widget)] border-t border-[var(--border-default)]">
-        <div className="flex flex-col rounded-lg bg-[var(--bg-app)] ">
-          {/* Textarea Area */}
+        <div className="flex flex-col rounded-lg bg-[var(--bg-app)]">
           <textarea
             rows={2}
             value={input}
@@ -182,15 +189,16 @@ export const AiPanel = memo(function AiPanel() {
                 handleSend();
               }
             }}
-            placeholder="Ask anything, @ to mention, / for workflows"
+            placeholder="Describe what you want to build..."
             className="w-full bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] p-4 pt-5 resize-none min-h-[80px] leading-relaxed"
           />
 
-          {/* Footer Bar */}
-          <div className="flex items-center justify-between p-0.5 ">
+          <div className="flex items-center justify-between p-0.5">
             <div className="flex items-center gap-1">
               <button
                 type="button"
+                onClick={clearMessages}
+                title="Clear chat"
                 className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               >
                 <Plus className="w-4 h-4" />
@@ -203,7 +211,7 @@ export const AiPanel = memo(function AiPanel() {
                 className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-white/5 rounded-lg transition-colors group"
               >
                 <span className="text-[10px] font-bold text-[var(--text-muted)] group-hover:text-[var(--text-primary)]">
-                  Gemini 3 Flash
+                  claude-3.5-sonnet
                 </span>
                 <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />
               </button>
@@ -222,12 +230,12 @@ export const AiPanel = memo(function AiPanel() {
             <div className="flex items-center gap-0.5">
               <button
                 type="button"
-                className="p-2 rounded-full bg-[var(--bg-widget)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] transition-all active:scale-95 "
+                className="p-2 rounded-full bg-[var(--bg-widget)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] transition-all active:scale-95"
               >
                 <Mic className="w-4 h-4" />
               </button>
 
-              {input.trim() && (
+              {input.trim() && !isLoading && (
                 <button
                   type="button"
                   onClick={handleSend}
