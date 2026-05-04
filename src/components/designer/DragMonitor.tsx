@@ -49,8 +49,8 @@ interface WasmSnapResult {
 
 // ✅ EXTREME PERFORMANCE MODE for 1000+ pages
 const SNAP_PAGE_RADIUS = 2; // Pages to load for snapping (current ± 2)
-const SNAP_THRESHOLD_MM = 8; // Snap threshold in mm
-const SNAP_SKIP_FRAMES = 2; // Skip snap calculation every N frames (lower = more responsive)
+const SNAP_THRESHOLD_MM = 2; // Tighter feel like Figma
+const SNAP_SKIP_FRAMES = 1; // More responsive snap calculation
 const ENABLE_PERF_MONITORING = false; // Set to true for debugging
 
 // ✅ CRITICAL: Only calculate offsets for visible pages, NOT all 1000+

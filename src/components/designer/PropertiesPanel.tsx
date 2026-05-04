@@ -12,7 +12,7 @@ import type {
   TextComponent,
 } from '@/types/schema';
 import { clsx } from 'clsx';
-import { FileDown, FileText, Layers, Sliders, Trash2 } from 'lucide-react';
+import { FileDown, FileText, Layers, Trash2 } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { DesignerInput } from '../shared/DesignerInput';
 import { TablePropertiesPanel } from './TablePropertiesPanel';
@@ -76,8 +76,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
     return (
       <div className="h-full flex flex-col bg-[var(--bg-surface)]">
         <div className="h-8 min-h-[32px] bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
-          <Layers className="w-3 h-3 text-[var(--accent)]" />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Group Settings</span>
+          <span className="text-[11px] font-bold">Group Settings</span>
         </div>
         <div className="flex-1 overflow-auto border-l border-[var(--border-default)]">
           <GroupProperties groupId={selectedGroupId} />
@@ -90,8 +89,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
     return (
       <div className="h-full flex flex-col bg-[var(--bg-surface)]">
         <div className="h-8 min-h-[32px] bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
-          <Layers className="w-3 h-3 text-[var(--text-muted)]" />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Report Settings</span>
+          <span className="text-[11px] font-bold">Report Settings</span>
         </div>
         <div className="flex-1 overflow-auto border-l border-[var(--border-default)]">
           <section>
@@ -198,8 +196,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
     return (
       <div className="h-full flex flex-col bg-[var(--bg-surface)]">
         <div className="h-8 bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
-          <Layers className="w-3 h-3 text-[var(--text-muted)]" />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Group Selection</span>
+          <span className="text-[11px] font-bold">Group Selection</span>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <div className="w-12 h-12 rounded-full bg-[var(--accent-glow)] flex items-center justify-center mb-4 border border-[var(--border-accent)]">
@@ -243,8 +240,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
   return (
     <div className="h-full flex flex-col bg-[var(--bg-surface)]">
       <div className="h-8 min-h-[32px] bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
-        <Sliders className="w-3 h-3 text-[var(--text-muted)]" />
-        <span className="text-[10px] font-bold uppercase tracking-wider">Properties Inspector</span>
+        <span className="text-[11px] font-bold">Properties Inspector</span>
       </div>
 
       <div className="flex-1 overflow-auto border-l border-[var(--border-default)]">
@@ -256,7 +252,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
             </span>
           </PropertyRow>
           <PropertyRow label="Type">
-            <span className="text-[11px] font-bold text-[var(--accent)] uppercase">
+            <span className="text-[11px] font-semibold text-[var(--accent)]">
               {selectedComponent.type}
             </span>
           </PropertyRow>
@@ -267,9 +263,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           {isText(selectedComponent) && (
             <div className="flex flex-col border-b border-[var(--border-default)]">
               <div className="px-3 py-1 flex items-center justify-between text-[10px] bg-white/[0.01]">
-                <span className="font-bold text-[var(--text-secondary)] uppercase tracking-tighter">
-                  Text Content
-                </span>
+                <span className="font-semibold text-[var(--text-secondary)]">Text Content</span>
                 <VariablePicker
                   sampleData={sampleData}
                   onSelect={(_path, binding) => {
@@ -349,9 +343,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           {isPageNumber(selectedComponent) && (
             <div className="flex flex-col border-b border-[var(--border-default)]">
               <div className="px-3 py-1 flex items-center justify-between text-[10px] bg-white/[0.01]">
-                <span className="font-bold text-[var(--text-secondary)] uppercase tracking-tighter">
-                  Numbering Format
-                </span>
+                <span className="font-semibold text-[var(--text-secondary)]">Numbering Format</span>
                 <div className="text-[9px] text-[var(--text-muted)] italic">
                   Use {'{{page}}'} and {'{{pageTotal}}'}
                 </div>
@@ -423,8 +415,8 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               className={clsx(
                 'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
                 selectedComponent.pageBreakBefore
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+                  ? 'bg-[var(--accent)] text-white font-medium'
+                  : 'bg-white/[0.04] text-[var(--text-secondary)] font-medium hover:bg-white/[0.08]'
               )}
             >
               <FileDown className="w-3 h-3" />
@@ -540,9 +532,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         <button
           type="button"
           onClick={() => removeComponent(selectedComponent.id)}
-          className="w-full flex items-center justify-center gap-2 p-1.5 bg-red-600 text-white font-bold text-[10px] uppercase hover:bg-red-700 active:bg-red-800 transition-colors"
+          className="w-full flex items-center justify-center gap-2 p-1.5 bg-red-600 text-white font-medium text-[11px] hover:bg-red-700 active:bg-red-800 transition-colors"
         >
-          <Trash2 className="w-3 h-3" />
+          <Trash2 className="w-3.5 h-3.5" />
           Delete Object
         </button>
       </div>

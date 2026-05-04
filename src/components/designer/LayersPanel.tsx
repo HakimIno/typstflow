@@ -207,7 +207,7 @@ const LayerItem = memo(
               <DesignerInput
                 autoFocus
                 variant="ghost"
-                className="text-[11px] font-bold p-0 text-[var(--text-primary)]"
+                className="text-[11px] font-medium p-0 text-[var(--text-primary)]"
                 value={name}
                 onChange={(v) => setName(v)}
                 onBlur={handleRename}
@@ -217,7 +217,7 @@ const LayerItem = memo(
               <div className="flex flex-col">
                 <span
                   className={clsx(
-                    'block text-[11px] font-bold truncate transition-colors leading-tight',
+                    'block text-[12px] font-medium truncate transition-colors leading-tight',
                     isSelected
                       ? 'text-[var(--text-primary)]'
                       : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
@@ -227,7 +227,7 @@ const LayerItem = memo(
                   {component.name ||
                     (component.type === 'text' ? component.content : component.type)}
                 </span>
-                <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-wider font-medium opacity-60">
+                <span className="text-[10px] text-[var(--text-muted)] font-normal opacity-60">
                   {component.type}
                 </span>
               </div>
@@ -515,9 +515,7 @@ export const LayersPanel = memo(function LayersPanel() {
       <div className="p-3 flex items-center justify-between border-b border-[var(--border-default)] bg-[var(--bg-widget)] shrink-0">
         <div className="flex items-center gap-2">
           <Layers className="w-3.5 h-3.5 text-[var(--accent)]" />
-          <h2 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-            Layers
-          </h2>
+          <h2 className="text-[12px] font-semibold text-[var(--text-secondary)]">Layers</h2>
         </div>
         <button
           type="button"
@@ -533,7 +531,7 @@ export const LayersPanel = memo(function LayersPanel() {
           className="p-1 hover:bg-[var(--bg-hover)] rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
           title="Add Group"
         >
-          <span className="text-[9px] font-bold uppercase tracking-wider">+ Group</span>
+          <span className="text-[11px] font-medium">+ Group</span>
         </button>
       </div>
 
@@ -578,7 +576,7 @@ export const LayersPanel = memo(function LayersPanel() {
                     <div className="px-3.5 py-1.5 flex items-center gap-2 mt-4 first:mt-2">
                       <div className="flex items-center gap-2 shrink-0">
                         <div className="w-1 h-1 rounded-full bg-[var(--accent)]" />
-                        <span className="text-[9px] font-black text-[var(--text-primary)] uppercase tracking-[0.2em]">
+                        <span className="text-[11px] font-bold text-[var(--text-primary)]">
                           Page {item.index + 1}
                         </span>
                       </div>
@@ -590,7 +588,7 @@ export const LayersPanel = memo(function LayersPanel() {
                     <div className="px-3.5 py-1.5 flex items-center gap-2 mt-4">
                       <div className="flex items-center gap-2 shrink-0">
                         <Globe className="w-3 h-3 text-[var(--accent)]" />
-                        <span className="text-[9px] font-black text-[var(--accent)] uppercase tracking-[0.2em]">
+                        <span className="text-[11px] font-bold text-[var(--accent)]">
                           {item.label}
                         </span>
                       </div>
@@ -723,7 +721,7 @@ const ZoneHeader = memo(
           />
         </button>
 
-        <span className="text-[10px] font-bold uppercase tracking-widest flex-1 opacity-80 group-hover:opacity-100 transition-opacity">
+        <span className="text-[11px] font-medium flex-1 opacity-90 group-hover:opacity-100 transition-opacity">
           {item.label}
         </span>
 

@@ -10,7 +10,7 @@ export const PropertyRow = ({ label, children }: { label: string; children: Reac
 );
 
 export const SectionHeader = ({ label }: { label: string }) => (
-  <div className="px-3 py-1.5 bg-white/[0.03] border-b border-[var(--border-default)] text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">
+  <div className="px-3 py-1.5 bg-white/[0.03] border-b border-[var(--border-default)] text-[11px] font-bold text-[var(--text-muted)]">
     {label}
   </div>
 );

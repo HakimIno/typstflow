@@ -124,10 +124,10 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                 for cell in &row.cells {
                     let val = resolve_binding_scoped(&cell.content, item, global);
                     let format_func = cell.format.as_deref().unwrap_or("text").to_lowercase();
-                    let content = if format_func != "text" {
-                        format!("[#fmt_{}(\"{}\")]", format_func.replace("-", "_"), escape_string_literal(&val))
+                    let inner_content = if format_func != "text" {
+                        format!("#fmt_{}(\"{}\")", format_func.replace("-", "_"), escape_string_literal(&val))
                     } else {
-                        format!("[{}]", escape_typst(&val))
+                        escape_typst(&val)
                     };
 
                     let cs = cell.colspan.unwrap_or(1);
@@ -139,11 +139,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                     if let Some(a) = &cell.align { args.push(format!("align: {}", a)); }
                     if let Some(i) = &cell.inset { args.push(format!("inset: {}", i)); }
                     
-                    if args.is_empty() {
-                        t_out.push_str(&format!("  {},\n", content));
-                    } else {
-                        t_out.push_str(&format!("  table.cell({}){},\n", args.join(", "), content));
-                    }
+                    t_out.push_str(&format!("  table.cell({})[{}],\n", args.join(", "), inner_content));
                 }
             }
         } else {
@@ -158,25 +154,23 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                 }).unwrap_or_default();
                 
                 let format_func = col.format.as_deref().unwrap_or("text").to_lowercase();
-                let content = if format_func != "text" {
-                    format!("[#fmt_{}(\"{}\")]", format_func.replace("-", "_"), escape_string_literal(&val))
+                let inner_content = if format_func != "text" {
+                    format!("#fmt_{}(\"{}\")", format_func.replace("-", "_"), escape_string_literal(&val))
                 } else {
-                    format!("[{}]", escape_typst(&val))
+                    escape_typst(&val)
                 };
 
                 let col_align = col.align.as_deref().unwrap_or("left");
                 let bg = col.background.as_deref();
                 
-                if cs == 1 && rs == 1 && bg.is_none() {
-                    t_out.push_str(&format!("  [#set align({}); {}],\n", col_align, content));
-                } else {
-                    let mut args = Vec::new();
-                    args.push(format!("x: {}", x));
-                    if cs > 1 { args.push(format!("colspan: {}", cs)); }
-                    if rs > 1 { args.push(format!("rowspan: {}", rs)); }
-                    if let Some(b) = bg { args.push(format!("fill: {}", format_color(b))); }
-                    t_out.push_str(&format!("  table.cell({})[#set align({}); {}],\n", args.join(", "), col_align, content));
-                }
+                let mut args = Vec::new();
+                args.push(format!("align: {}", col_align));
+                if let Some(b) = bg { args.push(format!("fill: {}", format_color(b))); }
+                if cs > 1 { args.push(format!("colspan: {}", cs)); }
+                if rs > 1 { args.push(format!("rowspan: {}", rs)); }
+                
+                t_out.push_str(&format!("  table.cell({})[{}],\n", args.join(", "), inner_content));
+
                 for i in 1..(cs as usize) { covered.insert(x + i); }
             }
         }

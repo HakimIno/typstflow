@@ -20,7 +20,7 @@ export const EditorOverlay = memo(function EditorOverlay({
   return (
     <div
       ref={editorContainerRef}
-      className="absolute inset-0 w-full h-full bg-white shadow-2xl z-[60] overflow-hidden border-2 border-blue-600"
+      className="absolute inset-0 w-full h-full bg-white overflow-hidden"
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
       role="presentation"

@@ -6,7 +6,6 @@ import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { clsx } from 'clsx';
 import {
   Columns,
-  EllipseIcon,
   FileDown,
   Hash,
   Image,
@@ -81,8 +80,7 @@ export const Palette = memo(function Palette() {
       {/* Utility Header */}
       <div className="px-3 py-2.5 bg-[var(--bg-widget)] flex items-center justify-between border-b border-[var(--border-default)] shrink-0">
         <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
-          <EllipseIcon className="w-3.5 h-3.5 text-[var(--accent)]" />
-          <span className="text-[9px] font-bold uppercase tracking-[0.1em]"> Element Library</span>
+          <span className="text-[11px] font-semibold">Element Library</span>
         </div>
 
         <button
@@ -113,9 +111,7 @@ export const Palette = memo(function Palette() {
         {filteredCategories.map((cat) => (
           <div key={cat.id} className="space-y-1">
             <div className="px-1.5 py-0.5 flex items-center gap-2">
-              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.15em]">
-                {cat.label}
-              </span>
+              <span className="text-[11px] font-bold text-[var(--text-muted)]">{cat.label}</span>
               <div className="flex-1 h-px bg-[var(--border-subtle)] opacity-50" />
             </div>
 
@@ -260,7 +256,7 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: Palet
         <Icon className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors" />
       </div>
 
-      <span className="text-[10px] text-[var(--text-secondary)] font-semibold truncate group-hover:text-[var(--text-primary)] transition-colors">
+      <span className="text-[12px] text-[var(--text-secondary)] font-medium truncate group-hover:text-[var(--text-primary)] transition-colors">
         {label}
       </span>
     </div>
