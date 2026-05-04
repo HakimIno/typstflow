@@ -1,3 +1,6 @@
+'use client';
+
+import { DesignerInput } from '@/components/shared/DesignerInput';
 import { extractJsonPaths, formatBinding, getValueType } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
@@ -15,11 +18,11 @@ import {
   List,
   Search,
   Type,
-  X,
 } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { DesignerInput } from '../shared/DesignerInput';
+import { BasePanel } from './BasePanel';
+import { PanelHeader } from './PanelHeader';
 
 export const DataPanel = memo(function DataPanel() {
   const { sampleData, setSampleData, theme } = useDesignerStore(
@@ -131,9 +134,18 @@ export const DataPanel = memo(function DataPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-surface)] overflow-hidden font-sans border-r border-[var(--border-default)]">
-      {/* Utility Header */}
-      <div className="px-3 py-2 bg-white/5 flex items-center justify-between border-b border-[var(--border-default)] shrink-0">
+    <BasePanel>
+      <PanelHeader
+        actions={
+          <button
+            type="button"
+            onClick={loadExample}
+            className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold uppercase tracking-wider border border-[var(--border-subtle)] px-2 py-0.5 rounded-[4px] hover:bg-white/5 transition-colors"
+          >
+            Example
+          </button>
+        }
+      >
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -148,7 +160,7 @@ export const DataPanel = memo(function DataPanel() {
             <Database className="w-3.5 h-3.5" />
             <span className="text-[9px] uppercase tracking-widest">Explorer</span>
             {view === 'explorer' && (
-              <div className="absolute -bottom-[9px] left-0 right-0 h-0.5 bg-[var(--accent)]" />
+              <div className="absolute -bottom-[9.5px] left-0 right-0 h-0.5 bg-[var(--accent)]" />
             )}
           </button>
           <button
@@ -164,27 +176,11 @@ export const DataPanel = memo(function DataPanel() {
             <Braces className="w-3.5 h-3.5" />
             <span className="text-[9px] uppercase tracking-widest">JSON</span>
             {view === 'editor' && (
-              <div className="absolute -bottom-[9px] left-0 right-0 h-0.5 bg-[var(--accent)]" />
+              <div className="absolute -bottom-[9.5px] left-0 right-0 h-0.5 bg-[var(--accent)]" />
             )}
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={loadExample}
-            className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold uppercase tracking-wider border border-[var(--border-subtle)] px-2 py-0.5 rounded-[4px] hover:bg-white/5 transition-colors"
-          >
-            Example
-          </button>
-          <button
-            type="button"
-            onClick={() => useDesignerStore.getState().setSidebarOpen(false)}
-            className="p-1 hover:bg-[var(--bg-hover)] rounded transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
+      </PanelHeader>
 
       {view === 'editor' ? (
         <div className="flex-1 flex flex-col min-h-0">
@@ -254,7 +250,7 @@ export const DataPanel = memo(function DataPanel() {
                 type="text"
                 placeholder="Search tools..."
                 value={searchQuery}
-                onChange={(v) => setSearchQuery(v)}
+                onChange={(v: string) => setSearchQuery(v)}
                 className="pr-8"
               />
               <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
@@ -313,7 +309,7 @@ export const DataPanel = memo(function DataPanel() {
           </div>
         </div>
       )}
-    </div>
+    </BasePanel>
   );
 });
 

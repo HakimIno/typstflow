@@ -9,15 +9,12 @@ import { SettingsMenu } from './SettingsMenu';
 import { ViewSwitcher } from './ViewSwitcher';
 
 export const TopHeader = memo(function TopHeader() {
-  const _version = useDesignerStore((state) => state.schema.version);
-  const _schemaName = useDesignerStore((state) => state.schema.name);
-  const _updateSchema = useDesignerStore((state) => state.updateSchema);
 
   return (
     <header className="h-[40px] bg-[var(--bg-surface)] backdrop-blur-2xl flex items-center justify-between px-3 border-b border-[var(--border-default)]">
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5">
-          <img src="/logo.png" alt="Logo" className="w-7 h-7 bg-white rounded-full" />
+        <div className="flex items-center justify-center w-6 h-6 rounded overflow-hidden">
+          <img src="/icon.png" alt="Logo" className="w-full h-full object-cover" />
         </div>
 
         <nav className="flex items-center gap-1">

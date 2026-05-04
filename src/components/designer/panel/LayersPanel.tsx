@@ -1,5 +1,6 @@
 'use client';
 
+import { DesignerInput } from '@/components/shared/DesignerInput';
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode, ZoneKey } from '@/types/schema';
 import {
@@ -32,7 +33,8 @@ import {
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { DesignerInput } from '../shared/DesignerInput';
+import { BasePanel } from './BasePanel';
+import { PanelHeader } from './PanelHeader';
 
 // --- Types ---
 
@@ -209,9 +211,9 @@ const LayerItem = memo(
                 variant="ghost"
                 className="text-[11px] font-medium p-0 text-[var(--text-primary)]"
                 value={name}
-                onChange={(v) => setName(v)}
+                onChange={(v: string) => setName(v)}
                 onBlur={handleRename}
-                onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+                onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && handleRename()}
               />
             ) : (
               <div className="flex flex-col">
@@ -510,30 +512,29 @@ export const LayersPanel = memo(function LayersPanel() {
   }, [moveComponent]);
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-surface)]">
-      {/* Header */}
-      <div className="p-3 flex items-center justify-between border-b border-[var(--border-default)] bg-[var(--bg-widget)] shrink-0">
-        <div className="flex items-center gap-2">
-          <Layers className="w-3.5 h-3.5 text-[var(--accent)]" />
-          <h2 className="text-[12px] font-semibold text-[var(--text-secondary)]">Layers</h2>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            const expression = prompt(
-              'Enter group expression (e.g. data.customer.name):',
-              'item.id'
-            );
-            if (expression) {
-              useDesignerStore.getState().addGroup(expression);
-            }
-          }}
-          className="p-1 hover:bg-[var(--bg-hover)] rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
-          title="Add Group"
-        >
-          <span className="text-[11px] font-medium">+ Group</span>
-        </button>
-      </div>
+    <BasePanel>
+      <PanelHeader
+        title="Layers"
+        icon={Layers}
+        actions={
+          <button
+            type="button"
+            onClick={() => {
+              const expression = prompt(
+                'Enter group expression (e.g. data.customer.name):',
+                'item.id'
+              );
+              if (expression) {
+                useDesignerStore.getState().addGroup(expression);
+              }
+            }}
+            className="p-1 hover:bg-[var(--bg-hover)] rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
+            title="Add Group"
+          >
+            <span className="text-[11px] font-medium">+ Group</span>
+          </button>
+        }
+      />
 
       {/* Virtualized List Container */}
       <div ref={parentRef} className="flex-1 overflow-y-auto scrollbar-hide py-1">
@@ -623,7 +624,7 @@ export const LayersPanel = memo(function LayersPanel() {
           </div>
         )}
       </div>
-    </div>
+    </BasePanel>
   );
 });
 

@@ -4,6 +4,9 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'TypstFlow - Visual Report Designer',
   description: 'Create premium PDF reports with Typst',
+  icons: {
+    icon: '/icon.png',
+  },
 };
 
 export default function RootLayout({

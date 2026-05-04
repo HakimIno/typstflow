@@ -1,5 +1,6 @@
 'use client';
 
+import { DesignerInput } from '@/components/shared/DesignerInput';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
@@ -18,10 +19,10 @@ import {
   Space,
   Table,
   Type,
-  X,
 } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
-import { DesignerInput } from '../shared/DesignerInput';
+import { BasePanel } from './BasePanel';
+import { PanelHeader } from './PanelHeader';
 
 const CATEGORIES = [
   {
@@ -63,7 +64,6 @@ const CATEGORIES = [
 ];
 
 export const Palette = memo(function Palette() {
-  const setSidebarOpen = useDesignerStore((state) => state.setSidebarOpen);
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredCategories = CATEGORIES.map((cat) => ({
@@ -76,21 +76,8 @@ export const Palette = memo(function Palette() {
   })).filter((cat) => cat.items.length > 0);
 
   return (
-    <div className="h-full flex flex-col bg-[var(--bg-surface)] overflow-hidden font-sans border-r border-[var(--border-default)]">
-      {/* Utility Header */}
-      <div className="px-3 py-2.5 bg-[var(--bg-widget)] flex items-center justify-between border-b border-[var(--border-default)] shrink-0">
-        <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
-          <span className="text-[11px] font-semibold">Element Library</span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(false)}
-          className="p-1 hover:bg-[var(--bg-hover)] rounded transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
+    <BasePanel>
+      <PanelHeader title="Element Library" icon={Table} />
 
       {/* Search Bar - Compact */}
       <div className="p-2 border-b border-[var(--border-default)] shrink-0">
@@ -99,7 +86,7 @@ export const Palette = memo(function Palette() {
             type="text"
             placeholder="Search tools..."
             value={searchQuery}
-            onChange={(v) => setSearchQuery(v)}
+            onChange={(v: string) => setSearchQuery(v)}
             className="pr-8"
           />
           <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
@@ -123,7 +110,7 @@ export const Palette = memo(function Palette() {
           </div>
         ))}
       </div>
-    </div>
+    </BasePanel>
   );
 });
 

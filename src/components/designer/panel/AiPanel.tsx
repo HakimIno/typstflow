@@ -1,9 +1,10 @@
 'use client';
 
-import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { Bot, RefreshCcw, Send, Sparkles, User, Wand2, X, Zap } from 'lucide-react';
+import { Bot, RefreshCcw, Send, Sparkles, User, Wand2, Zap } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
+import { BasePanel } from './BasePanel';
+import { PanelHeader } from './PanelHeader';
 
 interface Message {
   id: string;
@@ -13,7 +14,6 @@ interface Message {
 }
 
 export const AiPanel = memo(function AiPanel() {
-  const setSidebarOpen = useDesignerStore((state) => state.setSidebarOpen);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -68,27 +68,8 @@ export const AiPanel = memo(function AiPanel() {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-surface)] overflow-hidden font-sans border-r border-[var(--border-default)]">
-      {/* Premium Header */}
-      <div className="px-3 py-2.5 bg-white/5 flex items-center justify-between border-b border-[var(--border-default)] shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(0,111,238,0.3)]">
-            <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-primary)]">
-              AI Assistant
-            </span>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(false)}
-          className="p-1 hover:bg-[var(--bg-hover)] rounded transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
+    <BasePanel>
+      <PanelHeader title="AI Assistant" icon={Sparkles} />
 
       {/* Chat History */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none">
@@ -196,6 +177,6 @@ export const AiPanel = memo(function AiPanel() {
           </button>
         </div>
       </div>
-    </div>
+    </BasePanel>
   );
 });

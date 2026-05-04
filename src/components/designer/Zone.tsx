@@ -65,7 +65,8 @@ export const Zone = memo(function Zone({
         !isResizing && 'transition-all duration-300',
         isGroupBand && (groupType === 'header' ? 'bg-indigo-500/[0.03]' : 'bg-fuchsia-500/[0.03]'),
         isDraggedOver && 'bg-[var(--accent-glow)]/50',
-        isResizing && 'ring-1 ring-[var(--accent)] z-50 shadow-lg !transition-none will-change-[height] [contain:size_layout]',
+        isResizing &&
+          'ring-1 ring-[var(--accent)] z-50 shadow-lg !transition-none will-change-[height] [contain:size_layout]',
         hidden && 'border-none'
       )}
     >

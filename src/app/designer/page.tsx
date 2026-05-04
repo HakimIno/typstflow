@@ -1,14 +1,14 @@
 'use client';
 
-import { AiPanel } from '@/components/designer/AiPanel';
 import { Canvas } from '@/components/designer/Canvas';
-import { DataPanel } from '@/components/designer/DataPanel';
-import { LayersPanel } from '@/components/designer/LayersPanel';
-import { Palette } from '@/components/designer/Palette';
 import { PreviewPane } from '@/components/designer/PreviewPane';
 import { PropertiesPanel } from '@/components/designer/PropertiesPanel';
 import { SidebarNav } from '@/components/designer/SidebarNav';
 import { Toolbar } from '@/components/designer/Toolbar';
+import { AiPanel } from '@/components/designer/panel/AiPanel';
+import { DataPanel } from '@/components/designer/panel/DataPanel';
+import { LayersPanel } from '@/components/designer/panel/LayersPanel';
+import { Palette } from '@/components/designer/panel/Palette';
 import { DesignerErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 

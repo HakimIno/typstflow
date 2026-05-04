@@ -67,7 +67,7 @@ export const Canvas = memo(function Canvas() {
       const lastVisibleIdx = Math.min(
         schema.pages.length - 1,
         Math.ceil((scrollTop + clientHeight - PADDING_TOP_PX) / totalPageHeight) +
-          VISIBLE_PAGE_BUFFER
+        VISIBLE_PAGE_BUFFER
       );
 
       setVisibleRange((prev) => {
@@ -241,10 +241,10 @@ export const Canvas = memo(function Canvas() {
                           }
                           components={
                             schema.zones.header.repeatOnEveryPage ||
-                            (schema.zones.header.showOnFirstPageOnly && pIdx === 0) ||
-                            (!schema.zones.header.repeatOnEveryPage &&
-                              !schema.zones.header.showOnFirstPageOnly &&
-                              pIdx === 0)
+                              (schema.zones.header.showOnFirstPageOnly && pIdx === 0) ||
+                              (!schema.zones.header.repeatOnEveryPage &&
+                                !schema.zones.header.showOnFirstPageOnly &&
+                                pIdx === 0)
                               ? schema.zones.header.components
                               : []
                           }
@@ -316,11 +316,11 @@ export const Canvas = memo(function Canvas() {
                           }
                           components={
                             schema.zones.footer.repeatOnEveryPage ||
-                            (schema.zones.footer.showOnLastPageOnly &&
-                              pIdx === schema.pages.length - 1) ||
-                            (!schema.zones.footer.repeatOnEveryPage &&
-                              !schema.zones.footer.showOnLastPageOnly &&
-                              pIdx === 0)
+                              (schema.zones.footer.showOnLastPageOnly &&
+                                pIdx === schema.pages.length - 1) ||
+                              (!schema.zones.footer.repeatOnEveryPage &&
+                                !schema.zones.footer.showOnLastPageOnly &&
+                                pIdx === 0)
                               ? schema.zones.footer.components
                               : []
                           }
@@ -349,7 +349,7 @@ export const Canvas = memo(function Canvas() {
                             e.stopPropagation();
                             useDesignerStore.getState().removePage(page.id);
                           }}
-                          className="absolute -right-12 top-0 p-2 rounded-full shadow-md text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                          className="absolute -right-12 top-0 p-2 rounded-full shadow-md text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
                           title="Remove Page"
                         >
                           <Trash2 className="w-4 h-4" />
