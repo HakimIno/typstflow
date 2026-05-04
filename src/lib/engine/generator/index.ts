@@ -77,16 +77,32 @@ export class TypstGenerator {
     const margin = schema.page.margin;
     const topM = Number.parseFloat(margin.top ?? '0');
     const bottomM = Number.parseFloat(margin.bottom ?? '0');
-    
+
     if (schema.zones.header.repeatOnEveryPage) {
-      const headerContent = this.renderZoneComponents(schema.zones.header, data, data, [], 0, topM, schema);
+      const headerContent = this.renderZoneComponents(
+        schema.zones.header,
+        data,
+        data,
+        [],
+        0,
+        topM,
+        schema
+      );
       parts.push(`\n#set page(header: [${headerContent}])\n`);
     }
-    
+
     if (schema.zones.footer.repeatOnEveryPage) {
       const footerH = Number.parseFloat(schema.zones.footer.minHeight ?? '0');
       const footerY = pageH - bottomM - footerH;
-      const footerContent = this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema);
+      const footerContent = this.renderZoneComponents(
+        schema.zones.footer,
+        data,
+        data,
+        [],
+        0,
+        footerY,
+        schema
+      );
       parts.push(`\n#set page(footer: [${footerContent}])\n`);
     }
 
@@ -104,20 +120,30 @@ export class TypstGenerator {
       const items = Array.isArray((data as Record<string, unknown>).items)
         ? ((data as Record<string, unknown>).items as Record<string, unknown>[])
         : [];
-      
+
       // Non-repeating Header (Report Header)
-      if (!schema.zones.header.repeatOnEveryPage && shouldRenderZone(schema.zones.header, 0, 1, 'header')) {
-        parts.push(`// --- REPORT HEADER ---\n`);
-        parts.push(this.renderZoneComponents(schema.zones.header, data, data, [], 0, headerY, schema));
+      if (
+        !schema.zones.header.repeatOnEveryPage &&
+        shouldRenderZone(schema.zones.header, 0, 1, 'header')
+      ) {
+        parts.push('// --- REPORT HEADER ---\n');
+        parts.push(
+          this.renderZoneComponents(schema.zones.header, data, data, [], 0, headerY, schema)
+        );
       }
 
       // Render Groups
       parts.push(this.renderGroupLevel(schema, schema.groups, 0, items, data, bodyY));
 
       // Non-repeating Footer (Report Footer)
-      if (!schema.zones.footer.repeatOnEveryPage && shouldRenderZone(schema.zones.footer, 0, 1, 'footer')) {
-        parts.push(`// --- REPORT FOOTER ---\n`);
-        parts.push(this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema));
+      if (
+        !schema.zones.footer.repeatOnEveryPage &&
+        shouldRenderZone(schema.zones.footer, 0, 1, 'footer')
+      ) {
+        parts.push('// --- REPORT FOOTER ---\n');
+        parts.push(
+          this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema)
+        );
       }
     } else {
       // Page-by-page rendering
@@ -253,7 +279,7 @@ function shouldRenderZone(
   zone: Zone,
   pageIndex: number,
   totalPages: number,
-  type: 'header' | 'footer'
+  _type: 'header' | 'footer'
 ): boolean {
   if (zone.repeatOnEveryPage) return true;
   if (zone.showOnFirstPageOnly) return pageIndex === 0;
@@ -261,7 +287,7 @@ function shouldRenderZone(
 
   // Default behavior if no flags are set:
   // Headers usually show on first page by default if not global.
-  // Footers usually show on last page by default if not global? 
+  // Footers usually show on last page by default if not global?
   // Actually, the user says "Footer page 1 shows in page 2 even if not global".
   // This implies they expect it to be page-specific, but it's a GLOBAL zone.
   // So if it's not set to repeat, it should only show on page 1 (Report Footer).

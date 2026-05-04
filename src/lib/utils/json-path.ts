@@ -99,8 +99,8 @@ export function resolvePath(obj: any, path: string): any {
  */
 function calculateAggregate(func: string, path: string, data: any): string {
   if (!data) return '0';
-  
-  // Attempt to find the array to aggregate. 
+
+  // Attempt to find the array to aggregate.
   // If path is "items.price", we look for "items" as the array.
   const pathParts = path.split('.');
   let items: any[] = [];
@@ -119,18 +119,23 @@ function calculateAggregate(func: string, path: string, data: any): string {
 
   if (items.length === 0) return '0';
 
-  const values = items.map(item => {
+  const values = items.map((item) => {
     const val = item[field];
     return typeof val === 'number' ? val : Number.parseFloat(String(val)) || 0;
   });
 
   switch (func.toUpperCase()) {
     case 'SUM':
-      return values.reduce((a, b) => a + b, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return values
+        .reduce((a, b) => a + b, 0)
+        .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     case 'COUNT':
       return items.length.toString();
     case 'AVG':
-      return (values.reduce((a, b) => a + b, 0) / items.length).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return (values.reduce((a, b) => a + b, 0) / items.length).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
     case 'MIN':
       return Math.min(...values).toLocaleString();
     case 'MAX':
@@ -149,9 +154,12 @@ export function resolveBindings(text: string, data: any): string {
   if (!data || Object.keys(data).length === 0) return text;
 
   // 1. Handle aggregates: {{SUM(items.price)}}
-  let resolved = text.replace(/\{\{(SUM|COUNT|AVG|MIN|MAX)\((.+?)\)\}\}/gi, (match, func, path) => {
-    return calculateAggregate(func, path.trim(), data);
-  });
+  const resolved = text.replace(
+    /\{\{(SUM|COUNT|AVG|MIN|MAX)\((.+?)\)\}\}/gi,
+    (_match, func, path) => {
+      return calculateAggregate(func, path.trim(), data);
+    }
+  );
 
   // 2. Handle normal bindings
   return resolved.replace(/\{\{([^}]+)\}\}/g, (match, path) => {

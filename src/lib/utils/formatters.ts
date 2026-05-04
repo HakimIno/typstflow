@@ -8,7 +8,7 @@ export function formatValue(value: any, format?: FormatType): string {
     switch (format) {
       case 'number': {
         const num = Number(value);
-        if (isNaN(num)) return String(value);
+        if (Number.isNaN(num)) return String(value);
         return new Intl.NumberFormat('en-US', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
@@ -17,7 +17,7 @@ export function formatValue(value: any, format?: FormatType): string {
 
       case 'currency-thb': {
         const num = Number(value);
-        if (isNaN(num)) return String(value);
+        if (Number.isNaN(num)) return String(value);
         return new Intl.NumberFormat('th-TH', {
           style: 'currency',
           currency: 'THB',
@@ -26,7 +26,7 @@ export function formatValue(value: any, format?: FormatType): string {
 
       case 'currency-usd': {
         const num = Number(value);
-        if (isNaN(num)) return String(value);
+        if (Number.isNaN(num)) return String(value);
         return new Intl.NumberFormat('en-US', {
           style: 'currency',
           currency: 'USD',
@@ -35,7 +35,7 @@ export function formatValue(value: any, format?: FormatType): string {
 
       case 'percent': {
         const num = Number(value);
-        if (isNaN(num)) return String(value);
+        if (Number.isNaN(num)) return String(value);
         return new Intl.NumberFormat('en-US', {
           style: 'percent',
           minimumFractionDigits: 2,
@@ -45,7 +45,7 @@ export function formatValue(value: any, format?: FormatType): string {
 
       case 'date-th': {
         const date = new Date(value);
-        if (isNaN(date.getTime())) return String(value);
+        if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('th-TH', {
           year: 'numeric',
           month: 'short',
@@ -55,7 +55,7 @@ export function formatValue(value: any, format?: FormatType): string {
 
       case 'date-en': {
         const date = new Date(value);
-        if (isNaN(date.getTime())) return String(value);
+        if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('en-US', {
           year: 'numeric',
           month: 'short',
@@ -89,7 +89,7 @@ export function formatValue(value: any, format?: FormatType): string {
  */
 export function getApplicableFormats(dataType: string): FormatType[] {
   const common: FormatType[] = ['text'];
-  
+
   switch (dataType) {
     case 'number':
       return [...common, 'number', 'currency-thb', 'currency-usd', 'percent'];
@@ -99,6 +99,15 @@ export function getApplicableFormats(dataType: string): FormatType[] {
     case 'boolean':
       return [...common, 'boolean'];
     default:
-      return ['text', 'number', 'currency-thb', 'currency-usd', 'date-th', 'date-en', 'percent', 'boolean'];
+      return [
+        'text',
+        'number',
+        'currency-thb',
+        'currency-usd',
+        'date-th',
+        'date-en',
+        'percent',
+        'boolean',
+      ];
   }
 }

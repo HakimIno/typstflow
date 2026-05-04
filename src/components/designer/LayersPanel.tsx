@@ -1,8 +1,6 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
-import { useShallow } from 'zustand/react/shallow';
 import type { ComponentNode, ZoneKey } from '@/types/schema';
 import {
   type Edge,
@@ -17,7 +15,6 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { clsx } from 'clsx';
 import {
-  ChevronDown,
   ChevronRight,
   Eye,
   EyeOff,
@@ -33,6 +30,8 @@ import {
   Type,
   Unlock,
 } from 'lucide-react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { DesignerInput } from '../shared/DesignerInput';
 
 // --- Types ---
@@ -96,175 +95,194 @@ const ComponentIcon = memo(({ type, isSelected }: { type: string; isSelected?: b
   return <div className={containerClass}>{getIcon()}</div>;
 });
 
-const LayerItem = memo(({
-  component,
-  zoneKey,
-  index,
-  pageId,
-}: {
-  component: ComponentNode;
-  zoneKey: string;
-  index: number;
-  pageId?: string;
-}) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
+const LayerItem = memo(
+  ({
+    component,
+    zoneKey,
+    index,
+    pageId,
+  }: {
+    component: ComponentNode;
+    zoneKey: string;
+    index: number;
+    pageId?: string;
+  }) => {
+    const ref = useRef<HTMLDivElement>(null);
+    const [closestEdge, setClosestEdge] = useState<Edge | null>(null);
 
-  // Optimized selector: Single subscription for all status flags
-  const { isSelected, isHidden, isLocked } = useDesignerStore(
-    useShallow((state) => ({
-      isSelected: state.selectedComponentIds.includes(component.id),
-      isHidden: state.hiddenComponentIds.includes(component.id),
-      isLocked: state.lockedComponentIds.includes(component.id),
-    }))
-  );
+    // Optimized selector: Single subscription for all status flags
+    const { isSelected, isHidden, isLocked } = useDesignerStore(
+      useShallow((state) => ({
+        isSelected: state.selectedComponentIds.includes(component.id),
+        isHidden: state.hiddenComponentIds.includes(component.id),
+        isLocked: state.lockedComponentIds.includes(component.id),
+      }))
+    );
 
-  const selectComponent = useDesignerStore((state) => state.selectComponent);
-  const toggleVisibility = useDesignerStore((state) => state.toggleComponentVisibility);
-  const toggleLock = useDesignerStore((state) => state.toggleComponentLock);
-  const renameComponent = useDesignerStore((state) => state.renameComponent);
+    const selectComponent = useDesignerStore((state) => state.selectComponent);
+    const toggleVisibility = useDesignerStore((state) => state.toggleComponentVisibility);
+    const toggleLock = useDesignerStore((state) => state.toggleComponentLock);
+    const renameComponent = useDesignerStore((state) => state.renameComponent);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(component.name || component.type);
-  const [isDragging, setIsDragging] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [name, setName] = useState(component.name || component.type);
+    const [isDragging, setIsDragging] = useState(false);
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
 
-    return draggable({
-      element: el,
-      getInitialData: () => ({ id: component.id, zoneKey, index, type: 'layer-item', pageId }),
-      onDragStart: () => setIsDragging(true),
-      onDrop: () => setIsDragging(false),
-    });
-  }, [component.id, zoneKey, index, pageId]);
+      return draggable({
+        element: el,
+        getInitialData: () => ({ id: component.id, zoneKey, index, type: 'layer-item', pageId }),
+        onDragStart: () => setIsDragging(true),
+        onDrop: () => setIsDragging(false),
+      });
+    }, [component, component.id, zoneKey, index, pageId]);
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
 
-    return dropTargetForElements({
-      element: el,
-      getData: ({ input, element }) =>
-        attachClosestEdge(
-          {
-            id: component.id,
-            zoneKey,
-            index,
-            type: 'layer-item',
-            pageId,
-            groupId: (component as any).groupId,
-            groupType: (component as any).groupType,
-          },
-          { input, element, allowedEdges: ['top', 'bottom'] }
-        ),
-      onDragEnter: ({ self }) => setClosestEdge(extractClosestEdge(self.data)),
-      onDrag: ({ self }) => setClosestEdge(extractClosestEdge(self.data)),
-      onDragLeave: () => setClosestEdge(null),
-      onDrop: () => setClosestEdge(null),
-    });
-  }, [component.id, zoneKey, index, pageId]);
+      return dropTargetForElements({
+        element: el,
+        getData: ({ input, element }) =>
+          attachClosestEdge(
+            {
+              id: component.id,
+              zoneKey,
+              index,
+              type: 'layer-item',
+              pageId,
+              groupId: (component as any).groupId,
+              groupType: (component as any).groupType,
+            },
+            { input, element, allowedEdges: ['top', 'bottom'] }
+          ),
+        onDragEnter: ({ self }) => setClosestEdge(extractClosestEdge(self.data)),
+        onDrag: ({ self }) => setClosestEdge(extractClosestEdge(self.data)),
+        onDragLeave: () => setClosestEdge(null),
+        onDrop: () => setClosestEdge(null),
+      });
+    }, [component, component.id, zoneKey, index, pageId]);
 
-  const handleRename = () => {
-    setIsEditing(false);
-    renameComponent(component.id, name);
-  };
+    const handleRename = () => {
+      setIsEditing(false);
+      renameComponent(component.id, name);
+    };
 
-  return (
-    <div
-      ref={ref}
-      className={clsx(
-        'w-[calc(100%-12px)] mx-auto group relative flex items-center gap-2.5 px-2.5 py-1.5 cursor-pointer transition-all duration-200 select-none rounded-lg h-[36px] my-0.5',
-        isSelected 
-          ? 'bg-[var(--accent-glow)] border border-[var(--accent)]/30 shadow-[0_2px_8px_rgba(0,0,0,0.05)]' 
-          : 'border border-transparent hover:bg-[var(--bg-widget)] hover:border-[var(--border-subtle)] hover:shadow-sm',
-        isDragging && 'opacity-40 grayscale',
-        isHidden && 'opacity-50'
-      )}
-      onClick={() => selectComponent(component.id)}
-      role="button"
-      tabIndex={0}
-    >
-      {closestEdge === 'top' && <div className="absolute -top-1 left-2 right-2 h-0.5 bg-[var(--accent)] z-10 rounded-full" />}
-      {closestEdge === 'bottom' && <div className="absolute -bottom-1 left-2 right-2 h-0.5 bg-[var(--accent)] z-10 rounded-full" />}
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectComponent(component.id);
+      }
+    };
 
-      <div className="relative flex items-center gap-3 flex-1 min-w-0">
-        <GripVertical className="w-3 h-3 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 -ml-1" />
-        <ComponentIcon type={component.type} isSelected={isSelected} />
-        <div className="flex-1 min-w-0">
-          {isEditing ? (
-            <DesignerInput
-              autoFocus
-              variant="ghost"
-              className="text-[11px] font-bold p-0 text-[var(--text-primary)]"
-              value={name}
-              onChange={(v) => setName(v)}
-              onBlur={handleRename}
-              onKeyDown={(e) => e.key === 'Enter' && handleRename()}
-            />
-          ) : (
-            <div className="flex flex-col">
-              <span
-                className={clsx(
-                  'block text-[11px] font-bold truncate transition-colors leading-tight',
-                  isSelected ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
-                )}
-                onDoubleClick={() => setIsEditing(true)}
-              >
-                {component.name || (component.type === 'text' ? component.content : component.type)}
-              </span>
-              <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-wider font-medium opacity-60">
-                {component.type}
-              </span>
-            </div>
-          )}
+    return (
+      <div
+        ref={ref}
+        className={clsx(
+          'w-[calc(100%-12px)] mx-auto group relative flex items-center gap-2.5 px-2.5 py-1.5 cursor-pointer transition-all duration-200 select-none rounded-lg h-[36px] my-0.5',
+          isSelected
+            ? 'bg-[var(--accent-glow)] border border-[var(--accent)]/30 shadow-[0_2px_8px_rgba(0,0,0,0.05)]'
+            : 'border border-transparent hover:bg-[var(--bg-widget)] hover:border-[var(--border-subtle)] hover:shadow-sm',
+          isDragging && 'opacity-40 grayscale',
+          isHidden && 'opacity-50'
+        )}
+        onClick={() => selectComponent(component.id)}
+        onKeyDown={handleKeyDown}
+      >
+        {closestEdge === 'top' && (
+          <div className="absolute -top-1 left-2 right-2 h-0.5 bg-[var(--accent)] z-10 rounded-full" />
+        )}
+        {closestEdge === 'bottom' && (
+          <div className="absolute -bottom-1 left-2 right-2 h-0.5 bg-[var(--accent)] z-10 rounded-full" />
+        )}
+
+        <div className="relative flex items-center gap-3 flex-1 min-w-0">
+          <GripVertical className="w-3 h-3 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 -ml-1" />
+          <ComponentIcon type={component.type} isSelected={isSelected} />
+          <div className="flex-1 min-w-0">
+            {isEditing ? (
+              <DesignerInput
+                autoFocus
+                variant="ghost"
+                className="text-[11px] font-bold p-0 text-[var(--text-primary)]"
+                value={name}
+                onChange={(v) => setName(v)}
+                onBlur={handleRename}
+                onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+              />
+            ) : (
+              <div className="flex flex-col">
+                <span
+                  className={clsx(
+                    'block text-[11px] font-bold truncate transition-colors leading-tight',
+                    isSelected
+                      ? 'text-[var(--text-primary)]'
+                      : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
+                  )}
+                  onDoubleClick={() => setIsEditing(true)}
+                >
+                  {component.name ||
+                    (component.type === 'text' ? component.content : component.type)}
+                </span>
+                <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-wider font-medium opacity-60">
+                  {component.type}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-all duration-200 scale-95 group-hover:scale-100 origin-right">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleVisibility(component.id);
+            }}
+            className={clsx(
+              'p-1.5 hover:bg-[var(--bg-hover)] rounded-md transition-colors',
+              isHidden
+                ? 'text-[var(--accent)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            )}
+          >
+            {isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleLock(component.id);
+            }}
+            className={clsx(
+              'p-1.5 hover:bg-[var(--bg-hover)] rounded-md transition-colors',
+              isLocked
+                ? 'text-orange-500'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            )}
+          >
+            {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm('Delete this component?')) {
+                useDesignerStore.getState().removeComponents([component.id]);
+              }
+            }}
+            className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-md text-[var(--text-muted)] transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
-
-      <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-all duration-200 scale-95 group-hover:scale-100 origin-right">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleVisibility(component.id);
-          }}
-          className={clsx(
-            'p-1.5 hover:bg-[var(--bg-hover)] rounded-md transition-colors',
-            isHidden ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-          )}
-        >
-          {isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleLock(component.id);
-          }}
-          className={clsx(
-            'p-1.5 hover:bg-[var(--bg-hover)] rounded-md transition-colors',
-            isLocked ? 'text-orange-500' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-          )}
-        >
-          {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm('Delete this component?')) {
-              useDesignerStore.getState().removeComponents([component.id]);
-            }
-          }}
-          className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-md text-[var(--text-muted)] transition-colors"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 // --- Hook: useFlattenedLayers ---
 
@@ -348,7 +366,6 @@ function useFlattenedLayers(collapsedGroups: Set<string>) {
           });
         }
       }
-
     }
 
     // 4. Groups (Footers) - Rendered in same order as headers but at bottom
@@ -420,7 +437,8 @@ export const LayersPanel = memo(function LayersPanel() {
 
   const isEmpty = useDesignerStore(
     (state) =>
-      Object.values(state.schema.zones).every((z) => z.components.length === 0) && state.schema.pages.every((p) => p.body.components.length === 0)
+      Object.values(state.schema.zones).every((z) => z.components.length === 0) &&
+      state.schema.pages.every((p) => p.body.components.length === 0)
   );
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -467,7 +485,7 @@ export const LayersPanel = memo(function LayersPanel() {
           newIndex = edge === 'bottom' ? destData.index : destData.index + 1;
         } else if (destData.type === 'zone-header') {
           // Dropped onto header: add to end (top of list)
-          newIndex = -1; 
+          newIndex = -1;
         } else {
           return;
         }
@@ -497,12 +515,17 @@ export const LayersPanel = memo(function LayersPanel() {
       <div className="p-3 flex items-center justify-between border-b border-[var(--border-default)] bg-[var(--bg-widget)] shrink-0">
         <div className="flex items-center gap-2">
           <Layers className="w-3.5 h-3.5 text-[var(--accent)]" />
-          <h2 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Layers</h2>
+          <h2 className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            Layers
+          </h2>
         </div>
         <button
           type="button"
           onClick={() => {
-            const expression = prompt('Enter group expression (e.g. data.customer.name):', 'item.id');
+            const expression = prompt(
+              'Enter group expression (e.g. data.customer.name):',
+              'item.id'
+            );
             if (expression) {
               useDesignerStore.getState().addGroup(expression);
             }
@@ -521,7 +544,9 @@ export const LayersPanel = memo(function LayersPanel() {
             <div className="w-12 h-12 rounded-2xl bg-[var(--bg-widget)] flex items-center justify-center mb-4 shadow-sm border border-[var(--border-subtle)]">
               <Layers className="w-6 h-6 text-[var(--text-muted)] opacity-50" />
             </div>
-            <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-1">No Layers Found</h3>
+            <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-1">
+              No Layers Found
+            </h3>
             <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
               Start building your report by dragging components from the palette onto the canvas.
             </p>
@@ -587,7 +612,12 @@ export const LayersPanel = memo(function LayersPanel() {
                   )}
 
                   {item.type === 'component' && (
-                    <LayerItem component={item.component} zoneKey={item.zoneKey} index={item.index} pageId={item.pageId} />
+                    <LayerItem
+                      component={item.component}
+                      zoneKey={item.zoneKey}
+                      index={item.index}
+                      pageId={item.pageId}
+                    />
                   )}
                 </div>
               );
@@ -601,107 +631,125 @@ export const LayersPanel = memo(function LayersPanel() {
 
 // --- Helper Component: ZoneHeader ---
 
-const ZoneHeader = memo(({
-  item,
-  selectedGroupId,
-  selectedZone,
-  collapsedGroups,
-  toggleGroup,
-  setSelectedZone,
-  updateZone,
-  schema
-}: {
-  item: any;
-  selectedGroupId: string | null;
-  selectedZone: ZoneKey | null;
-  collapsedGroups: Set<string>;
-  toggleGroup: (key: string) => void;
-  setSelectedZone: (zone: ZoneKey | null) => void;
-  updateZone: any;
-  schema: any;
-}) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const [isDraggedOver, setIsDraggedOver] = useState(false);
-  
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    return dropTargetForElements({
-      element: el,
-      getData: () => ({ ...item, type: 'zone-header' }),
-      onDragEnter: () => setIsDraggedOver(true),
-      onDragLeave: () => setIsDraggedOver(false),
-      onDrop: () => setIsDraggedOver(false),
-    });
-  }, [item]);
+const ZoneHeader = memo(
+  ({
+    item,
+    selectedGroupId,
+    selectedZone,
+    collapsedGroups,
+    toggleGroup,
+    setSelectedZone,
+    updateZone,
+    schema,
+  }: {
+    item: any;
+    selectedGroupId: string | null;
+    selectedZone: ZoneKey | null;
+    collapsedGroups: Set<string>;
+    toggleGroup: (key: string) => void;
+    setSelectedZone: (zone: ZoneKey | null) => void;
+    updateZone: any;
+    schema: any;
+  }) => {
+    const ref = useRef<HTMLDivElement>(null);
+    const [isDraggedOver, setIsDraggedOver] = useState(false);
 
-  const zoneId = item.zoneKey === 'body' ? `body-${item.pageId}` : item.zoneKey;
-  const isSelected = item.groupId ? selectedGroupId === item.groupId : selectedZone === zoneId;
+    useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
+      return dropTargetForElements({
+        element: el,
+        getData: () => ({ ...item, type: 'zone-header' }),
+        onDragEnter: () => setIsDraggedOver(true),
+        onDragLeave: () => setIsDraggedOver(false),
+        onDrop: () => setIsDraggedOver(false),
+      });
+    }, [item]);
 
-  const repeatOnEveryPage = item.groupId 
-    ? false 
-    : (item.zoneKey === 'header' || item.zoneKey === 'footer') 
-      ? schema.zones[item.zoneKey].repeatOnEveryPage 
-      : false;
+    const zoneId = item.zoneKey === 'body' ? `body-${item.pageId}` : item.zoneKey;
+    const isSelected = item.groupId ? selectedGroupId === item.groupId : selectedZone === zoneId;
 
-  return (
-    <div
-      ref={ref}
-      className={clsx(
-        'w-[calc(100%-8px)] mx-auto h-[calc(100%-4px)] my-0.5 flex items-center gap-2 px-1.5 transition-all cursor-pointer group rounded-md',
-        isSelected
-          ? 'bg-[var(--bg-widget)] text-[var(--accent)] border border-[var(--accent)]/20 shadow-sm'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-widget)]/50',
-        isDraggedOver && 'ring-2 ring-inset ring-[var(--accent)] bg-[var(--accent-glow)]/30'
-      )}
-      onClick={() => {
-        if (item.groupId) {
-          useDesignerStore.getState().selectGroup(item.groupId);
-        } else {
-          setSelectedZone(item.zoneKey as any);
-          useDesignerStore.getState().selectGroup(null);
-        }
-      }}
-    >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          const key = item.groupId ? `group-${item.groupId}-${item.groupType}` : zoneId;
-          toggleGroup(key);
-        }}
-        className="p-1 h-6 w-6 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all"
+    const repeatOnEveryPage = item.groupId
+      ? false
+      : item.zoneKey === 'header' || item.zoneKey === 'footer'
+        ? schema.zones[item.zoneKey].repeatOnEveryPage
+        : false;
+
+    const handleSelect = () => {
+      if (item.groupId) {
+        useDesignerStore.getState().selectGroup(item.groupId);
+      } else {
+        setSelectedZone(item.zoneKey as any);
+        useDesignerStore.getState().selectGroup(null);
+      }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleSelect();
+      }
+    };
+
+    return (
+      <div
+        ref={ref}
+        className={clsx(
+          'w-[calc(100%-8px)] mx-auto h-[calc(100%-4px)] my-0.5 flex items-center gap-2 px-1.5 transition-all cursor-pointer group rounded-md',
+          isSelected
+            ? 'bg-[var(--bg-widget)] text-[var(--accent)] border border-[var(--accent)]/20 shadow-sm'
+            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-widget)]/50',
+          isDraggedOver && 'ring-2 ring-inset ring-[var(--accent)] bg-[var(--accent-glow)]/30'
+        )}
+        onClick={handleSelect}
+        onKeyDown={handleKeyDown}
       >
-        <ChevronRight className={clsx(
-          "w-3.5 h-3.5 transition-transform duration-200",
-          !collapsedGroups.has(item.groupId ? `group-${item.groupId}-${item.groupType}` : zoneId) && "rotate-90"
-        )} />
-      </button>
-
-      <span className="text-[10px] font-bold uppercase tracking-widest flex-1 opacity-80 group-hover:opacity-100 transition-opacity">
-        {item.label}
-      </span>
-
-      {(item.zoneKey === 'header' || item.zoneKey === 'footer') && !item.groupId && (
         <button
           type="button"
-          title={repeatOnEveryPage ? "Global (Repeats on every page)" : "Not Global (Static)"}
           onClick={(e) => {
             e.stopPropagation();
-            updateZone(item.zoneKey, { repeatOnEveryPage: !repeatOnEveryPage });
+            const key = item.groupId ? `group-${item.groupId}-${item.groupType}` : zoneId;
+            toggleGroup(key);
           }}
-          className={clsx(
-            "p-1 rounded-md transition-colors mr-1",
-            repeatOnEveryPage ? "text-[var(--accent)] bg-[var(--accent-glow)]" : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
-          )}
+          className="p-1 h-6 w-6 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all"
         >
-          <Globe className="w-3 h-3" />
+          <ChevronRight
+            className={clsx(
+              'w-3.5 h-3.5 transition-transform duration-200',
+              !collapsedGroups.has(
+                item.groupId ? `group-${item.groupId}-${item.groupType}` : zoneId
+              ) && 'rotate-90'
+            )}
+          />
         </button>
-      )}
 
-      <div className="mr-2 flex items-center justify-center min-w-[18px] h-[18px] text-[9px] bg-black/5 text-[var(--text-muted)] px-1 rounded-full font-bold">
-        {item.count}
+        <span className="text-[10px] font-bold uppercase tracking-widest flex-1 opacity-80 group-hover:opacity-100 transition-opacity">
+          {item.label}
+        </span>
+
+        {(item.zoneKey === 'header' || item.zoneKey === 'footer') && !item.groupId && (
+          <button
+            type="button"
+            title={repeatOnEveryPage ? 'Global (Repeats on every page)' : 'Not Global (Static)'}
+            onClick={(e) => {
+              e.stopPropagation();
+              updateZone(item.zoneKey, { repeatOnEveryPage: !repeatOnEveryPage });
+            }}
+            className={clsx(
+              'p-1 rounded-md transition-colors mr-1',
+              repeatOnEveryPage
+                ? 'text-[var(--accent)] bg-[var(--accent-glow)]'
+                : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'
+            )}
+          >
+            <Globe className="w-3 h-3" />
+          </button>
+        )}
+
+        <div className="mr-2 flex items-center justify-center min-w-[18px] h-[18px] text-[9px] bg-black/5 text-[var(--text-muted)] px-1 rounded-full font-bold">
+          {item.count}
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);

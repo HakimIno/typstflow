@@ -1,5 +1,5 @@
-import { memo } from 'react';
 import type { ComponentNode } from '@/types/schema';
+import { memo } from 'react';
 
 interface LinePreviewProps {
   component: ComponentNode;

@@ -1,5 +1,5 @@
-import type React from 'react';
-import { memo } from 'react';
+import { useDesignerStore } from '@/store/designer-store';
+import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
 import {
   ChevronDown,
@@ -10,16 +10,14 @@ import {
   GripVertical,
   Trash2,
 } from 'lucide-react';
-import { useDesignerStore } from '@/store/designer-store';
-import type { ComponentNode } from '@/types/schema';
+import type React from 'react';
+import { memo } from 'react';
 
 interface ActionBarProps {
   component: ComponentNode;
   isSelected: boolean;
   selectedIds: string[];
   isDragging: boolean;
-  zoneKey: 'header' | 'body' | 'footer';
-  pageId?: string;
   dragHandleRef: React.RefObject<HTMLDivElement | null>;
   handleDuplicate: (e: React.MouseEvent) => void;
 }
@@ -29,8 +27,6 @@ export const ActionBar = memo(function ActionBar({
   isSelected,
   selectedIds,
   isDragging,
-  zoneKey,
-  pageId,
   dragHandleRef,
   handleDuplicate,
 }: ActionBarProps) {

@@ -18,7 +18,7 @@ export function LineProperties({ component, onUpdate }: LinePropertiesProps) {
   return (
     <section>
       <SectionHeader label="Line Style" />
-      
+
       <PropertyRow label="Thickness">
         <DesignerInput
           type="text"
@@ -31,7 +31,7 @@ export function LineProperties({ component, onUpdate }: LinePropertiesProps) {
 
       <PropertyRow label="Color">
         <div className="flex gap-1.5 items-center">
-          <div 
+          <div
             className="w-5 h-5 rounded border border-[var(--border-default)]"
             style={{ backgroundColor: component.color || '#000000' }}
           />

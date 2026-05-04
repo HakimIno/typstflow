@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
 import { parseTypstUnit } from '@/lib/utils/units';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/utils/units', () => ({
   parseTypstUnit: (val: string) => Number.parseInt(val),
@@ -50,12 +50,12 @@ describe('Virtualization Coordinate Logic', () => {
     }
 
     // Page 1: offset = 0
-    expect(nodes.find(n => n.id === 'h1-p0').y).toBe(5);       // header comp: 0 + 5
-    expect(nodes.find(n => n.id === 'b1').y).toBe(40);          // body comp: 0 + 30 + 10
+    expect(nodes.find((n) => n.id === 'h1-p0').y).toBe(5); // header comp: 0 + 5
+    expect(nodes.find((n) => n.id === 'b1').y).toBe(40); // body comp: 0 + 30 + 10
 
     // Page 2: offset = 297 + 8.5 = 305.5
-    expect(nodes.find(n => n.id === 'h1-p1').y).toBe(310.5);   // header comp: 305.5 + 5
-    expect(nodes.find(n => n.id === 'b2').y).toBe(345.5);       // body comp: 305.5 + 30 + 10
+    expect(nodes.find((n) => n.id === 'h1-p1').y).toBe(310.5); // header comp: 305.5 + 5
+    expect(nodes.find((n) => n.id === 'b2').y).toBe(345.5); // body comp: 305.5 + 30 + 10
   });
 
   it('should handle empty pages without errors', () => {
@@ -64,9 +64,7 @@ describe('Virtualization Coordinate Logic', () => {
         header: { minHeight: '30mm', components: [] as any[] },
         footer: { minHeight: '30mm', components: [] as any[] },
       },
-      pages: [
-        { id: 'p1', body: { minHeight: '237mm', components: [] as any[] } },
-      ],
+      pages: [{ id: 'p1', body: { minHeight: '237mm', components: [] as any[] } }],
     };
 
     const nodes: any[] = [];
@@ -104,14 +102,11 @@ describe('Virtualization Coordinate Logic', () => {
     const maxX = 210;
     const maxY = 250;
 
-    const visible = rects.filter(r =>
-      r.x + r.width >= minX &&
-      r.x <= maxX &&
-      r.y + r.height >= minY &&
-      r.y <= maxY
+    const visible = rects.filter(
+      (r) => r.x + r.width >= minX && r.x <= maxX && r.y + r.height >= minY && r.y <= maxY
     );
 
-    expect(visible.map(r => r.id)).toEqual(['a', 'b']);
+    expect(visible.map((r) => r.id)).toEqual(['a', 'b']);
     expect(visible).not.toContainEqual(expect.objectContaining({ id: 'c' }));
   });
 });

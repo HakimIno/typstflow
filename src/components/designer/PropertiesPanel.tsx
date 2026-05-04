@@ -1,3 +1,4 @@
+import { getValueType } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import type {
   BarcodeComponent,
@@ -18,14 +19,13 @@ import { TablePropertiesPanel } from './TablePropertiesPanel';
 import { TextEditor } from './TextEditor';
 import { VariablePicker } from './VariablePicker';
 import { AlignmentProperties } from './properties/AlignmentProperties';
+import { FormatPicker } from './properties/FormatPicker';
 import { GeometryProperties } from './properties/GeometryProperties';
+import { GroupProperties } from './properties/GroupProperties';
 import { ImageProperties } from './properties/ImageProperties';
 import { LineProperties } from './properties/LineProperties';
-import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
-import { GroupProperties } from './properties/GroupProperties';
-import { FormatPicker, type FormatType } from './properties/FormatPicker';
-import { getValueType } from '@/lib/utils/json-path';
 import { PropertyRow, SectionHeader } from './properties/Shared';
+import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
 import { TypographyProperties } from './properties/TypographyProperties';
 
 // Type guards for safe component access
@@ -36,8 +36,7 @@ const isLine = (c: ComponentNode): c is LineComponent => c.type === 'line';
 const isSummaryBox = (c: ComponentNode): c is SummaryBoxComponent => c.type === 'summary-box';
 const isBarcode = (c: ComponentNode): c is BarcodeComponent =>
   c.type === 'barcode' || c.type === 'qr';
-const isPageNumber = (c: ComponentNode): c is PageNumberComponent =>
-  c.type === 'page-number';
+const isPageNumber = (c: ComponentNode): c is PageNumberComponent => c.type === 'page-number';
 
 export const PropertiesPanel = memo(function PropertiesPanel() {
   const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
@@ -290,11 +289,11 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               {(() => {
                 const hasBinding = (selectedComponent.content || '').includes('{{');
                 if (!hasBinding) return null;
-                
+
                 return (
                   <div className="flex flex-col border-t border-[var(--border-default)]">
                     <SectionHeader label="Display Format" />
-                    <FormatPicker 
+                    <FormatPicker
                       currentValue={selectedComponent.format || 'text'}
                       valueType={(() => {
                         const match = (selectedComponent.content || '').match(/\{\{([^}]+)\}\}/);
@@ -444,9 +443,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   onClick={() => {
                     const headerZone = fullSchema.zones.header;
                     const newValue = !headerZone.repeatOnEveryPage;
-                    updateZone('header', { 
+                    updateZone('header', {
                       repeatOnEveryPage: newValue,
-                      showOnFirstPageOnly: false // Reset other flags if repeating
+                      showOnFirstPageOnly: false, // Reset other flags if repeating
                     });
                   }}
                   className={clsx(
@@ -477,7 +476,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                     )}
                   >
                     <FileText className="w-3 h-3" />
-                    {fullSchema.zones.header.showOnFirstPageOnly ? 'First Page Only' : 'First Page Only (Default)'}
+                    {fullSchema.zones.header.showOnFirstPageOnly
+                      ? 'First Page Only'
+                      : 'First Page Only (Default)'}
                   </button>
                 </PropertyRow>
               )}
@@ -491,9 +492,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   onClick={() => {
                     const footerZone = fullSchema.zones.footer;
                     const newValue = !footerZone.repeatOnEveryPage;
-                    updateZone('footer', { 
+                    updateZone('footer', {
                       repeatOnEveryPage: newValue,
-                      showOnLastPageOnly: false // Reset other flags if repeating
+                      showOnLastPageOnly: false, // Reset other flags if repeating
                     });
                   }}
                   className={clsx(
@@ -524,7 +525,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                     )}
                   >
                     <FileText className="w-3 h-3" />
-                    {fullSchema.zones.footer.showOnLastPageOnly ? 'Last Page Only' : 'First Page Only (Default)'}
+                    {fullSchema.zones.footer.showOnLastPageOnly
+                      ? 'Last Page Only'
+                      : 'First Page Only (Default)'}
                   </button>
                 </PropertyRow>
               )}

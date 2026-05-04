@@ -1,5 +1,5 @@
-import { memo } from 'react';
 import type { PageNumberComponent } from '@/types/schema';
+import { memo } from 'react';
 
 interface PageNumberPreviewProps {
   component: PageNumberComponent;
@@ -12,7 +12,7 @@ export const PageNumberPreview = memo(function PageNumberPreview({
   pageIndex,
   totalPages,
 }: PageNumberPreviewProps) {
-  const display = ((component as any).format || 'Page {{page}} of {{pageTotal}}')
+  const display = (component.format || 'Page {{page}} of {{pageTotal}}')
     .replace(/\{\{page\}\}/g, (pageIndex + 1).toString())
     .replace(/\{\{pageTotal\}\}/g, totalPages.toString());
 

@@ -1,10 +1,10 @@
+import { optimizeImage } from '@/lib/utils/image-optimizer';
 import type { ImageComponent } from '@/types/schema';
 import { clsx } from 'clsx';
 import { ImageIcon, Link, Loader2, Upload, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { PropertyRow, SectionHeader } from './Shared';
-import { optimizeImage } from '@/lib/utils/image-optimizer';
 
 interface ImagePropertiesProps {
   component: ImageComponent;
@@ -61,23 +61,23 @@ function ImageUploader({
       try {
         // Optimization step: Resize and compress to WebP
         const { dataUrl, mimeType } = await optimizeImage(file);
-        onUpdate({ 
-          src: file.name, 
-          srcData: dataUrl, 
-          mimeType 
+        onUpdate({
+          src: file.name,
+          srcData: dataUrl,
+          mimeType,
         });
       } catch (err: any) {
         console.error('Image optimization failed:', err);
         setError('Failed to process image');
-        
+
         // Fallback: Use original data URL if optimization fails (but only if it's not too huge)
         if (file.size <= 5 * 1024 * 1024) {
           const reader = new FileReader();
           reader.onload = (e) => {
-            onUpdate({ 
-              src: file.name, 
-              srcData: e.target?.result as string, 
-              mimeType: file.type || 'image/png' 
+            onUpdate({
+              src: file.name,
+              srcData: e.target?.result as string,
+              mimeType: file.type || 'image/png',
             });
           };
           reader.readAsDataURL(file);
@@ -119,11 +119,11 @@ function ImageUploader({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
       if (!blob.type.startsWith('image/')) throw new Error('URL is not an image');
-      
+
       // We also optimize URL images
       const file = new File([blob], 'url-image', { type: blob.type });
       const { dataUrl, mimeType } = await optimizeImage(file);
-      
+
       onUpdate({ src: url, srcData: dataUrl, mimeType });
       setLoading(false);
     } catch (err: any) {
@@ -170,7 +170,11 @@ function ImageUploader({
             onClick={handleClear}
             className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-0.5 transition-all"
           >
-            {loading ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <X className="w-2.5 h-2.5" />}
+            {loading ? (
+              <Loader2 className="w-2.5 h-2.5 animate-spin" />
+            ) : (
+              <X className="w-2.5 h-2.5" />
+            )}
           </button>
         </div>
       ) : (
@@ -212,7 +216,9 @@ function ImageUploader({
             <Upload className="w-3 h-3" />
             Browse file…
           </button>
-          <p className="mt-1 text-[8px] text-slate-300 text-center">PNG, JPG, WebP — optimized on upload</p>
+          <p className="mt-1 text-[8px] text-slate-300 text-center">
+            PNG, JPG, WebP — optimized on upload
+          </p>
         </div>
       )}
 

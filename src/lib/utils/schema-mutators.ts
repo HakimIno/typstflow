@@ -57,7 +57,13 @@ export function getZoneComponents(
 export function findComponentZone(
   schema: LayoutSchema,
   id: string
-): { component: ComponentNode; zoneKey: ZoneKey; pageId?: string; groupId?: string; groupType?: 'header' | 'footer' } | null {
+): {
+  component: ComponentNode;
+  zoneKey: ZoneKey;
+  pageId?: string;
+  groupId?: string;
+  groupType?: 'header' | 'footer';
+} | null {
   for (const key of GLOBAL_ZONE_KEYS) {
     const found = schema.zones[key].components.find((c) => c.id === id);
     if (found) return { component: found, zoneKey: key };
@@ -68,9 +74,11 @@ export function findComponentZone(
   }
   for (const group of schema.groups || []) {
     const headerFound = group.header.components.find((c) => c.id === id);
-    if (headerFound) return { component: headerFound, zoneKey: 'body', groupId: group.id, groupType: 'header' };
+    if (headerFound)
+      return { component: headerFound, zoneKey: 'body', groupId: group.id, groupType: 'header' };
     const footerFound = group.footer.components.find((c) => c.id === id);
-    if (footerFound) return { component: footerFound, zoneKey: 'body', groupId: group.id, groupType: 'footer' };
+    if (footerFound)
+      return { component: footerFound, zoneKey: 'body', groupId: group.id, groupType: 'footer' };
   }
   return null;
 }

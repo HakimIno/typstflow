@@ -1,3 +1,5 @@
+import { getApplicableFormats } from '@/lib/utils/formatters';
+import { getValueType } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import type {
   FillPattern,
@@ -27,8 +29,6 @@ import {
   Wand2,
 } from 'lucide-react';
 import type React from 'react';
-import { getValueType } from '@/lib/utils/json-path';
-import { getApplicableFormats } from '@/lib/utils/formatters';
 import { useEffect, useState } from 'react';
 import { DesignerInput, type DesignerInputProps } from '../shared/DesignerInput';
 
@@ -995,8 +995,8 @@ export function TablePropertiesPanel({ component }: Props) {
                   { id: 'boolean', label: 'Bool' },
                 ];
                 return options
-                  .filter(opt => applicable.includes(opt.id as any))
-                  .map(opt => (
+                  .filter((opt) => applicable.includes(opt.id as any))
+                  .map((opt) => (
                     <option key={opt.id} value={opt.id} className="bg-[var(--bg-surface)]">
                       {opt.label}
                     </option>

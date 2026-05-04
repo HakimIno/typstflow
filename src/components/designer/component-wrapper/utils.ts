@@ -1,7 +1,10 @@
 import type { LayoutSchema } from '@/types/schema';
 
 // ✅ Helper: Get component position from schema
-export function getComponentPosition(id: string, schema: LayoutSchema): { x: number; y: number } | null {
+export function getComponentPosition(
+  id: string,
+  schema: LayoutSchema
+): { x: number; y: number } | null {
   // Check global zones
   for (const zKey of ['header', 'footer'] as const) {
     const found = schema.zones[zKey].components.find((c: any) => c.id === id);

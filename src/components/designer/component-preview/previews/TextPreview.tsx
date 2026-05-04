@@ -1,7 +1,7 @@
-import { memo } from 'react';
-import type { TextComponent } from '@/types/schema';
-import { resolveBindings } from '@/lib/utils/json-path';
 import { formatValue } from '@/lib/utils/formatters';
+import { resolveBindings } from '@/lib/utils/json-path';
+import type { TextComponent } from '@/types/schema';
+import { memo } from 'react';
 
 interface TextPreviewProps {
   component: TextComponent;

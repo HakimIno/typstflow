@@ -1,5 +1,5 @@
-import { memo } from 'react';
 import type { TextComponent } from '@/types/schema';
+import { memo } from 'react';
 import { TextEditor } from '../TextEditor';
 
 interface EditorOverlayProps {

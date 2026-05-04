@@ -22,7 +22,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
   return (
     <section>
       <SectionHeader label="Typography" />
-      
+
       <PropertyRow label="Font Family">
         <select
           value={style?.fontFamily || 'Sarabun'}
@@ -52,7 +52,9 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
           <button
             type="button"
             title="Bold"
-            onClick={() => onUpdateStyle({ fontWeight: style?.fontWeight === 'bold' ? 'regular' : 'bold' })}
+            onClick={() =>
+              onUpdateStyle({ fontWeight: style?.fontWeight === 'bold' ? 'regular' : 'bold' })
+            }
             className={clsx(
               'w-7 h-7 flex items-center justify-center border rounded-[4px] transition-all',
               style?.fontWeight === 'bold'
@@ -93,7 +95,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
 
       <PropertyRow label="Color">
         <div className="flex gap-1.5 items-center">
-          <div 
+          <div
             className="w-5 h-5 rounded border border-[var(--border-default)]"
             style={{ backgroundColor: style?.color || '#000000' }}
           />
@@ -117,7 +119,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
           onChange={(v) => onUpdateStyle({ lineHeight: Number.parseFloat(v) || 1.2 })}
         />
       </PropertyRow>
-      
+
       <PropertyRow label="Spacing (em)">
         <DesignerInput
           type="text"

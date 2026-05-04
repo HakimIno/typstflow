@@ -1,6 +1,6 @@
-import { memo } from 'react';
-import type { ComponentNode } from '@/types/schema';
 import { resolveBindings } from '@/lib/utils/json-path';
+import type { ComponentNode } from '@/types/schema';
+import { memo } from 'react';
 
 interface BarcodePreviewProps {
   component: ComponentNode;

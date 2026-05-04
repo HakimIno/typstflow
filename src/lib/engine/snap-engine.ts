@@ -1,5 +1,5 @@
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
-import type { LayoutSchema, ComponentNode } from '@/types/schema';
+import type { ComponentNode, LayoutSchema } from '@/types/schema';
 
 export interface SnapPoint {
   value: number; // mm

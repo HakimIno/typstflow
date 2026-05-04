@@ -256,9 +256,9 @@ export const LayoutEngine = {
     if (zoneKey === 'header') return 0;
 
     const isFirstPage = !pageId || pageId === schema.pages[0]?.id;
-    const isLastPage = !pageId || pageId === schema.pages[schema.pages.length - 1]?.id;
+    const _isLastPage = !pageId || pageId === schema.pages[schema.pages.length - 1]?.id;
     const isHeaderRepeated = schema.zones.header?.repeatOnEveryPage === true;
-    const isFooterRepeated = schema.zones.footer?.repeatOnEveryPage === true;
+    const _isFooterRepeated = schema.zones.footer?.repeatOnEveryPage === true;
 
     // 1. Report Header (Only on first page unless repeated)
     if (isHeaderRepeated || isFirstPage) {

@@ -497,7 +497,13 @@ export const useDesignerStore = create<DesignerState>()(
 
       selectComponent: (id, multi) =>
         set((state) => {
-          if (!id) return { selectedComponentIds: [], selectedCell: null, selectedCells: null, selectedZone: null };
+          if (!id)
+            return {
+              selectedComponentIds: [],
+              selectedCell: null,
+              selectedCells: null,
+              selectedZone: null,
+            };
 
           const zoneInfo = findComponentZone(state.schema, id);
           const zoneKey = zoneInfo?.zoneKey || null;
@@ -513,9 +519,9 @@ export const useDesignerStore = create<DesignerState>()(
             };
           }
 
-          return { 
-            selectedComponentIds: [id], 
-            selectedCell: null, 
+          return {
+            selectedComponentIds: [id],
+            selectedCell: null,
             selectedCells: null,
             selectedZone: zoneKey,
           };

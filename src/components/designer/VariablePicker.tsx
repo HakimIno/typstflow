@@ -167,7 +167,9 @@ export function VariablePicker({
                   type="text"
                   value={searchQuery}
                   onChange={(v) => setSearchQuery(v)}
-                  placeholder={activeTab === 'fields' ? 'Search fields...' : 'Search numeric fields...'}
+                  placeholder={
+                    activeTab === 'fields' ? 'Search fields...' : 'Search numeric fields...'
+                  }
                   className="w-full pl-7 pr-7 py-1.5"
                 />
                 {searchQuery && (
@@ -210,8 +212,8 @@ export function VariablePicker({
               ) : (
                 <div className="space-y-1">
                   {allPaths
-                    .filter(p => getValueType(sampleData, p) === 'number' || p.includes('[*]'))
-                    .map(path => (
+                    .filter((p) => getValueType(sampleData, p) === 'number' || p.includes('[*]'))
+                    .map((path) => (
                       <AggregateItem
                         key={path}
                         path={path}
@@ -226,7 +228,7 @@ export function VariablePicker({
             {allPaths.length > 0 && (
               <div className="p-2 border-t border-[var(--border-default)] bg-[var(--bg-widget)]">
                 <p className="text-[9px] text-slate-500">
-                  {activeTab === 'fields' 
+                  {activeTab === 'fields'
                     ? `${allPaths.length} field${allPaths.length !== 1 ? 's' : ''} available`
                     : 'Select a field to create an aggregate function'}
                 </p>
@@ -250,10 +252,12 @@ function AggregateItem({ path, onSelect }: AggregateItemProps) {
     <div className="p-2 border border-[var(--border-default)] rounded-md bg-[var(--bg-widget)]/30 hover:border-[var(--accent)] transition-colors group">
       <div className="flex items-center gap-2 mb-2">
         <Hash className="w-3 h-3 text-green-500" />
-        <span className="text-[10px] font-mono font-bold text-[var(--text-primary)] truncate">{path}</span>
+        <span className="text-[10px] font-mono font-bold text-[var(--text-primary)] truncate">
+          {path}
+        </span>
       </div>
       <div className="grid grid-cols-3 gap-1">
-        {funcs.map(f => (
+        {funcs.map((f) => (
           <button
             key={f}
             type="button"

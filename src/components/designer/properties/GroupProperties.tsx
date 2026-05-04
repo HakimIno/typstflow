@@ -1,6 +1,6 @@
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { ArrowDownAZ, ArrowUpAZ, Filter, Tag } from 'lucide-react';
+import { ArrowDownAZ, ArrowUpAZ, Filter } from 'lucide-react';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { VariablePicker } from '../VariablePicker';
 import { PropertyRow, SectionHeader } from './Shared';
@@ -55,30 +55,39 @@ export function GroupProperties({ groupId }: { groupId: string }) {
         <PropertyRow label="Sort Order">
           <div className="flex items-center gap-1 bg-[var(--bg-widget)] p-0.5 rounded border border-[var(--border-default)]">
             <button
+              type="button"
               onClick={() => updateGroup(groupId, { sortBy: 'asc' })}
               className={clsx(
-                "flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-[10px] font-bold transition-all",
-                group.sortBy === 'asc' ? "bg-[var(--accent)] text-white shadow-sm" : "hover:bg-white/5 text-[var(--text-muted)]"
+                'flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-[10px] font-bold transition-all',
+                group.sortBy === 'asc'
+                  ? 'bg-[var(--accent)] text-white shadow-sm'
+                  : 'hover:bg-white/5 text-[var(--text-muted)]'
               )}
             >
               <ArrowDownAZ className="w-3 h-3" />
               ASC
             </button>
             <button
+              type="button"
               onClick={() => updateGroup(groupId, { sortBy: 'desc' })}
               className={clsx(
-                "flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-[10px] font-bold transition-all",
-                group.sortBy === 'desc' ? "bg-[var(--accent)] text-white shadow-sm" : "hover:bg-white/5 text-[var(--text-muted)]"
+                'flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-[10px] font-bold transition-all',
+                group.sortBy === 'desc'
+                  ? 'bg-[var(--accent)] text-white shadow-sm'
+                  : 'hover:bg-white/5 text-[var(--text-muted)]'
               )}
             >
               <ArrowUpAZ className="w-3 h-3" />
               DESC
             </button>
             <button
+              type="button"
               onClick={() => updateGroup(groupId, { sortBy: undefined })}
               className={clsx(
-                "flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-[10px] font-bold transition-all",
-                !group.sortBy ? "bg-[var(--bg-surface-solid)] text-white border border-[var(--border-default)]" : "hover:bg-white/5 text-[var(--text-muted)]"
+                'flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-[10px] font-bold transition-all',
+                !group.sortBy
+                  ? 'bg-[var(--bg-surface-solid)] text-white border border-[var(--border-default)]'
+                  : 'hover:bg-white/5 text-[var(--text-muted)]'
               )}
             >
               None
@@ -113,15 +122,16 @@ export function GroupProperties({ groupId }: { groupId: string }) {
         <SectionHeader label="Behavior" />
         <PropertyRow label="Repeat on Page">
           <button
+            type="button"
             onClick={() => updateGroup(groupId, { repeatHeaderOnPage: !group.repeatHeaderOnPage })}
             className={clsx(
-              "px-3 py-1 rounded text-[10px] font-bold transition-all border",
-              group.repeatHeaderOnPage 
-                ? "bg-[var(--accent)] text-white border-[var(--accent)]" 
-                : "bg-white/5 text-[var(--text-muted)] border-[var(--border-default)] hover:border-[var(--text-muted)]"
+              'px-3 py-1 rounded text-[10px] font-bold transition-all border',
+              group.repeatHeaderOnPage
+                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                : 'bg-white/5 text-[var(--text-muted)] border-[var(--border-default)] hover:border-[var(--text-muted)]'
             )}
           >
-            {group.repeatHeaderOnPage ? "ENABLED" : "DISABLED"}
+            {group.repeatHeaderOnPage ? 'ENABLED' : 'DISABLED'}
           </button>
         </PropertyRow>
       </section>

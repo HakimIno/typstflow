@@ -1,5 +1,5 @@
-import { memo } from 'react';
 import type { ComponentNode } from '@/types/schema';
+import { memo } from 'react';
 
 interface ImagePreviewProps {
   component: ComponentNode;
@@ -7,7 +7,7 @@ interface ImagePreviewProps {
 
 export const ImagePreview = memo(function ImagePreview({ component }: ImagePreviewProps) {
   const imgSrc = (component as any).srcData || (component as any).src;
-  
+
   return imgSrc ? (
     <div className="w-full h-full overflow-hidden flex items-center justify-center bg-slate-50">
       {/* eslint-disable-next-line @next/next/no-img-element */}

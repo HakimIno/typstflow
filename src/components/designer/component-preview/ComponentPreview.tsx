@@ -1,15 +1,20 @@
-import { memo } from 'react';
 import { useDesignerStore } from '@/store/designer-store';
-import type { ComponentNode, PageNumberComponent, TableComponent, TextComponent } from '@/types/schema';
+import type {
+  ComponentNode,
+  PageNumberComponent,
+  TableComponent,
+  TextComponent,
+} from '@/types/schema';
+import { memo } from 'react';
 import { TablePreview } from '../TablePreview';
-import { TextPreview } from './previews/TextPreview';
+import { BarcodePreview } from './previews/BarcodePreview';
 import { ImagePreview } from './previews/ImagePreview';
 import { LinePreview } from './previews/LinePreview';
-import { SpacerPreview } from './previews/SpacerPreview';
-import { BarcodePreview } from './previews/BarcodePreview';
-import { SummaryBoxPreview } from './previews/SummaryBoxPreview';
 import { PageBreakPreview } from './previews/PageBreakPreview';
 import { PageNumberPreview } from './previews/PageNumberPreview';
+import { SpacerPreview } from './previews/SpacerPreview';
+import { SummaryBoxPreview } from './previews/SummaryBoxPreview';
+import { TextPreview } from './previews/TextPreview';
 
 interface Props {
   component: ComponentNode;

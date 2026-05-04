@@ -2,7 +2,7 @@
 
 import { dragSnapState } from '@/lib/engine/drag-snap-state';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
-import { SnapEngine, type SnapPoint } from '@/lib/engine/snap-engine';
+import type { SnapPoint } from '@/lib/engine/snap-engine';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import type { layoutEngine as LayoutEngineType } from '@/lib/wasm-layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
@@ -222,7 +222,7 @@ export function DragMonitor() {
                   }
 
                   layoutEngine.loadNodes(nodes);
-                } catch (e) {
+                } catch (_e) {
                   // Silent fail - JS fallback
                 }
               })
@@ -334,7 +334,13 @@ export function DragMonitor() {
 
           root.style.setProperty('--drag-dx', `${(pxDeltaX + snapOffsetX) / cache.zoom}px`);
           root.style.setProperty('--drag-dy', `${(pxDeltaY + snapOffsetY) / cache.zoom}px`);
-          updateTransientVisuals(cache.lastSnapResult.guidesX, cache.lastSnapResult.guidesY, cache.lastSnapResult.x, cache.lastSnapResult.y, activePageInfo);
+          updateTransientVisuals(
+            cache.lastSnapResult.guidesX,
+            cache.lastSnapResult.guidesY,
+            cache.lastSnapResult.x,
+            cache.lastSnapResult.y,
+            activePageInfo
+          );
           return;
         }
 
@@ -375,7 +381,10 @@ export function DragMonitor() {
             // Fall through to JS
           }
 
-          if (wasmSnap && (Math.abs(wasmSnap.dx) < SNAP_THRESHOLD_MM || Math.abs(wasmSnap.dy) < SNAP_THRESHOLD_MM)) {
+          if (
+            wasmSnap &&
+            (Math.abs(wasmSnap.dx) < SNAP_THRESHOLD_MM || Math.abs(wasmSnap.dy) < SNAP_THRESHOLD_MM)
+          ) {
             snapX = rawX + wasmSnap.dx;
             snapY = rawY + wasmSnap.dy;
             activeGuidesX = wasmSnap.guides.filter((g) => g.is_vertical).map((g) => g.position);
@@ -383,7 +392,12 @@ export function DragMonitor() {
           }
 
           // ✅ Cache snap result for reuse
-          cache.lastSnapResult = { x: snapX, y: snapY, guidesX: activeGuidesX, guidesY: activeGuidesY };
+          cache.lastSnapResult = {
+            x: snapX,
+            y: snapY,
+            guidesX: activeGuidesX,
+            guidesY: activeGuidesY,
+          };
 
           // ✅ Publish snapped values synchronously for drop handlers
           dragSnapState.setSnapped(snapX, snapY);
@@ -401,11 +415,13 @@ export function DragMonitor() {
           if (ENABLE_PERF_MONITORING) {
             const perfEnd = performance.now();
             const calcTime = perfEnd - perfStart;
-            perfMetrics.snapCalcTime = (perfMetrics.snapCalcTime * 0.9) + (calcTime * 0.1);
+            perfMetrics.snapCalcTime = perfMetrics.snapCalcTime * 0.9 + calcTime * 0.1;
             perfMetrics.dragFrameCount++;
 
             if (now - perfMetrics.lastLogTime > 1000) {
-              console.log(`[DragMonitor] Avg snap time: ${perfMetrics.snapCalcTime.toFixed(2)}ms, Frames: ${perfMetrics.dragFrameCount}`);
+              console.log(
+                `[DragMonitor] Avg snap time: ${perfMetrics.snapCalcTime.toFixed(2)}ms, Frames: ${perfMetrics.dragFrameCount}`
+              );
               perfMetrics.lastLogTime = now;
               perfMetrics.dragFrameCount = 0;
             }
@@ -463,7 +479,7 @@ export function DragMonitor() {
         }
       },
       onDrop: ({ source }) => {
-        const data = source.data as unknown as DragSourceData;
+        const _data = source.data as unknown as DragSourceData;
 
         // Clean up visuals
         document.body.classList.remove('is-dragging-components');

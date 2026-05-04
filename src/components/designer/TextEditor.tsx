@@ -6,11 +6,11 @@ import {
   getValueType,
   groupPathsByParent,
 } from '@/lib/utils/json-path';
+import type { TextStyle } from '@/types/schema';
 import { clsx } from 'clsx';
 import { Box, FileText, Hash, List } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { TextStyle } from '@/types/schema';
 import ReactDOM from 'react-dom';
 
 interface TextEditorProps {
@@ -78,19 +78,21 @@ export function TextEditor({
 
   const suggestions = useMemo(() => {
     const aggregateFuncs = ['SUM(', 'COUNT(', 'AVG(', 'MIN(', 'MAX('];
-    
+
     // Check if user is typing a function
     const funcMatch = searchQuery.match(/^(SUM|COUNT|AVG|MIN|MAX)\((.*)$/i);
     if (funcMatch) {
       const funcName = funcMatch[1].toUpperCase();
       const subQuery = funcMatch[2];
-      
-      const numericPaths = allPaths.filter(p => getValueType(sampleData, p) === 'number' || p.includes('[*]'));
-      const filtered = subQuery 
-        ? numericPaths.filter(p => p.toLowerCase().includes(subQuery.toLowerCase()))
+
+      const numericPaths = allPaths.filter(
+        (p) => getValueType(sampleData, p) === 'number' || p.includes('[*]')
+      );
+      const filtered = subQuery
+        ? numericPaths.filter((p) => p.toLowerCase().includes(subQuery.toLowerCase()))
         : numericPaths;
-        
-      return filtered.map(p => `${funcName}(${p})`).slice(0, 50);
+
+      return filtered.map((p) => `${funcName}(${p})`).slice(0, 50);
     }
 
     const filtered = searchQuery
@@ -99,14 +101,14 @@ export function TextEditor({
 
     // Merge aggregate starters with normal paths
     return [
-      ...aggregateFuncs.filter(f => f.toLowerCase().includes(searchQuery.toLowerCase())),
-      ...filtered
+      ...aggregateFuncs.filter((f) => f.toLowerCase().includes(searchQuery.toLowerCase())),
+      ...filtered,
     ].slice(0, 50);
   }, [allPaths, searchQuery, sampleData]);
 
   const groupedPaths = useMemo(() => {
     // If it's a function suggestion, don't group or group under 'Functions'
-    const isFunc = suggestions.some(s => s.includes('('));
+    const isFunc = suggestions.some((s) => s.includes('('));
     if (isFunc) {
       return [{ name: 'Functions & Data', paths: suggestions }];
     }
@@ -297,7 +299,7 @@ export function TextEditor({
       const len = value.length;
       editorRef.current.setSelectionRange(len, len);
     }
-  }, [inline]); // Run once when inline mode is activated
+  }, [inline, value.length]); // Run once when inline mode is activated or value length changes on mount
 
   const sharedStyles: React.CSSProperties = {
     fontFamily: `${textStyle.fontFamily || 'Sarabun'}, "Noto Sans Thai", sans-serif`,
@@ -366,7 +368,6 @@ export function TextEditor({
           caretColor: '#2563eb',
         }}
         spellCheck={false}
-        autoFocus={inline}
       />
 
       {/* Dropdown Portal */}

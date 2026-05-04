@@ -1,29 +1,29 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: 'Sarabun';
-  src: url('/fonts/Sarabun-Regular.ttf') format('truetype');
+  font-family: "Sarabun";
+  src: url("/fonts/Sarabun-Regular.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Sarabun';
-  src: url('/fonts/Sarabun-Bold.ttf') format('truetype');
+  font-family: "Sarabun";
+  src: url("/fonts/Sarabun-Bold.ttf") format("truetype");
   font-weight: bold;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Geist';
-  src: url('/fonts/Geist-Regular.ttf') format('truetype');
+  font-family: "Geist";
+  src: url("/fonts/Geist-Regular.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Geist';
-  src: url('/fonts/Geist-Bold.ttf') format('truetype');
+  font-family: "Geist";
+  src: url("/fonts/Geist-Bold.ttf") format("truetype");
   font-weight: bold;
   font-style: normal;
 }

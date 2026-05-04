@@ -475,9 +475,6 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       onDoubleClick={handleDoubleClick}
       onPointerDown={handlePointerDown}
       onKeyDown={handleKeyDown}
-      tabIndex={0}
-      role="button"
-      aria-label={`Component ${component.type} ${component.name || ''}`}
       onClick={handleClick}
       style={containerStyle}
       data-designer-component
@@ -505,8 +502,6 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           isSelected={isSelected}
           selectedIds={selectedIds}
           isDragging={!!dragStateRef.current?.isActive}
-          zoneKey={zoneKey}
-          pageId={pageId}
           dragHandleRef={dragHandleRef}
           handleDuplicate={handleDuplicate}
         />

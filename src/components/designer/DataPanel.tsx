@@ -1,13 +1,25 @@
+import { extractJsonPaths, formatBinding, getValueType } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
+import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { Editor } from '@monaco-editor/react';
-import { AlertCircle, Box, Braces, CheckCircle2, ChevronRight, Copy, Database, Hash, List, Search, Type, X } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { clsx } from 'clsx';
+import {
+  AlertCircle,
+  Braces,
+  CheckCircle2,
+  ChevronRight,
+  Copy,
+  Database,
+  Hash,
+  List,
+  Search,
+  Type,
+  X,
+} from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { extractJsonPaths, getValueType, formatBinding } from '@/lib/utils/json-path';
-import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { clsx } from 'clsx';
 import { DesignerInput } from '../shared/DesignerInput';
-import { useVirtualizer } from '@tanstack/react-virtual';
 
 export const DataPanel = memo(function DataPanel() {
   const { sampleData, setSampleData, theme } = useDesignerStore(
@@ -34,52 +46,51 @@ export const DataPanel = memo(function DataPanel() {
 
   const filteredPaths = useMemo(() => {
     if (!searchQuery) return allPaths;
-    return allPaths.filter(p => p.toLowerCase().includes(searchQuery.toLowerCase()));
+    return allPaths.filter((p) => p.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [allPaths, searchQuery]);
-
 
   type VirtualItem =
     | { type: 'header'; label: string; id: string }
     | { type: 'field'; path: string; dataType: string; id: string };
 
   const virtualDataItems = useMemo(() => {
-    const groups: Record<string, { paths: string[], label: string }> = {
-      'string': { paths: [], label: 'Strings' },
-      'number': { paths: [], label: 'Numbers' },
-      'boolean': { paths: [], label: 'Booleans' },
-      'object': { paths: [], label: 'Objects' },
-      'array': { paths: [], label: 'Arrays' },
-      'undefined': { paths: [], label: 'Other' }
+    const groups: Record<string, { paths: string[]; label: string }> = {
+      string: { paths: [], label: 'Strings' },
+      number: { paths: [], label: 'Numbers' },
+      boolean: { paths: [], label: 'Booleans' },
+      object: { paths: [], label: 'Objects' },
+      array: { paths: [], label: 'Arrays' },
+      undefined: { paths: [], label: 'Other' },
     };
 
-    filteredPaths.forEach(path => {
+    for (const path of filteredPaths) {
       const dataType = getValueType(sampleData, path);
       groups[dataType].paths.push(path);
-    });
+    }
 
     const result: VirtualItem[] = [];
-    Object.entries(groups).forEach(([key, group]) => {
+    for (const [key, group] of Object.entries(groups)) {
       if (group.paths.length > 0) {
         result.push({ type: 'header', label: group.label, id: `header-${key}` });
         if (!collapsedGroups[group.label]) {
-          group.paths.forEach(path => {
+          for (const path of group.paths) {
             result.push({
               type: 'field',
               path,
               dataType: getValueType(sampleData, path),
-              id: `field-${path}`
+              id: `field-${path}`,
             });
-          });
+          }
         }
       }
-    });
+    }
     return result;
   }, [filteredPaths, sampleData, collapsedGroups]);
 
   const virtualizer = useVirtualizer({
     count: virtualDataItems.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: (index) => virtualDataItems[index]?.type === 'header' ? 28 : 36,
+    estimateSize: (index) => (virtualDataItems[index]?.type === 'header' ? 28 : 36),
     overscan: 10,
   });
 
@@ -129,24 +140,32 @@ export const DataPanel = memo(function DataPanel() {
             onClick={() => setView('explorer')}
             className={clsx(
               'flex items-center gap-1.5 py-1 transition-colors relative',
-              view === 'explorer' ? 'text-[var(--accent)] font-bold' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              view === 'explorer'
+                ? 'text-[var(--accent)] font-bold'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             )}
           >
             <Database className="w-3.5 h-3.5" />
             <span className="text-[9px] uppercase tracking-widest">Explorer</span>
-            {view === 'explorer' && <div className="absolute -bottom-[9px] left-0 right-0 h-0.5 bg-[var(--accent)]" />}
+            {view === 'explorer' && (
+              <div className="absolute -bottom-[9px] left-0 right-0 h-0.5 bg-[var(--accent)]" />
+            )}
           </button>
           <button
             type="button"
             onClick={() => setView('editor')}
             className={clsx(
               'flex items-center gap-1.5 py-1 transition-colors relative',
-              view === 'editor' ? 'text-[var(--accent)] font-bold' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              view === 'editor'
+                ? 'text-[var(--accent)] font-bold'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             )}
           >
             <Braces className="w-3.5 h-3.5" />
             <span className="text-[9px] uppercase tracking-widest">JSON</span>
-            {view === 'editor' && <div className="absolute -bottom-[9px] left-0 right-0 h-0.5 bg-[var(--accent)]" />}
+            {view === 'editor' && (
+              <div className="absolute -bottom-[9px] left-0 right-0 h-0.5 bg-[var(--accent)]" />
+            )}
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -241,10 +260,7 @@ export const DataPanel = memo(function DataPanel() {
               <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
             </div>
           </div>
-          <div
-            ref={parentRef}
-            className="flex-1 overflow-y-auto scrollbar-hide"
-          >
+          <div ref={parentRef} className="flex-1 overflow-y-auto scrollbar-hide">
             {filteredPaths.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] p-8 text-center">
                 <Database className="w-8 h-8 mb-2 opacity-20" />
@@ -279,13 +295,15 @@ export const DataPanel = memo(function DataPanel() {
                         <ExplorerHeader
                           label={item.label}
                           isCollapsed={!!collapsedGroups[item.label]}
-                          onToggle={() => setCollapsedGroups(prev => ({ ...prev, [item.label]: !prev[item.label] }))}
+                          onToggle={() =>
+                            setCollapsedGroups((prev) => ({
+                              ...prev,
+                              [item.label]: !prev[item.label],
+                            }))
+                          }
                         />
                       ) : (
-                        <ExplorerItem
-                          path={item.path}
-                          type={item.dataType}
-                        />
+                        <ExplorerItem path={item.path} type={item.dataType} />
                       )}
                     </div>
                   );
@@ -293,7 +311,6 @@ export const DataPanel = memo(function DataPanel() {
               </div>
             )}
           </div>
-
         </div>
       )}
     </div>
@@ -303,34 +320,43 @@ export const DataPanel = memo(function DataPanel() {
 function ExplorerHeader({
   label,
   isCollapsed,
-  onToggle
+  onToggle,
 }: {
   label: string;
   isCollapsed: boolean;
-  onToggle: () => void
+  onToggle: () => void;
 }) {
-  const Icon = label === 'Strings' ? Type :
-    label === 'Numbers' ? Hash :
-      label === 'Objects' ? Braces :
-        label === 'Arrays' ? List : Database;
+  const Icon =
+    label === 'Strings'
+      ? Type
+      : label === 'Numbers'
+        ? Hash
+        : label === 'Objects'
+          ? Braces
+          : label === 'Arrays'
+            ? List
+            : Database;
 
   return (
-    <div
-      className="flex items-center gap-2 py-1 px-1.5 mb-1 mt-2 first:mt-1 cursor-pointer group/header"
+    <button
+      type="button"
+      className="flex items-center gap-2 py-1 px-1.5 mb-1 mt-2 first:mt-1 cursor-pointer group/header w-full text-left"
       onClick={onToggle}
     >
       <div className="flex items-center gap-1.5">
-        <ChevronRight className={clsx(
-          "w-3 h-3 text-[var(--text-muted)] transition-transform duration-200",
-          !isCollapsed && "rotate-90"
-        )} />
+        <ChevronRight
+          className={clsx(
+            'w-3 h-3 text-[var(--text-muted)] transition-transform duration-200',
+            !isCollapsed && 'rotate-90'
+          )}
+        />
         <Icon className="w-3 h-3 text-[var(--text-muted)] group-hover/header:text-[var(--text-secondary)] transition-colors" />
         <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.15em] group-hover/header:text-[var(--text-secondary)] transition-colors">
           {label}
         </span>
       </div>
       <div className="flex-1 h-px bg-[var(--border-subtle)] opacity-50" />
-    </div>
+    </button>
   );
 }
 
@@ -351,7 +377,7 @@ function ExplorerItem({ path, type }: { path: string; type: string }) {
           content: formatBinding(path),
           width: 40,
           height: 8,
-          style: { fontSize: 10 }
+          style: { fontSize: 10 },
         },
         dragOffsetX: 20,
         dragOffsetY: 4,
@@ -361,38 +387,54 @@ function ExplorerItem({ path, type }: { path: string; type: string }) {
     });
   }, [path]);
 
-  const Icon = type === 'string' ? Type :
-    type === 'number' ? Hash :
-      type === 'object' ? Braces :
-        type === 'array' ? List : Database;
+  const Icon =
+    type === 'string'
+      ? Type
+      : type === 'number'
+        ? Hash
+        : type === 'object'
+          ? Braces
+          : type === 'array'
+            ? List
+            : Database;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(formatBinding(path));
+  };
 
   return (
-    <div
-      ref={ref}
+    <button
+      ref={ref as any}
+      type="button"
       className={clsx(
-        "group flex items-center gap-2.5 px-2 py-1 rounded transition-all cursor-grab active:cursor-grabbing hover:bg-[var(--bg-widget)] border border-transparent hover:border-[var(--border-subtle)] hover:shadow-sm",
-        isDragging && "opacity-40 grayscale"
+        'group flex items-center gap-2.5 px-2 py-1 rounded transition-all cursor-grab active:cursor-grabbing hover:bg-[var(--bg-widget)] border border-transparent hover:border-[var(--border-subtle)] hover:shadow-sm w-full text-left',
+        isDragging && 'opacity-40 grayscale'
       )}
-      onClick={() => {
-        navigator.clipboard.writeText(formatBinding(path));
-      }}
+      onClick={handleCopy}
     >
-      <div className={clsx(
-        "w-5 h-5 p-0.5 rounded-full bg-[var(--bg-widget)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] transition-all shadow-sm",
-      )}>
+      <div
+        className={clsx(
+          'w-5 h-5 p-0.5 rounded-full bg-[var(--bg-widget)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] transition-all shadow-sm'
+        )}
+      >
         <Icon className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-bold text-[var(--text-primary)] truncate transition-colors group-hover:text-[var(--accent)]">{path}</p>
+        <p className="text-[11px] font-bold text-[var(--text-primary)] truncate transition-colors group-hover:text-[var(--accent)]">
+          {path}
+        </p>
         <p className="text-[9px] text-[var(--text-muted)] truncate font-medium uppercase tracking-wider">
           {type}
         </p>
       </div>
 
-      <button className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-[var(--bg-surface)] rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] transition-all">
+      <button
+        type="button"
+        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-[var(--bg-surface)] rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] transition-all"
+      >
         <Copy className="w-3.5 h-3.5" />
       </button>
-    </div>
+    </button>
   );
 }

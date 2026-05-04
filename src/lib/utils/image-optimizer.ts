@@ -45,7 +45,7 @@ export async function optimizeImage(
       // Fallback to JPEG if WebP is not supported (unlikely in modern browsers)
       const mimeType = 'image/webp';
       const dataUrl = canvas.toDataURL(mimeType, quality);
-      
+
       resolve({ dataUrl, mimeType });
 
       // Cleanup

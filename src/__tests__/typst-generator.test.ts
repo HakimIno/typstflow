@@ -311,9 +311,7 @@ describe('TypstGenerator — plugin override', () => {
           name: 'Page 1',
           body: {
             id: 'body',
-            components: [
-              { id: 'txt', type: 'text', content: 'Hello', style: {} },
-            ],
+            components: [{ id: 'txt', type: 'text', content: 'Hello', style: {} }],
           },
         },
       ],

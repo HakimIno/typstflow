@@ -26,8 +26,8 @@ export interface GroupDefinition {
   id: string;
   name: string;
   field: string; // The binding path to group by, e.g. "item.category"
-  header: Zone;  // Zone rendered when a group starts
-  footer: Zone;  // Zone rendered when a group ends (for summaries)
+  header: Zone; // Zone rendered when a group starts
+  footer: Zone; // Zone rendered when a group ends (for summaries)
   sortBy?: 'asc' | 'desc';
   filterBy?: string; // New: Filter expression for the group
   repeatHeaderOnPage?: boolean;
