@@ -10,6 +10,8 @@ export function useZoneResize(
   zoneKey: 'header' | 'body' | 'footer',
   initialMinHeight: string,
   components: ComponentNode[],
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  labelRef: React.RefObject<HTMLDivElement | null>,
   resizeEdge: 'top' | 'bottom' | 'none' = 'bottom',
   pageId?: string,
   groupId?: string,
@@ -17,7 +19,6 @@ export function useZoneResize(
 ) {
   const [isResizing, setIsResizing] = useState(false);
   const initialHeightMm = Number.parseFloat(initialMinHeight || '50');
-  const [localHeight, setLocalHeight] = useState(initialHeightMm);
   const heightRef = useRef(initialHeightMm);
 
   const updateZone = useDesignerStore((state) => state.updateZone);
@@ -27,7 +28,6 @@ export function useZoneResize(
   // Sync with store when initialMinHeight changes externally
   useEffect(() => {
     const val = Number.parseFloat(initialMinHeight || '50');
-    setLocalHeight(val);
     heightRef.current = val;
   }, [initialMinHeight]);
 
@@ -85,6 +85,9 @@ export function useZoneResize(
       maxConstraint = pageHeightMm - headerHeight - minBodyHeight - groupHeights;
     }
 
+    const rafRef = { current: 0 };
+    document.body.classList.add('is-resizing-zone');
+
     const onMouseMove = (moveEvent: MouseEvent) => {
       const deltaY = moveEvent.clientY - startY;
       let deltaMm = LayoutEngine.pxToMm(deltaY / zoom);
@@ -99,13 +102,30 @@ export function useZoneResize(
 
       const snappedHeight = LayoutEngine.snap(newHeight);
 
-      setLocalHeight(snappedHeight);
-      heightRef.current = snappedHeight;
-      updateZone(zoneKey, { minHeight: `${snappedHeight}mm` }, pageId, true, groupId, groupType);
+      // --- PERFORMANCE OPTIMIZATION (ULTIMATE) ---
+      // Cancel any pending frame to avoid flooding the browser's render queue
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+      rafRef.current = requestAnimationFrame(() => {
+        // 1. Update the local height ref
+        heightRef.current = snappedHeight;
+
+        // 2. Direct DOM manipulation for the container
+        if (containerRef.current) {
+          containerRef.current.style.height = `${snappedHeight}mm`;
+        }
+
+        // 3. Direct DOM manipulation for the label
+        if (labelRef.current) {
+          labelRef.current.innerText = `HEIGHT: ${snappedHeight.toFixed(1)}mm`;
+        }
+      });
     };
 
     const onMouseUp = () => {
       setIsResizing(false);
+      document.body.classList.remove('is-resizing-zone');
+
       updateZone(
         zoneKey,
         { minHeight: `${heightRef.current}mm` },
@@ -124,7 +144,6 @@ export function useZoneResize(
 
   return {
     isResizing,
-    localHeight,
     handleResizeStart,
   };
 }

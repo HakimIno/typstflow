@@ -38,11 +38,14 @@ export const Zone = memo(function Zone({
 }: ZoneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLDivElement>(null);
 
-  const { isResizing, localHeight, handleResizeStart } = useZoneResize(
+  const { isResizing, handleResizeStart } = useZoneResize(
     zoneKey,
     minHeight || '50',
     components,
+    containerRef,
+    labelRef,
     resizeEdge,
     pageId,
     groupId,
@@ -56,12 +59,13 @@ export const Zone = memo(function Zone({
       data-is-group-band={isGroupBand}
       data-group-id={groupId}
       data-group-type={groupType}
-      style={resizeEdge === 'none' ? { flex: 1 } : { height: `${localHeight}mm` }}
+      style={resizeEdge === 'none' ? { flex: 1 } : { height: minHeight || '50mm' }}
       className={clsx(
-        'relative border-b last:border-b-0 border-dashed border-slate-200 transition-all group/zone bg-transparent overflow-visible',
+        'relative border-b last:border-b-0 border-dashed border-slate-200 group/zone bg-transparent overflow-visible',
+        !isResizing && 'transition-all duration-300',
         isGroupBand && (groupType === 'header' ? 'bg-indigo-500/[0.03]' : 'bg-fuchsia-500/[0.03]'),
         isDraggedOver && 'bg-[var(--accent-glow)]/50',
-        isResizing && 'ring-1 ring-[var(--accent)] z-50 shadow-lg',
+        isResizing && 'ring-1 ring-[var(--accent)] z-50 shadow-lg !transition-none will-change-[height] [contain:size_layout]',
         hidden && 'border-none'
       )}
     >
@@ -122,8 +126,11 @@ export const Zone = memo(function Zone({
 
       {/* Height Indicator Label */}
       {isResizing && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[var(--accent)] text-white text-[10px] px-2 py-1 rounded shadow-lg z-[60] font-mono">
-          HEIGHT: {localHeight.toFixed(1)}mm
+        <div
+          ref={labelRef}
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[var(--accent)] text-white text-[10px] px-2 py-1 rounded shadow-lg z-[60] font-mono"
+        >
+          HEIGHT: {Number.parseFloat(minHeight || '50').toFixed(1)}mm
         </div>
       )}
 

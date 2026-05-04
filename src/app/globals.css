@@ -29,6 +29,9 @@
 }
 
 @theme {
+  --font-sans: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
   --shadow-none: none;
   --radius-none: 0;
   --radius-sm: 8px;
@@ -102,7 +105,7 @@
 @layer base {
   body {
     @apply bg-[var(--bg-app)] text-[var(--text-primary)] antialiased transition-colors duration-300;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: var(--font-sans);
     font-size: 13px;
     font-weight: 400;
     background-image: radial-gradient(circle at top center, var(--accent-glow) 0%, transparent 40%);
@@ -213,8 +216,15 @@
     content-visibility: auto;
   }
 
-  .is-dragging-components [data-designer-component] {
-    /* Stop any CSS transitions/animations on components during drag */
+  /* Extreme Performance: Only active during zone resize */
+  .is-resizing-zone {
+    cursor: ns-resize !important;
+    user-select: none !important;
+  }
+
+  .is-resizing-zone [data-designer-component],
+  .is-resizing-zone [data-paper-container] {
+    pointer-events: none !important;
     transition: none !important;
     animation: none !important;
   }
