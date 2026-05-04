@@ -437,46 +437,98 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         <section>
           <SectionHeader label="Zone Settings" />
           {selectedZone === 'header' && (
-            <PropertyRow label="Show on First Page Only">
-              <button
-                type="button"
-                onClick={() => {
-                  const headerZone = fullSchema.zones.header;
-                  const newValue = !headerZone.showOnFirstPageOnly;
-                  updateZone('header', { showOnFirstPageOnly: newValue });
-                }}
-                className={clsx(
-                  'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
-                  fullSchema.zones.header.showOnFirstPageOnly
-                    ? 'bg-[var(--accent)] text-white'
-                    : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                )}
-              >
-                <FileText className="w-3 h-3" />
-                {fullSchema.zones.header.showOnFirstPageOnly ? 'First Page Only' : 'Every Page'}
-              </button>
-            </PropertyRow>
+            <>
+              <PropertyRow label="Repeat on Every Page">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const headerZone = fullSchema.zones.header;
+                    const newValue = !headerZone.repeatOnEveryPage;
+                    updateZone('header', { 
+                      repeatOnEveryPage: newValue,
+                      showOnFirstPageOnly: false // Reset other flags if repeating
+                    });
+                  }}
+                  className={clsx(
+                    'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
+                    fullSchema.zones.header.repeatOnEveryPage
+                      ? 'bg-[var(--accent)] text-white'
+                      : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+                  )}
+                >
+                  <Layers className="w-3 h-3" />
+                  {fullSchema.zones.header.repeatOnEveryPage ? 'Enabled' : 'Disabled'}
+                </button>
+              </PropertyRow>
+              {!fullSchema.zones.header.repeatOnEveryPage && (
+                <PropertyRow label="Visibility">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const headerZone = fullSchema.zones.header;
+                      const newValue = !headerZone.showOnFirstPageOnly;
+                      updateZone('header', { showOnFirstPageOnly: newValue });
+                    }}
+                    className={clsx(
+                      'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
+                      fullSchema.zones.header.showOnFirstPageOnly
+                        ? 'bg-[var(--accent)] text-white'
+                        : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+                    )}
+                  >
+                    <FileText className="w-3 h-3" />
+                    {fullSchema.zones.header.showOnFirstPageOnly ? 'First Page Only' : 'First Page Only (Default)'}
+                  </button>
+                </PropertyRow>
+              )}
+            </>
           )}
           {selectedZone === 'footer' && (
-            <PropertyRow label="Show on Last Page Only">
-              <button
-                type="button"
-                onClick={() => {
-                  const footerZone = fullSchema.zones.footer;
-                  const newValue = !footerZone.showOnLastPageOnly;
-                  updateZone('footer', { showOnLastPageOnly: newValue });
-                }}
-                className={clsx(
-                  'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
-                  fullSchema.zones.footer.showOnLastPageOnly
-                    ? 'bg-[var(--accent)] text-white'
-                    : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                )}
-              >
-                <FileText className="w-3 h-3" />
-                {fullSchema.zones.footer.showOnLastPageOnly ? 'Last Page Only' : 'Every Page'}
-              </button>
-            </PropertyRow>
+            <>
+              <PropertyRow label="Repeat on Every Page">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const footerZone = fullSchema.zones.footer;
+                    const newValue = !footerZone.repeatOnEveryPage;
+                    updateZone('footer', { 
+                      repeatOnEveryPage: newValue,
+                      showOnLastPageOnly: false // Reset other flags if repeating
+                    });
+                  }}
+                  className={clsx(
+                    'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
+                    fullSchema.zones.footer.repeatOnEveryPage
+                      ? 'bg-[var(--accent)] text-white'
+                      : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+                  )}
+                >
+                  <Layers className="w-3 h-3" />
+                  {fullSchema.zones.footer.repeatOnEveryPage ? 'Enabled' : 'Disabled'}
+                </button>
+              </PropertyRow>
+              {!fullSchema.zones.footer.repeatOnEveryPage && (
+                <PropertyRow label="Visibility">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const footerZone = fullSchema.zones.footer;
+                      const newValue = !footerZone.showOnLastPageOnly;
+                      updateZone('footer', { showOnLastPageOnly: newValue });
+                    }}
+                    className={clsx(
+                      'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
+                      fullSchema.zones.footer.showOnLastPageOnly
+                        ? 'bg-[var(--accent)] text-white'
+                        : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+                    )}
+                  >
+                    <FileText className="w-3 h-3" />
+                    {fullSchema.zones.footer.showOnLastPageOnly ? 'Last Page Only' : 'First Page Only (Default)'}
+                  </button>
+                </PropertyRow>
+              )}
+            </>
           )}
         </section>
       </div>

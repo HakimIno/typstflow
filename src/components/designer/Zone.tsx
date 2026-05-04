@@ -4,7 +4,7 @@ import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
 import { Layers } from 'lucide-react';
 import { memo, useRef } from 'react';
-import { ComponentWrapper } from './ComponentWrapper';
+import { ComponentWrapper } from './component-wrapper';
 
 import { useZoneDropTarget } from '@/hooks/use-zone-drop-target';
 import { useZoneResize } from '@/hooks/use-zone-resize';
@@ -20,6 +20,7 @@ interface ZoneProps {
   isGroupBand?: boolean;
   groupType?: 'header' | 'footer';
   groupId?: string;
+  hidden?: boolean;
 }
 
 export const Zone = memo(function Zone({
@@ -33,6 +34,7 @@ export const Zone = memo(function Zone({
   isGroupBand,
   groupType,
   groupId,
+  hidden,
 }: ZoneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -56,28 +58,31 @@ export const Zone = memo(function Zone({
       data-group-type={groupType}
       style={resizeEdge === 'none' ? { flex: 1 } : { height: `${localHeight}mm` }}
       className={clsx(
-        'relative border-b last:border-b-0 border-dashed border-slate-200 transition-colors group/zone bg-transparent',
+        'relative border-b last:border-b-0 border-dashed border-slate-200 transition-all group/zone bg-transparent overflow-visible',
         isGroupBand && (groupType === 'header' ? 'bg-indigo-500/[0.03]' : 'bg-fuchsia-500/[0.03]'),
         isDraggedOver && 'bg-[var(--accent-glow)]/50',
-        isResizing && 'ring-1 ring-[var(--accent)] z-50 shadow-lg'
+        isResizing && 'ring-1 ring-[var(--accent)] z-50 shadow-lg',
+        hidden && 'border-none'
       )}
     >
       {/* Vertical Side Label (External to Paper) */}
-      <div className="absolute -left-10 top-0 bottom-0 w-10 flex flex-col items-center justify-center pointer-events-none select-none z-10 opacity-60 group-hover/zone:opacity-100 transition-opacity">
-        <div className="absolute inset-y-0 right-0 w-px bg-[var(--border-default)]" />
-        <span
-          className={clsx(
-            'text-[8px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] whitespace-nowrap px-1 py-4 rounded-l-md',
-            isGroupBand &&
-              (groupType === 'header'
-                ? 'text-indigo-400 bg-indigo-500/10'
-                : 'text-fuchsia-400 bg-fuchsia-500/10')
-          )}
-          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
-        >
-          {label}
-        </span>
-      </div>
+      {!hidden && (
+        <div className="absolute -left-10 top-0 bottom-0 w-10 flex flex-col items-center justify-center pointer-events-none select-none z-10 opacity-60 group-hover/zone:opacity-100 transition-opacity">
+          <div className="absolute inset-y-0 right-0 w-px bg-[var(--border-default)]" />
+          <span
+            className={clsx(
+              'text-[8px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] whitespace-nowrap px-1 py-4 rounded-l-md',
+              isGroupBand &&
+                (groupType === 'header'
+                  ? 'text-indigo-400 bg-indigo-500/10'
+                  : 'text-fuchsia-400 bg-fuchsia-500/10')
+            )}
+            style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+          >
+            {label}
+          </span>
+        </div>
+      )}
 
       <div
         ref={contentRef}
@@ -88,21 +93,23 @@ export const Zone = memo(function Zone({
         className="relative w-full h-full bg-transparent overflow-visible min-h-[inherit]"
       >
         {components.length === 0 && !isDraggedOver ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 opacity-40 select-none pointer-events-none">
-            <Layers className="w-6 h-6 mb-1" />
-            <p className="text-[9px] font-bold uppercase tracking-widest text-center px-4">
-              {label} EMPTY
-              <br />
-              <span className="text-[7px] font-medium tracking-normal opacity-60">
-                DRAG COMPONENTS HERE
-              </span>
-            </p>
-          </div>
+          !hidden && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 opacity-40 select-none pointer-events-none">
+              <Layers className="w-6 h-6 mb-1" />
+              <p className="text-[9px] font-bold uppercase tracking-widest text-center px-4">
+                {label} EMPTY
+                <br />
+                <span className="text-[7px] font-medium tracking-normal opacity-60">
+                  DRAG COMPONENTS HERE
+                </span>
+              </p>
+            </div>
+          )
         ) : (
           <div className="absolute inset-0 overflow-visible">
             {components.map((comp) => (
               <ComponentWrapper
-                key={comp.id}
+                key={`${pageId ?? 'global'}-${comp.id}`}
                 component={comp}
                 zoneKey={zoneKey}
                 pageId={pageId}

@@ -3,6 +3,7 @@ import { agentLogger } from '@/lib/utils/agent-logger';
 import { generateStressTestSchema } from '@/lib/utils/performance-test';
 import {
   findComponentInSchema,
+  findComponentZone,
   getZoneComponents,
   mapComponentInSchema,
   removeComponentFromSchema,
@@ -496,7 +497,10 @@ export const useDesignerStore = create<DesignerState>()(
 
       selectComponent: (id, multi) =>
         set((state) => {
-          if (!id) return { selectedComponentIds: [], selectedCell: null, selectedCells: null };
+          if (!id) return { selectedComponentIds: [], selectedCell: null, selectedCells: null, selectedZone: null };
+
+          const zoneInfo = findComponentZone(state.schema, id);
+          const zoneKey = zoneInfo?.zoneKey || null;
 
           if (multi) {
             // Add to selection if not already there
@@ -505,10 +509,16 @@ export const useDesignerStore = create<DesignerState>()(
               selectedComponentIds: [...state.selectedComponentIds, id],
               selectedCell: null,
               selectedCells: null,
+              selectedZone: zoneKey,
             };
           }
 
-          return { selectedComponentIds: [id], selectedCell: null, selectedCells: null };
+          return { 
+            selectedComponentIds: [id], 
+            selectedCell: null, 
+            selectedCells: null,
+            selectedZone: zoneKey,
+          };
         }),
 
       toggleComponentSelection: (id) =>
@@ -714,7 +724,6 @@ export const useDesignerStore = create<DesignerState>()(
             id: newPageId,
             name: `Page ${state.schema.pages.length + 1}`,
             body: { id: 'body', minHeight: '237mm', components: [] },
-            footer: { id: 'footer', minHeight: '20mm', components: [] },
           };
           const newSchema = {
             ...state.schema,

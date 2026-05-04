@@ -52,26 +52,37 @@ export function getZoneComponents(
 // ─── Find ──────────────────────────────────────────────────────────────────
 
 /**
+ * Find the zone information for a given component ID.
+ */
+export function findComponentZone(
+  schema: LayoutSchema,
+  id: string
+): { component: ComponentNode; zoneKey: ZoneKey; pageId?: string; groupId?: string; groupType?: 'header' | 'footer' } | null {
+  for (const key of GLOBAL_ZONE_KEYS) {
+    const found = schema.zones[key].components.find((c) => c.id === id);
+    if (found) return { component: found, zoneKey: key };
+  }
+  for (const page of schema.pages) {
+    const found = page.body.components.find((c) => c.id === id);
+    if (found) return { component: found, zoneKey: 'body', pageId: page.id };
+  }
+  for (const group of schema.groups || []) {
+    const headerFound = group.header.components.find((c) => c.id === id);
+    if (headerFound) return { component: headerFound, zoneKey: 'body', groupId: group.id, groupType: 'header' };
+    const footerFound = group.footer.components.find((c) => c.id === id);
+    if (footerFound) return { component: footerFound, zoneKey: 'body', groupId: group.id, groupType: 'footer' };
+  }
+  return null;
+}
+
+/**
  * Find a component by ID anywhere in the schema.
  * Checks global zones (header, footer) first, then all page bodies.
  * Returns null when not found.
  */
 export function findComponentInSchema(schema: LayoutSchema, id: string): ComponentNode | null {
-  for (const key of GLOBAL_ZONE_KEYS) {
-    const found = schema.zones[key].components.find((c) => c.id === id);
-    if (found) return found;
-  }
-  for (const page of schema.pages) {
-    const found = page.body.components.find((c) => c.id === id);
-    if (found) return found;
-  }
-  for (const group of schema.groups || []) {
-    const headerFound = group.header.components.find((c) => c.id === id);
-    if (headerFound) return headerFound;
-    const footerFound = group.footer.components.find((c) => c.id === id);
-    if (footerFound) return footerFound;
-  }
-  return null;
+  const result = findComponentZone(schema, id);
+  return result?.component ?? null;
 }
 
 // ─── Map (Transform) ───────────────────────────────────────────────────────

@@ -76,14 +76,11 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
             }
 
             // Header
-            let show_header = schema.zones.header.repeat_on_every_page.unwrap_or(false)
-                || i == 0
-                || !schema.zones.header.show_on_first_page_only.unwrap_or(false);
-            let first_only = schema.zones.header.show_on_first_page_only.unwrap_or(false);
-            let last_only = schema.zones.header.show_on_last_page_only.unwrap_or(false);
-            let render_header = if first_only { i == 0 }
-                else if last_only { i == total_pages - 1 }
-                else { show_header };
+            let is_global_h = schema.zones.header.repeat_on_every_page.unwrap_or(false);
+            let first_only_h = schema.zones.header.show_on_first_page_only.unwrap_or(false);
+            let render_header = if is_global_h { true }
+                else if first_only_h { i == 0 }
+                else { i == 0 }; // Default: show on first page
 
             if render_header {
                 t.push_str(&format!("// --- PAGE {} HEADER ---\n", i + 1));
@@ -99,13 +96,11 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
             }
 
             // Footer
-            let show_footer = schema.zones.footer.repeat_on_every_page.unwrap_or(false)
-                || i == total_pages - 1;
-            let f_first_only = schema.zones.footer.show_on_first_page_only.unwrap_or(false);
-            let f_last_only = schema.zones.footer.show_on_last_page_only.unwrap_or(false);
-            let render_footer = if f_first_only { i == 0 }
-                else if f_last_only { i == total_pages - 1 }
-                else { show_footer };
+            let is_global_f = schema.zones.footer.repeat_on_every_page.unwrap_or(false);
+            let last_only_f = schema.zones.footer.show_on_last_page_only.unwrap_or(false);
+            let render_footer = if is_global_f { true }
+                else if last_only_f { i == total_pages - 1 }
+                else { i == 0 }; // Default: show on first page (Report Footer)
 
             if render_footer {
                 t.push_str(&format!("// --- PAGE {} FOOTER ---\n", i + 1));

@@ -68,24 +68,57 @@ export class TypstGenerator {
       generatePageSetup(schema),
       generateFonts(schema),
       FORMAT_HELPERS,
-      '\n// --- Report ---\n',
     ];
 
-    // Zone Y origins: stacked from page corner, matching the designer flex-col layout.
-    const headerH = Number.parseFloat(schema.zones.header.minHeight ?? '0');
-    const footerH = Number.parseFloat(schema.zones.footer.minHeight ?? '0');
+    // --- Global Repeating Zones (Typst Native) ---
+    // If a zone is set to repeat on every page, we use Typst's native #set page(header: ..., footer: ...)
+    // which works correctly even during page breaks in groups or long tables.
     const pageH = paperHeightMm(schema.page.size, schema.page.orientation === 'landscape');
+    const margin = schema.page.margin;
+    const topM = Number.parseFloat(margin.top ?? '0');
+    const bottomM = Number.parseFloat(margin.bottom ?? '0');
+    
+    if (schema.zones.header.repeatOnEveryPage) {
+      const headerContent = this.renderZoneComponents(schema.zones.header, data, data, [], 0, topM, schema);
+      parts.push(`\n#set page(header: [${headerContent}])\n`);
+    }
+    
+    if (schema.zones.footer.repeatOnEveryPage) {
+      const footerH = Number.parseFloat(schema.zones.footer.minHeight ?? '0');
+      const footerY = pageH - bottomM - footerH;
+      const footerContent = this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema);
+      parts.push(`\n#set page(footer: [${footerContent}])\n`);
+    }
 
-    const headerY = 0;
+    parts.push('\n// --- Report ---\n');
+
+    // Zone Y origins for MANUAL rendering (used for non-repeating zones)
+    const headerH = Number.parseFloat(schema.zones.header.minHeight ?? '0');
     const bodyY = headerH;
+    const footerH = Number.parseFloat(schema.zones.footer.minHeight ?? '0');
     const footerY = pageH - footerH;
+    const headerY = 0;
 
     if (schema.groups && schema.groups.length > 0) {
       // Grouped rendering
       const items = Array.isArray((data as Record<string, unknown>).items)
         ? ((data as Record<string, unknown>).items as Record<string, unknown>[])
         : [];
+      
+      // Non-repeating Header (Report Header)
+      if (!schema.zones.header.repeatOnEveryPage && shouldRenderZone(schema.zones.header, 0, 1, 'header')) {
+        parts.push(`// --- REPORT HEADER ---\n`);
+        parts.push(this.renderZoneComponents(schema.zones.header, data, data, [], 0, headerY, schema));
+      }
+
+      // Render Groups
       parts.push(this.renderGroupLevel(schema, schema.groups, 0, items, data, bodyY));
+
+      // Non-repeating Footer (Report Footer)
+      if (!schema.zones.footer.repeatOnEveryPage && shouldRenderZone(schema.zones.footer, 0, 1, 'footer')) {
+        parts.push(`// --- REPORT FOOTER ---\n`);
+        parts.push(this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema));
+      }
     } else {
       // Page-by-page rendering
       const totalPages = schema.pages.length;
@@ -93,9 +126,9 @@ export class TypstGenerator {
         if (i > 0) parts.push('\n#pagebreak(weak: true)\n');
         const pageDef = schema.pages[i];
 
-        // Header
+        // Header (only if not handled by native Typst repetition)
         const h = schema.zones.header;
-        if (shouldRenderZone(h, i, totalPages)) {
+        if (!h.repeatOnEveryPage && shouldRenderZone(h, i, totalPages, 'header')) {
           parts.push(`// --- PAGE ${i + 1} HEADER ---\n`);
           parts.push(this.renderZoneComponents(h, data, data, [], 0, headerY, schema));
         }
@@ -104,9 +137,9 @@ export class TypstGenerator {
         parts.push(`// --- PAGE ${i + 1} BODY ---\n`);
         parts.push(this.renderZoneComponents(pageDef.body, data, data, [], 0, bodyY, schema));
 
-        // Footer
+        // Footer (only if not handled by native Typst repetition)
         const f = schema.zones.footer;
-        if (shouldRenderZone(f, i, totalPages)) {
+        if (!f.repeatOnEveryPage && shouldRenderZone(f, i, totalPages, 'footer')) {
           parts.push(`// --- PAGE ${i + 1} FOOTER ---\n`);
           parts.push(this.renderZoneComponents(f, data, data, [], 0, footerY, schema));
         }
@@ -216,10 +249,22 @@ export class TypstGenerator {
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
-function shouldRenderZone(zone: Zone, pageIndex: number, totalPages: number): boolean {
+function shouldRenderZone(
+  zone: Zone,
+  pageIndex: number,
+  totalPages: number,
+  type: 'header' | 'footer'
+): boolean {
   if (zone.repeatOnEveryPage) return true;
   if (zone.showOnFirstPageOnly) return pageIndex === 0;
   if (zone.showOnLastPageOnly) return pageIndex === totalPages - 1;
+
+  // Default behavior if no flags are set:
+  // Headers usually show on first page by default if not global.
+  // Footers usually show on last page by default if not global? 
+  // Actually, the user says "Footer page 1 shows in page 2 even if not global".
+  // This implies they expect it to be page-specific, but it's a GLOBAL zone.
+  // So if it's not set to repeat, it should only show on page 1 (Report Footer).
   return pageIndex === 0;
 }
 

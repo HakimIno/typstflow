@@ -232,21 +232,36 @@ export const Canvas = memo(function Canvas() {
                       <SelectionToolbar pageId={page.id} />
 
                       <div className="flex flex-col gap-0 absolute inset-0 z-20">
-                        {/* Only show header if it's repeated or if it's the first page */}
-                        {(schema.zones.header.repeatOnEveryPage || pIdx === 0) && (
-                          <Zone
-                            zoneKey="header"
-                            label={
-                              schema.zones.header.repeatOnEveryPage
-                                ? 'Global Header'
-                                : 'Report Header'
-                            }
-                            components={schema.zones.header.components}
-                            minHeight={schema.zones.header.minHeight}
-                            resizeEdge="bottom"
-                            pageIndex={pIdx}
-                          />
-                        )}
+                        <Zone
+                          zoneKey="header"
+                          label={
+                            schema.zones.header.repeatOnEveryPage
+                              ? 'Global Header'
+                              : 'Report Header'
+                          }
+                          components={
+                            schema.zones.header.repeatOnEveryPage ||
+                            (schema.zones.header.showOnFirstPageOnly && pIdx === 0) ||
+                            (!schema.zones.header.repeatOnEveryPage &&
+                              !schema.zones.header.showOnFirstPageOnly &&
+                              pIdx === 0)
+                              ? schema.zones.header.components
+                              : []
+                          }
+                          pageId={page.id}
+                          minHeight={schema.zones.header.minHeight}
+                          resizeEdge="bottom"
+                          pageIndex={pIdx}
+                          hidden={
+                            !(
+                              schema.zones.header.repeatOnEveryPage ||
+                              (schema.zones.header.showOnFirstPageOnly && pIdx === 0) ||
+                              (!schema.zones.header.repeatOnEveryPage &&
+                                !schema.zones.header.showOnFirstPageOnly &&
+                                pIdx === 0)
+                            )
+                          }
+                        />
 
                         {/* Group Headers */}
                         {(schema.groups || []).map((group) => (
@@ -292,21 +307,38 @@ export const Canvas = memo(function Canvas() {
                           />
                         ))}
 
-                        {/* Footer — shown on first page, or every page if repeatOnEveryPage */}
-                        {(schema.zones.footer.repeatOnEveryPage || pIdx === 0) && (
-                          <Zone
-                            zoneKey="footer"
-                            label={
-                              schema.zones.footer.repeatOnEveryPage
-                                ? 'Global Footer'
-                                : 'Report Footer'
-                            }
-                            components={schema.zones.footer.components}
-                            minHeight={schema.zones.footer.minHeight}
-                            resizeEdge="top"
-                            pageIndex={pIdx}
-                          />
-                        )}
+                        <Zone
+                          zoneKey="footer"
+                          label={
+                            schema.zones.footer.repeatOnEveryPage
+                              ? 'Global Footer'
+                              : 'Report Footer'
+                          }
+                          components={
+                            schema.zones.footer.repeatOnEveryPage ||
+                            (schema.zones.footer.showOnLastPageOnly &&
+                              pIdx === schema.pages.length - 1) ||
+                            (!schema.zones.footer.repeatOnEveryPage &&
+                              !schema.zones.footer.showOnLastPageOnly &&
+                              pIdx === 0)
+                              ? schema.zones.footer.components
+                              : []
+                          }
+                          pageId={page.id}
+                          minHeight={schema.zones.footer.minHeight}
+                          resizeEdge="top"
+                          pageIndex={pIdx}
+                          hidden={
+                            !(
+                              schema.zones.footer.repeatOnEveryPage ||
+                              (schema.zones.footer.showOnLastPageOnly &&
+                                pIdx === schema.pages.length - 1) ||
+                              (!schema.zones.footer.repeatOnEveryPage &&
+                                !schema.zones.footer.showOnLastPageOnly &&
+                                pIdx === 0)
+                            )
+                          }
+                        />
                       </div>
 
                       {/* Remove Page Button */}
