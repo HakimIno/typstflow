@@ -40,8 +40,11 @@ export const DataPanel = memo(function DataPanel() {
       theme: state.theme,
     }))
   );
-  const [view, setView] = useState<'explorer' | 'editor'>('explorer');
+  const [view, setView] = useState<'explorer' | 'editor'>(() =>
+    Object.keys(sampleData).length === 0 ? 'editor' : 'explorer'
+  );
   const [jsonString, setJsonString] = useState(JSON.stringify(sampleData, null, 2));
+  const [editorKey, setEditorKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -51,6 +54,16 @@ export const DataPanel = memo(function DataPanel() {
     rect: DOMRect;
   } | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
+  // Track whether the last sampleData change came from the user typing in this editor
+  // vs an external source (AI set_sample_data, loadExample, handleFromSchema).
+  // External changes should remount Monaco with fresh content; user edits should not.
+  const updateSource = useRef<'user' | 'external'>('external');
+
+  const remountEditor = useCallback((newJson: string) => {
+    updateSource.current = 'external';
+    setJsonString(newJson);
+    setEditorKey((k) => k + 1);
+  }, []);
 
   const handleFromSchema = useCallback(() => {
     let result: Record<string, unknown> = {};
@@ -69,12 +82,17 @@ export const DataPanel = memo(function DataPanel() {
                   : '';
       result = setNestedValue(result, field.path, defaultVal);
     }
+    remountEditor(JSON.stringify(result, null, 2));
     setSampleData(result);
-  }, [schema.dataSchema, setSampleData]);
+  }, [schema.dataSchema, setSampleData, remountEditor]);
 
+  // Sync Monaco only when sampleData changed from an external source (not user typing)
   useEffect(() => {
-    setJsonString(JSON.stringify(sampleData, null, 2));
-  }, [sampleData]);
+    if (updateSource.current === 'external') {
+      remountEditor(JSON.stringify(sampleData, null, 2));
+    }
+    updateSource.current = 'external';
+  }, [sampleData, remountEditor]);
 
   const allPaths = useMemo(() => {
     return extractJsonPaths(sampleData);
@@ -149,19 +167,68 @@ export const DataPanel = memo(function DataPanel() {
 
   const loadExample = () => {
     const example = {
-      invoice_no: 'INV-2024-888',
-      date: '2024-04-09',
-      customer: {
-        name: 'บริษัท เทคโนโลยี จำกัด',
-        address: '123 ถนนสุขุมวิท กรุงเทพฯ',
+      "invoice": {
+        "number": "INV-2567-00142",
+        "date": "4 พฤษภาคม 2567",
+        "dueDate": "4 มิถุนายน 2567",
+        "subtotal": "85,500.00",
+        "vat": "5,985.00",
+        "total": "91,485.00",
+        "remark": "กรุณาชำระเงินภายในวันที่กำหนด หากมีข้อสงสัยติดต่อ accounting@techsolutions.co.th",
+        "paymentTerms": "Net 30 วัน | โอนเงินผ่านบัญชี ธ.กสิกรไทย 123-4-56789-0"
       },
-      items: [
-        { description: 'Industrial Controller v2', qty: 2, price: 15000, total: 30000 },
-        { description: 'Sensor Array XP', qty: 5, price: 2500, total: 12500 },
+      "company": {
+        "name": "บริษัท เทคโซลูชันส์ จำกัด",
+        "address": "88/8 อาคารสาทรซิตี้ ชั้น 12 ถนนสาทรเหนือ แขวงสีลม เขตบางรัก กรุงเทพฯ 10500",
+        "taxId": "0105567089234",
+        "phone": "02-234-5678",
+        "email": "info@techsolutions.co.th"
+      },
+      "customer": {
+        "name": "บริษัท ไพศาล โลจิสติกส์ จำกัด (มหาชน)",
+        "address": "200 ถนนนวมินทร์ แขวงนวมินทร์ เขตบึงกุ่ม กรุงเทพฯ 10240",
+        "taxId": "0107548002156",
+        "contact": "คุณสมชาย วงศ์ประเสริฐ",
+        "phone": "081-234-5678"
+      },
+      "items": [
+        {
+          "no": "1",
+          "description": "บริการพัฒนาระบบ ERP Module การเงินและบัญชี",
+          "unit": "งาน",
+          "qty": "1",
+          "unitPrice": "35,000.00",
+          "amount": "35,000.00"
+        },
+        {
+          "no": "2",
+          "description": "ค่าบำรุงรักษาระบบรายปี (Annual Maintenance)",
+          "unit": "ปี",
+          "qty": "1",
+          "unitPrice": "18,000.00",
+          "amount": "18,000.00"
+        },
+        {
+          "no": "3",
+          "description": "ใบอนุญาตซอฟต์แวร์ Enterprise License (50 users)",
+          "unit": "ชุด",
+          "qty": "1",
+          "unitPrice": "24,500.00",
+          "amount": "24,500.00"
+        },
+        {
+          "no": "4",
+          "description": "อบรมการใช้งานระบบ (Training 2 วัน)",
+          "unit": "ครั้ง",
+          "qty": "2",
+          "unitPrice": "4,000.00",
+          "amount": "8,000.00"
+        }
       ],
-      subtotal: 42500,
-      vat: 2975,
-      total: 45475,
+      "page": {
+        "current": "1",
+        "total": "1"
+      }
     };
     handleJsonChange(JSON.stringify(example, null, 2));
   };
@@ -263,6 +330,7 @@ export const DataPanel = memo(function DataPanel() {
                 tabSize: 2,
                 fontFamily: "'JetBrains Mono', monospace",
                 padding: { top: 12, bottom: 12 },
+                placeholder: 'วาง JSON data ที่นี่…',
               }}
             />
             {/* Error Indicator */}
@@ -302,9 +370,16 @@ export const DataPanel = memo(function DataPanel() {
           </div>
           <div ref={parentRef} className="flex-1 overflow-y-auto scrollbar-hide">
             {filteredPaths.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] p-8 text-center">
-                <Database className="w-8 h-8 mb-2 opacity-20" />
-                <p className="text-[10px]">No data fields found.</p>
+              <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] p-8 text-center gap-3">
+                <Database className="w-8 h-8 opacity-20" />
+                <p className="text-[10px]">ยังไม่มีข้อมูล</p>
+                <button
+                  type="button"
+                  onClick={() => setView('editor')}
+                  className="text-[9px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/20 transition-colors"
+                >
+                  วาง JSON ที่นี่
+                </button>
               </div>
             ) : (
               <div

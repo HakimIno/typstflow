@@ -8,17 +8,44 @@ export const linePlugin: ComponentPlugin<LineComponent> = {
   render(comp, ctx: RenderContext): string {
     if (!isVisible(comp.visible, ctx.local, ctx.global)) return '';
 
+    const orientation = comp.orientation ?? 'horizontal';
+    const [start, end] = orientation === 'vertical' 
+      ? ['(50%, 0%)', '(50%, 100%)']
+      : ['(0%, 50%)', '(100%, 50%)'];
+
+    // Advanced manual override
+    if (comp.stroke) {
+      return wrapPlacement(comp, `#line(start: ${start}, end: ${end}, stroke: ${comp.stroke})`, ctx.offsetX, ctx.offsetY);
+    }
+
     const thickness = comp.thickness ?? '1pt';
     const color = formatColor(comp.color ?? '#000000');
     const style = comp.style ?? 'solid';
+    const cap = comp.cap ?? 'butt';
 
-    const stroke =
-      style === 'dotted'
-        ? `(paint: ${color}, thickness: ${thickness}, dash: "dotted")`
-        : style === 'dashed'
-          ? `(paint: ${color}, thickness: ${thickness}, dash: "dashed")`
-          : `${thickness} + ${color}`;
+    let dash: string | undefined;
+    if (comp.dashArray && comp.dashArray.trim()) {
+      dash = `(${comp.dashArray.trim().replace(/\s+/g, ', ')})`;
+    } else if (style === 'dotted') {
+      dash = '"dotted"';
+    } else if (style === 'dashed') {
+      dash = '"dashed"';
+    }
 
-    return wrapPlacement(comp, `#line(length: 100%, stroke: ${stroke})`, ctx.offsetX, ctx.offsetY);
+    const strokeParts = [
+      `paint: ${color}`,
+      `thickness: ${thickness}`,
+      `cap: "${cap}"`,
+    ];
+
+    if (dash) {
+      strokeParts.push(`dash: ${dash}`);
+    }
+
+    const stroke = `(${strokeParts.join(', ')})`;
+
+    return wrapPlacement(comp, `#line(start: ${start}, end: ${end}, stroke: ${stroke})`, ctx.offsetX, ctx.offsetY);
   },
+
+
 };

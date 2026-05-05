@@ -50,19 +50,49 @@ pub fn render_text(c: &TextComponent, local: &Value, global: &Value, offset_x: &
 pub fn render_line(c: &LineComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
 
+    let orientation = c.orientation.as_deref().unwrap_or("horizontal");
+    let (start, end) = if orientation == "vertical" {
+        ("(50%, 0%)", "(50%, 100%)")
+    } else {
+        ("(0%, 50%)", "(100%, 50%)")
+    };
+
+    // Advanced manual override
+    if let Some(stroke_override) = &c.stroke {
+        let body = format!("#line(start: {}, end: {}, stroke: {})", start, end, stroke_override);
+        return wrap_placement(&c.base, &body, offset_x, offset_y, prefix);
+    }
+
     let thickness = c.thickness.as_deref().unwrap_or("1pt");
     let color = c.color.as_deref().unwrap_or("#000000");
     let style = c.style.as_deref().unwrap_or("solid");
+    let cap = c.cap.as_deref().unwrap_or("butt");
 
-    let stroke = match style {
-        "dotted" => format!("(paint: {}, thickness: {}, dash: \"dotted\")", format_color(color), thickness),
-        "dashed" => format!("(paint: {}, thickness: {}, dash: \"dashed\")", format_color(color), thickness),
-        _ => format!("{} + {}", thickness, format_color(color)),
-    };
+    let mut stroke_parts = vec![
+        format!("paint: {}", format_color(color)),
+        format!("thickness: {}", thickness),
+        format!("cap: \"{}\"", cap),
+    ];
 
-    let body = format!("#line(length: 100%, stroke: {})", stroke);
+    if let Some(dash_raw) = &c.dash_array {
+        let trimmed = dash_raw.trim();
+        if !trimmed.is_empty() {
+            // Replace spaces with commas for Typst array syntax
+            let formatted_dash = trimmed.replace(' ', ", ");
+            stroke_parts.push(format!("dash: ({})", formatted_dash));
+        }
+    } else if style == "dotted" {
+        stroke_parts.push("dash: \"dotted\"".to_string());
+    } else if style == "dashed" {
+        stroke_parts.push("dash: \"dashed\"".to_string());
+    }
+
+    let stroke = format!("({})", stroke_parts.join(", "));
+    let body = format!("#line(start: {}, end: {}, stroke: {})", start, end, stroke);
     wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
+
+
 
 pub fn render_image(c: &ImageComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }

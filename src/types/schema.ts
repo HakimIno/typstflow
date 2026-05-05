@@ -268,10 +268,15 @@ export interface ImageComponent extends BaseComponent {
 // --- Line Component ---
 export interface LineComponent extends BaseComponent {
   type: 'line';
+  orientation?: 'horizontal' | 'vertical';
   style?: 'solid' | 'dashed' | 'dotted';
   color?: string;
   thickness?: string;
+  cap?: 'butt' | 'round' | 'square';
+  dashArray?: string; // e.g. "3pt 2pt"
+  stroke?: string; // Advanced manual override
 }
+
 
 // --- Spacer Component ---
 export interface SpacerComponent extends BaseComponent {

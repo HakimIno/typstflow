@@ -96,13 +96,14 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
             let cs = col.colspan.unwrap_or(1);
             let rs = col.rowspan.unwrap_or(1);
             let col_align = col.align.as_deref().unwrap_or("center");
-            let header_text = escape_typst(&col.header);
+            let header_text = escape_typst(col.header.as_deref().unwrap_or(""));
 
             if cs == 1 && rs == 1 {
                 t.push_str(&format!("    [#set align({}); *{}*],\n", col_align, header_text));
             } else {
                 t.push_str(&format!("    table.cell(x: {}, y: 0, colspan: {}, rowspan: {})[#set align({}); *{}*],\n", x, cs, rs, col_align, header_text));
             }
+
             for i in 1..(cs as usize) { covered.insert(x + i); }
         }
         t.push_str("  ),\n");

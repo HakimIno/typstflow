@@ -15,18 +15,24 @@ pub struct LayoutSchema {
     pub groups: Vec<GroupDefinition>,
     pub variables: Vec<VariableDefinition>,
     pub data_schema: Vec<DataFieldDefinition>,
+    pub metadata: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GroupDefinition {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub field: String,
     pub filter_by: Option<String>,
     pub sort_by: Option<String>,
-    pub header: Zone,
-    pub footer: Zone,
+    #[serde(default)]
+    pub header: Option<Zone>,
+    #[serde(default)]
+    pub footer: Option<Zone>,
     pub repeat_header_on_page: Option<bool>,
 }
 
@@ -108,6 +114,7 @@ pub enum ComponentNode {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BaseComponent {
+    #[serde(default)]
     pub id: String,
     pub x: Option<f64>,
     pub y: Option<f64>,
@@ -126,6 +133,7 @@ pub struct BaseComponent {
 pub struct TextComponent {
     #[serde(flatten)]
     pub base: BaseComponent,
+    #[serde(default)]
     pub content: String,
     pub style: Option<TextStyle>,
 }
@@ -149,7 +157,9 @@ pub struct TextStyle {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TableCell {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub content: String,
     pub colspan: Option<u32>,
     pub rowspan: Option<u32>,
@@ -165,7 +175,9 @@ pub struct TableCell {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TableRow {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub r#type: String,
     pub cells: Vec<TableCell>,
     pub height: Option<String>,
@@ -201,6 +213,7 @@ pub struct VLineConfig {
 pub struct TableComponent {
     #[serde(flatten)]
     pub base: BaseComponent,
+    #[serde(default)]
     pub data_source: String,
     pub columns: Vec<TableColumn>,
     pub style: Option<TableStyle>,
@@ -218,9 +231,13 @@ pub struct TableComponent {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TableColumn {
+    #[serde(default)]
     pub id: String,
-    pub header: String,
+    #[serde(default)]
+    pub header: Option<String>,
+    #[serde(default)]
     pub field: String,
+    #[serde(default)]
     pub width: String,
     pub align: Option<String>,
     pub border_width: Option<String>,
@@ -289,7 +306,12 @@ pub struct LineComponent {
     pub color: Option<String>,
     pub thickness: Option<String>,
     pub style: Option<String>,
+    pub orientation: Option<String>,
+    pub cap: Option<String>,
+    pub dash_array: Option<String>,
+    pub stroke: Option<String>,
 }
+
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -338,15 +360,20 @@ pub struct QRComponent {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VariableDefinition {
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub r#type: String,
+    #[serde(default)]
     pub default_value: serde_json::Value,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DataFieldDefinition {
+    #[serde(default)]
     pub path: String,
+    #[serde(default)]
     pub r#type: String,
 }
 
@@ -371,6 +398,7 @@ pub struct ColumnsComponent {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ColumnDef {
+    #[serde(default)]
     pub width: String,
     pub components: Vec<ComponentNode>,
 }

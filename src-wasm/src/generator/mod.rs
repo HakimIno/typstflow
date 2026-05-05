@@ -182,12 +182,14 @@ fn render_groups(
         let first_item = group_items.first().map(|v| v).unwrap_or(global_data);
 
         // Group header
-        out.push_str(&format!("// GROUP [{}] HEADER\n", group.id));
-        for comp in &group.header.components {
-            out.push_str(&render_component_with_items(
-                comp, first_item, global_data, group_items,
-                offset_x, body_offset_y, "#"
-            ));
+        if let Some(header) = &group.header {
+            out.push_str(&format!("// GROUP [{}] HEADER\n", group.id));
+            for comp in &header.components {
+                out.push_str(&render_component_with_items(
+                    comp, first_item, global_data, group_items,
+                    offset_x, body_offset_y, "#"
+                ));
+            }
         }
 
         // Nested groups or detail band
@@ -198,14 +200,17 @@ fn render_groups(
         ));
 
         // Group footer
-        out.push_str(&format!("// GROUP [{}] FOOTER\n", group.id));
-        for comp in &group.footer.components {
-            out.push_str(&render_component_with_items(
-                comp, first_item, global_data, group_items,
-                offset_x, body_offset_y, "#"
-            ));
+        if let Some(footer) = &group.footer {
+            out.push_str(&format!("// GROUP [{}] FOOTER\n", group.id));
+            for comp in &footer.components {
+                out.push_str(&render_component_with_items(
+                    comp, first_item, global_data, group_items,
+                    offset_x, body_offset_y, "#"
+                ));
+            }
         }
     }
+
     out
 }
 
