@@ -200,6 +200,10 @@ interface DesignerState {
   showDialog: (options: DialogOptions) => void;
   hideDialog: () => void;
 
+  // File Operations
+  exportSchema: () => void;
+  importSchema: (json: string) => void;
+
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
 }
@@ -1036,6 +1040,63 @@ export const useDesignerStore = create<DesignerState>()(
           };
           return pushHistory(state, newSchema);
         }),
+
+      exportSchema: () => {
+        const state = useDesignerStore.getState();
+        const data = JSON.stringify(state.schema, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const filename = `${state.schema.name.toLowerCase().replace(/\s+/g, '-')}-${new Date()
+          .toISOString()
+          .split('T')[0]}.json`;
+
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        agentLogger.log({
+          source: 'ai-agent',
+          level: 'action',
+          message: `Exported schema: ${filename}`,
+        });
+      },
+
+      importSchema: (json: string) => {
+        try {
+          const data = JSON.parse(json);
+          const validSchema = validateAndRepairSchema(data, BLANK_SCHEMA);
+
+          set((state) => {
+            const nextState = {
+              ...state,
+              schema: validSchema,
+              selectedComponentIds: [],
+              selectedGroupId: null,
+              selectedZone: null,
+              activePageId: validSchema.pages[0]?.id || null,
+            };
+
+            return pushHistory(nextState, validSchema);
+          });
+
+          agentLogger.log({
+            source: 'ai-agent',
+            level: 'action',
+            message: `Imported schema: ${validSchema.name}`,
+          });
+        } catch (error) {
+          console.error('Failed to import schema:', error);
+          agentLogger.log({
+            source: 'system',
+            level: 'error',
+            message: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          });
+        }
+      },
     }),
     {
       name: 'designer-storage',

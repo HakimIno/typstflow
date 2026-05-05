@@ -12,7 +12,7 @@ import type {
   TextComponent,
   ZoneKey,
 } from '@/types/schema';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 export interface AgentMessage {
   id: string;
@@ -21,6 +21,72 @@ export interface AgentMessage {
   timestamp: Date;
   toolCalls?: Array<{ name: string; success: boolean; description: string }>;
 }
+
+// ─── Session Memory ───────────────────────────────────────────────────────────
+
+interface SessionMemory {
+  docType: string;
+  colorTheme: string;
+  primaryColor: string;
+  accentColor: string;
+  language: string;
+  decisions: string[];
+  dataBindings: string[];
+}
+
+const DEFAULT_SESSION_MEMORY: SessionMemory = {
+  docType: '',
+  colorTheme: '',
+  primaryColor: '',
+  accentColor: '',
+  language: 'th',
+  decisions: [],
+  dataBindings: [],
+};
+
+function serializeMemory(mem: SessionMemory): string {
+  const lines: string[] = [];
+  if (mem.docType) lines.push(`docType: ${mem.docType}`);
+  if (mem.colorTheme) lines.push(`colorTheme: ${mem.colorTheme}`);
+  if (mem.primaryColor) lines.push(`primaryColor: ${mem.primaryColor}`);
+  if (mem.accentColor) lines.push(`accentColor: ${mem.accentColor}`);
+  if (mem.language) lines.push(`language: ${mem.language}`);
+  if (mem.decisions.length > 0) lines.push(`decisions: ${mem.decisions.slice(-6).join(' | ')}`);
+  if (mem.dataBindings.length > 0)
+    lines.push(`bindings used: ${[...new Set(mem.dataBindings)].join(', ')}`);
+  return lines.join('\n');
+}
+
+function extractIntentFromText(text: string): Partial<SessionMemory> {
+  const match = text.match(/<intent>([\s\S]*?)<\/intent>/);
+  if (!match) return {};
+  try {
+    return JSON.parse(match[1].trim()) as Partial<SessionMemory>;
+  } catch {
+    return {};
+  }
+}
+
+function stripIntentBlock(text: string): string {
+  return text.replace(/<intent>[\s\S]*?<\/intent>/g, '').trim();
+}
+
+function extractBindingsFromArgs(args: Record<string, unknown>): string[] {
+  const raw = JSON.stringify(args);
+  const matches = raw.match(/\{\{[\w.[\]]+\}\}/g) ?? [];
+  return [...new Set(matches)];
+}
+
+function mergeMemory(prev: SessionMemory, patch: Partial<SessionMemory>): SessionMemory {
+  return {
+    ...prev,
+    ...patch,
+    decisions: [...new Set([...prev.decisions, ...(patch.decisions ?? [])])].slice(-10),
+    dataBindings: [...new Set([...prev.dataBindings, ...(patch.dataBindings ?? [])])],
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const WELCOME: AgentMessage = {
   id: 'welcome',
@@ -51,9 +117,9 @@ function ensureTableIds(updates: AnyRecord): AnyRecord {
         ...row,
         cells: Array.isArray(row.cells)
           ? (row.cells as AnyRecord[]).map((cell, ci) => ({
-              id: cell.id ?? `cell-${ri}-${ci}-${Date.now()}`,
-              ...cell,
-            }))
+            id: cell.id ?? `cell-${ri}-${ci}-${Date.now()}`,
+            ...cell,
+          }))
           : row.cells,
       }));
     }
@@ -197,16 +263,16 @@ function execTool(name: string, args: Record<string, unknown>): string {
         cs.length === 0
           ? 'empty'
           : cs
-              .map((c) => {
-                const p = `${(c.x ?? 0).toFixed(0)},${(c.y ?? 0).toFixed(0)}`;
-                const sz = `${(c.width ?? 0).toFixed(0)}×${(c.height ?? 0).toFixed(0)}mm`;
-                if (c.type === 'text')
-                  return `text(id:${c.id} @${p} ${sz} "${c.content.slice(0, 30)}")`;
-                if (c.type === 'table')
-                  return `table(id:${c.id} @${p} ${sz} ${c.columns.length}cols)`;
-                return `${c.type}(id:${c.id} @${p} ${sz})`;
-              })
-              .join(' | ');
+            .map((c) => {
+              const p = `${(c.x ?? 0).toFixed(0)},${(c.y ?? 0).toFixed(0)}`;
+              const sz = `${(c.width ?? 0).toFixed(0)}×${(c.height ?? 0).toFixed(0)}mm`;
+              if (c.type === 'text')
+                return `text(id:${c.id} @${p} ${sz} "${c.content.slice(0, 30)}")`;
+              if (c.type === 'table')
+                return `table(id:${c.id} @${p} ${sz} ${c.columns.length}cols)`;
+              return `${c.type}(id:${c.id} @${p} ${sz})`;
+            })
+            .join(' | ');
       return [
         `Header: ${fmt(s.zones.header.components)}`,
         ...s.pages.map((p, i) => `Body p${i + 1}: ${fmt(p.body.components)}`),
@@ -245,22 +311,109 @@ interface ApiResponse {
 const MAX_TOOL_ROUNDS = 6;
 const HISTORY_WINDOW = 8; // UI messages to include in each request
 
-async function callApi(apiMessages: ApiMsg[], schema: LayoutSchema): Promise<ApiResponse> {
+async function classifyIntent(message: string, signal?: AbortSignal): Promise<'chat' | 'design'> {
+  try {
+    const res = await fetch('/api/chat/classify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+      signal,
+    });
+    if (!res.ok) return 'design';
+    const data = (await res.json()) as { mode: 'chat' | 'design' };
+    return data.mode;
+  } catch {
+    return 'design';
+  }
+}
+
+async function callApi(
+  apiMessages: ApiMsg[],
+  schema: LayoutSchema,
+  sessionIntent?: string,
+  signal?: AbortSignal,
+  mode?: 'chat' | 'design'
+): Promise<ApiResponse> {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: apiMessages, schema }),
+    body: JSON.stringify({ messages: apiMessages, schema, sessionIntent, mode }),
+    signal,
   });
   if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
   return res.json() as Promise<ApiResponse>;
 }
 
+// ─── Persistence helpers ──────────────────────────────────────────────────────
+
+const STORAGE_MESSAGES_KEY = 'typstflow-ai-chat-messages';
+const STORAGE_MEMORY_KEY = 'typstflow-ai-session-memory';
+
+function loadPersistedMessages(): AgentMessage[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_MESSAGES_KEY);
+    if (!raw) return [WELCOME];
+    const parsed = JSON.parse(raw) as Array<
+      Omit<AgentMessage, 'timestamp'> & { timestamp: string }
+    >;
+    return parsed.map((m) => ({ ...m, timestamp: new Date(m.timestamp) }));
+  } catch {
+    return [WELCOME];
+  }
+}
+
+function loadPersistedMemory(): SessionMemory {
+  try {
+    const raw = localStorage.getItem(STORAGE_MEMORY_KEY);
+    if (!raw) return { ...DEFAULT_SESSION_MEMORY };
+    return { ...DEFAULT_SESSION_MEMORY, ...(JSON.parse(raw) as Partial<SessionMemory>) };
+  } catch {
+    return { ...DEFAULT_SESSION_MEMORY };
+  }
+}
+
+function persistMessages(msgs: AgentMessage[]): void {
+  try {
+    localStorage.setItem(
+      STORAGE_MESSAGES_KEY,
+      JSON.stringify(msgs.map((m) => ({ ...m, timestamp: m.timestamp.toISOString() })))
+    );
+  } catch {
+    // localStorage may be unavailable (private browsing quota)
+  }
+}
+
+function persistMemory(mem: SessionMemory): void {
+  try {
+    localStorage.setItem(STORAGE_MEMORY_KEY, JSON.stringify(mem));
+  } catch { }
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useAiAgent() {
-  const [messages, setMessages] = useState<AgentMessage[]>([WELCOME]);
+  const [messages, setMessages] = useState<AgentMessage[]>(() => loadPersistedMessages());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sessionMemoryRef = useRef<SessionMemory>(loadPersistedMemory());
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const stop = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+
+      // Immediately update the last assistant message to reflect it was stopped
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant' && (last.content === 'Working…' || !last.content)) {
+          return [...prev.slice(0, -1), { ...last, content: 'Generation cancelled.' }];
+        }
+        return prev;
+      });
+    }
+  }, []);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -276,38 +429,86 @@ export function useAiAgent() {
       setError(null);
 
       const assistantId = crypto.randomUUID();
-      setMessages((prev) => [
-        ...prev,
-        { id: assistantId, role: 'assistant', content: 'Working…', timestamp: new Date() },
-      ]);
+      
+      const upsertAssistantMessage = (content: string, tools?: NonNullable<AgentMessage['toolCalls']>) => {
+        setMessages((prev) => {
+          const exists = prev.some(m => m.id === assistantId);
+          if (!exists) {
+            return [
+              ...prev,
+              { id: assistantId, role: 'assistant', content, toolCalls: tools, timestamp: new Date() }
+            ];
+          }
+          return prev.map((m) =>
+            m.id === assistantId ? { ...m, content, toolCalls: tools ?? m.toolCalls } : m
+          );
+        });
+      };
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
       try {
-        // Build initial API message window (last N UI messages + new user msg)
+        const sessionIntent = serializeMemory(sessionMemoryRef.current);
+
+        // Classify intent before committing to the full design agent
+        const intent = await classifyIntent(content, controller.signal);
+        if (controller.signal.aborted) return;
+
+        // Build initial API message window — strip intent blocks from history to save tokens
         const windowedHistory: ApiMsg[] = uiHistory
           .slice(-HISTORY_WINDOW)
-          .map((m) => ({ role: m.role, content: m.content }));
+          .map((m) => ({ role: m.role, content: stripIntentBlock(m.content) }));
 
         let apiMessages: ApiMsg[] = windowedHistory;
         const allToolCalls: NonNullable<AgentMessage['toolCalls']> = [];
+        const newBindings: string[] = [];
         let finalText = '';
 
-        for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+        // Chat mode: single round, no tools, minimal prompt — saves ~80% tokens
+        if (intent === 'chat') {
           const { schema } = useDesignerStore.getState();
-          const data = await callApi(apiMessages, schema);
+          const data = await callApi(
+            apiMessages,
+            schema,
+            sessionIntent || undefined,
+            controller.signal,
+            'chat'
+          );
+          finalText = data.choices?.[0]?.message?.content ?? '';
+          upsertAssistantMessage(finalText || '(no response)');
+          setMessages(prev => {
+            persistMessages(prev);
+            return prev;
+          });
+          return;
+        }
+
+        // Design mode: multi-round tool loop
+        for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+          if (controller.signal.aborted) break;
+
+          const { schema } = useDesignerStore.getState();
+          const data = await callApi(
+            apiMessages,
+            schema,
+            sessionIntent || undefined,
+            controller.signal,
+            'design'
+          );
           const msg = data.choices?.[0]?.message;
           finalText = msg?.content ?? '';
           const toolCalls = msg?.tool_calls ?? [];
 
-          // Stream text update to UI
-          if (finalText) {
-            setMessages((prev) =>
-              prev.map((m) => (m.id === assistantId ? { ...m, content: finalText } : m))
-            );
+          // Stream text update to UI (strip intent block before displaying)
+          const displayText = stripIntentBlock(finalText);
+          if (displayText || toolCalls.length > 0) {
+            upsertAssistantMessage(displayText, allToolCalls.length > 0 ? [...allToolCalls] : undefined);
           }
 
           if (toolCalls.length === 0) break;
 
-          // Execute tools and collect results
+          // Execute tools — collect results + extract bindings from args
           const toolResults: Array<{ id: string; result: string }> = [];
           for (const tc of toolCalls) {
             let result: string;
@@ -315,6 +516,7 @@ export function useAiAgent() {
             try {
               const parsedArgs = JSON.parse(tc.function.arguments) as Record<string, unknown>;
               result = execTool(tc.function.name, parsedArgs);
+              newBindings.push(...extractBindingsFromArgs(parsedArgs));
             } catch (e) {
               result = e instanceof Error ? e.message : String(e);
               success = false;
@@ -324,17 +526,7 @@ export function useAiAgent() {
           }
 
           // Update UI with accumulated tool badges
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? {
-                    ...m,
-                    content: finalText || `Round ${round + 1} complete…`,
-                    toolCalls: [...allToolCalls],
-                  }
-                : m
-            )
-          );
+          upsertAssistantMessage(stripIntentBlock(finalText) || `Working...`, [...allToolCalls]);
 
           // Append assistant turn + tool results to conversation
           apiMessages = [
@@ -358,7 +550,7 @@ export function useAiAgent() {
         const builtLayout = allToolCalls.some((tc) => LAYOUT_TOOLS.has(tc.name));
         const hasSampleData = allToolCalls.some((tc) => tc.name === 'set_sample_data');
 
-        if (builtLayout && !hasSampleData) {
+        if (builtLayout && !hasSampleData && !controller.signal.aborted) {
           try {
             const { schema: freshSchema } = useDesignerStore.getState();
             const dataReq: ApiMsg[] = [
@@ -369,7 +561,12 @@ export function useAiAgent() {
                   'The layout is built. Now call set_sample_data once with a complete, realistic Thai business mock data object covering every {{binding}} used in the layout.',
               },
             ];
-            const dataResp = await callApi(dataReq, freshSchema);
+            const dataResp = await callApi(
+              dataReq,
+              freshSchema,
+              sessionIntent || undefined,
+              controller.signal
+            );
             const dataTool = dataResp.choices?.[0]?.message?.tool_calls?.find(
               (tc) => tc.function.name === 'set_sample_data'
             );
@@ -385,23 +582,38 @@ export function useAiAgent() {
           }
         }
 
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? {
-                  ...m,
-                  content: finalText || (allToolCalls.length > 0 ? 'Done!' : '(no response)'),
-                  toolCalls: allToolCalls.length > 0 ? allToolCalls : undefined,
-                }
-              : m
-          )
+        // Extract intent from final AI response and update session memory
+        const intentPatch = extractIntentFromText(finalText);
+        sessionMemoryRef.current = mergeMemory(
+          { ...sessionMemoryRef.current, dataBindings: newBindings },
+          intentPatch
         );
+        persistMemory(sessionMemoryRef.current);
+
+        const lastDisplayText = stripIntentBlock(finalText);
+        const finalContent = controller.signal.aborted
+          ? lastDisplayText
+            ? `${lastDisplayText} (Stopped)`
+            : 'Generation cancelled.'
+          : lastDisplayText || (allToolCalls.length > 0 ? 'Done!' : '(no response)');
+        
+        upsertAssistantMessage(finalContent, allToolCalls.length > 0 ? allToolCalls : undefined);
+        setMessages(prev => {
+          persistMessages(prev);
+          return prev;
+        });
       } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') {
+          // Silent abort
+          return;
+        }
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);
-        setMessages((prev) =>
-          prev.map((m) => (m.id === assistantId ? { ...m, content: `Error: ${msg}` } : m))
-        );
+        upsertAssistantMessage(`Error: ${msg}`);
+        setMessages(prev => {
+          persistMessages(prev);
+          return prev;
+        });
       } finally {
         setIsLoading(false);
       }
@@ -410,9 +622,13 @@ export function useAiAgent() {
   );
 
   const clearMessages = useCallback(() => {
-    setMessages([{ ...WELCOME, id: crypto.randomUUID(), timestamp: new Date() }]);
+    const fresh: AgentMessage[] = [{ ...WELCOME, id: crypto.randomUUID(), timestamp: new Date() }];
+    setMessages(fresh);
+    persistMessages(fresh);
+    sessionMemoryRef.current = { ...DEFAULT_SESSION_MEMORY };
+    persistMemory(sessionMemoryRef.current);
     setError(null);
   }, []);
 
-  return { messages, isLoading, error, sendMessage, clearMessages };
+  return { messages, isLoading, error, sendMessage, clearMessages, stop };
 }

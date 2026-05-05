@@ -224,14 +224,87 @@ const TOOLS = [
 function summarizeComponent(c: ComponentNode): string {
   const pos = `${(c.x ?? 0).toFixed(0)},${(c.y ?? 0).toFixed(0)}`;
   const size = `${(c.width ?? 0).toFixed(0)}×${(c.height ?? 0).toFixed(0)}mm`;
-  if (c.type === 'text') return `text(id:${c.id} pos:${pos} ${size} "${c.content.slice(0, 35)}")`;
-  if (c.type === 'table')
-    return `table(id:${c.id} pos:${pos} ${size} ds:${c.dataSource} cols:${c.columns.length})`;
-  return `${c.type}(id:${c.id} pos:${pos} ${size})`;
+  if (c.type === 'text') {
+    const styleStr = [
+      `fs:${c.style?.fontSize ?? 11}`,
+      c.style?.fontWeight === 'bold' ? 'bold' : '',
+      c.style?.color ? `fg:${c.style.color}` : '',
+      c.align ? `align:${c.align}` : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+    return `text(id:${c.id} @${pos} ${size} ${styleStr} "${c.content.slice(0, 30)}")`;
+  }
+  if (c.type === 'table') {
+    const hbg = c.style?.headerBackground ? ` hbg:${c.style.headerBackground}` : '';
+    return `table(id:${c.id} @${pos} ${size} ds:${c.dataSource} cols:${c.columns.length}${hbg})`;
+  }
+  if (c.type === 'line') {
+    return `line(id:${c.id} @${pos} ${size} color:${c.color ?? '#ccc'} ${c.style ?? 'solid'})`;
+  }
+  if (c.type === 'image') {
+    return `image(id:${c.id} @${pos} ${size} src:${c.src ? 'set' : 'empty'})`;
+  }
+  return `${c.type}(id:${c.id} @${pos} ${size})`;
 }
 
-function buildSystemPrompt(schema: LayoutSchema): string {
+function parseMarginMm(value: string): number {
+  const v = value.trim();
+  if (v.endsWith('mm')) return Number.parseFloat(v);
+  if (v.endsWith('cm')) return Number.parseFloat(v) * 10;
+  if (v.endsWith('in')) return Number.parseFloat(v) * 25.4;
+  if (v.endsWith('pt')) return Number.parseFloat(v) * (25.4 / 72);
+  if (v.endsWith('px')) return Number.parseFloat(v) * (25.4 / 96);
+  return Number.parseFloat(v);
+}
+
+const PAPER_DIMS: Record<string, { w: number; h: number }> = {
+  A4: { w: 210, h: 297 },
+  A5: { w: 148, h: 210 },
+  Letter: { w: 215.9, h: 279.4 },
+  Legal: { w: 215.9, h: 355.6 },
+};
+
+// ─── Chat prompt (lightweight, no tools) ─────────────────────────────────────
+
+function buildChatPrompt(schema: LayoutSchema, sessionIntent?: string): string {
   const { page, zones, pages, dataSchema } = schema;
+  const base = PAPER_DIMS[page.size] ?? PAPER_DIMS.A4;
+  const [pageW, pageH] = page.orientation === 'landscape' ? [base.h, base.w] : [base.w, base.h];
+  const ml = parseMarginMm(page.margin.left);
+  const mr = parseMarginMm(page.margin.right);
+  const usableW = Math.round(pageW - ml - mr);
+
+  const totalComponents = [
+    ...zones.header.components,
+    ...zones.footer.components,
+    ...pages.flatMap((p) => p.body.components),
+  ].length;
+  const dataFields = dataSchema.map((f) => f.path).join(', ') || 'none';
+  const intentBlock = sessionIntent ? `\nContext from previous turns:\n${sessionIntent}\n` : '';
+
+  return `You are a helpful assistant for TypstFlow, a PDF report designer.
+Answer questions conversationally. Do NOT use any tools — just reply in plain text.
+${intentBlock}
+Current document: ${page.size} ${page.orientation} (${pageW}×${pageH}mm, usable width ${usableW}mm)
+Components on canvas: ${totalComponents} total (header: ${zones.header.components.length}, body: ${pages.reduce((n, p) => n + p.body.components.length, 0)}, footer: ${zones.footer.components.length})
+Data fields: ${dataFields}`;
+}
+
+// ─── Design prompt (full agent) ───────────────────────────────────────────────
+
+function buildSystemPrompt(schema: LayoutSchema, sessionIntent?: string): string {
+  const { page, zones, pages, dataSchema } = schema;
+
+  const base = PAPER_DIMS[page.size] ?? PAPER_DIMS.A4;
+  const [pageW, pageH] = page.orientation === 'landscape' ? [base.h, base.w] : [base.w, base.h];
+  const ml = parseMarginMm(page.margin.left);
+  const mr = parseMarginMm(page.margin.right);
+  const mt = parseMarginMm(page.margin.top);
+  const mb = parseMarginMm(page.margin.bottom);
+  const usableW = Math.round(pageW - ml - mr);
+  const usableH = Math.round(pageH - mt - mb);
+
   const headerSummary = zones.header.components.map(summarizeComponent).join(' | ') || 'empty';
   const footerSummary = zones.footer.components.map(summarizeComponent).join(' | ') || 'empty';
   const bodyLines = pages.map(
@@ -243,15 +316,27 @@ function buildSystemPrompt(schema: LayoutSchema): string {
       ? dataSchema.map((f) => `${f.path}:${f.type}`).join(', ')
       : 'none defined';
 
+  const intentBlock = sessionIntent
+    ? `\n## SESSION MEMORY (maintain consistency — do NOT override these choices)\n${sessionIntent}\n`
+    : '';
+
   return `You are an expert PDF report designer and AI layout assistant for TypstFlow.
 Build beautiful, production-ready layouts. You will receive tool results — use them to verify and continue building.
-
+${intentBlock}
 ## Canvas
-- Positions in mm. x=0,y=0 = top-left of each zone.
-- ${page.size} ${page.orientation} | body width ~190mm
+- Positions in mm. x=0,y=0 = top-left of each zone (already inside the page margins).
+- ${page.size} ${page.orientation} | page: ${pageW}×${pageH}mm | margins: top=${mt}mm right=${mr}mm bottom=${mb}mm left=${ml}mm
+- USABLE ZONE WIDTH: ${usableW}mm — x must stay in [0, ${usableW}] or elements will overflow
+- USABLE PAGE HEIGHT: ${usableH}mm (header+body+footer must fit within this)
 - header: page top | body: main content | footer: page bottom
 - Bindings: {{path.to.field}} | array loops: {{items}}
 - Batch 5-8 tool calls per round. Use get_layout to verify between rounds.
+
+## WORKFLOW (for layout tasks only)
+1. Call get_layout to read current state before making changes
+2. Plan exact mm positions — check for overlaps before placing
+3. Execute add_* tools in batches of 5-8
+4. Call set_sample_data last with complete Thai mock data
 
 ## Design Standards (ALWAYS follow these)
 TYPOGRAPHY HIERARCHY:
@@ -273,13 +358,12 @@ TABLE DESIGN:
 - borderColor: brand border color
 - borderWidth: "0.5pt"
 - cellPadding: "5pt"
-- Alternating rows: use stripedColor1 in style
 
 SPACING RULES:
 - Between header sections: 3-5mm gap
 - Between body sections: 5-8mm gap
-- Separator lines: thickness 0.3-0.5mm, color border color
-- Summary boxes: right-aligned, x starts at 105-120mm
+- Separator lines: thickness 0.3-0.5mm
+- Summary boxes: right-aligned, x starts at ~${Math.round(usableW * 0.55)}mm (55% of usable width)
 
 LAYOUT BEST PRACTICES:
 - Always add a thick accent line (1-2mm) under the main header title
@@ -290,7 +374,12 @@ LAYOUT BEST PRACTICES:
 - Add spacers between logical sections (3-5mm)
 
 ## Mandatory Final Step
-After completing the layout, ALWAYS call set_sample_data with realistic Thai business mock data that matches every {{binding}} used. Use real-looking company names, addresses, numbers, and items in Thai language.
+After completing the layout, ALWAYS call set_sample_data with realistic Thai business mock data that matches every {{binding}} used.
+
+## Intent Tracking
+At the END of every response, output exactly one line:
+<intent>{"docType":"...","colorTheme":"...","primaryColor":"...","accentColor":"...","decisions":["..."]}</intent>
+Only include fields you're confident about. This helps maintain consistency across turns.
 
 DATA FIELDS: ${dataFields}
 
@@ -315,7 +404,11 @@ export async function POST(req: NextRequest) {
       tool_call_id?: string;
     }>;
     schema: LayoutSchema;
+    sessionIntent?: string;
+    mode?: 'design' | 'chat';
   };
+
+  const isChatMode = body.mode === 'chat';
 
   const upstream = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
     method: 'POST',
@@ -327,9 +420,16 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model,
-      messages: [{ role: 'system', content: buildSystemPrompt(body.schema) }, ...body.messages],
-      tools: TOOLS,
-      tool_choice: 'auto',
+      messages: [
+        {
+          role: 'system',
+          content: isChatMode
+            ? buildChatPrompt(body.schema, body.sessionIntent)
+            : buildSystemPrompt(body.schema, body.sessionIntent),
+        },
+        ...body.messages,
+      ],
+      ...(isChatMode ? {} : { tools: TOOLS, tool_choice: 'auto' }),
     }),
   });
 

@@ -40,7 +40,7 @@ function ToolCallBadge({ call }: { call: NonNullable<AgentMessage['toolCalls']>[
 export const AiPanel = memo(function AiPanel() {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { messages, isLoading, sendMessage, clearMessages } = useAiAgent();
+  const { messages, isLoading, sendMessage, clearMessages, stop } = useAiAgent();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new message or typing indicator
   useEffect(() => {
@@ -106,7 +106,7 @@ export const AiPanel = memo(function AiPanel() {
                 {msg.role === 'user' ? (
                   <User className="w-3 h-3 text-[var(--text-secondary)]" />
                 ) : (
-                  <Bot className="w-3 h-3 text-[var(--accent)]" />
+                  <img className="w-4 h-4 rounded-full overflow-hidden" src="/icon.png" alt="TypstFlow" />
                 )}
               </div>
               <span className="text-[8px] font-bold uppercase text-[var(--text-muted)] tracking-wider">
@@ -116,10 +116,12 @@ export const AiPanel = memo(function AiPanel() {
 
             <div
               className={clsx(
-                'max-w-[85%] px-3 py-2 rounded-2xl text-[11px] leading-relaxed',
+                'max-w-[85%] px-3 py-2 rounded-2xl text-[11px] leading-relaxed transition-all duration-300',
                 msg.role === 'user'
-                  ? 'bg-[var(--accent)] text-white rounded-tr-none'
-                  : 'bg-[var(--bg-widget)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-tl-none'
+                  ? 'bg-[var(--accent)] text-white rounded-tr-none shadow-sm'
+                  : msg.content.includes('(Stopped)') || msg.content === 'Generation cancelled.'
+                    ? 'bg-red-500/5 text-red-500/80 border border-red-500/10 italic rounded-tl-none opacity-80'
+                    : 'bg-[var(--bg-widget)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-tl-none'
               )}
             >
               {msg.content}
@@ -136,24 +138,17 @@ export const AiPanel = memo(function AiPanel() {
         ))}
 
         {isLoading && (
-          <div className="flex items-center gap-2 px-1">
-            <div className="w-5 h-5 rounded-md bg-[var(--accent-glow)] flex items-center justify-center">
-              <Bot className="w-3 h-3 text-[var(--accent)]" />
-            </div>
-            <div className="flex gap-1">
-              <div
-                className="w-1 h-1 rounded-full bg-[var(--accent)] animate-bounce"
-                style={{ animationDelay: '0ms' }}
-              />
-              <div
-                className="w-1 h-1 rounded-full bg-[var(--accent)] animate-bounce"
-                style={{ animationDelay: '150ms' }}
-              />
-              <div
-                className="w-1 h-1 rounded-full bg-[var(--accent)] animate-bounce"
-                style={{ animationDelay: '300ms' }}
-              />
-            </div>
+          <div className="flex items-center gap-2 px-4 py-2 opacity-60 animate-pulse">
+            <span className="text-[11px] font-medium text-[var(--text-secondary)] flex items-center gap-0.5">
+              Thinking
+            </span>
+            <button
+              type="button"
+              onClick={stop}
+              className="text-[9px] font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors ml-2"
+            >
+              (Stop)
+            </button>
           </div>
         )}
       </div>
@@ -235,14 +230,25 @@ export const AiPanel = memo(function AiPanel() {
                 <Mic className="w-4 h-4" />
               </button>
 
-              {input.trim() && !isLoading && (
+              {isLoading ? (
                 <button
                   type="button"
-                  onClick={handleSend}
-                  className="p-2 rounded-full bg-[var(--accent)] text-white shadow-[var(--accent-glow)] transition-all animate-in zoom-in duration-200"
+                  onClick={stop}
+                  className="p-2 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)] transition-all animate-in zoom-in duration-200"
+                  title="Stop generation"
                 >
-                  <Send className="w-3.5 h-3.5" />
+                  <XCircle className="w-4 h-4" />
                 </button>
+              ) : (
+                input.trim() && (
+                  <button
+                    type="button"
+                    onClick={handleSend}
+                    className="p-2 rounded-full bg-[var(--accent)] text-white shadow-[var(--accent-glow)] transition-all animate-in zoom-in duration-200"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                )
               )}
             </div>
           </div>

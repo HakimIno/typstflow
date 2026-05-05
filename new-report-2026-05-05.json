@@ -1,0 +1,522 @@
+{
+  "page": {
+    "size": "A4",
+    "orientation": "portrait",
+    "margin": {
+      "top": "5mm",
+      "bottom": "5mm",
+      "left": "5mm",
+      "right": "5mm"
+    }
+  },
+  "zones": {
+    "header": {
+      "id": "header",
+      "components": [
+        {
+          "id": "image-3dugke7",
+          "type": "image",
+          "x": 5.300000000000001,
+          "y": 3.5284667968749996,
+          "width": 33.7,
+          "height": 21.171533203125,
+          "src": "SO_F.png",
+          "fit": "contain",
+          "srcData": "data:image/webp;base64,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",
+          "mimeType": "image/webp"
+        },
+        {
+          "id": "text-920iv9y",
+          "type": "text",
+          "x": 42.3,
+          "y": 3.2638834635416663,
+          "width": 80,
+          "height": 7,
+          "content": "{{company.name}}",
+          "style": {
+            "fontSize": 14,
+            "fontWeight": "bold",
+            "color": "#0d3b38"
+          }
+        },
+        {
+          "id": "text-khnmyyj",
+          "type": "text",
+          "x": 42.3,
+          "y": 10.262939453124998,
+          "width": 80,
+          "height": 11,
+          "content": "{{company.address}}",
+          "style": {
+            "fontSize": 8,
+            "fontWeight": "regular",
+            "color": "#666666"
+          }
+        },
+        {
+          "id": "text-ehidvym",
+          "type": "text",
+          "x": 143.8,
+          "y": 4.189925130208333,
+          "width": 60,
+          "height": 8,
+          "content": "DELIVERY ORDER",
+          "style": {
+            "fontSize": 20,
+            "fontWeight": "bold",
+            "color": "#0d3b38"
+          },
+          "align": "right"
+        },
+        {
+          "id": "text-6lrvq90",
+          "type": "text",
+          "x": 142.6,
+          "y": 12.090561262766519,
+          "width": 60,
+          "height": 5,
+          "content": "เลขที่ / No. {{delivery.number}}",
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "regular",
+            "color": "#333333"
+          },
+          "align": "right"
+        },
+        {
+          "id": "text-s4dnf8r",
+          "type": "text",
+          "x": 143.5,
+          "y": 16.97842102050781,
+          "width": 60,
+          "height": 5,
+          "content": "วันที่ / Date: {{delivery.date}}",
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "regular",
+            "color": "#333333"
+          },
+          "align": "right"
+        },
+        {
+          "id": "line-c4eppmk",
+          "type": "line",
+          "x": 5,
+          "y": 26.528613281249996,
+          "width": 200,
+          "height": 1,
+          "color": "#0a9396",
+          "thickness": "0.5mm",
+          "style": "solid"
+        }
+      ],
+      "minHeight": "40.900000000000006mm"
+    },
+    "footer": {
+      "id": "footer",
+      "components": [
+        {
+          "id": "text-ge6g9ez",
+          "type": "text",
+          "x": 41.300000000000004,
+          "y": 7.620072174072277,
+          "width": 140,
+          "height": 4.800000000000001,
+          "content": "เงื่อนไขการจัดส่ง / Delivery Conditions: สินค้าที่จัดส่งแล้วไม่สามารถคืนได้ เว้นแต่ได้รับความเสียหายจากการขนส่ง",
+          "style": {
+            "fontSize": 7,
+            "fontWeight": "regular",
+            "color": "#888888"
+          }
+        }
+      ],
+      "minHeight": "30mm"
+    }
+  },
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Page 1",
+      "body": {
+        "id": "body",
+        "components": [
+          {
+            "id": "spacer-qz9sxyf",
+            "type": "spacer",
+            "x": 5,
+            "y": 0.26337890624999005,
+            "width": 190,
+            "height": 4
+          },
+          {
+            "id": "text-v996fcc",
+            "type": "text",
+            "x": 5,
+            "y": 4.26313476562499,
+            "width": 90,
+            "height": 6,
+            "content": "ผู้ส่ง / SENDER",
+            "style": {
+              "fontSize": 10,
+              "fontWeight": "bold",
+              "color": "#0d3b38"
+            }
+          },
+          {
+            "id": "text-lvaoo23",
+            "type": "text",
+            "x": 100.60000000000001,
+            "y": 4.525651041666656,
+            "width": 90,
+            "height": 6,
+            "content": "ผู้รับ / RECIPIENT",
+            "style": {
+              "fontSize": 10,
+              "fontWeight": "bold",
+              "color": "#0d3b38"
+            }
+          },
+          {
+            "id": "line-sudml8n",
+            "type": "line",
+            "x": 5,
+            "y": 10.261735026041656,
+            "width": 90,
+            "height": 1,
+            "color": "#0a9396",
+            "thickness": "0.3mm",
+            "style": "solid"
+          },
+          {
+            "id": "line-zbhtxt1",
+            "type": "line",
+            "x": 100,
+            "y": 10,
+            "width": 90,
+            "height": 1,
+            "color": "#0a9396",
+            "thickness": "0.3mm",
+            "style": "solid"
+          },
+          {
+            "id": "text-pkj6h4k",
+            "type": "text",
+            "x": 5,
+            "y": 12.26264648437499,
+            "width": 90,
+            "height": 5,
+            "content": "{{sender.name}}",
+            "style": {
+              "fontSize": 10,
+              "fontWeight": "bold",
+              "color": "#333333"
+            }
+          },
+          {
+            "id": "text-bbg8n6f",
+            "type": "text",
+            "x": 5,
+            "y": 17.262858072916657,
+            "width": 90,
+            "height": 12,
+            "content": "{{sender.address}}",
+            "style": {
+              "fontSize": 9,
+              "fontWeight": "regular",
+              "color": "#555555"
+            }
+          },
+          {
+            "id": "text-tgrekpp",
+            "type": "text",
+            "x": 100,
+            "y": 12,
+            "width": 90,
+            "height": 5,
+            "content": "{{recipient.name}}",
+            "style": {
+              "fontSize": 10,
+              "fontWeight": "bold",
+              "color": "#333333"
+            }
+          },
+          {
+            "id": "text-qexlggy",
+            "type": "text",
+            "x": 100,
+            "y": 17,
+            "width": 90,
+            "height": 12,
+            "content": "{{recipient.address}}",
+            "style": {
+              "fontSize": 9,
+              "fontWeight": "regular",
+              "color": "#555555"
+            }
+          },
+          {
+            "id": "text-9w6q2yw",
+            "type": "text",
+            "x": 5,
+            "y": 29.262125651041657,
+            "width": 90,
+            "height": 5,
+            "content": "ติดต่อ / Contact: {{sender.phone}}",
+            "style": {
+              "fontSize": 8,
+              "fontWeight": "regular",
+              "color": "#888888"
+            }
+          },
+          {
+            "id": "text-l91e1mk",
+            "type": "text",
+            "x": 100,
+            "y": 29,
+            "width": 90,
+            "height": 5,
+            "content": "ติดต่อ / Contact: {{recipient.phone}}",
+            "style": {
+              "fontSize": 8,
+              "fontWeight": "regular",
+              "color": "#888888"
+            }
+          },
+          {
+            "id": "spacer-cf8z4yv",
+            "type": "spacer",
+            "x": 5.300000000000001,
+            "y": 33.18456872304279,
+            "width": 190,
+            "height": 6
+          },
+          {
+            "id": "line-91vsga5",
+            "type": "line",
+            "x": 5,
+            "y": 40.26300455729165,
+            "width": 200,
+            "height": 1,
+            "color": "#cce3e2",
+            "thickness": "0.5mm",
+            "style": "solid"
+          },
+          {
+            "id": "text-jmmgnw9",
+            "type": "text",
+            "x": 7.7,
+            "y": 45.651822916666646,
+            "width": 41.6,
+            "height": 6,
+            "content": "รายการสินค้า ",
+            "style": {
+              "fontSize": 11,
+              "fontWeight": "bold",
+              "color": "#0d3b38"
+            }
+          },
+          {
+            "id": "table-fa3fwvr",
+            "type": "table",
+            "x": 6.5,
+            "y": 52.09897460937499,
+            "width": 197.70000000000002,
+            "height": 80,
+            "dataSource": "{{items}}",
+            "columns": [
+              {
+                "id": "col-0-1777948033624",
+                "key": "no",
+                "label": "ลำดับ",
+                "width": "0.2fr",
+                "align": "center",
+                "header": "ลำดับ",
+                "field": "no"
+              },
+              {
+                "id": "col-1-1777948033624",
+                "key": "code",
+                "label": "รหัสสินค้า",
+                "width": "0.3fr",
+                "align": "left",
+                "header": "รหัส",
+                "field": "code"
+              },
+              {
+                "id": "col-2-1777948033624",
+                "key": "description",
+                "label": "รายการ",
+                "width": "1fr",
+                "align": "left",
+                "header": "รายการ",
+                "field": "description"
+              },
+              {
+                "id": "col-3-1777948033624",
+                "key": "quantity",
+                "label": "จำนวน",
+                "width": "0.3fr",
+                "align": "right",
+                "header": "จำนวณ",
+                "field": "quantity"
+              },
+              {
+                "id": "col-4-1777948033624",
+                "key": "unit",
+                "label": "หน่วย",
+                "width": "0.3fr",
+                "align": "center",
+                "header": "จำนวณ",
+                "field": "unit"
+              }
+            ],
+            "style": {
+              "fontSize": 10,
+              "headerBackground": "#f5f5f5",
+              "borderColor": "#e0e0e0",
+              "borderWidth": "0.5pt",
+              "cellPadding": "4pt"
+            },
+            "showHeader": true,
+            "repeatHeaderOnPage": false
+          },
+          {
+            "id": "spacer-kjauw5l",
+            "type": "spacer",
+            "x": 5,
+            "y": 132.2615234375,
+            "width": 200,
+            "height": 5
+          },
+          {
+            "id": "line-6t5fggh",
+            "type": "line",
+            "x": 5,
+            "y": 137.26173502604163,
+            "width": 200,
+            "height": 1,
+            "color": "#cce3e2",
+            "thickness": "0.5mm",
+            "style": "solid"
+          },
+          {
+            "id": "text-dsr09e3",
+            "type": "text",
+            "x": 4.6000000000000005,
+            "y": 148.25441029866533,
+            "width": 57.1,
+            "height": 6,
+            "content": "ผู้จัดส่ง / PREPARED BY",
+            "style": {
+              "fontSize": 9,
+              "fontWeight": "bold",
+              "color": "#0d3b38"
+            },
+            "align": "center"
+          },
+          {
+            "id": "text-hxksg2a",
+            "type": "text",
+            "x": 70.9,
+            "y": 148.06568635304765,
+            "width": 52.89999999999999,
+            "height": 6,
+            "content": "ผู้รับสินค้า / RECEIVED BY",
+            "style": {
+              "fontSize": 9,
+              "fontWeight": "bold",
+              "color": "#0d3b38"
+            },
+            "align": "center"
+          },
+          {
+            "id": "text-xboa1ak",
+            "type": "text",
+            "x": 137.6,
+            "y": 148.0775638580322,
+            "width": 52.099999999999994,
+            "height": 6,
+            "content": "วันที่รับ / DATE RECEIVED",
+            "style": {
+              "fontSize": 9,
+              "fontWeight": "bold",
+              "color": "#0d3b38"
+            },
+            "align": "center"
+          },
+          {
+            "id": "text-k5nbdbg",
+            "type": "text",
+            "x": 10.200000000000001,
+            "y": 162.86116568247473,
+            "width": 40,
+            "height": 5,
+            "content": "{{signature.preparedBy}}",
+            "style": {
+              "fontSize": 8,
+              "fontWeight": "regular",
+              "color": "#555555"
+            },
+            "align": "center"
+          },
+          {
+            "id": "text-pxxcsvc",
+            "type": "text",
+            "x": 75.60000000000001,
+            "y": 161.63776652018225,
+            "width": 40,
+            "height": 5,
+            "content": "{{signature.receivedBy}}",
+            "style": {
+              "fontSize": 8,
+              "fontWeight": "regular",
+              "color": "#555555"
+            },
+            "align": "center"
+          },
+          {
+            "id": "text-wvcfnwf",
+            "type": "text",
+            "x": 140.3,
+            "y": 161.377801767985,
+            "width": 40,
+            "height": 5,
+            "content": "{{signature.dateReceived}}",
+            "style": {
+              "fontSize": 8,
+              "fontWeight": "regular",
+              "color": "#555555"
+            },
+            "align": "center"
+          }
+        ],
+        "minHeight": "237mm"
+      },
+      "footer": {
+        "id": "footer",
+        "components": [],
+        "minHeight": "20mm"
+      }
+    }
+  ],
+  "groups": [],
+  "fonts": [
+    {
+      "family": "Sarabun",
+      "size": 10,
+      "role": "body",
+      "embedded": true
+    }
+  ],
+  "metadata": {
+    "title": "New Report",
+    "createdAt": "2026-05-04T02:55:54.392Z",
+    "updatedAt": "2026-05-04T02:55:54.392Z",
+    "author": "Antigravity"
+  },
+  "id": "new-report",
+  "name": "New Report",
+  "version": "1.0.0",
+  "variables": [],
+  "dataSchema": []
+}
