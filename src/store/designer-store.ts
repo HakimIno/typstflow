@@ -1103,7 +1103,7 @@ export const useDesignerStore = create<DesignerState>()(
       storage: createJSONStorage(() => indexedDBStorage),
       partialize: (state: DesignerState) => {
         // Exclude transient state from persistence
-        const { dragState, history, historyIndex, _hasHydrated, ...rest } = state;
+        const { dragState, history, historyIndex, _hasHydrated, dialog, ...rest } = state;
         return rest;
       },
       version: 3,

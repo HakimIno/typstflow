@@ -64,9 +64,23 @@ export function FileMenu() {
       variant: 'danger',
       confirmLabel: 'Hard Reset',
       onConfirm: () => {
+        // 1. Clear simple storage
         localStorage.clear();
-        window.indexedDB.deleteDatabase('typstflow-storage');
-        window.location.reload();
+        sessionStorage.clear();
+
+        // 2. Clear IndexedDB (Correct name: typstflow-db)
+        const req = window.indexedDB.deleteDatabase('typstflow-db');
+
+        const forceReload = () => {
+          window.location.reload();
+        };
+
+        req.onsuccess = forceReload;
+        req.onerror = forceReload;
+        req.onblocked = forceReload;
+
+        // 3. Fallback reload if DB deletion takes too long
+        setTimeout(forceReload, 2000);
       },
     });
   };
