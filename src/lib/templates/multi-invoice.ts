@@ -1,0 +1,141 @@
+import type { LayoutSchema } from '../../types/schema';
+
+export const MULTI_INVOICE_TEMPLATE: LayoutSchema = {
+  id: 'multi-invoice-template',
+  name: 'Multi-Invoice Report',
+  version: '1.0.0',
+  page: {
+    size: 'A4',
+    orientation: 'portrait',
+    margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' },
+  },
+  fonts: [{ family: 'Sarabun', role: 'body', size: 10, embedded: true }],
+  zones: {
+    header: {
+      id: 'header',
+      minHeight: '20mm',
+      components: [
+        {
+          id: 'inv-title',
+          type: 'text',
+          content: 'INVOICE',
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 10,
+          style: { fontSize: 20, fontWeight: 'bold' },
+          align: 'center',
+        },
+        {
+          id: 'inv-num',
+          type: 'text',
+          content: 'Number: {{invoice.number}}',
+          x: 130,
+          y: 12,
+          width: 50,
+          height: 6,
+          style: { fontSize: 10, fontWeight: 'bold' },
+          align: 'right',
+        },
+        {
+          id: 'cust-info',
+          type: 'text',
+          content: 'Customer: {{customer.name}}',
+          x: 0,
+          y: 12,
+          width: 100,
+          height: 6,
+          style: { fontSize: 10, fontWeight: 'bold' },
+        },
+      ],
+    },
+    footer: {
+      id: 'footer',
+      minHeight: '20mm',
+      components: [
+        {
+          id: 'total-val',
+          type: 'text',
+          content: 'Total: {{invoice.total}} THB',
+          x: 120,
+          y: 5,
+          width: 60,
+          height: 10,
+          style: { fontSize: 12, fontWeight: 'bold' },
+          align: 'right',
+        },
+      ],
+    },
+  },
+  pages: [
+    {
+      id: 'page-detail',
+      name: 'Invoice Items',
+      body: {
+        id: 'body',
+        minHeight: '50mm',
+        components: [
+          {
+            id: 'items-table',
+            type: 'table',
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 40,
+            dataSource: '{{items_list}}',
+            showHeader: true,
+            columns: [
+              { id: 'c1', header: 'No.', field: 'no', width: '30pt' },
+              { id: 'c2', header: 'Description', field: 'description', width: '1fr' },
+              { id: 'c3', header: 'Qty', field: 'qty', width: '40pt' },
+              { id: 'c4', header: 'Price', field: 'unitPrice', width: '60pt' },
+              { id: 'c5', header: 'Amount', field: 'amount', width: '60pt' },
+            ],
+            style: {},
+            repeatHeaderOnPage: true,
+          },
+        ],
+      },
+    },
+  ],
+  batchDataSource: 'items',
+  variables: [],
+  dataSchema: [],
+  metadata: {
+    title: 'Multi-Invoice Report',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    author: 'System',
+  },
+};
+
+export const MULTI_INVOICE_SAMPLE_DATA = {
+  items: [
+    {
+      invoice: { number: 'INV-2567-00142', total: '91,485.00' },
+      customer: { name: 'บริษัท ไพศาล โลจิสติกส์ จำกัด (มหาชน)' },
+      items_list: [
+        {
+          no: '1',
+          description: 'ERP Module Service',
+          qty: '1',
+          unitPrice: '35,000.00',
+          amount: '35,000.00',
+        },
+      ],
+    },
+    {
+      invoice: { number: 'INV-2567-00143', total: '12,500.00' },
+      customer: { name: 'บริษัท เทสท์ จำกัด' },
+      items_list: [
+        {
+          no: '1',
+          description: 'Consulting',
+          qty: '2',
+          unitPrice: '6,250.00',
+          amount: '12,500.00',
+        },
+      ],
+    },
+  ],
+};

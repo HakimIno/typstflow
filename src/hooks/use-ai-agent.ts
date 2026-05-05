@@ -308,15 +308,19 @@ interface ApiResponse {
   }>;
 }
 
-const MAX_TOOL_ROUNDS = 6;
-const HISTORY_WINDOW = 8; // UI messages to include in each request
+const MAX_TOOL_ROUNDS = 4;
+const HISTORY_WINDOW = 4; // UI messages to include in each request
 
-async function classifyIntent(message: string, signal?: AbortSignal): Promise<'chat' | 'design'> {
+async function classifyIntent(
+  message: string,
+  signal?: AbortSignal,
+  classifierModel?: string
+): Promise<'chat' | 'design'> {
   try {
     const res = await fetch('/api/chat/classify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, classifierModel }),
       signal,
     });
     if (!res.ok) return 'design';
@@ -327,20 +331,36 @@ async function classifyIntent(message: string, signal?: AbortSignal): Promise<'c
   }
 }
 
+function parseAiError(errorStr: string): string {
+  try {
+    const parsed = JSON.parse(errorStr);
+    // OpenRouter/OpenAI often nest errors
+    const innerError = typeof parsed.error === 'string' ? JSON.parse(parsed.error) : parsed.error;
+    return innerError?.error?.message || innerError?.message || errorStr;
+  } catch {
+    return errorStr;
+  }
+}
+
 async function callApi(
   apiMessages: ApiMsg[],
   schema: LayoutSchema,
   sessionIntent?: string,
   signal?: AbortSignal,
-  mode?: 'chat' | 'design'
+  mode?: 'chat' | 'design',
+  model?: string,
+  aiMode?: 'plan' | 'act'
 ): Promise<ApiResponse> {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: apiMessages, schema, sessionIntent, mode }),
+    body: JSON.stringify({ messages: apiMessages, schema, sessionIntent, mode, model, aiMode }),
     signal,
   });
-  if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(parseAiError(errorText));
+  }
   return res.json() as Promise<ApiResponse>;
 }
 
@@ -397,6 +417,7 @@ export function useAiAgent() {
   const [error, setError] = useState<string | null>(null);
   const sessionMemoryRef = useRef<SessionMemory>(loadPersistedMemory());
   const abortControllerRef = useRef<AbortController | null>(null);
+  const { aiModel, aiMode } = useDesignerStore();
 
   const stop = useCallback(() => {
     if (abortControllerRef.current) {
@@ -452,7 +473,7 @@ export function useAiAgent() {
         const sessionIntent = serializeMemory(sessionMemoryRef.current);
 
         // Classify intent before committing to the full design agent
-        const intent = await classifyIntent(content, controller.signal);
+        const intent = await classifyIntent(content, controller.signal, aiModel);
         if (controller.signal.aborted) return;
 
         // Build initial API message window — strip intent blocks from history to save tokens
@@ -473,7 +494,9 @@ export function useAiAgent() {
             schema,
             sessionIntent || undefined,
             controller.signal,
-            'chat'
+            'chat',
+            aiModel,
+            aiMode
           );
           finalText = data.choices?.[0]?.message?.content ?? '';
           upsertAssistantMessage(finalText || '(no response)');
@@ -494,7 +517,9 @@ export function useAiAgent() {
             schema,
             sessionIntent || undefined,
             controller.signal,
-            'design'
+            'design',
+            aiModel,
+            aiMode
           );
           const msg = data.choices?.[0]?.message;
           finalText = msg?.content ?? '';
@@ -553,19 +578,22 @@ export function useAiAgent() {
         if (builtLayout && !hasSampleData && !controller.signal.aborted) {
           try {
             const { schema: freshSchema } = useDesignerStore.getState();
+            const usedBindings = [...new Set(newBindings)].join(', ') || 'none';
+            // Minimal context — avoids re-sending the full accumulated conversation
             const dataReq: ApiMsg[] = [
-              ...apiMessages,
               {
                 role: 'user',
-                content:
-                  'The layout is built. Now call set_sample_data once with a complete, realistic Thai business mock data object covering every {{binding}} used in the layout.',
+                content: `Layout complete. Bindings used: ${usedBindings}. Call set_sample_data once with realistic Thai business mock data for every binding.`,
               },
             ];
             const dataResp = await callApi(
               dataReq,
               freshSchema,
               sessionIntent || undefined,
-              controller.signal
+              controller.signal,
+              'design',
+              aiModel,
+              aiMode
             );
             const dataTool = dataResp.choices?.[0]?.message?.tool_calls?.find(
               (tc) => tc.function.name === 'set_sample_data'

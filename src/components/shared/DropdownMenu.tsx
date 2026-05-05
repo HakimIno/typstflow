@@ -33,6 +33,7 @@ interface DropdownMenuProps {
   children: ReactNode;
   className?: string;
   align?: 'left' | 'right';
+  side?: 'top' | 'bottom';
 }
 
 export const DropdownMenu = memo(function DropdownMenu({
@@ -40,6 +41,7 @@ export const DropdownMenu = memo(function DropdownMenu({
   children,
   className,
   align = 'left',
+  side = 'bottom',
 }: DropdownMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -58,13 +60,10 @@ export const DropdownMenu = memo(function DropdownMenu({
 
   return (
     <DropdownContext.Provider value={{ isOpen, setIsOpen }}>
-      <div className={clsx('relative inline-block', className)} ref={menuRef}>
+      <div className={clsx('relative inline-block', className, isOpen && 'z-[9999]')} ref={menuRef}>
         <div
           onClick={() => setIsOpen(!isOpen)}
           onKeyDown={(e) => e.key === 'Enter' && setIsOpen(!isOpen)}
-          // biome-ignore lint/a11y/useSemanticElements: The trigger content handles its own semantics
-          role="button"
-          tabIndex={0}
         >
           {trigger}
         </div>
@@ -72,7 +71,10 @@ export const DropdownMenu = memo(function DropdownMenu({
         {isOpen && (
           <div
             className={clsx(
-              'absolute top-full mt-1.5 min-w-[180px] pro-panel z-[500] animate-in fade-in slide-in-from-top-1 duration-200 flex flex-col p-1',
+              'absolute min-w-[180px] pro-panel z-[9999] animate-in fade-in duration-200 flex flex-col p-1',
+              side === 'bottom'
+                ? 'top-full mt-1.5 slide-in-from-top-1'
+                : 'bottom-full mb-1.5 slide-in-from-bottom-1',
               align === 'left' ? 'left-0' : 'right-0'
             )}
           >

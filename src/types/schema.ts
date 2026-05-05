@@ -10,6 +10,8 @@ export interface LayoutSchema {
   };
   pages: PageDefinition[];
   groups: GroupDefinition[]; // New: Data grouping bands
+  groupDataSource?: string; // New: Path to the array to iterate over (defaults to "items")
+  batchDataSource?: string; // New: Path to the array for batch processing
   variables: VariableDefinition[]; // user-defined reusable values
   dataSchema: DataFieldDefinition[]; // expected input data shape
   metadata: {

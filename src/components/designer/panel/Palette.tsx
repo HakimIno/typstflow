@@ -77,7 +77,7 @@ export const Palette = memo(function Palette() {
 
   return (
     <BasePanel>
-      <PanelHeader title="Element Library" icon={Table} />
+      <PanelHeader title="Element Library" icon="solar:widget-3-outline" />
 
       {/* Search Bar - Compact */}
       <div className="p-2 border-b border-[var(--border-default)] shrink-0">

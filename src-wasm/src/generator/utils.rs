@@ -211,7 +211,9 @@ pub fn wrap_placement(base: &BaseComponent, body: &str, offset_x: &str, offset_y
 
     let mut out = String::new();
     if base.page_break_before.unwrap_or(false) {
-        out.push_str("#pagebreak()\n");
+        // Use weak: true so it doesn't create a blank first page if the document just started.
+        // The #box() anchors the page so subsequent weak pagebreaks WILL trigger.
+        out.push_str("#pagebreak(weak: true)\n#box()\n");
     }
     out.push_str(&format!(
         "{}place(dx: {}mm, dy: {}mm)[#block(width: {}mm, height: {}mm, clip: false)[{}]]\n",

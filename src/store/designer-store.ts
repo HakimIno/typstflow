@@ -20,6 +20,7 @@ import {
   INVOICE_WITH_PAGE_BREAKS_TEMPLATE,
 } from '../lib/templates/invoice-with-page-breaks';
 import { TAX_INVOICE_SAMPLE_DATA, TAX_INVOICE_TEMPLATE } from '../lib/templates/tax-invoice';
+import { MULTI_INVOICE_SAMPLE_DATA, MULTI_INVOICE_TEMPLATE } from '../lib/templates/multi-invoice';
 import type { ComponentNode, GroupDefinition, LayoutSchema, Zone, ZoneKey } from '../types/schema';
 
 export interface DialogOptions {
@@ -53,6 +54,8 @@ interface DesignerState {
   theme: 'dark' | 'light';
   primaryColor: string;
   canvasLayout: 'vertical' | 'grid';
+  aiModel: string;
+  aiMode: 'plan' | 'act';
 
   // Selection
   selectedComponentIds: string[];
@@ -165,10 +168,12 @@ interface DesignerState {
   undo: () => void;
   redo: () => void;
   loadTemplate: (
-    name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks' | 'tax-invoice'
+    name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks' | 'tax-invoice' | 'multi-invoice'
   ) => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setPrimaryColor: (color: string) => void;
+  setAiModel: (model: string) => void;
+  setAiMode: (mode: 'plan' | 'act') => void;
   loadStressTest: (pages?: number, components?: number) => void;
   setCanvasLayout: (layout: 'vertical' | 'grid') => void;
 
@@ -268,6 +273,8 @@ export const useDesignerStore = create<DesignerState>()(
       theme: 'dark' as DesignerState['theme'],
       primaryColor: '#8B5CF6',
       canvasLayout: 'vertical' as DesignerState['canvasLayout'],
+      aiModel: 'anthropic/claude-sonnet-4-5',
+      aiMode: 'plan' as DesignerState['aiMode'],
       selectedComponentIds: [],
       selectedGroupId: null as DesignerState['selectedGroupId'],
       selectedZone: null as DesignerState['selectedZone'],
@@ -338,6 +345,13 @@ export const useDesignerStore = create<DesignerState>()(
             schema: TAX_INVOICE_TEMPLATE,
             sampleData: TAX_INVOICE_SAMPLE_DATA,
             history: [TAX_INVOICE_TEMPLATE],
+            historyIndex: 0,
+          });
+        } else if (name === 'multi-invoice') {
+          set({
+            schema: MULTI_INVOICE_TEMPLATE,
+            sampleData: MULTI_INVOICE_SAMPLE_DATA,
+            history: [MULTI_INVOICE_TEMPLATE],
             historyIndex: 0,
           });
         } else {
@@ -745,6 +759,8 @@ export const useDesignerStore = create<DesignerState>()(
       setTheme: (theme: 'dark' | 'light') => set({ theme }),
       setPrimaryColor: (color: string) => set({ primaryColor: color }),
       setCanvasLayout: (layout: 'vertical' | 'grid') => set({ canvasLayout: layout }),
+      setAiModel: (model: string) => set({ aiModel: model }),
+      setAiMode: (mode: 'plan' | 'act') => set({ aiMode: mode }),
 
       toggleComponentVisibility: (id: string) =>
         set((state) => {
@@ -1067,13 +1083,18 @@ export const useDesignerStore = create<DesignerState>()(
 
       importSchema: (json: string) => {
         try {
-          const data = JSON.parse(json);
-          const validSchema = validateAndRepairSchema(data, BLANK_SCHEMA);
+          const rawData = JSON.parse(json);
+          // Handle bundled format: { "schema": ..., "data": ... }
+          const schemaToValidate = rawData.schema || rawData;
+          const sampleData = rawData.data || null;
+
+          const validSchema = validateAndRepairSchema(schemaToValidate, BLANK_SCHEMA);
 
           set((state) => {
             const nextState = {
               ...state,
               schema: validSchema,
+              sampleData: sampleData || state.sampleData,
               selectedComponentIds: [],
               selectedGroupId: null,
               selectedZone: null,

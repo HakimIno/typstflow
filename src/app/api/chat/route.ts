@@ -292,8 +292,7 @@ Data fields: ${dataFields}`;
 }
 
 // ─── Design prompt (full agent) ───────────────────────────────────────────────
-
-function buildSystemPrompt(schema: LayoutSchema, sessionIntent?: string): string {
+function buildSystemPrompt(schema: LayoutSchema, sessionIntent?: string, aiMode?: 'plan' | 'act'): string {
   const { page, zones, pages, dataSchema } = schema;
 
   const base = PAPER_DIMS[page.size] ?? PAPER_DIMS.A4;
@@ -320,66 +319,26 @@ function buildSystemPrompt(schema: LayoutSchema, sessionIntent?: string): string
     ? `\n## SESSION MEMORY (maintain consistency — do NOT override these choices)\n${sessionIntent}\n`
     : '';
 
-  return `You are an expert PDF report designer and AI layout assistant for TypstFlow.
-Build beautiful, production-ready layouts. You will receive tool results — use them to verify and continue building.
-${intentBlock}
+  const modeBlock = aiMode === 'plan' 
+    ? '\n## MODE: PLAN\nYou are in planning mode. Describe your layout strategy in detail before calling any tools. Explain why you chose certain positions and styles.' 
+    : '\n## MODE: ACT\nYou are in action mode. Build the layout directly and efficiently.';
+
+  return `You are an expert PDF report designer AI for TypstFlow. Build beautiful production-ready layouts using the tools provided.
+${intentBlock}${modeBlock}
 ## Canvas
-- Positions in mm. x=0,y=0 = top-left of each zone (already inside the page margins).
-- ${page.size} ${page.orientation} | page: ${pageW}×${pageH}mm | margins: top=${mt}mm right=${mr}mm bottom=${mb}mm left=${ml}mm
-- USABLE ZONE WIDTH: ${usableW}mm — x must stay in [0, ${usableW}] or elements will overflow
-- USABLE PAGE HEIGHT: ${usableH}mm (header+body+footer must fit within this)
-- header: page top | body: main content | footer: page bottom
-- Bindings: {{path.to.field}} | array loops: {{items}}
-- Batch 5-8 tool calls per round. Use get_layout to verify between rounds.
+Page: ${page.size} ${page.orientation} ${pageW}×${pageH}mm | margins t=${mt} r=${mr} b=${mb} l=${ml}mm | USABLE: ${usableW}×${usableH}mm
+Zones: header=top, body=main, footer=bottom | x=0,y=0 is top-left of each zone | bindings: {{field.path}}, arrays: {{items}}
+WORKFLOW: 1) call get_layout first 2) plan mm positions (no overlaps) 3) add_* in batches of 4-6 4) set_sample_data last
 
-## WORKFLOW (for layout tasks only)
-1. Call get_layout to read current state before making changes
-2. Plan exact mm positions — check for overlaps before placing
-3. Execute add_* tools in batches of 5-8
-4. Call set_sample_data last with complete Thai mock data
+## Style (pick one color theme, stay consistent)
+TYPOGRAPHY: title=18-22pt bold | heading=12-13pt bold | body=10-11pt #333 | label=8-9pt #666 | amount=10-11pt bold right
+THEMES: navy=#1a1a2e/#4361ee/#f0f2ff | teal=#0d3b38/#0a9396/#f0f7f6 | slate=#1e293b/#6366f1/#f1f5f9 | red=#1a1a2e/#e63946/#fff5f5
+TABLE: headerBackground=theme-subtle, borderColor=theme-border, borderWidth=0.5pt, cellPadding=5pt
+LAYOUT: logo 35×18mm top-left | accent line 1-2mm under title | company+address header | title+date right-aligned | footer: contact left / page# right | section gaps 5-8mm | summary box x≥${Math.round(usableW * 0.55)}mm
 
-## Design Standards (ALWAYS follow these)
-TYPOGRAPHY HIERARCHY:
-- Main title: fontSize 18-22, bold, color #1a1a2e or brand color
-- Section heading: fontSize 12-13, bold, color #1a1a2e
-- Label/caption: fontSize 8-9, color #666666
-- Body text: fontSize 10-11, color #333333
-- Numbers/amounts: fontSize 10-11, bold, align right, color #1a1a2e
-- Accent/total: fontSize 13-16, bold, color brand or #e63946
-
-COLOR PALETTE (pick one per layout, stay consistent):
-- Professional navy: primary=#1a1a2e, accent=#4361ee, subtle=#f0f2ff, border=#d0d5e8
-- Corporate teal: primary=#0d3b38, accent=#0a9396, subtle=#f0f7f6, border=#cce3e2
-- Modern slate: primary=#1e293b, accent=#6366f1, subtle=#f1f5f9, border=#e2e8f0
-- Bold red: primary=#1a1a2e, accent=#e63946, subtle=#fff5f5, border=#fecdd3
-
-TABLE DESIGN:
-- headerBackground: brand subtle color (e.g. #f0f2ff)
-- borderColor: brand border color
-- borderWidth: "0.5pt"
-- cellPadding: "5pt"
-
-SPACING RULES:
-- Between header sections: 3-5mm gap
-- Between body sections: 5-8mm gap
-- Separator lines: thickness 0.3-0.5mm
-- Summary boxes: right-aligned, x starts at ~${Math.round(usableW * 0.55)}mm (55% of usable width)
-
-LAYOUT BEST PRACTICES:
-- Always add a thick accent line (1-2mm) under the main header title
-- Use image placeholder for logo (top-left header, 35×18mm)
-- Company name + address in header (bold name, muted address)
-- Document title + number/date right-aligned in header
-- Footer: left=contact/note, right=page number
-- Add spacers between logical sections (3-5mm)
-
-## Mandatory Final Step
-After completing the layout, ALWAYS call set_sample_data with realistic Thai business mock data that matches every {{binding}} used.
-
-## Intent Tracking
-At the END of every response, output exactly one line:
+## Mandatory: end every response with ONE line:
 <intent>{"docType":"...","colorTheme":"...","primaryColor":"...","accentColor":"...","decisions":["..."]}</intent>
-Only include fields you're confident about. This helps maintain consistency across turns.
+After layout is done, ALWAYS call set_sample_data with realistic Thai business data for every {{binding}} used.
 
 DATA FIELDS: ${dataFields}
 
@@ -395,7 +354,6 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'OPENROUTER_API_KEY is not configured' }, { status: 500 });
   }
 
-  const model = process.env.OPENROUTER_MODEL_NAME ?? 'anthropic/claude-3.5-sonnet';
   const body = (await req.json()) as {
     messages: Array<{
       role: string;
@@ -406,7 +364,11 @@ export async function POST(req: NextRequest) {
     schema: LayoutSchema;
     sessionIntent?: string;
     mode?: 'design' | 'chat';
+    model?: string;
+    aiMode?: 'plan' | 'act';
   };
+  const model =
+    body.model ?? process.env.OPENROUTER_MODEL_NAME ?? 'anthropic/claude-sonnet-4-5';
 
   const isChatMode = body.mode === 'chat';
 
@@ -420,12 +382,13 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model,
+      max_tokens: isChatMode ? 1024 : 3000,
       messages: [
         {
           role: 'system',
           content: isChatMode
             ? buildChatPrompt(body.schema, body.sessionIntent)
-            : buildSystemPrompt(body.schema, body.sessionIntent),
+            : buildSystemPrompt(body.schema, body.sessionIntent, body.aiMode),
         },
         ...body.messages,
       ],

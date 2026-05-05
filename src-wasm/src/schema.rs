@@ -13,6 +13,8 @@ pub struct LayoutSchema {
     pub pages: Vec<PageDefinition>,
     #[serde(default)]
     pub groups: Vec<GroupDefinition>,
+    pub group_data_source: Option<String>,
+    pub batch_data_source: Option<String>,
     pub variables: Vec<VariableDefinition>,
     pub data_schema: Vec<DataFieldDefinition>,
     pub metadata: Option<serde_json::Value>,

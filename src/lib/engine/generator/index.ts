@@ -1,5 +1,5 @@
 import type { ComponentNode, GroupDefinition, LayoutSchema, Zone } from '@/types/schema';
-import { resolveBinding } from './binding';
+import { resolveBinding, resolvePath } from './binding';
 import { FORMAT_HELPERS, IMPORTS, generateFonts, generatePageSetup } from './preamble';
 import { PluginRegistry } from './registry';
 import type { ComponentPlugin, RenderContext } from './types';
@@ -115,11 +115,23 @@ export class TypstGenerator {
     const footerY = pageH - footerH;
     const headerY = 0;
 
-    if (schema.groups && schema.groups.length > 0) {
+    if (schema.batchDataSource) {
+      // Document-Level Batch Mode
+      const resolvedItems = resolvePath(schema.batchDataSource, data);
+      const batchItems = Array.isArray(resolvedItems) ? resolvedItems : [data];
+
+      for (let i = 0; i < batchItems.length; i++) {
+        const item = batchItems[i] as Record<string, unknown>;
+        if (i > 0) {
+          parts.push('\n#pagebreak(weak: true)\n#box()\n');
+        }
+        parts.push(this.renderDocument(schema, item, data, 0, bodyY, headerY, footerY));
+      }
+    } else if (schema.groups && schema.groups.length > 0) {
       // Grouped rendering
-      const items = Array.isArray((data as Record<string, unknown>).items)
-        ? ((data as Record<string, unknown>).items as Record<string, unknown>[])
-        : [];
+      const sourcePath = schema.groupDataSource || 'items';
+      const resolvedItems = resolvePath(sourcePath, data);
+      const items = Array.isArray(resolvedItems) ? (resolvedItems as Record<string, unknown>[]) : [];
 
       // Non-repeating Header (Report Header)
       if (
@@ -141,38 +153,54 @@ export class TypstGenerator {
         shouldRenderZone(schema.zones.footer, 0, 1, 'footer')
       ) {
         parts.push('// --- REPORT FOOTER ---\n');
-        parts.push(
-          this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema)
-        );
+        parts.push(this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema));
       }
     } else {
-      // Page-by-page rendering
-      const totalPages = schema.pages.length;
-      for (let i = 0; i < totalPages; i++) {
-        if (i > 0) parts.push('\n#pagebreak(weak: true)\n');
-        const pageDef = schema.pages[i];
-
-        // Header (only if not handled by native Typst repetition)
-        const h = schema.zones.header;
-        if (!h.repeatOnEveryPage && shouldRenderZone(h, i, totalPages, 'header')) {
-          parts.push(`// --- PAGE ${i + 1} HEADER ---\n`);
-          parts.push(this.renderZoneComponents(h, data, data, [], 0, headerY, schema));
-        }
-
-        // Body
-        parts.push(`// --- PAGE ${i + 1} BODY ---\n`);
-        parts.push(this.renderZoneComponents(pageDef.body, data, data, [], 0, bodyY, schema));
-
-        // Footer (only if not handled by native Typst repetition)
-        const f = schema.zones.footer;
-        if (!f.repeatOnEveryPage && shouldRenderZone(f, i, totalPages, 'footer')) {
-          parts.push(`// --- PAGE ${i + 1} FOOTER ---\n`);
-          parts.push(this.renderZoneComponents(f, data, data, [], 0, footerY, schema));
-        }
-      }
+      // Standard single document
+      parts.push(this.renderDocument(schema, data, data, 0, bodyY, headerY, footerY));
     }
 
     return parts.join('');
+  }
+
+  private renderDocument(
+    schema: LayoutSchema,
+    localData: Record<string, unknown>,
+    globalData: Record<string, unknown>,
+    offsetX: number,
+    bodyOffsetY: number,
+    headerOffsetY: number,
+    footerOffsetY: number
+  ): string {
+    let t = '';
+    const totalPages = schema.pages.length;
+
+    for (let i = 0; i < totalPages; i++) {
+      const pageDef = schema.pages[i];
+      if (i > 0) {
+        t += '\n#pagebreak(weak: true)\n#box()\n';
+      }
+
+      // Header
+      const h = schema.zones.header;
+      if (!h.repeatOnEveryPage && shouldRenderZone(h, i, totalPages, 'header')) {
+        t += `// --- PAGE ${i + 1} HEADER ---\n`;
+        t += this.renderZoneComponents(h, localData, globalData, [], offsetX, headerOffsetY, schema);
+      }
+
+      // Body
+      t += `// --- PAGE ${i + 1} BODY ---\n`;
+      t += this.renderZoneComponents(pageDef.body, localData, globalData, [], offsetX, bodyOffsetY, schema);
+
+      // Footer
+      const f = schema.zones.footer;
+      if (!f.repeatOnEveryPage && shouldRenderZone(f, i, totalPages, 'footer')) {
+        t += `// --- PAGE ${i + 1} FOOTER ---\n`;
+        t += this.renderZoneComponents(f, localData, globalData, [], offsetX, footerOffsetY, schema);
+      }
+    }
+
+    return t;
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────────

@@ -43,23 +43,23 @@ type RenderItem =
   | { type: 'page-separator'; pageId: string; index: number }
   | { type: 'global-separator'; label: string }
   | {
-      type: 'zone-header';
-      zoneKey: string;
-      label: string;
-      pageId?: string;
-      count: number;
-      groupId?: string;
-      groupType?: 'header' | 'footer';
-    }
+    type: 'zone-header';
+    zoneKey: string;
+    label: string;
+    pageId?: string;
+    count: number;
+    groupId?: string;
+    groupType?: 'header' | 'footer';
+  }
   | {
-      type: 'component';
-      component: ComponentNode;
-      zoneKey: string;
-      index: number;
-      pageId?: string;
-      groupId?: string;
-      groupType?: 'header' | 'footer';
-    };
+    type: 'component';
+    component: ComponentNode;
+    zoneKey: string;
+    index: number;
+    pageId?: string;
+    groupId?: string;
+    groupType?: 'header' | 'footer';
+  };
 
 // --- Components ---
 
@@ -521,7 +521,7 @@ export const LayersPanel = memo(function LayersPanel() {
     <BasePanel>
       <PanelHeader
         title="Layers"
-        icon={Layers}
+        icon="solar:layers-minimalistic-bold"
         actions={
           <button
             type="button"

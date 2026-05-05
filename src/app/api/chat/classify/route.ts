@@ -8,8 +8,13 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return Response.json({ mode: 'design' });
 
-  const model = process.env.OPENROUTER_MODEL_NAME ?? 'anthropic/claude-3.5-sonnet';
-  const { message } = (await req.json()) as { message: string };
+  const { message, classifierModel } = (await req.json()) as {
+    message: string;
+    classifierModel?: string;
+  };
+  // Classifier uses a cheap fast model — binary output only needs gpt-4o-mini
+  const model =
+    classifierModel ?? process.env.OPENROUTER_CLASSIFIER_MODEL ?? 'openai/gpt-4o-mini';
 
   const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
     method: 'POST',

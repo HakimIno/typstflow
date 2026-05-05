@@ -59,10 +59,13 @@ export const LayoutSchemaValidator = z
           header: ZoneSchema,
           footer: ZoneSchema,
           sortBy: z.enum(['asc', 'desc']).optional(),
+          filterBy: z.string().optional(),
           repeatHeaderOnPage: z.boolean().optional(),
         })
       )
       .default([]),
+    groupDataSource: z.string().optional(),
+    batchDataSource: z.string().optional(),
     fonts: z.array(
       z.object({
         family: z.string(),

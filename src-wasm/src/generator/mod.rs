@@ -54,9 +54,23 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     let footer_offset_y = format!("{}mm", page_height_mm - f_height);
 
     // ── 5. Render pages ─────────────────────────────────────────────────────
-    if !schema.groups.is_empty() {
-        // Grouped rendering: iterates over data.items grouped by schema.groups
-        let root_items = match data.get("items") {
+    if let Some(batch_path) = &schema.batch_data_source {
+        let batch_items = resolve_path(batch_path, data)
+            .and_then(|v| match v {
+                Value::Array(arr) => Some(arr.clone()),
+                _ => None,
+            })
+            .unwrap_or_else(|| vec![data.clone()]);
+            
+        for (idx, item) in batch_items.iter().enumerate() {
+            if idx > 0 {
+                t.push_str("\n#pagebreak(weak: true)\n#box()\n");
+            }
+            t.push_str(&render_document(schema, item, data, &offset_x, &body_offset_y, &header_offset_y, &footer_offset_y));
+        }
+    } else if !schema.groups.is_empty() {
+        // Grouped rendering (Legacy)
+        let root_items = match data.get(schema.group_data_source.as_deref().unwrap_or("items")) {
             Some(Value::Array(arr)) => arr.clone(),
             _ => match data {
                 Value::Array(arr) => arr.clone(),
@@ -68,49 +82,63 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
             &offset_x, &body_offset_y, &header_offset_y, &footer_offset_y,
         ));
     } else {
-        // Standard page-by-page rendering
-        let total_pages = schema.pages.len();
-        for (i, page_def) in schema.pages.iter().enumerate() {
-            if i > 0 {
-                t.push_str("\n#pagebreak(weak: true)\n");
+        // Standard single document
+        t.push_str(&render_document(schema, data, data, &offset_x, &body_offset_y, &header_offset_y, &footer_offset_y));
+    }
+
+    t
+}
+
+fn render_document(
+    schema: &LayoutSchema,
+    local_data: &Value,
+    global_data: &Value,
+    offset_x: &str,
+    body_offset_y: &str,
+    header_offset_y: &str,
+    footer_offset_y: &str,
+) -> String {
+    let mut t = String::new();
+    let total_pages = schema.pages.len();
+    for (i, page_def) in schema.pages.iter().enumerate() {
+        if i > 0 {
+            t.push_str("\n#pagebreak(weak: true)\n#box()\n");
+        }
+
+        // Header
+        let is_global_h = schema.zones.header.repeat_on_every_page.unwrap_or(false);
+        let first_only_h = schema.zones.header.show_on_first_page_only.unwrap_or(false);
+        let render_header = if is_global_h { true }
+            else if first_only_h { i == 0 }
+            else { i == 0 }; // Default: show on first page
+
+        if render_header {
+            t.push_str(&format!("// --- PAGE {} HEADER ---\n", i + 1));
+            for comp in &schema.zones.header.components {
+                t.push_str(&render_component(comp, local_data, global_data, offset_x, header_offset_y, "#"));
             }
+        }
 
-            // Header
-            let is_global_h = schema.zones.header.repeat_on_every_page.unwrap_or(false);
-            let first_only_h = schema.zones.header.show_on_first_page_only.unwrap_or(false);
-            let render_header = if is_global_h { true }
-                else if first_only_h { i == 0 }
-                else { i == 0 }; // Default: show on first page
+        // Body
+        t.push_str(&format!("// --- PAGE {} BODY ---\n", i + 1));
+        for comp in &page_def.body.components {
+            t.push_str(&render_component(comp, local_data, global_data, offset_x, body_offset_y, "#"));
+        }
 
-            if render_header {
-                t.push_str(&format!("// --- PAGE {} HEADER ---\n", i + 1));
-                for comp in &schema.zones.header.components {
-                    t.push_str(&render_component(comp, data, data, &offset_x, &header_offset_y, "#"));
-                }
-            }
+        // Footer
+        let is_global_f = schema.zones.footer.repeat_on_every_page.unwrap_or(false);
+        let last_only_f = schema.zones.footer.show_on_last_page_only.unwrap_or(false);
+        let render_footer = if is_global_f { true }
+            else if last_only_f { i == total_pages - 1 }
+            else { i == 0 }; // Default: show on first page (Report Footer)
 
-            // Body
-            t.push_str(&format!("// --- PAGE {} BODY ---\n", i + 1));
-            for comp in &page_def.body.components {
-                t.push_str(&render_component(comp, data, data, &offset_x, &body_offset_y, "#"));
-            }
-
-            // Footer
-            let is_global_f = schema.zones.footer.repeat_on_every_page.unwrap_or(false);
-            let last_only_f = schema.zones.footer.show_on_last_page_only.unwrap_or(false);
-            let render_footer = if is_global_f { true }
-                else if last_only_f { i == total_pages - 1 }
-                else { i == 0 }; // Default: show on first page (Report Footer)
-
-            if render_footer {
-                t.push_str(&format!("// --- PAGE {} FOOTER ---\n", i + 1));
-                for comp in &schema.zones.footer.components {
-                    t.push_str(&render_component(comp, data, data, &offset_x, &footer_offset_y, "#"));
-                }
+        if render_footer {
+            t.push_str(&format!("// --- PAGE {} FOOTER ---\n", i + 1));
+            for comp in &schema.zones.footer.components {
+                t.push_str(&render_component(comp, local_data, global_data, offset_x, footer_offset_y, "#"));
             }
         }
     }
-
     t
 }
 
@@ -181,31 +209,43 @@ fn render_groups(
     for (_, group_items) in &group_map {
         let first_item = group_items.first().map(|v| v).unwrap_or(global_data);
 
+        let mut current_y_mm = parse_mm_value(body_offset_y);
+
         // Group header
         if let Some(header) = &group.header {
             out.push_str(&format!("// GROUP [{}] HEADER\n", group.id));
+            let header_offset = format!("{}mm", current_y_mm);
             for comp in &header.components {
                 out.push_str(&render_component_with_items(
                     comp, first_item, global_data, group_items,
-                    offset_x, body_offset_y, "#"
+                    offset_x, &header_offset, "#"
                 ));
             }
+            let h_height = parse_mm_value(header.min_height.as_deref().unwrap_or("0mm"));
+            current_y_mm += h_height;
         }
 
         // Nested groups or detail band
+        let nested_body_offset = format!("{}mm", current_y_mm);
         out.push_str(&render_groups(
             groups, group_index + 1, group_items,
             schema, global_data,
-            offset_x, body_offset_y, header_offset_y, footer_offset_y,
+            offset_x, &nested_body_offset, header_offset_y, footer_offset_y,
         ));
+
+        // Note: For simplicity in this engine, we add the innermost body's height 
+        // to push the group footer down. We'll use the schema's body minHeight.
+        let body_h = parse_mm_value(schema.pages[0].body.min_height.as_deref().unwrap_or("0mm"));
+        current_y_mm += body_h;
 
         // Group footer
         if let Some(footer) = &group.footer {
             out.push_str(&format!("// GROUP [{}] FOOTER\n", group.id));
+            let footer_offset = format!("{}mm", current_y_mm);
             for comp in &footer.components {
                 out.push_str(&render_component_with_items(
                     comp, first_item, global_data, group_items,
-                    offset_x, body_offset_y, "#"
+                    offset_x, &footer_offset, "#"
                 ));
             }
         }

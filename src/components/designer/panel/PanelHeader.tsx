@@ -1,19 +1,19 @@
 'use client';
 
+import { Icon } from '@iconify/react';
 import { useDesignerStore } from '@/store/designer-store';
 import { X } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface PanelHeaderProps {
   title?: string;
-  icon?: LucideIcon;
+  icon?: string;
   actions?: ReactNode;
   children?: ReactNode; // Alternative to title/icon for custom headers like DataPanel tabs
   onClose?: () => void;
 }
 
-export function PanelHeader({ title, icon: Icon, actions, children, onClose }: PanelHeaderProps) {
+export function PanelHeader({ title, icon, actions, children, onClose }: PanelHeaderProps) {
   const setSidebarOpen = useDesignerStore((state) => state.setSidebarOpen);
 
   return (
@@ -21,9 +21,9 @@ export function PanelHeader({ title, icon: Icon, actions, children, onClose }: P
       <div className="flex items-center gap-2">
         {children || (
           <>
-            {Icon && (
+            {icon && (
               <div className="w-5 h-5 flex items-center justify-center rounded p-1 bg-[var(--accent)]/10">
-                <Icon className="w-3.5 h-3.5 text-[var(--accent)]" />
+                <Icon icon={icon} className="w-3.5 h-3.5 text-[var(--accent)]" />
               </div>
             )}
             {title && (

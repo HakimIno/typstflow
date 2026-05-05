@@ -13,7 +13,7 @@ export const SettingsMenu = memo(function SettingsMenu() {
     <DropdownMenu align="right" trigger={<ToolbarButton icon={Settings} variant="toolbar-item" />}>
       <DropdownMenuHeader>Application Settings</DropdownMenuHeader>
 
-      <div className="p-2 flex flex-col gap-4 min-w-[240px]">
+      <div className="p-2 flex flex-col gap-4 min-w-[260px]">
         {/* Theme Section */}
         <div className="flex flex-col gap-2">
           <div className="px-1 text-[11px] font-medium text-[var(--text-secondary)] flex items-center gap-2">
@@ -25,8 +25,8 @@ export const SettingsMenu = memo(function SettingsMenu() {
           </div>
         </div>
 
-        {/* Other settings can go here */}
-        <div className="pt-2 border-t border-[var(--border-default)]">
+        {/* Auto-save indicator */}
+        <div className="border-t border-[var(--border-default)] pt-2">
           <div className="flex items-center justify-between px-1">
             <span className="text-[10px] text-[var(--text-muted)]">Auto-save</span>
             <div className="w-6 h-3 bg-[var(--green)] rounded-full opacity-50" />
