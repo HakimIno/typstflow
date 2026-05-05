@@ -6,6 +6,7 @@ import {
   Bot,
   CheckCircle,
   ChevronDown,
+  ChevronRight,
   ListTree,
   Mic,
   Plus,
@@ -21,18 +22,13 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { BasePanel } from './BasePanel';
 import { PanelHeader } from './PanelHeader';
 
-function ToolCallBadge({ call }: { call: NonNullable<AgentMessage['toolCalls']>[number] }) {
+function ToolCallItem({ call }: { call: NonNullable<AgentMessage['toolCalls']>[number] }) {
   return (
-    <div
-      className={clsx(
-        'flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium',
-        call.success
-          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-          : 'bg-red-500/10 text-red-400 border border-red-500/20'
-      )}
-    >
-      {call.success ? <CheckCircle className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}
-      {call.description}
+    <div className="flex items-center gap-2 py-0.5 px-1 group/item" title={call.description}>
+      <span className='text-[9px] font-medium text-[var(--text-muted)]'>-</span>
+      <span className="text-[9px] font-medium text-[var(--text-muted)] underline  tracking-widest">
+        {call.name.replace(/_/g, ' ')}
+      </span>
     </div>
   );
 }
@@ -41,6 +37,20 @@ export const AiPanel = memo(function AiPanel() {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, isLoading, sendMessage, clearMessages, stop } = useAiAgent();
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isLoading) {
+      const start = Date.now();
+      interval = setInterval(() => {
+        setElapsedTime((Date.now() - start) / 1000);
+      }, 100);
+    } else {
+      setElapsedTime(0);
+    }
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new message or typing indicator
   useEffect(() => {
@@ -106,7 +116,9 @@ export const AiPanel = memo(function AiPanel() {
                 {msg.role === 'user' ? (
                   <User className="w-3 h-3 text-[var(--text-secondary)]" />
                 ) : (
-                  <img className="w-4 h-4 rounded-full overflow-hidden" src="/icon.png" alt="TypstFlow" />
+                  <div className="rounded-full bg-white">
+                    <img className="w-5 h-5 rounded-full overflow-hidden" src="/logo.png" alt="TypstFlow" />
+                  </div>
                 )}
               </div>
               <span className="text-[8px] font-bold uppercase text-[var(--text-muted)] tracking-wider">
@@ -128,19 +140,32 @@ export const AiPanel = memo(function AiPanel() {
             </div>
 
             {msg.toolCalls && msg.toolCalls.length > 0 && (
-              <div className="max-w-[95%] flex flex-wrap gap-1 mt-0.5">
-                {msg.toolCalls.map((tc, i) => (
-                  <ToolCallBadge key={`${tc.name}-${i}`} call={tc} />
-                ))}
+              <div className="max-w-full mt-2 pt-2 border-t border-[var(--border-subtle)]/20">
+                <details className="group">
+                  <summary className="flex items-center gap-2 cursor-pointer list-none text-[9px] font-bold text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
+                    <ChevronRight className="w-2.5 h-2.5 transition-transform group-open:rotate-90" />
+                    <span className="uppercase tracking-widest opacity-80">
+                      System Activity ({msg.toolCalls.length})
+                    </span>
+                  </summary>
+                  <div className="flex flex-col gap-0.5 mt-2 ml-1 pl-3 border-l border-[var(--border-subtle)]/30">
+                    {msg.toolCalls.map((tc, i) => (
+                      <ToolCallItem key={`${tc.name}-${i}`} call={tc} />
+                    ))}
+                  </div>
+                </details>
               </div>
             )}
           </div>
         ))}
 
         {isLoading && (
-          <div className="flex items-center gap-2 px-4 py-2 opacity-60 animate-pulse">
-            <span className="text-[11px] font-medium text-[var(--text-secondary)] flex items-center gap-0.5">
-              Thinking
+          <div className="flex items-center gap-2 px-4 py-2">
+            <span className="thinking-loader text-[10px]">
+              Thinking...
+            </span>
+            <span className="text-[9px] font-mono text-[var(--text-muted)] ml-1 tabular-nums">
+              {elapsedTime.toFixed(1)}s
             </span>
             <button
               type="button"

@@ -13,18 +13,7 @@ import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { Editor } from '@monaco-editor/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { clsx } from 'clsx';
-import {
-  AlertCircle,
-  Braces,
-  CheckCircle2,
-  ChevronRight,
-  Copy,
-  Database,
-  Hash,
-  List,
-  Search,
-  Type,
-} from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
@@ -53,6 +42,7 @@ export const DataPanel = memo(function DataPanel() {
     type: string;
     rect: DOMRect;
   } | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
   // Track whether the last sampleData change came from the user typing in this editor
   // vs an external source (AI set_sample_data, loadExample, handleFromSchema).
@@ -165,6 +155,12 @@ export const DataPanel = memo(function DataPanel() {
     }
   };
 
+  const handleCopyAll = useCallback(() => {
+    navigator.clipboard.writeText(jsonString);
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2000);
+  }, [jsonString]);
+
   const loadExample = () => {
     const example = {
       "invoice": {
@@ -247,12 +243,26 @@ export const DataPanel = memo(function DataPanel() {
                 From Schema
               </button>
             )}
+            {view === 'editor' && (
+              <button
+                type="button"
+                onClick={handleCopyAll}
+                className={clsx(
+                  "flex items-center gap-1.5 p-1 font-bold uppercase tracking-wider border px-2 py-0.5 rounded-[4px] transition-all",
+                  copiedAll
+                    ? "text-green-500 border-green-500/40 bg-green-500/10"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] border-[var(--border-subtle)] hover:bg-white/5"
+                )}
+              >
+                <Icon icon={copiedAll ? "lucide:check-circle-2" : "lucide:copy"} className="w-2.5 h-2.5" />
+              </button>
+            )}
             <button
               type="button"
               onClick={loadExample}
-              className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold uppercase tracking-wider border border-[var(--border-subtle)] px-2 py-0.5 rounded-[4px] hover:bg-white/5 transition-colors"
+              className="text-[9px] p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold uppercase tracking-wider border border-[var(--border-subtle)] px-2 py-0.5 rounded-[4px] hover:bg-white/5 transition-colors"
             >
-              Example
+              <Icon icon="catppuccin:folder-examples" className="w-2.5 h-2.5" />
             </button>
           </div>
         }
@@ -268,7 +278,7 @@ export const DataPanel = memo(function DataPanel() {
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             )}
           >
-            <Database className="w-3.5 h-3.5" />
+            <Icon icon="lucide:database" className="w-3.5 h-3.5" />
             <span className="text-[9px] uppercase tracking-widest">Explorer</span>
             {view === 'explorer' && (
               <div className="absolute -bottom-[9.5px] left-0 right-0 h-0.5 bg-[var(--accent)]" />
@@ -284,7 +294,7 @@ export const DataPanel = memo(function DataPanel() {
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             )}
           >
-            <Braces className="w-3.5 h-3.5" />
+            <Icon icon="lucide:braces" className="w-3.5 h-3.5" />
             <span className="text-[9px] uppercase tracking-widest">JSON</span>
             {view === 'editor' && (
               <div className="absolute -bottom-[9.5px] left-0 right-0 h-0.5 bg-[var(--accent)]" />
@@ -337,12 +347,12 @@ export const DataPanel = memo(function DataPanel() {
             <div className="absolute bottom-3 right-3 z-10">
               {error ? (
                 <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-red-500 text-white rounded text-[9px] font-bold uppercase tracking-wider">
-                  <AlertCircle className="w-3 h-3" />
+                  <Icon icon="lucide:alert-circle" className="w-3 h-3" />
                   Invalid JSON
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-green-500 text-white rounded text-[9px] font-bold uppercase tracking-wider">
-                  <CheckCircle2 className="w-3 h-3" />
+                  <Icon icon="lucide:check-circle-2" className="w-3 h-3" />
                   Valid
                 </div>
               )}
@@ -365,13 +375,13 @@ export const DataPanel = memo(function DataPanel() {
                 onChange={(v: string) => setSearchQuery(v)}
                 className="pr-8"
               />
-              <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
+              <Icon icon="lucide:search" className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
             </div>
           </div>
           <div ref={parentRef} className="flex-1 overflow-y-auto scrollbar-hide">
             {filteredPaths.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] p-8 text-center gap-3">
-                <Database className="w-8 h-8 opacity-20" />
+                <Icon icon="lucide:database" className="w-8 h-8 opacity-20" />
                 <p className="text-[10px]">ยังไม่มีข้อมูล</p>
                 <button
                   type="button"
@@ -458,16 +468,16 @@ function ExplorerHeader({
   isCollapsed: boolean;
   onToggle: () => void;
 }) {
-  const Icon =
+  const iconName =
     label === 'Strings'
-      ? Type
+      ? 'lucide:type'
       : label === 'Numbers'
-        ? Hash
+        ? 'lucide:hash'
         : label === 'Objects'
-          ? Braces
+          ? 'lucide:braces'
           : label === 'Arrays'
-            ? List
-            : Database;
+            ? 'lucide:list'
+            : 'lucide:database';
 
   return (
     <button
@@ -476,13 +486,14 @@ function ExplorerHeader({
       onClick={onToggle}
     >
       <div className="flex items-center gap-1.5">
-        <ChevronRight
+        <Icon
+          icon="lucide:chevron-right"
           className={clsx(
             'w-3 h-3 text-[var(--text-muted)] transition-transform duration-200',
             !isCollapsed && 'rotate-90'
           )}
         />
-        <Icon className="w-3 h-3 text-[var(--text-muted)] group-hover/header:text-[var(--text-secondary)] transition-colors" />
+        <Icon icon={iconName} className="w-3 h-3 text-[var(--text-muted)] group-hover/header:text-[var(--text-secondary)] transition-colors" />
         <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.15em] group-hover/header:text-[var(--text-secondary)] transition-colors">
           {label}
         </span>
@@ -505,6 +516,7 @@ function ExplorerItem({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
@@ -528,18 +540,22 @@ function ExplorerItem({
     });
   }, [path]);
 
-  const Icon =
+  const iconName =
     type === 'string'
-      ? Type
+      ? 'lucide:type'
       : type === 'number'
-        ? Hash
+        ? 'lucide:hash'
         : type === 'object'
-          ? Braces
+          ? 'lucide:braces'
           : type === 'array'
-            ? List
-            : Database;
+            ? 'lucide:list'
+            : 'lucide:database';
 
-  const handleCopy = () => navigator.clipboard.writeText(formatBinding(path));
+  const handleCopy = () => {
+    navigator.clipboard.writeText(formatBinding(path));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div
@@ -559,7 +575,7 @@ function ExplorerItem({
       onMouseLeave={onLeave}
     >
       <div className="w-5 h-5 p-0.5 rounded-full bg-[var(--bg-widget)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] transition-all ">
-        <Icon className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors" />
+        <Icon icon={iconName} className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors" />
       </div>
 
       <div className="flex-1 min-w-0">
@@ -573,13 +589,18 @@ function ExplorerItem({
 
       <button
         type="button"
-        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-[var(--bg-surface)] rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] transition-all shrink-0"
+        className={clsx(
+          "p-1.5 rounded-md transition-all shrink-0",
+          copied
+            ? "opacity-100 text-green-500 bg-green-500/10"
+            : "opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-surface)]"
+        )}
         onClick={(e) => {
           e.stopPropagation();
           handleCopy();
         }}
       >
-        <Copy className="w-3.5 h-3.5" />
+        <Icon icon={copied ? "lucide:check-circle-2" : "lucide:copy"} className="w-3.5 h-3.5" />
       </button>
     </div>
   );
