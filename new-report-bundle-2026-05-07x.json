@@ -43,15 +43,16 @@
           {
             "id": "text-oedp523",
             "type": "text",
-            "x": 44.400000000000006,
-            "y": 13.522268931070963,
-            "width": 80,
-            "height": 7,
+            "x": 44.7,
+            "y": 13.440708089757848,
+            "width": 51.2,
+            "height": 9.659291910242153,
             "content": "123 ถนนรัชดาภิเษก แขวงดินแดง เขตดินแดง กรุงเทพฯ 10400 | โทร: 02-123-4567",
             "style": {
               "fontSize": 8,
               "fontWeight": "regular",
-              "color": "#666666"
+              "color": "#666666",
+              "lineHeight": 1.5
             }
           },
           {
@@ -87,16 +88,48 @@
           {
             "id": "line-au4mvm1",
             "type": "line",
-            "x": 5,
-            "y": 28.127725848445188,
+            "x": 5.2,
+            "y": 34.267853418986,
             "width": 200,
             "height": 1,
             "color": "#000000",
             "thickness": "0.5mm",
             "style": "solid"
+          },
+          {
+            "id": "text-8r80vjo",
+            "type": "text",
+            "x": 5.7,
+            "y": 28.16482190732603,
+            "width": 90,
+            "height": 7,
+            "content": " จำนวนพนักงานทั้งหมด: {{totalEmployees}} คน",
+            "style": {
+              "fontSize": 11,
+              "fontWeight": "bold",
+              "color": "#1a1a2e"
+            }
+          },
+          {
+            "id": "text-iy363ue",
+            "type": "text",
+            "x": 114.60000000000001,
+            "y": 27.8701316692211,
+            "width": 90,
+            "height": 7,
+            "content": "จำนวนแผนก: {{totalDepartments}} แผนก",
+            "style": {
+              "fontSize": 11,
+              "fontWeight": "bold",
+              "color": "#1a1a2e",
+              "underline": false,
+              "italic": false
+            },
+            "align": "right"
           }
         ],
-        "minHeight": "34.1mm"
+        "minHeight": "43.2mm",
+        "repeatOnEveryPage": true
       },
       "footer": {
         "id": "footer",
@@ -104,8 +137,8 @@
           {
             "id": "text-busm3vj",
             "type": "text",
-            "x": 5.300000000000001,
-            "y": 15.430296184398458,
+            "x": 6.1000000000000005,
+            "y": 7.378248115822146,
             "width": 130,
             "height": 5,
             "content": "เทคสยาม จำกัด | 123 ถ.รัชดาภิเษก ดินแดง กรุงเทพฯ 10400 | โทร: 02-123-4567 | อีเมล: hr@techsiam.co.th",
@@ -114,21 +147,6 @@
               "fontWeight": "regular",
               "color": "#999999"
             }
-          },
-          {
-            "id": "text-uyq55nc",
-            "type": "text",
-            "x": 152.3,
-            "y": 12.734921660246641,
-            "width": 50,
-            "height": 5,
-            "content": "หน้า {{page}} / {{totalPages}}",
-            "style": {
-              "fontSize": 7,
-              "fontWeight": "regular",
-              "color": "#999999"
-            },
-            "align": "right"
           },
           {
             "id": "line-mbv9o4c",
@@ -140,9 +158,23 @@
             "color": "#000000",
             "thickness": "0.5mm",
             "style": "solid"
+          },
+          {
+            "id": "page-number-u2o3ju4",
+            "type": "page-number",
+            "x": 185,
+            "y": 8.149967447916652,
+            "width": 19.400000000000006,
+            "height": 6,
+            "format": "หน้าที่ {{page}} / {{pageTotal}}",
+            "style": {
+              "fontSize": 9,
+              "fontWeight": "medium"
+            }
           }
         ],
-        "minHeight": "30mm"
+        "minHeight": "23.1mm",
+        "repeatOnEveryPage": true
       }
     },
     "pages": [
@@ -153,50 +185,17 @@
           "id": "body",
           "components": [
             {
-              "id": "text-8r80vjo",
-              "type": "text",
-              "x": 6.6000000000000005,
-              "y": 3.8907097286648167,
-              "width": 90,
-              "height": 7,
-              "content": " จำนวนพนักงานทั้งหมด: {{totalEmployees}} คน",
-              "style": {
-                "fontSize": 11,
-                "fontWeight": "bold",
-                "color": "#1a1a2e"
-              }
-            },
-            {
-              "id": "text-iy363ue",
-              "type": "text",
-              "x": 113.60000000000001,
-              "y": 2.8077296080412637,
-              "width": 90,
-              "height": 7,
-              "content": "จำนวนแผนก: {{totalDepartments}} แผนก",
-              "style": {
-                "fontSize": 11,
-                "fontWeight": "bold",
-                "color": "#1a1a2e"
-              },
-              "align": "right"
-            },
-            {
               "id": "table-3l4q69z",
               "type": "table",
-              "x": 5.6000000000000005,
-              "y": 15.182777256435813,
-              "width": 200.3,
+              "x": 5,
+              "y": 1.8295242733425496,
+              "width": 200,
               "height": 211.2047724688495,
+              "repeatHeaderOnPage": true,
+              "groupBy": "department",
+              "groupHeaderFormat": "แผนก: {{department}}",
               "dataSource": "{{employees}}",
               "columns": [
-                {
-                  "id": "col-0-1778129951320",
-                  "header": "ลำดับ",
-                  "field": "no",
-                  "width": "0.2fr",
-                  "align": "center"
-                },
                 {
                   "id": "col-1-1778129951320",
                   "header": "รหัสพนักงาน",
@@ -208,21 +207,21 @@
                   "id": "col-2-1778129951320",
                   "header": "ชื่อ-นามสกุล",
                   "field": "name",
-                  "width": "0.8fr",
+                  "width": "0.6fr",
                   "align": "left"
                 },
                 {
                   "id": "col-3-1778129951320",
                   "header": "ตำแหน่ง",
                   "field": "position",
-                  "width": "0.5fr",
+                  "width": "0.6fr",
                   "align": "left"
                 },
                 {
                   "id": "col-4-1778129951320",
                   "header": "แผนก",
                   "field": "department",
-                  "width": "0.5fr",
+                  "width": "0.6fr",
                   "align": "left"
                 },
                 {
@@ -247,10 +246,10 @@
                 "borderColor": "#e0e0e0",
                 "borderWidth": "0.5pt",
                 "cellPadding": "4pt",
-                "inset": "8pt"
+                "inset": "8pt",
+                "fillPattern": "header-only"
               },
-              "showHeader": true,
-              "repeatHeaderOnPage": false
+              "showHeader": true
             }
           ],
           "minHeight": "237mm"
@@ -742,6 +741,6 @@
       }
     ]
   },
-  "exportedAt": "2026-05-07T05:28:17.155Z",
+  "exportedAt": "2026-05-07T08:53:52.212Z",
   "version": "1.0.0"
 }

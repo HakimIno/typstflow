@@ -182,6 +182,7 @@ interface DesignerState {
   removePage: (id: string) => void;
   reorderPage: (id: string, newIndex: number) => void;
   setPageCount: (count: number) => void;
+  updatePageDataSource: (pageId: string, dataSource?: string) => void;
 
   // Layer Actions
   toggleComponentVisibility: (id: string) => void;
@@ -854,6 +855,16 @@ export const useDesignerStore = create<DesignerState>()(
 
           return { ...pushHistory(state, newSchema), activePageId: newActiveId };
         }),
+
+      updatePageDataSource: (pageId, dataSource) => {
+        set((state) => {
+          const newSchema = { ...state.schema };
+          newSchema.pages = newSchema.pages.map((p) =>
+            p.id === pageId ? { ...p, dataSource } : p
+          );
+          return pushHistory(state, newSchema);
+        });
+      },
 
       bringToFront: (id: string) =>
         set((state) => {

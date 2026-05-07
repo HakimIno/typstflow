@@ -13,6 +13,8 @@ export const qcms_white_point_sRGB: (a: number) => void;
 export const qcms_profile_is_bogus: (a: number) => number;
 export const lut_inverse_interp16: (a: number, b: number, c: number) => number;
 export const lut_interp_linear16: (a: number, b: number, c: number) => number;
+export const __wbg_tableengine_free: (a: number, b: number) => void;
+export const tableengine_resolve: (a: number, b: number, c: number, d: number) => [number, number, number];
 export const __wbg_typstbridge_free: (a: number, b: number) => void;
 export const typstbridge_clear_images: (a: number) => void;
 export const typstbridge_generate_report_typst: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
@@ -23,8 +25,6 @@ export const typstbridge_render_report_pdf: (a: number, b: number, c: number, d:
 export const typstbridge_render_report_svg: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
 export const typstbridge_render_svg: (a: number, b: number, c: number) => [number, number, number, number];
 export const typstbridge_set_today: (a: number, b: number, c: number, d: number) => void;
-export const __wbg_tableengine_free: (a: number, b: number) => void;
-export const tableengine_resolve: (a: number, b: number, c: number, d: number) => [number, number, number];
 export const __wbg_layoutengine_free: (a: number, b: number) => void;
 export const layoutengine_clear: (a: number) => void;
 export const layoutengine_find_snaps: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];

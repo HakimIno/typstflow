@@ -78,6 +78,10 @@ export const ComponentSchema = z
     width: z.number().optional(),
     height: z.number().optional(),
     name: z.string().optional(),
+    repeatHeaderOnPage: z.union([z.boolean(), z.string()]).optional(),
+    groupBy: z.string().optional(),
+    groupHeaderFormat: z.string().optional(),
+    groupHeaderStyle: z.any().optional(),
   }).passthrough());
 
 export const ZoneSchema = z.object({

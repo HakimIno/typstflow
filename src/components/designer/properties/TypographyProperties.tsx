@@ -57,7 +57,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
               onUpdateStyle({ fontWeight: style?.fontWeight === 'bold' ? 'regular' : 'bold' })
             }
             className={clsx(
-              'w-7 h-7 flex items-center justify-center border rounded-[4px] transition-all',
+              'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
               style?.fontWeight === 'bold'
                 ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                 : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
@@ -70,7 +70,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
             title="Italic"
             onClick={() => onUpdateStyle({ italic: !style?.italic })}
             className={clsx(
-              'w-7 h-7 flex items-center justify-center border rounded-[4px] transition-all',
+              'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
               style?.italic
                 ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                 : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
@@ -83,7 +83,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
             title="Underline"
             onClick={() => onUpdateStyle({ underline: !style?.underline })}
             className={clsx(
-              'w-7 h-7 flex items-center justify-center border rounded-[4px] transition-all',
+              'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
               style?.underline
                 ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                 : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'

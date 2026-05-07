@@ -67,38 +67,39 @@ export const MULTI_INVOICE_TEMPLATE: LayoutSchema = {
       ],
     },
   },
-  pages: [
-    {
-      id: 'page-detail',
-      name: 'Invoice Items',
-      body: {
-        id: 'body',
-        minHeight: '50mm',
-        components: [
-          {
-            id: 'items-table',
-            type: 'table',
-            x: 0,
-            y: 0,
-            width: 180,
-            height: 40,
-            dataSource: '{{items_list}}',
-            showHeader: true,
-            columns: [
-              { id: 'c1', header: 'No.', field: 'no', width: '30pt' },
-              { id: 'c2', header: 'Description', field: 'description', width: '1fr' },
-              { id: 'c3', header: 'Qty', field: 'qty', width: '40pt' },
-              { id: 'c4', header: 'Price', field: 'unitPrice', width: '60pt' },
-              { id: 'c5', header: 'Amount', field: 'amount', width: '60pt' },
-            ],
-            style: {},
-            repeatHeaderOnPage: true,
-          },
-        ],
+    pages: [
+      {
+        id: 'page-detail',
+        name: 'Invoice Items',
+        body: {
+          id: 'body',
+          minHeight: '50mm',
+          components: [
+            {
+              id: 'items-table',
+              type: 'table',
+              x: 0,
+              y: 0,
+              width: 180,
+              height: 40,
+              dataSource: '{{items_list}}',
+              showHeader: true,
+              columns: [
+                { id: 'c1', header: 'No.', field: 'no', width: '30pt' },
+                { id: 'c2', header: 'Description', field: 'description', width: '1fr' },
+                { id: 'c3', header: 'Qty', field: 'qty', width: '40pt' },
+                { id: 'c4', header: 'Price', field: 'unitPrice', width: '60pt' },
+                { id: 'c5', header: 'Amount', field: 'amount', width: '60pt' },
+              ],
+              style: {},
+              repeatHeaderOnPage: true,
+            },
+          ],
+        },
       },
-    },
-  ],
-  batchDataSource: 'items',
+    ],
+    groups: [],
+    batchDataSource: 'items',
   variables: [],
   dataSchema: [],
   metadata: {

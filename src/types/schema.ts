@@ -39,6 +39,7 @@ export interface PageDefinition {
   id: string;
   name: string;
   body: Zone;
+  dataSource?: string; // New: Path to the array to iterate over for this page
 }
 
 export interface PageConfig {
@@ -119,6 +120,7 @@ export interface TextStyle {
   lineHeight?: number; // scale: 1.2
   letterSpacing?: string; // e.g. "0.05em"
   justify?: boolean;
+  background?: string; // hex
 }
 
 // --- Stroke Configuration (maps to Typst stroke dictionary) ---
@@ -186,8 +188,11 @@ export interface TableComponent extends BaseComponent {
   columns: TableColumn[];
   style: TableStyle;
   showHeader: boolean;
-  repeatHeaderOnPage: boolean;
+  repeatHeaderOnPage: boolean | string; // Can be a dynamic binding
   isStatic?: boolean; // If true, the table does NOT loop over dataSource
+  groupBy?: string; // e.g. "department"
+  groupHeaderFormat?: string; // e.g. "แผนก {{department}}"
+  groupHeaderStyle?: TextStyle;
   summaryRows?: SummaryRow[];
   // --- New: Structured rows for multi-row header/footer ---
   headerRows?: TableRow[]; // structured header rows

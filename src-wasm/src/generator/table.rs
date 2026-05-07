@@ -77,7 +77,18 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
     t.push_str(&format!("#table(\n  {},\n", table_args.join(",\n  ")));
 
     // ── 2. HEADERS ────────────────────────────────────────────────────────────
-    let repeat = c.repeat_header_on_page.unwrap_or(true);
+    let mut repeat = true;
+    if let Some(repeat_val) = &c.repeat_header_on_page {
+        match repeat_val {
+            Value::Bool(b) => repeat = b.clone(),
+            Value::String(s) => {
+                let resolved = resolve_binding_scoped(s.as_str(), local, global);
+                repeat = resolved != "false" && resolved != "0" && !resolved.is_empty();
+            },
+            _ => {}
+        }
+    }
+
     if let Some(header_rows) = &c.header_rows {
         t.push_str(&format!("  table.header(repeat: {},\n", repeat));
         for row in header_rows {
@@ -149,7 +160,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                         if let Some(fw) = &s.font_weight { text_args.push(format!("weight: \"{}\"", fw)); }
                         if let Some(c) = &s.color { text_args.push(format!("fill: {}", format_color(c))); }
                         if !text_args.is_empty() {
-                            inner_content = format!("[#text({})[{}]]", text_args.join(", "), inner_content);
+                            inner_content = format!("#text({})[{}]", text_args.join(", "), inner_content);
                         }
                     }
 
@@ -189,7 +200,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                     if let Some(fw) = &s.font_weight { text_args.push(format!("weight: \"{}\"", fw)); }
                     if let Some(c) = &s.color { text_args.push(format!("fill: {}", format_color(c))); }
                     if !text_args.is_empty() {
-                        inner_content = format!("[#text({})[{}]]", text_args.join(", "), inner_content);
+                        inner_content = format!("#text({})[{}]", text_args.join(", "), inner_content);
                     }
                 }
 
@@ -217,8 +228,69 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
             .or_else(|| resolve_path(&path, global));
         if let Some(Value::Array(arr)) = arr_opt {
             let arr = arr.clone();
-            for item in &arr {
-                render_item(item, &mut t);
+            if let Some(group_field) = &c.group_by {
+                let mut group_map: Vec<(String, Vec<Value>)> = Vec::new();
+                for item in &arr {
+                    let key = resolve_path(group_field, item)
+                        .map(|v| match v {
+                            Value::String(s) => s.clone(),
+                            _ => v.to_string(),
+                        })
+                        .unwrap_or_default();
+                    
+                    if let Some(entry) = group_map.iter_mut().find(|(k, _)| k == &key) {
+                        entry.1.push((*item).clone());
+                    } else {
+                        group_map.push((key, vec![(*item).clone()]));
+                    }
+                }
+                
+                let total_cols = if let Some(dr) = &c.detail_rows {
+                    dr.first().map(|r| r.cells.len()).unwrap_or(cols.len())
+                } else {
+                    cols.len()
+                };
+                
+                for (_, group_items) in &group_map {
+                    if group_items.is_empty() { continue; }
+                    let first_item = &group_items[0];
+                    let default_format = format!("{{{{{}}}}}", group_field);
+                    let format_str = c.group_header_format.as_deref().unwrap_or(&default_format);
+                    let header_text = resolve_binding_scoped(format_str, first_item, global);
+                    
+                    let mut cell_args = format!("colspan: {}", total_cols);
+                    let mut inner_content = escape_typst(&header_text);
+                    
+                    if let Some(Value::Object(s)) = &c.group_header_style {
+                        let mut text_args = Vec::new();
+                        if let Some(Value::Number(fs)) = s.get("fontSize") { text_args.push(format!("size: {}pt", fs)); }
+                        if let Some(Value::String(fw)) = s.get("fontWeight") { text_args.push(format!("weight: \"{}\"", fw)); }
+                        if let Some(Value::String(c)) = s.get("color") { text_args.push(format!("fill: {}", format_color(c))); }
+                        if !text_args.is_empty() {
+                            inner_content = format!("#text({})[{}]", text_args.join(", "), inner_content);
+                        }
+                        
+                        if let Some(Value::String(bg)) = s.get("background") {
+                            cell_args.push_str(&format!(", fill: {}", format_color(bg)));
+                        }
+                        if let Some(Value::String(align)) = s.get("align") {
+                            cell_args.push_str(&format!(", align: {}", align));
+                        }
+                    } else {
+                        cell_args.push_str(&format!(", fill: {}, align: left", format_color("#f1f5f9")));
+                        inner_content = format!("#text(weight: \"bold\")[{}]", inner_content);
+                    }
+                    
+                    t.push_str(&format!("  table.cell({})[{}],\n", cell_args, inner_content));
+                    
+                    for item in group_items {
+                        render_item(item, &mut t);
+                    }
+                }
+            } else {
+                for item in &arr {
+                    render_item(item, &mut t);
+                }
             }
         }
     }

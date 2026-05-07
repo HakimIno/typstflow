@@ -12,8 +12,22 @@ import type {
   TextComponent,
 } from '@/types/schema';
 import { clsx } from 'clsx';
-import { FileDown, FileText, Layers, Trash2 } from 'lucide-react';
-import { memo, useMemo } from 'react';
+import {
+  FileDown,
+  FileText,
+  Layers,
+  Trash2,
+  Settings,
+  Layout,
+  Palette,
+  Database,
+  Type,
+  Maximize,
+  AlignLeft,
+  Info,
+  RefreshCw
+} from 'lucide-react';
+import { memo, useMemo, useState } from 'react';
 import { DesignerInput } from '../shared/DesignerInput';
 import { TablePropertiesPanel } from './TablePropertiesPanel';
 import { TextEditor } from './TextEditor';
@@ -38,19 +52,29 @@ const isBarcode = (c: ComponentNode): c is BarcodeComponent =>
   c.type === 'barcode' || c.type === 'qr';
 const isPageNumber = (c: ComponentNode): c is PageNumberComponent => c.type === 'page-number';
 
+type TabType = 'design' | 'layout' | 'data' | 'settings';
+
 export const PropertiesPanel = memo(function PropertiesPanel() {
+  const [activeTab, setActiveTab] = useState<TabType>('design');
+
   const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
   const selectedGroupId = useDesignerStore((state) => state.selectedGroupId);
   const zones = useDesignerStore((state) => state.schema.zones);
   const pages = useDesignerStore((state) => state.schema.pages);
   const fullSchema = useDesignerStore((state) => state.schema);
-  const selectedZone = useDesignerStore((state) => state.selectedZone);
   const sampleData = useDesignerStore((state) => state.sampleData);
+  const activePageId = useDesignerStore((state) => state.activePageId);
 
   const updateSchema = useDesignerStore((state) => state.updateSchema);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
   const updateZone = useDesignerStore((state) => state.updateZone);
   const removeComponent = useDesignerStore((state) => state.removeComponent);
+  const updatePageDataSource = useDesignerStore((state) => state.updatePageDataSource);
+
+  const activePage = useMemo(
+    () => pages.find((p) => p.id === activePageId) ?? pages[0],
+    [pages, activePageId]
+  );
 
   // Find first selected component across all zones and pages
   const selectedComponent = useMemo(() => {
@@ -72,148 +96,159 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
     return null;
   }, [selectedComponentIds, zones, pages]);
 
+  const handleNumericUpdate = (key: string, value: string) => {
+    const num = Number.parseFloat(value);
+    if (!Number.isNaN(num) && selectedComponent) {
+      updateComponent(selectedComponent.id, { [key]: num });
+    }
+  };
+
+  const handleStyleUpdate = (updates: any) => {
+    if (!selectedComponent) return;
+    const currentStyle = (selectedComponent as any).style || {};
+    updateComponent(selectedComponent.id, {
+      style: { ...currentStyle, ...updates },
+    } as any);
+  };
+
+  // ---- 1. GROUP SELECTION VIEW ----
   if (selectedGroupId) {
     return (
-      <div className="h-full flex flex-col bg-[var(--bg-surface)]">
-        <div className="h-8 min-h-[32px] bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
-          <span className="text-[11px] font-bold">Group Settings</span>
+      <div className="h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)]">
+        <div className="h-10 bg-white/[0.02] border-b border-[var(--border-default)] flex items-center px-4 gap-2">
+          <Layers className="w-4 h-4 text-[var(--accent)]" />
+          <span className="text-[12px] font-bold tracking-tight">Group Settings</span>
         </div>
-        <div className="flex-1 overflow-auto border-l border-[var(--border-default)]">
+        <div className="flex-1 overflow-auto p-2">
           <GroupProperties groupId={selectedGroupId} />
         </div>
       </div>
     );
   }
 
+  // ---- 2. REPORT SETTINGS VIEW (NO SELECTION) ----
   if (!selectedComponent) {
     return (
-      <div className="h-full flex flex-col bg-[var(--bg-surface)]">
-        <div className="h-8 min-h-[32px] bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
-          <span className="text-[11px] font-bold">Report Settings</span>
+      <div className="h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)]">
+        <div className="h-10 bg-white/[0.02] border-b border-[var(--border-default)] flex items-center px-4 gap-2">
+          <Settings className="w-4 h-4 text-[var(--accent)]" />
+          <span className="text-[12px] font-bold tracking-tight">Report Configuration</span>
         </div>
-        <div className="flex-1 overflow-auto border-l border-[var(--border-default)]">
-          <section>
-            <SectionHeader label="Page Configuration" />
-            <PropertyRow label="Paper Size">
-              <select
-                value={fullSchema.page.size}
-                onChange={(e) =>
-                  updateSchema({ page: { ...fullSchema.page, size: e.target.value as any } })
-                }
-                className="pro-input h-6 px-1 w-full text-[11px] outline-none"
-              >
-                <option value="A4" className="bg-[var(--bg-surface)]">
-                  A4
-                </option>
-                <option value="A5" className="bg-[var(--bg-surface)]">
-                  A5
-                </option>
-                <option value="Letter" className="bg-[var(--bg-surface)]">
-                  Letter
-                </option>
-                <option value="Legal" className="bg-[var(--bg-surface)]">
-                  Legal
-                </option>
-              </select>
-            </PropertyRow>
-            <PropertyRow label="Orientation">
-              <select
-                value={fullSchema.page.orientation}
-                onChange={(e) =>
-                  updateSchema({
-                    page: { ...fullSchema.page, orientation: e.target.value as any },
-                  })
-                }
-                className="pro-input h-6 px-1 w-full text-[11px] outline-none"
-              >
-                <option value="portrait" className="bg-[var(--bg-surface)]">
-                  Portrait
-                </option>
-                <option value="landscape" className="bg-[var(--bg-surface)]">
-                  Landscape
-                </option>
-              </select>
-            </PropertyRow>
-            <PropertyRow label="Total Pages">
-              <div className="flex-1 flex items-center gap-2 overflow-hidden">
-                <DesignerInput
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={pages.length}
-                  onChange={(v) =>
-                    useDesignerStore.getState().setPageCount(Number.parseInt(v) || 1)
-                  }
-                  mono
-                />
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => useDesignerStore.getState().setPageCount(pages.length - 1)}
-                    className="w-6 h-6 flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] border border-[var(--border-default)] rounded-full text-[12px] font-bold text-[var(--text-muted)]"
+
+        <div className="flex-1 overflow-auto">
+          <div className="space-y-0">
+            <section className="border-b border-[var(--border-default)]">
+              <SectionHeader label="Page Layout" />
+              <div className="space-y-0">
+                <PropertyRow label="Paper Size">
+                  <select
+                    value={fullSchema.page.size}
+                    onChange={(e) =>
+                      updateSchema({ page: { ...fullSchema.page, size: e.target.value as any } })
+                    }
+                    className="pro-input h-6 px-1 w-full text-[10px] outline-none rounded-[4px] bg-[var(--bg-widget)] border-[var(--border-default)]"
                   >
-                    -
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => useDesignerStore.getState().setPageCount(pages.length + 1)}
-                    className="w-6 h-6 flex items-center justify-center bg-[var(--accent)] hover:bg-[var(--accent)]/80 text-white rounded-full text-[12px] font-bold"
+                    <option value="A4">A4</option>
+                    <option value="A5">A5</option>
+                    <option value="Letter">Letter</option>
+                    <option value="Legal">Legal</option>
+                  </select>
+                </PropertyRow>
+                <PropertyRow label="Orientation">
+                  <select
+                    value={fullSchema.page.orientation}
+                    onChange={(e) =>
+                      updateSchema({
+                        page: { ...fullSchema.page, orientation: e.target.value as any },
+                      })
+                    }
+                    className="pro-input h-6 px-1 w-full text-[10px] outline-none rounded-[4px] bg-[var(--bg-widget)] border-[var(--border-default)]"
                   >
-                    +
-                  </button>
-                </div>
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                  </select>
+                </PropertyRow>
+                <PropertyRow label="Page Count">
+                  <DesignerInput
+                    type="number"
+                    min={1}
+                    value={pages.length}
+                    onChange={(v) =>
+                      useDesignerStore.getState().setPageCount(Number.parseInt(v) || 1)
+                    }
+                    mono
+                  />
+                </PropertyRow>
               </div>
-            </PropertyRow>
-          </section>
-          <section>
-            <SectionHeader label="Margins" />
-            {(['top', 'bottom', 'left', 'right'] as const).map((side) => (
-              <PropertyRow key={side} label={side.charAt(0).toUpperCase() + side.slice(1)}>
-                <DesignerInput
-                  type="text"
-                  value={fullSchema.page.margin[side]}
-                  onChange={(v) =>
-                    updateSchema({
-                      page: {
-                        ...fullSchema.page,
-                        margin: { ...fullSchema.page.margin, [side]: v },
-                      },
-                    })
-                  }
-                  mono
-                  placeholder="15mm"
-                />
-              </PropertyRow>
-            ))}
-          </section>
+            </section>
+
+            <section className="border-b border-[var(--border-default)]">
+              <SectionHeader label="Page Margins" />
+              <div className="grid grid-cols-2">
+                {(['top', 'bottom', 'left', 'right'] as const).map((side) => (
+                  <PropertyRow key={side} label={side.charAt(0).toUpperCase()}>
+                    <DesignerInput
+                      type="text"
+                      value={fullSchema.page.margin[side]}
+                      onChange={(v) =>
+                        updateSchema({
+                          page: {
+                            ...fullSchema.page,
+                            margin: { ...fullSchema.page.margin, [side]: v },
+                          },
+                        })
+                      }
+                      mono
+                      placeholder="15mm"
+                    />
+                  </PropertyRow>
+                ))}
+              </div>
+            </section>
+
+            {activePage && (
+              <section className="border-b border-[var(--border-default)]">
+                <SectionHeader label="Batch Data Source" />
+                <div className="p-2 space-y-2">
+                  <DesignerInput
+                    value={activePage.dataSource ?? ''}
+                    onChange={(v) => updatePageDataSource(activePage.id, v.trim() || undefined)}
+                    placeholder="e.g. {{invoices}}"
+                    mono
+                  />
+                </div>
+              </section>
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
-  // Handle Multiple Selection View
+  // ---- 3. MULTIPLE SELECTION VIEW ----
   if (selectedComponentIds.length > 1) {
     return (
-      <div className="h-full flex flex-col bg-[var(--bg-surface)]">
-        <div className="h-8 bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
-          <span className="text-[11px] font-bold">Group Selection</span>
+      <div className="h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)]">
+        <div className="h-10 bg-white/[0.02] border-b border-[var(--border-default)] flex items-center px-4 gap-2">
+          <Layers className="w-4 h-4 text-[var(--accent)]" />
+          <span className="text-[12px] font-bold tracking-tight">Bulk Edit ({selectedComponentIds.length})</span>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-12 h-12 rounded-full bg-[var(--accent-glow)] flex items-center justify-center mb-4 border border-[var(--border-accent)]">
-            <Layers className="w-6 h-6 text-[var(--accent)]" />
+          <div className="w-14 h-14 rounded-2xl bg-[var(--accent-glow)] flex items-center justify-center mb-4 border border-[var(--border-accent)] shadow-lg shadow-[var(--accent)]/10 rotate-3">
+            <Layers className="w-7 h-7 text-[var(--accent)]" />
           </div>
-          <h3 className="text-[13px] font-bold text-[var(--text-primary)] mb-1">
-            {selectedComponentIds.length} objects selected
+          <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-1">
+            Multiple Selection
           </h3>
-          <p className="text-[10px] text-[var(--text-muted)] mb-6">
-            Multiple items are currently selected. Actions will apply to all items in the selection.
+          <p className="text-[11px] text-[var(--text-muted)] mb-8 max-w-[180px] leading-relaxed">
+            Editing properties for multiple items is coming soon. Currently, you can only perform bulk deletion.
           </p>
           <button
             type="button"
             onClick={() => {
               for (const id of selectedComponentIds) removeComponent(id);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/20 rounded transition-all text-[11px] font-bold uppercase tracking-wider"
+            className="flex items-center gap-2 px-6 py-2.5 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/20 rounded-lg transition-all text-[11px] font-bold uppercase tracking-wider shadow-sm"
           >
             <Trash2 className="w-4 h-4" />
             Delete All Selected
@@ -223,321 +258,323 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
     );
   }
 
-  const handleNumericUpdate = (key: string, value: string) => {
-    const num = Number.parseFloat(value);
-    if (!Number.isNaN(num)) {
-      updateComponent(selectedComponent.id, { [key]: num });
-    }
-  };
-
-  const handleStyleUpdate = (updates: any) => {
-    const currentStyle = (selectedComponent as any).style || {};
-    updateComponent(selectedComponent.id, {
-      style: { ...currentStyle, ...updates },
-    } as any);
-  };
-
-  return (
-    <div className="h-full flex flex-col bg-[var(--bg-surface)]">
-      <div className="h-8 min-h-[32px] bg-white/[0.02] text-[var(--text-primary)] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
-        <span className="text-[11px] font-bold">Properties Inspector</span>
-      </div>
-
-      <div className="flex-1 overflow-auto border-l border-[var(--border-default)]">
-        <section>
-          <SectionHeader label="Identification" />
-          <PropertyRow label="Object ID">
-            <span className="text-[11px] font-mono text-[var(--text-muted)] truncate">
-              {selectedComponent.id}
-            </span>
-          </PropertyRow>
-          <PropertyRow label="Type">
-            <span className="text-[11px] font-semibold text-[var(--accent)]">
-              {selectedComponent.type}
-            </span>
-          </PropertyRow>
-        </section>
-
-        <section>
-          <SectionHeader label="Content & Binding" />
-          {isText(selectedComponent) && (
-            <div className="flex flex-col border-b border-[var(--border-default)]">
-              <div className="px-3 py-1 flex items-center justify-between text-[10px] bg-white/[0.01]">
-                <span className="font-semibold text-[var(--text-secondary)]">Text Content</span>
-                <VariablePicker
-                  sampleData={sampleData}
-                  onSelect={(_path, binding) => {
-                    const currentContent = selectedComponent.content || '';
-                    updateComponent(selectedComponent.id, { content: currentContent + binding });
-                  }}
+  // ---- 4. SINGLE COMPONENT VIEW (MAIN INSPECTOR) ----
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'design':
+        return (
+          <div className="space-y-1 animate-in fade-in duration-200">
+            <section className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
+              {(isText(selectedComponent) || isTable(selectedComponent)) && (
+                <TypographyProperties
+                  style={(selectedComponent as any).style}
+                  onUpdateStyle={handleStyleUpdate}
                 />
-              </div>
-              <TextEditor
-                value={selectedComponent.content || ''}
-                onChange={(value) => updateComponent(selectedComponent.id, { content: value })}
-                sampleData={sampleData}
-                textStyle={selectedComponent.style}
-                placeholder="Type static text or {{binding}}..."
-                className="bg-transparent"
+              )}
+              {isLine(selectedComponent) && (
+                <LineProperties
+                  component={selectedComponent}
+                  onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
+                />
+              )}
+              {isSummaryBox(selectedComponent) && (
+                <SummaryBoxProperties
+                  component={selectedComponent}
+                  onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
+                />
+              )}
+            </section>
+
+            <section className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
+              <AlignmentProperties
+                align={selectedComponent.align || 'left'}
+                onUpdateAlign={(align) => {
+                  updateComponent(selectedComponent.id, { align });
+                  if (align === 'justify' && isText(selectedComponent)) {
+                    handleStyleUpdate({ justify: true });
+                  } else if (isText(selectedComponent)) {
+                    handleStyleUpdate({ justify: false });
+                  }
+                }}
               />
               {(() => {
-                const hasBinding = (selectedComponent.content || '').includes('{{');
+                const hasBinding = (isText(selectedComponent) && (selectedComponent.content || '').includes('{{'));
                 if (!hasBinding) return null;
 
                 return (
-                  <div className="flex flex-col border-t border-[var(--border-default)]">
-                    <SectionHeader label="Display Format" />
-                    <FormatPicker
-                      currentValue={selectedComponent.format || 'text'}
-                      valueType={(() => {
-                        const match = (selectedComponent.content || '').match(/\{\{([^}]+)\}\}/);
-                        if (match) return getValueType(sampleData, match[1].trim());
-                        return undefined;
-                      })()}
-                      onSelect={(format) => updateComponent(selectedComponent.id, { format })}
-                    />
+                  <div className="border-t border-[var(--border-default)]">
+                    <SectionHeader label="Format Settings" />
+                    <div className="p-1.5">
+                      <FormatPicker
+                        currentValue={selectedComponent.format || 'text'}
+                        valueType={(() => {
+                          const match = (selectedComponent.content || '').match(/\{\{([^}]+)\}\}/);
+                          if (match) return getValueType(sampleData, match[1].trim());
+                          return undefined;
+                        })()}
+                        onSelect={(format) => updateComponent(selectedComponent.id, { format })}
+                      />
+                    </div>
                   </div>
                 );
               })()}
-            </div>
-          )}
-          {isTable(selectedComponent) && (
-            <div className="space-y-0 text-[10px]">
-              <PropertyRow label="Data Source">
-                <DesignerInput
-                  type="text"
-                  value={selectedComponent.dataSource || ''}
-                  onChange={(v) => updateComponent(selectedComponent.id, { dataSource: v })}
-                  mono
-                  placeholder="{{path.to.array}}"
-                />
-              </PropertyRow>
-              <PropertyRow label="Header Rows">
-                <DesignerInput
-                  type="number"
-                  min={0}
-                  max={5}
-                  value={selectedComponent.style?.headerRows ?? 1}
-                  onChange={(v) => handleStyleUpdate({ headerRows: Number.parseInt(v) || 0 })}
-                />
-              </PropertyRow>
-            </div>
-          )}
-          {isBarcode(selectedComponent) && (
-            <PropertyRow label="Value">
-              <DesignerInput
-                type="text"
-                value={(selectedComponent as BarcodeComponent | QRComponent).value || ''}
-                onChange={(v) => updateComponent(selectedComponent.id, { value: v })}
-                mono
-                placeholder="{{item.id}}"
+            </section>
+
+            {isTable(selectedComponent) && (
+              <div className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
+                <TablePropertiesPanel component={selectedComponent} />
+              </div>
+            )}
+          </div>
+        );
+
+      case 'layout':
+        return (
+          <div className="space-y-1 animate-in fade-in duration-200">
+            <section className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
+              <GeometryProperties
+                x={selectedComponent.x || 0}
+                y={selectedComponent.y || 0}
+                width={selectedComponent.width || 0}
+                height={selectedComponent.height || 0}
+                onUpdate={handleNumericUpdate}
               />
-            </PropertyRow>
-          )}
-          {isImage(selectedComponent) && (
-            <ImageProperties
-              component={selectedComponent}
-              onUpdate={(updates) => updateComponent(selectedComponent.id, updates as any)}
-            />
-          )}
-          {isPageNumber(selectedComponent) && (
-            <div className="flex flex-col border-b border-[var(--border-default)]">
-              <div className="px-3 py-1 flex items-center justify-between text-[10px] bg-white/[0.01]">
-                <span className="font-semibold text-[var(--text-secondary)]">Numbering Format</span>
-                <div className="text-[9px] text-[var(--text-muted)] italic">
-                  Use {'{{page}}'} and {'{{pageTotal}}'}
+            </section>
+
+            <section className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
+              <SectionHeader label="Page Flow" />
+              <div className="p-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateComponent(selectedComponent.id, {
+                      pageBreakBefore: !selectedComponent.pageBreakBefore,
+                    })
+                  }
+                  className={clsx(
+                    'flex items-center justify-center gap-2 px-2 py-1 text-[9px] font-bold rounded-[4px] transition-all w-full border uppercase tracking-widest',
+                    selectedComponent.pageBreakBefore
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                      : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-default)] hover:bg-[var(--bg-hover)]'
+                  )}
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  {selectedComponent.pageBreakBefore ? 'Page Break Active' : 'Auto Flow'}
+                </button>
+              </div>
+            </section>
+          </div>
+        );
+
+      case 'data':
+        return (
+          <div className="space-y-1 animate-in fade-in duration-200">
+            <section className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
+              <div className="px-2 py-1.5 border-b border-[var(--border-default)] flex items-center justify-between bg-white/[0.01]">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Content & Data</span>
+                <VariablePicker
+                  sampleData={sampleData}
+                  onSelect={(_path, binding) => {
+                    if (isText(selectedComponent)) {
+                      const currentContent = selectedComponent.content || '';
+                      updateComponent(selectedComponent.id, { content: currentContent + binding });
+                    } else if (isTable(selectedComponent)) {
+                      updateComponent(selectedComponent.id, { dataSource: binding });
+                    } else if (isBarcode(selectedComponent)) {
+                      updateComponent(selectedComponent.id, { value: binding });
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="p-2 space-y-2">
+                {isText(selectedComponent) && (
+                  <TextEditor
+                    value={selectedComponent.content || ''}
+                    onChange={(value) => updateComponent(selectedComponent.id, { content: value })}
+                    sampleData={sampleData}
+                    textStyle={selectedComponent.style}
+                    placeholder="Type static text or {{binding}}..."
+                    className="rounded-[4px] border border-[var(--border-default)] bg-[var(--bg-surface)] min-h-[80px] text-[10px]"
+                  />
+                )}
+
+                {isTable(selectedComponent) && (
+                  <PropertyRow label="Data Source">
+                    <DesignerInput
+                      type="text"
+                      value={selectedComponent.dataSource || ''}
+                      onChange={(v) => updateComponent(selectedComponent.id, { dataSource: v })}
+                      mono
+                      placeholder="{{path.to.array}}"
+                    />
+                  </PropertyRow>
+                )}
+
+                {isBarcode(selectedComponent) && (
+                  <PropertyRow label="Code Value">
+                    <DesignerInput
+                      type="text"
+                      value={(selectedComponent as BarcodeComponent | QRComponent).value || ''}
+                      onChange={(v) => updateComponent(selectedComponent.id, { value: v })}
+                      mono
+                      placeholder="{{item.id}}"
+                    />
+                  </PropertyRow>
+                )}
+
+                {isImage(selectedComponent) && (
+                  <ImageProperties
+                    component={selectedComponent}
+                    onUpdate={(updates) => updateComponent(selectedComponent.id, updates as any)}
+                  />
+                )}
+
+                {isPageNumber(selectedComponent) && (
+                  <div className="space-y-1">
+                    <p className="text-[8px] text-[var(--text-muted)] mb-1 uppercase font-bold">Format: {'{{page}}'} / {'{{pageTotal}}'}</p>
+                    <DesignerInput
+                      type="text"
+                      value={selectedComponent.format || ''}
+                      onChange={(v) => updateComponent(selectedComponent.id, { format: v })}
+                      placeholder="หน้าที่ {{page}} / {{pageTotal}}"
+                    />
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        );
+
+      case 'settings':
+        return (
+          <div className="space-y-1 animate-in fade-in duration-200">
+            <section className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
+              <SectionHeader label="System Settings" />
+              <div className="space-y-0">
+                <PropertyRow label="Object ID">
+                  <span className="text-[9px] font-mono text-[var(--text-muted)] bg-black/10 px-1 py-0.5 rounded-[2px] border border-[var(--border-default)] truncate max-w-[120px] block">
+                    {selectedComponent.id}
+                  </span>
+                </PropertyRow>
+                <PropertyRow label="Type">
+                  <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-widest">
+                    {selectedComponent.type}
+                  </span>
+                </PropertyRow>
+              </div>
+            </section>
+
+            {/* <section className="bg-[var(--bg-widget)] rounded border border-[var(--border-default)] overflow-hidden">
+              <SectionHeader label="Zone Configuration" />
+              <div className="p-2 space-y-0">
+                {(selectedZone === 'header' || selectedZone === 'footer') && (
+                  <PropertyRow label="Global Repeat">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const zone = fullSchema.zones[selectedZone];
+                        const newValue = !zone.repeatOnEveryPage;
+                        updateZone(selectedZone, {
+                          repeatOnEveryPage: newValue,
+                          showOnFirstPageOnly: false,
+                          showOnLastPageOnly: false,
+                        });
+                      }}
+                      className={clsx(
+                        'flex items-center justify-center gap-2 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all w-full border',
+                        fullSchema.zones[selectedZone].repeatOnEveryPage
+                          ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                          : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-default)]'
+                      )}
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      {fullSchema.zones[selectedZone].repeatOnEveryPage ? 'Repeats on Every Page' : 'Static (One Page Only)'}
+                    </button>
+                  </PropertyRow>
+                )}
+                <div className="p-2 rounded bg-blue-500/5 border border-blue-500/10 flex gap-2 mt-2">
+                  <Info className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
+                  <p className="text-[9px] text-blue-300/80 leading-relaxed">
+                    Components in the <strong>{selectedZone}</strong> zone are managed according to the zone settings.
+                  </p>
                 </div>
               </div>
-              <div className="px-3 pb-2">
-                <DesignerInput
-                  type="text"
-                  value={selectedComponent.format || ''}
-                  onChange={(v) => updateComponent(selectedComponent.id, { format: v })}
-                  placeholder="หน้าที่ {{page}} / {{pageTotal}}"
-                  className="w-full"
-                />
-              </div>
-            </div>
-          )}
-          {isLine(selectedComponent) && (
-            <LineProperties
-              component={selectedComponent}
-              onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
-            />
-          )}
-          {isSummaryBox(selectedComponent) && (
-            <SummaryBoxProperties
-              component={selectedComponent}
-              onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
-            />
-          )}
-        </section>
+            </section> */}
+          </div>
+        );
+    }
+  };
 
-        {(isText(selectedComponent) || isTable(selectedComponent)) && (
-          <TypographyProperties
-            style={(selectedComponent as any).style}
-            onUpdateStyle={handleStyleUpdate}
-          />
-        )}
-
-        {isTable(selectedComponent) && <TablePropertiesPanel component={selectedComponent} />}
-
-        <AlignmentProperties
-          align={selectedComponent.align || 'left'}
-          onUpdateAlign={(align) => {
-            updateComponent(selectedComponent.id, { align });
-            if (align === 'justify' && isText(selectedComponent)) {
-              handleStyleUpdate({ justify: true });
-            } else if (isText(selectedComponent)) {
-              handleStyleUpdate({ justify: false });
-            }
-          }}
-        />
-
-        <GeometryProperties
-          x={selectedComponent.x || 0}
-          y={selectedComponent.y || 0}
-          width={selectedComponent.width || 0}
-          height={selectedComponent.height || 0}
-          onUpdate={handleNumericUpdate}
-        />
-
-        <section>
-          <SectionHeader label="Page Management" />
-          <PropertyRow label="Page Break Before">
-            <button
-              type="button"
-              onClick={() =>
-                updateComponent(selectedComponent.id, {
-                  pageBreakBefore: !selectedComponent.pageBreakBefore,
-                })
-              }
-              className={clsx(
-                'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
-                selectedComponent.pageBreakBefore
-                  ? 'bg-[var(--accent)] text-white font-medium'
-                  : 'bg-white/[0.04] text-[var(--text-secondary)] font-medium hover:bg-white/[0.08]'
-              )}
-            >
-              <FileDown className="w-3 h-3" />
-              {selectedComponent.pageBreakBefore ? 'Enabled' : 'Disabled'}
-            </button>
-          </PropertyRow>
-        </section>
-
-        <section>
-          <SectionHeader label="Zone Settings" />
-          {selectedZone === 'header' && (
-            <>
-              <PropertyRow label="Repeat on Every Page">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const headerZone = fullSchema.zones.header;
-                    const newValue = !headerZone.repeatOnEveryPage;
-                    updateZone('header', {
-                      repeatOnEveryPage: newValue,
-                      showOnFirstPageOnly: false, // Reset other flags if repeating
-                    });
-                  }}
-                  className={clsx(
-                    'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
-                    fullSchema.zones.header.repeatOnEveryPage
-                      ? 'bg-[var(--accent)] text-white'
-                      : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                  )}
-                >
-                  <Layers className="w-3 h-3" />
-                  {fullSchema.zones.header.repeatOnEveryPage ? 'Enabled' : 'Disabled'}
-                </button>
-              </PropertyRow>
-              {!fullSchema.zones.header.repeatOnEveryPage && (
-                <PropertyRow label="Visibility">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const headerZone = fullSchema.zones.header;
-                      const newValue = !headerZone.showOnFirstPageOnly;
-                      updateZone('header', { showOnFirstPageOnly: newValue });
-                    }}
-                    className={clsx(
-                      'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
-                      fullSchema.zones.header.showOnFirstPageOnly
-                        ? 'bg-[var(--accent)] text-white'
-                        : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                    )}
-                  >
-                    <FileText className="w-3 h-3" />
-                    {fullSchema.zones.header.showOnFirstPageOnly
-                      ? 'First Page Only'
-                      : 'First Page Only (Default)'}
-                  </button>
-                </PropertyRow>
-              )}
-            </>
-          )}
-          {selectedZone === 'footer' && (
-            <>
-              <PropertyRow label="Repeat on Every Page">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const footerZone = fullSchema.zones.footer;
-                    const newValue = !footerZone.repeatOnEveryPage;
-                    updateZone('footer', {
-                      repeatOnEveryPage: newValue,
-                      showOnLastPageOnly: false, // Reset other flags if repeating
-                    });
-                  }}
-                  className={clsx(
-                    'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
-                    fullSchema.zones.footer.repeatOnEveryPage
-                      ? 'bg-[var(--accent)] text-white'
-                      : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                  )}
-                >
-                  <Layers className="w-3 h-3" />
-                  {fullSchema.zones.footer.repeatOnEveryPage ? 'Enabled' : 'Disabled'}
-                </button>
-              </PropertyRow>
-              {!fullSchema.zones.footer.repeatOnEveryPage && (
-                <PropertyRow label="Visibility">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const footerZone = fullSchema.zones.footer;
-                      const newValue = !footerZone.showOnLastPageOnly;
-                      updateZone('footer', { showOnLastPageOnly: newValue });
-                    }}
-                    className={clsx(
-                      'flex items-center gap-1.5 px-2 py-1 text-[10px] font-bold rounded transition-colors',
-                      fullSchema.zones.footer.showOnLastPageOnly
-                        ? 'bg-[var(--accent)] text-white'
-                        : 'bg-white/[0.04] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                    )}
-                  >
-                    <FileText className="w-3 h-3" />
-                    {fullSchema.zones.footer.showOnLastPageOnly
-                      ? 'Last Page Only'
-                      : 'First Page Only (Default)'}
-                  </button>
-                </PropertyRow>
-              )}
-            </>
-          )}
-        </section>
-      </div>
-
-      <div className="p-2 border-t border-[var(--border-default)] bg-white/[0.01]">
+  return (
+    <div className="h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)]">
+      {/* Header with Component Icon */}
+      <div className="h-10 min-h-[40px] border-b border-[var(--border-default)] flex items-center px-2 justify-between bg-white/[0.01]">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded bg-[var(--accent-glow)] flex items-center justify-center  border-[var(--border-accent)] text-[var(--accent)]">
+            {isText(selectedComponent) && <Type className="w-3.5 h-3.5" />}
+            {isTable(selectedComponent) && <Database className="w-3.5 h-3.5" />}
+            {isImage(selectedComponent) && <Palette className="w-3.5 h-3.5" />}
+            {isLine(selectedComponent) && <Maximize className="w-3.5 h-3.5" />}
+            {(!isText(selectedComponent) && !isTable(selectedComponent) && !isImage(selectedComponent) && !isLine(selectedComponent)) && <Settings className="w-3.5 h-3.5" />}
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold tracking-tight text-[var(--text-primary)] uppercase">
+              {selectedComponent.type}
+            </span>
+            <span className="text-[8px] text-[var(--text-muted)] font-mono">
+              ID: {selectedComponent.id.slice(0, 8)}
+            </span>
+          </div>
+        </div>
         <button
           type="button"
           onClick={() => removeComponent(selectedComponent.id)}
-          className="w-full flex items-center justify-center gap-2 p-1.5 bg-red-600 text-white font-medium text-[11px] hover:bg-red-700 active:bg-red-800 transition-colors"
+          className="p-1.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded transition-colors"
+          title="Delete component"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          Delete Object
         </button>
+      </div>
+
+      {/* Tabs Navigation */}
+      <div className="flex border-b border-[var(--border-default)] bg-white/[0.02]">
+        {([
+          { id: 'design', icon: Palette, label: 'Design' },
+          { id: 'layout', icon: Layout, label: 'Layout' },
+          { id: 'data', icon: Database, label: 'Content' },
+          { id: 'settings', icon: Settings, label: 'Setup' },
+        ] as const).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={clsx(
+              'flex-1 py-2 flex flex-col items-center gap-0.5 transition-all border-b-2',
+              activeTab === tab.id
+                ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/5'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/[0.02]'
+            )}
+          >
+            <tab.icon className="w-3 h-3" />
+            <span className="text-[8px] font-bold uppercase tracking-tighter">{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        {renderTabContent()}
+      </div>
+
+      {/* Footer Status */}
+      <div className="h-6 px-3 border-t border-[var(--border-default)] bg-white/[0.02] flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm shadow-green-500/50" />
+          <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Active Inspector</span>
+        </div>
+        <span className="text-[8px] text-[var(--text-muted)] font-mono">v1.2.0</span>
       </div>
     </div>
   );
 });
+

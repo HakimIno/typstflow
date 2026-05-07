@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -220,8 +221,13 @@ pub struct TableComponent {
     pub columns: Vec<TableColumn>,
     pub style: Option<TableStyle>,
     pub show_header: Option<bool>,
-    pub repeat_header_on_page: Option<bool>,
+    pub repeat_header_on_page: Option<Value>,
     pub is_static: Option<bool>,
+    pub group_by: Option<String>,
+    #[serde(rename = "groupHeaderFormat")]
+    pub group_header_format: Option<String>,
+    #[serde(rename = "groupHeaderStyle")]
+    pub group_header_style: Option<Value>,
     pub summary_rows: Option<Vec<SummaryRow>>,
     pub header_rows: Option<Vec<TableRow>>,
     pub detail_rows: Option<Vec<TableRow>>,

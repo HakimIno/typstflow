@@ -30,11 +30,11 @@ export const DesignerInput = React.forwardRef<HTMLInputElement, DesignerInputPro
 
           // Variants
           {
-            'bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg px-2 py-1.5 text-[11px] focus:border-[var(--accent)]':
+            'bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-[4px] px-1.5 py-1 text-[10px] focus:border-[var(--accent)]':
               variant === 'default',
-            'bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg px-1.5 h-5 text-[10px] focus:border-[var(--accent)]':
+            'bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-[4px] px-1 h-5 text-[9px] focus:border-[var(--accent)]':
               variant === 'mini',
-            'bg-transparent border-none text-[11px] font-medium min-w-0 px-1 py-0.5 focus:bg-[var(--bg-surface)] rounded-lg':
+            'bg-transparent border-none text-[10px] font-medium min-w-0 px-1 py-0.5 focus:bg-[var(--bg-widget)] rounded-[4px]':
               variant === 'ghost',
           },
 
