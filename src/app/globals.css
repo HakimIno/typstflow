@@ -269,18 +269,40 @@
   }
 
   @keyframes shimmer {
-    0% {
-      transform: translateX(-100%);
-      background-position: 200% 0;
-    }
-    100% {
-      transform: translateX(250%);
-      background-position: -200% 0;
-    }
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
   }
 
   .animate-shimmer {
-    animation: shimmer 2s infinite linear;
+    animation: shimmer 1.5s infinite linear;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+  }
+
+  .animate-shimmer-fast {
+    animation: shimmer 1s infinite linear;
+  }
+
+  @keyframes shimmer-text {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+
+  .animate-shimmer-text {
+    animation: shimmer-text 2s linear infinite;
+  }
+
+  @keyframes pulse-fade {
+    0%, 100% { opacity: 0.4; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-1px); }
+  }
+
+  .animate-pulse-fade {
+    animation: pulse-fade 2s infinite ease-in-out;
   }
 
   .thinking-loader {

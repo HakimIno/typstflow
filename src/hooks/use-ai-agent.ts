@@ -19,6 +19,7 @@ export interface AgentMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  mode?: 'chat' | 'plan' | 'design';
   toolCalls?: Array<{ name: string; success: boolean; description: string }>;
 }
 
@@ -311,11 +312,46 @@ interface ApiResponse {
 const MAX_TOOL_ROUNDS = 4;
 const HISTORY_WINDOW = 4; // UI messages to include in each request
 
+type IntentMode = 'chat' | 'plan' | 'design';
+
+// Fast client-side pre-classifier — skips server round-trip for obvious cases
+function quickClassify(text: string): IntentMode | null {
+  const t = text.trim().toLowerCase();
+
+  // Short greetings / acknowledgements → chat immediately
+  if (
+    t.length <= 25 &&
+    /^(hi|hello|hey|yo|sup|ok|okay|thanks|thank you|สวัสดี|หวัดดี|ดีจ้า|โอเค|ขอบคุณ|ขอบคุณมาก)/.test(t)
+  ) {
+    return 'chat';
+  }
+
+  // Explicit planning vocabulary → plan (discuss before building)
+  if (
+    /ช่วยวางแผน|help me plan|let'?s plan|advise( me)?|what should (i|we) include|best (way|structure|approach) (to|for)|how should i (design|layout|structure)|planning|วางแผน|แนะนำ layout/.test(
+      t
+    )
+  ) {
+    return 'plan';
+  }
+
+  // Explicit imperative build actions → design immediately
+  if (
+    /^(add |create |build |make |load |delete |remove |update |change |สร้าง |เพิ่ม |ทำ |โหลด |ลบ |แก้ไข )/.test(
+      t
+    )
+  ) {
+    return 'design';
+  }
+
+  return null; // uncertain — let the server classifier decide
+}
+
 async function classifyIntent(
   message: string,
   signal?: AbortSignal,
   classifierModel?: string
-): Promise<'chat' | 'design'> {
+): Promise<IntentMode> {
   try {
     const res = await fetch('/api/chat/classify', {
       method: 'POST',
@@ -324,7 +360,7 @@ async function classifyIntent(
       signal,
     });
     if (!res.ok) return 'design';
-    const data = (await res.json()) as { mode: 'chat' | 'design' };
+    const data = (await res.json()) as { mode: IntentMode };
     return data.mode;
   } catch {
     return 'design';
@@ -347,7 +383,7 @@ async function callApi(
   schema: LayoutSchema,
   sessionIntent?: string,
   signal?: AbortSignal,
-  mode?: 'chat' | 'design',
+  mode?: IntentMode,
   model?: string,
   aiMode?: 'plan' | 'act'
 ): Promise<ApiResponse> {
@@ -414,6 +450,7 @@ function persistMemory(mem: SessionMemory): void {
 export function useAiAgent() {
   const [messages, setMessages] = useState<AgentMessage[]>(() => loadPersistedMessages());
   const [isLoading, setIsLoading] = useState(false);
+  const [thinkingStep, setThinkingStep] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const sessionMemoryRef = useRef<SessionMemory>(loadPersistedMemory());
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -424,6 +461,7 @@ export function useAiAgent() {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
       setIsLoading(false);
+      setThinkingStep('');
 
       // Immediately update the last assistant message to reflect it was stopped
       setMessages((prev) => {
@@ -448,20 +486,34 @@ export function useAiAgent() {
       setMessages(uiHistory);
       setIsLoading(true);
       setError(null);
+      setThinkingStep('Analyzing request...');
 
       const assistantId = crypto.randomUUID();
       
-      const upsertAssistantMessage = (content: string, tools?: NonNullable<AgentMessage['toolCalls']>) => {
+      const upsertAssistantMessage = (
+        content: string,
+        tools?: NonNullable<AgentMessage['toolCalls']>,
+        msgMode?: AgentMessage['mode']
+      ) => {
         setMessages((prev) => {
-          const exists = prev.some(m => m.id === assistantId);
+          const exists = prev.some((m) => m.id === assistantId);
           if (!exists) {
             return [
               ...prev,
-              { id: assistantId, role: 'assistant', content, toolCalls: tools, timestamp: new Date() }
+              {
+                id: assistantId,
+                role: 'assistant' as const,
+                content,
+                mode: msgMode,
+                toolCalls: tools,
+                timestamp: new Date(),
+              },
             ];
           }
           return prev.map((m) =>
-            m.id === assistantId ? { ...m, content, toolCalls: tools ?? m.toolCalls } : m
+            m.id === assistantId
+              ? { ...m, content, mode: msgMode ?? m.mode, toolCalls: tools ?? m.toolCalls }
+              : m
           );
         });
       };
@@ -472,9 +524,23 @@ export function useAiAgent() {
       try {
         const sessionIntent = serializeMemory(sessionMemoryRef.current);
 
-        // Classify intent before committing to the full design agent
-        const intent = await classifyIntent(content, controller.signal, aiModel);
+        // Quick client-side classify first — skip network round-trip for obvious cases
+        const quickResult = quickClassify(content);
+        let intent: IntentMode;
+        if (quickResult) {
+          intent = quickResult;
+        } else {
+          setThinkingStep('Classifying intent...');
+          intent = await classifyIntent(content, controller.signal, aiModel);
+        }
         if (controller.signal.aborted) return;
+
+        const STEP_LABELS: Record<IntentMode, string> = {
+          chat: 'Thinking...',
+          plan: 'Planning strategy...',
+          design: 'Building layout...',
+        };
+        setThinkingStep(STEP_LABELS[intent]);
 
         // Build initial API message window — strip intent blocks from history to save tokens
         const windowedHistory: ApiMsg[] = uiHistory
@@ -486,7 +552,7 @@ export function useAiAgent() {
         const newBindings: string[] = [];
         let finalText = '';
 
-        // Chat mode: single round, no tools, minimal prompt — saves ~80% tokens
+        // Chat mode: single round, no tools, lightweight prompt
         if (intent === 'chat') {
           const { schema } = useDesignerStore.getState();
           const data = await callApi(
@@ -499,8 +565,29 @@ export function useAiAgent() {
             aiMode
           );
           finalText = data.choices?.[0]?.message?.content ?? '';
-          upsertAssistantMessage(finalText || '(no response)');
-          setMessages(prev => {
+          upsertAssistantMessage(finalText || '(no response)', undefined, 'chat');
+          setMessages((prev) => {
+            persistMessages(prev);
+            return prev;
+          });
+          return;
+        }
+
+        // Plan mode: single round, full canvas context, plan persona, no tools
+        if (intent === 'plan') {
+          const { schema } = useDesignerStore.getState();
+          const data = await callApi(
+            apiMessages,
+            schema,
+            sessionIntent || undefined,
+            controller.signal,
+            'plan',
+            aiModel,
+            aiMode
+          );
+          finalText = stripIntentBlock(data.choices?.[0]?.message?.content ?? '');
+          upsertAssistantMessage(finalText || '(no response)', undefined, 'plan');
+          setMessages((prev) => {
             persistMessages(prev);
             return prev;
           });
@@ -510,6 +597,7 @@ export function useAiAgent() {
         // Design mode: multi-round tool loop
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
           if (controller.signal.aborted) break;
+          setThinkingStep(round === 0 ? 'Executing initial plan...' : `Processing step ${round + 1}...`);
 
           const { schema } = useDesignerStore.getState();
           const data = await callApi(
@@ -539,6 +627,7 @@ export function useAiAgent() {
             let result: string;
             let success = true;
             try {
+              setThinkingStep(`Applying: ${tc.function.name.replace(/_/g, ' ')}...`);
               const parsedArgs = JSON.parse(tc.function.arguments) as Record<string, unknown>;
               result = execTool(tc.function.name, parsedArgs);
               newBindings.push(...extractBindingsFromArgs(parsedArgs));
@@ -551,7 +640,7 @@ export function useAiAgent() {
           }
 
           // Update UI with accumulated tool badges
-          upsertAssistantMessage(stripIntentBlock(finalText) || `Working...`, [...allToolCalls]);
+          upsertAssistantMessage(stripIntentBlock(finalText) || 'Working...', [...allToolCalls], 'design');
 
           // Append assistant turn + tool results to conversation
           apiMessages = [
@@ -577,6 +666,7 @@ export function useAiAgent() {
 
         if (builtLayout && !hasSampleData && !controller.signal.aborted) {
           try {
+            setThinkingStep('Generating sample data...');
             const { schema: freshSchema } = useDesignerStore.getState();
             const usedBindings = [...new Set(newBindings)].join(', ') || 'none';
             // Minimal context — avoids re-sending the full accumulated conversation
@@ -625,8 +715,12 @@ export function useAiAgent() {
             : 'Generation cancelled.'
           : lastDisplayText || (allToolCalls.length > 0 ? 'Done!' : '(no response)');
         
-        upsertAssistantMessage(finalContent, allToolCalls.length > 0 ? allToolCalls : undefined);
-        setMessages(prev => {
+        upsertAssistantMessage(
+          finalContent,
+          allToolCalls.length > 0 ? allToolCalls : undefined,
+          'design'
+        );
+        setMessages((prev) => {
           persistMessages(prev);
           return prev;
         });
@@ -644,6 +738,7 @@ export function useAiAgent() {
         });
       } finally {
         setIsLoading(false);
+        setThinkingStep('');
       }
     },
     [messages]
@@ -656,7 +751,8 @@ export function useAiAgent() {
     sessionMemoryRef.current = { ...DEFAULT_SESSION_MEMORY };
     persistMemory(sessionMemoryRef.current);
     setError(null);
+    setThinkingStep('');
   }, []);
 
-  return { messages, isLoading, error, sendMessage, clearMessages, stop };
+  return { messages, isLoading, thinkingStep, error, sendMessage, clearMessages, stop };
 }

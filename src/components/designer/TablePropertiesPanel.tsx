@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
+import { ColorPicker } from '../shared/ColorPicker';
 import { DesignerInput, type DesignerInputProps } from '../shared/DesignerInput';
 
 type TableTab = 'columns' | 'rows' | 'style' | 'lines' | 'data' | 'cell';
@@ -61,7 +62,7 @@ const PropertyRow = ({ label, children }: { label: string; children: React.React
     <div className="w-1/3 px-3 py-2 text-[10px] font-bold text-[var(--text-secondary)] bg-[var(--bg-widget)] border-r border-[var(--border-default)] flex items-center shrink-0">
       {label}
     </div>
-    <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">{children}</div>
+    <div className="flex-1 px-2 py-1.5 flex items-center">{children}</div>
   </div>
 );
 
@@ -274,12 +275,9 @@ export function TablePropertiesPanel({ component }: Props) {
                   <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
                     Cell BG
                   </span>
-                  <input
-                    type="color"
-                    value={col.background || '#ffffff'}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => updateColumn(idx, { background: e.target.value })}
-                    className="w-full h-5 rounded-sm cursor-pointer border border-[var(--border-default)]"
+                  <ColorPicker
+                    color={col.background || '#ffffff'}
+                    onChange={(color) => updateColumn(idx, { background: color })}
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -593,27 +591,21 @@ export function TablePropertiesPanel({ component }: Props) {
       {/* Fill Colors */}
       <SectionHeader label="Fill Colors" />
       <PropertyRow label="Header BG">
-        <input
-          type="color"
-          value={component.style?.headerBackground || '#e2e8f0'}
-          onChange={(e) => handleStyleUpdate({ headerBackground: e.target.value })}
-          className="w-full h-6 rounded-sm cursor-pointer"
+        <ColorPicker
+          color={component.style?.headerBackground || '#e2e8f0'}
+          onChange={(color) => handleStyleUpdate({ headerBackground: color })}
         />
       </PropertyRow>
       <PropertyRow label="Stripe Color 1">
-        <input
-          type="color"
-          value={component.style?.stripedColor1 || '#f8fafc'}
-          onChange={(e) => handleStyleUpdate({ stripedColor1: e.target.value })}
-          className="w-full h-6 rounded-sm cursor-pointer"
+        <ColorPicker
+          color={component.style?.stripedColor1 || '#f8fafc'}
+          onChange={(color) => handleStyleUpdate({ stripedColor1: color })}
         />
       </PropertyRow>
       <PropertyRow label="Stripe Color 2">
-        <input
-          type="color"
-          value={component.style?.stripedColor2 || '#ffffff'}
-          onChange={(e) => handleStyleUpdate({ stripedColor2: e.target.value })}
-          className="w-full h-6 rounded-sm cursor-pointer"
+        <ColorPicker
+          color={component.style?.stripedColor2 || '#ffffff'}
+          onChange={(color) => handleStyleUpdate({ stripedColor2: color })}
         />
       </PropertyRow>
 
@@ -721,11 +713,10 @@ export function TablePropertiesPanel({ component }: Props) {
             mono
             className="w-16 mr-1"
           />
-          <input
-            type="color"
-            value={component.style?.borderColor || '#cbd5e1'}
-            onChange={(e) => handleStyleUpdate({ borderColor: e.target.value })}
-            className="w-8 h-5 rounded-sm cursor-pointer border border-[var(--border-default)]"
+          <ColorPicker
+            color={component.style?.borderColor || '#cbd5e1'}
+            onChange={(color) => handleStyleUpdate({ borderColor: color })}
+            className="flex-1"
           />
         </PropertyRow>
 

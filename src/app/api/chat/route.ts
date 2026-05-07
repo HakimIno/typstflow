@@ -363,7 +363,7 @@ export async function POST(req: NextRequest) {
     }>;
     schema: LayoutSchema;
     sessionIntent?: string;
-    mode?: 'design' | 'chat';
+    mode?: 'design' | 'plan' | 'chat';
     model?: string;
     aiMode?: 'plan' | 'act';
   };
@@ -371,6 +371,17 @@ export async function POST(req: NextRequest) {
     body.model ?? process.env.OPENROUTER_MODEL_NAME ?? 'anthropic/claude-sonnet-4-5';
 
   const isChatMode = body.mode === 'chat';
+  const isPlanMode = body.mode === 'plan';
+
+  let systemPrompt: string;
+  if (isChatMode) {
+    systemPrompt = buildChatPrompt(body.schema, body.sessionIntent);
+  } else if (isPlanMode) {
+    // Full canvas context, plan persona, but NO tools — discussion only
+    systemPrompt = buildSystemPrompt(body.schema, body.sessionIntent, 'plan');
+  } else {
+    systemPrompt = buildSystemPrompt(body.schema, body.sessionIntent, body.aiMode);
+  }
 
   const upstream = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
     method: 'POST',
@@ -382,17 +393,13 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: isChatMode ? 1024 : 3000,
+      max_tokens: isChatMode ? 1024 : isPlanMode ? 2048 : 3000,
       messages: [
-        {
-          role: 'system',
-          content: isChatMode
-            ? buildChatPrompt(body.schema, body.sessionIntent)
-            : buildSystemPrompt(body.schema, body.sessionIntent, body.aiMode),
-        },
+        { role: 'system', content: systemPrompt },
         ...body.messages,
       ],
-      ...(isChatMode ? {} : { tools: TOOLS, tool_choice: 'auto' }),
+      // Only design mode gets tools — plan and chat are tool-free
+      ...(!isChatMode && !isPlanMode ? { tools: TOOLS, tool_choice: 'auto' } : {}),
     }),
   });
 

@@ -1059,11 +1059,20 @@ export const useDesignerStore = create<DesignerState>()(
 
       exportSchema: () => {
         const state = useDesignerStore.getState();
-        const data = JSON.stringify(state.schema, null, 2);
+        
+        // Bundle schema with sample data for a complete export
+        const exportBundle = {
+          schema: state.schema,
+          data: state.sampleData,
+          exportedAt: new Date().toISOString(),
+          version: state.schema.version
+        };
+
+        const data = JSON.stringify(exportBundle, null, 2);
         const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        const filename = `${state.schema.name.toLowerCase().replace(/\s+/g, '-')}-${new Date()
+        const filename = `${state.schema.name.toLowerCase().replace(/\s+/g, '-')}-bundle-${new Date()
           .toISOString()
           .split('T')[0]}.json`;
 
@@ -1077,7 +1086,7 @@ export const useDesignerStore = create<DesignerState>()(
         agentLogger.log({
           source: 'ai-agent',
           level: 'action',
-          message: `Exported schema: ${filename}`,
+          message: `Exported complete bundle: ${filename}`,
         });
       },
 
@@ -1090,19 +1099,14 @@ export const useDesignerStore = create<DesignerState>()(
 
           const validSchema = validateAndRepairSchema(schemaToValidate, BLANK_SCHEMA);
 
-          set((state) => {
-            const nextState = {
-              ...state,
-              schema: validSchema,
-              sampleData: sampleData || state.sampleData,
-              selectedComponentIds: [],
-              selectedGroupId: null,
-              selectedZone: null,
-              activePageId: validSchema.pages[0]?.id || null,
-            };
-
-            return pushHistory(nextState, validSchema);
-          });
+          set((state) => ({
+            ...pushHistory(state, validSchema),
+            sampleData: sampleData || state.sampleData,
+            selectedComponentIds: [],
+            selectedGroupId: null,
+            selectedZone: null,
+            activePageId: validSchema.pages[0]?.id || null,
+          }));
 
           agentLogger.log({
             source: 'ai-agent',

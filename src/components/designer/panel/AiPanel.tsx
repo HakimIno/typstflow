@@ -10,12 +10,21 @@ import { useDesignerStore } from '@/store/designer-store';
 import { AI_MODELS } from '@/lib/utils/ai-models';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuHeader } from '@/components/shared/DropdownMenu';
 
+const MODE_BADGE: Record<
+  NonNullable<AgentMessage['mode']>,
+  { label: string; icon: string; color: string }
+> = {
+  chat: { label: 'Chat', icon: 'solar:chat-round-dots-bold-duotone', color: 'text-[var(--text-muted)]' },
+  plan: { label: 'Plan', icon: 'solar:map-point-bold-duotone', color: 'text-blue-400' },
+  design: { label: 'Design', icon: 'solar:bolt-circle-bold-duotone', color: 'text-yellow-400' },
+};
+
 const iconMap: Record<string, string> = {
   get_layout: 'solar:layers-minimalistic-bold-duotone',
   add_text: 'solar:text-field-bold-duotone',
-  add_table: 'solar:table-bold-duotone',
+  add_table: 'solar:confetti-bold-duotone',
   add_image: 'solar:gallery-bold-duotone',
-  add_line: 'solar:line-duotone',
+  add_line: 'solar:adhesive-plaster-2-line-duotone',
   add_spacer: 'solar:sidebar-minimize-bold-duotone',
   update_component: 'solar:pen-new-square-bold-duotone',
   delete_component: 'solar:trash-bin-trash-bold-duotone',
@@ -51,15 +60,16 @@ const SUGGESTIONS = [
 
 function ToolCallItem({ call }: { call: NonNullable<AgentMessage['toolCalls']>[number] }) {
   return (
-    <div className="flex items-center gap-2 py-0.5 px-1 group/item" title={call.description}>
-      <Icon icon={iconMap[call.name] || 'solar:play-circle-bold-duotone'} className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover/item:text-[var(--accent)] transition-colors" />
-      <span className="text-[10px] text-[var(--text-primary)] font-medium">{call.name}</span>
+    <div className="flex items-center gap-1 py-0.5 px-1 group/item" title={call.description}>
       {call.success !== undefined && (
         <Icon
           icon={statusMap[call.success ? 'success' : 'error'].icon}
           className={clsx('w-3 h-3', statusMap[call.success ? 'success' : 'error'].color)}
         />
       )}
+      <Icon icon={iconMap[call.name] || 'solar:play-circle-bold-duotone'} className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover/item:text-[var(--accent)] transition-colors" />
+      <span className="text-[10px] text-[var(--text-primary)] font-medium">{call.name}</span>
+
     </div>
   );
 }
@@ -67,7 +77,7 @@ function ToolCallItem({ call }: { call: NonNullable<AgentMessage['toolCalls']>[n
 export const AiPanel = memo(function AiPanel() {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { messages, isLoading, sendMessage, clearMessages, stop } = useAiAgent();
+  const { messages, isLoading, thinkingStep, sendMessage, clearMessages, stop } = useAiAgent();
   const [elapsedTime, setElapsedTime] = useState(0);
   const { aiModel, aiMode, setAiModel, setAiMode } = useDesignerStore();
 
@@ -162,6 +172,18 @@ export const AiPanel = memo(function AiPanel() {
               )}
             </div>
 
+            {msg.role === 'assistant' && msg.mode && msg.mode !== 'chat' && (
+              <div className="flex items-center gap-1 mt-1">
+                <Icon
+                  icon={MODE_BADGE[msg.mode].icon}
+                  className={clsx('w-3 h-3', MODE_BADGE[msg.mode].color)}
+                />
+                <span className={clsx('text-[9px] font-bold uppercase tracking-widest', MODE_BADGE[msg.mode].color)}>
+                  {MODE_BADGE[msg.mode].label}
+                </span>
+              </div>
+            )}
+
             {msg.toolCalls && msg.toolCalls.length > 0 && (
               <div className="max-w-full mt-2 pt-2 border-t border-[var(--border-subtle)]/20">
                 <details className="group">
@@ -183,20 +205,29 @@ export const AiPanel = memo(function AiPanel() {
         ))}
 
         {isLoading && (
-          <div className="flex items-center gap-2 px-4 py-2">
-            <span className="thinking-loader text-[10px]">
-              Thinking...
-            </span>
-            <span className="text-[9px] font-mono text-[var(--text-muted)] ml-1 tabular-nums">
-              {elapsedTime.toFixed(1)}s
-            </span>
-            <button
-              type="button"
-              onClick={stop}
-              className="text-[9px] font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors ml-2"
-            >
-              (Stop)
-            </button>
+          <div className="m-2 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-500 relative overflow-hidden">
+            {/* Glowing background effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--accent-glow)] to-transparent opacity-30 animate-shimmer" style={{ width: '200%' }} />
+
+            <div className="flex items-center gap-3 relative z-10">
+              <div className="relative flex items-center justify-center w-4 h-4">
+                <Icon icon="solar:magic-stick-3-bold-duotone" className="w-3.5 h-3.5 text-[var(--accent)] animate-pulse" />
+                <div className="absolute inset-0 rounded-full border border-[var(--accent)]/30 animate-ping" />
+              </div>
+              <div className="flex-1">
+                <span className="text-[11px] font-medium text-transparent bg-clip-text bg-gradient-to-r from-[var(--text-primary)] via-[var(--accent)] to-[var(--text-primary)] bg-[length:200%_auto] animate-shimmer-text tracking-wide">
+                  {thinkingStep || 'Thinking...'}
+                </span>
+              </div>
+              <span className="text-[9px] font-mono text-[var(--accent)] bg-[var(--accent)]/10 px-1.5 py-0.5 rounded-[var(--radius-sm)] tabular-nums">
+                {elapsedTime.toFixed(1)}s
+              </span>
+            </div>
+
+            {/* Sleek animated progress line */}
+            <div className="w-full h-[2px] bg-[var(--border-subtle)] overflow-hidden rounded-full relative z-10">
+              <div className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-[var(--accent)]/0 via-[var(--accent)] to-[var(--accent)]/0 animate-shimmer-fast w-1/2" />
+            </div>
           </div>
         )}
       </div>

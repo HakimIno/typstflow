@@ -20,7 +20,7 @@ interface DropdownContextType {
 
 const DropdownContext = createContext<DropdownContextType | null>(null);
 
-function useDropdown() {
+export function useDropdown() {
   const context = useContext(DropdownContext);
   if (!context) throw new Error('useDropdown must be used within a DropdownMenu');
   return context;
@@ -60,8 +60,9 @@ export const DropdownMenu = memo(function DropdownMenu({
 
   return (
     <DropdownContext.Provider value={{ isOpen, setIsOpen }}>
-      <div className={clsx('relative inline-block', className, isOpen && 'z-[9999]')} ref={menuRef}>
+      <div className={clsx('relative', className, !className?.includes('inline') && 'inline-block', isOpen && 'z-[9999]')} ref={menuRef}>
         <div
+          className="w-full h-full cursor-pointer"
           onClick={() => setIsOpen(!isOpen)}
           onKeyDown={(e) => e.key === 'Enter' && setIsOpen(!isOpen)}
         >

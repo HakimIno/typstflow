@@ -5,7 +5,7 @@ export const PropertyRow = ({ label, children }: { label: string; children: Reac
     <div className="w-1/3 px-3 py-2 text-[10px] font-medium text-[var(--text-secondary)] bg-white/[0.01] border-r border-[var(--border-default)] flex items-center shrink-0">
       {label}
     </div>
-    <div className="flex-1 px-2 py-1.5 flex items-center overflow-hidden">{children}</div>
+    <div className="flex-1 px-2 py-1.5 flex items-center">{children}</div>
   </div>
 );
 

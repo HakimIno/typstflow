@@ -1,0 +1,560 @@
+{
+  "schema": {
+    "id": "purchase-order-thendral",
+    "name": "Purchase Order - Thendral Supermarket",
+    "version": "1.0.0",
+    "page": {
+      "size": "A4",
+      "orientation": "portrait",
+      "margin": {
+        "top": "15mm",
+        "bottom": "15mm",
+        "left": "15mm",
+        "right": "15mm"
+      }
+    },
+    "fonts": [
+      {
+        "family": "Inter",
+        "size": 9,
+        "role": "body",
+        "embedded": true
+      }
+    ],
+    "zones": {
+      "header": {
+        "id": "header",
+        "components": [],
+        "minHeight": "10mm"
+      },
+      "footer": {
+        "id": "footer",
+        "components": [
+          {
+            "id": "terms-table",
+            "type": "table",
+            "x": 0,
+            "y": 0,
+            "width": 120,
+            "dataSource": "[1]",
+            "isStatic": true,
+            "showHeader": false,
+            "repeatHeaderOnPage": false,
+            "columns": [
+              {
+                "id": "c1",
+                "header": "",
+                "field": "c1",
+                "width": "1fr"
+              }
+            ],
+            "detailRows": [
+              {
+                "id": "dr1",
+                "type": "data",
+                "cells": [
+                  {
+                    "id": "c1",
+                    "content": "Terms and conditions:\n1. We deserve the right to cancel the purchase order anytime before product shipment.\n2. Invoice raised to us should contain the details of purchase order with date mentioned.\n3. Adherence to agreed product specifications is a must. Any deviation during delivery will result in cancellation of PO.\n4. Packing and shipping charges are to be borne by SM traders, Chennai.\n5. Delivery should be strictly done within 5 days from the date of purchase order.",
+                    "align": "left",
+                    "fill": "#f0f4ff",
+                    "style": {
+                      "fontSize": 7
+                    }
+                  }
+                ]
+              }
+            ],
+            "style": {}
+          },
+          {
+            "id": "sign-box",
+            "type": "table",
+            "x": 125,
+            "y": 0,
+            "width": 55,
+            "dataSource": "[1]",
+            "isStatic": true,
+            "showHeader": false,
+            "repeatHeaderOnPage": false,
+            "columns": [
+              {
+                "id": "c1",
+                "header": "",
+                "field": "c1",
+                "width": "1fr"
+              }
+            ],
+            "detailRows": [
+              {
+                "id": "dr1",
+                "type": "data",
+                "cells": [
+                  {
+                    "id": "c1",
+                    "content": "For Thendral Supermarket",
+                    "align": "center",
+                    "fill": "#3b82f6",
+                    "style": {
+                      "color": "#ffffff",
+                      "fontWeight": "bold",
+                      "fontSize": 8
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "dr2",
+                "type": "data",
+                "cells": [
+                  {
+                    "id": "c2",
+                    "content": "\n\n\nAuthorized signatory",
+                    "align": "center",
+                    "style": {
+                      "fontSize": 8
+                    }
+                  }
+                ]
+              }
+            ],
+            "style": {}
+          },
+          {
+            "id": "comm-text",
+            "type": "text",
+            "x": 0,
+            "y": 30,
+            "width": 120,
+            "height": 10,
+            "content": "Mark any communications to purchase-team@thendral.com",
+            "style": {
+              "fontSize": 8
+            }
+          },
+          {
+            "id": "page-num",
+            "type": "page-number",
+            "x": 150,
+            "y": 30,
+            "width": 30,
+            "height": 10,
+            "format": "Page {{page}} of {{pageTotal}}",
+            "align": "right",
+            "style": {
+              "fontSize": 8,
+              "color": "#666666"
+            }
+          }
+        ],
+        "minHeight": "40mm"
+      }
+    },
+    "pages": [
+      {
+        "id": "page-1",
+        "name": "Purchase Order",
+        "body": {
+          "id": "body",
+          "components": [
+            {
+              "id": "logo",
+              "type": "image",
+              "x": 0,
+              "y": 0,
+              "width": 50,
+              "height": 15,
+              "src": "https://placehold.co/200x60/ffffff/000000.png?text=Thendral+Supermarket",
+              "fit": "contain"
+            },
+            {
+              "id": "title",
+              "type": "text",
+              "x": 100,
+              "y": 2,
+              "width": 80,
+              "height": 10,
+              "content": "PURCHASE ORDER",
+              "align": "right",
+              "style": {
+                "fontSize": 20,
+                "fontWeight": "bold",
+                "color": "#3b82f6"
+              }
+            },
+            {
+              "id": "po-details-table",
+              "type": "table",
+              "x": 0,
+              "y": 20,
+              "width": 180,
+              "dataSource": "[1]",
+              "isStatic": true,
+              "showHeader": false,
+              "repeatHeaderOnPage": false,
+              "columns": [
+                {
+                  "id": "col1",
+                  "header": "",
+                  "field": "col1",
+                  "width": "1fr"
+                },
+                {
+                  "id": "col2",
+                  "header": "",
+                  "field": "col2",
+                  "width": "1fr"
+                },
+                {
+                  "id": "col3",
+                  "header": "",
+                  "field": "col3",
+                  "width": "1fr"
+                }
+              ],
+              "detailRows": [
+                {
+                  "id": "dr1",
+                  "type": "data",
+                  "cells": [
+                    {
+                      "id": "c1",
+                      "content": "Supplier Code: {{po.supplierCode}}\nSupplier Name: {{po.supplierName}}\nAddress: {{po.supplierAddress}}\nGSTIN: {{po.supplierGstin}}\nContact: {{po.supplierContact}}\nEmail: {{po.supplierEmail}}",
+                      "align": "left",
+                      "fill": "#f3f4f6",
+                      "style": {
+                        "fontSize": 8
+                      }
+                    },
+                    {
+                      "id": "c2",
+                      "content": "PO Date: {{po.date}}\nPO No: {{po.no}}\nPO Expiry: {{po.expiry}}\nPR No: {{po.prNo}}\nFreight Charges: {{po.freight}}",
+                      "align": "left",
+                      "fill": "#f3f4f6",
+                      "style": {
+                        "fontSize": 8
+                      }
+                    },
+                    {
+                      "id": "c3",
+                      "content": "Payment Date: {{po.paymentDate}}\nPayment Mode: {{po.paymentMode}}\nPayment Terms: {{po.paymentTerms}}",
+                      "align": "left",
+                      "fill": "#f3f4f6",
+                      "style": {
+                        "fontSize": 8
+                      }
+                    }
+                  ]
+                }
+              ],
+              "style": {
+                "cellPadding": "2mm",
+                "borderColor": "#e5e7eb",
+                "borderWidth": "1pt"
+              }
+            },
+            {
+              "id": "address-headers",
+              "type": "table",
+              "x": 0,
+              "y": 50,
+              "width": 180,
+              "dataSource": "[1]",
+              "isStatic": true,
+              "showHeader": false,
+              "repeatHeaderOnPage": false,
+              "columns": [
+                {
+                  "id": "c1",
+                  "header": "",
+                  "field": "c1",
+                  "width": "1fr"
+                },
+                {
+                  "id": "c2",
+                  "header": "",
+                  "field": "c2",
+                  "width": "1fr"
+                }
+              ],
+              "detailRows": [
+                {
+                  "id": "dr1",
+                  "type": "data",
+                  "cells": [
+                    {
+                      "id": "c1",
+                      "content": "Bill To:",
+                      "align": "left",
+                      "fill": "#3b82f6",
+                      "style": {
+                        "color": "#ffffff",
+                        "fontWeight": "bold",
+                        "fontSize": 9
+                      }
+                    },
+                    {
+                      "id": "c2",
+                      "content": "Ship To:",
+                      "align": "left",
+                      "fill": "#3b82f6",
+                      "style": {
+                        "color": "#ffffff",
+                        "fontWeight": "bold",
+                        "fontSize": 9
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "dr2",
+                  "type": "data",
+                  "cells": [
+                    {
+                      "id": "c3",
+                      "content": "{{po.billTo.name}}\n{{po.billTo.address1}}\n{{po.billTo.address2}}\nGSTIN: {{po.billTo.gstin}}\nContact: {{po.billTo.contact}}\nEmail: {{po.billTo.email}}",
+                      "align": "left",
+                      "style": {
+                        "fontSize": 8
+                      }
+                    },
+                    {
+                      "id": "c4",
+                      "content": "{{po.shipTo.name}}\n{{po.shipTo.address1}}\n{{po.shipTo.address2}}\nGSTIN: {{po.shipTo.gstin}}\nContact: {{po.shipTo.contact}}\nEmail: {{po.shipTo.email}}",
+                      "align": "left",
+                      "style": {
+                        "fontSize": 8
+                      }
+                    }
+                  ]
+                }
+              ],
+              "style": {
+                "cellPadding": "2mm",
+                "borderColor": "#e5e7eb",
+                "borderWidth": "1pt"
+              }
+            },
+            {
+              "id": "items-table",
+              "type": "table",
+              "x": 0,
+              "y": 85,
+              "width": 180,
+              "dataSource": "{{po.items}}",
+              "showHeader": true,
+              "repeatHeaderOnPage": true,
+              "columns": [
+                {
+                  "id": "c1",
+                  "header": "S.No",
+                  "field": "sno",
+                  "width": "30pt",
+                  "align": "center"
+                },
+                {
+                  "id": "c2",
+                  "header": "Product Code",
+                  "field": "productCode",
+                  "width": "50pt",
+                  "align": "center"
+                },
+                {
+                  "id": "c3",
+                  "header": "Product Name",
+                  "field": "productName",
+                  "width": "1fr",
+                  "align": "left"
+                },
+                {
+                  "id": "c4",
+                  "header": "HSN code",
+                  "field": "hsn",
+                  "width": "50pt",
+                  "align": "center"
+                },
+                {
+                  "id": "c5",
+                  "header": "Quantity",
+                  "field": "qty",
+                  "width": "35pt",
+                  "align": "center"
+                },
+                {
+                  "id": "c6",
+                  "header": "Units",
+                  "field": "units",
+                  "width": "25pt",
+                  "align": "center"
+                },
+                {
+                  "id": "c7",
+                  "header": "Rate",
+                  "field": "rate",
+                  "width": "40pt",
+                  "align": "right"
+                },
+                {
+                  "id": "c8",
+                  "header": "Tax",
+                  "field": "tax",
+                  "width": "30pt",
+                  "align": "center"
+                },
+                {
+                  "id": "c9",
+                  "header": "Amount",
+                  "field": "amount",
+                  "width": "50pt",
+                  "align": "right"
+                }
+              ],
+              "summaryRows": [
+                {
+                  "label": "Total",
+                  "value": "{{po.total}}",
+                  "style": "total"
+                },
+                {
+                  "label": "Discounts",
+                  "value": "{{po.discounts}}",
+                  "style": "normal"
+                },
+                {
+                  "label": "Grand total",
+                  "value": "{{po.grandTotal}}",
+                  "style": "total"
+                }
+              ],
+              "style": {
+                "headerBackground": "#3b82f6",
+                "headerTextColor": "#ffffff",
+                "alternateRowBackground": "#ffffff",
+                "borderColor": "#e5e7eb",
+                "borderWidth": "1pt",
+                "fontSize": 8,
+                "cellPadding": "2mm"
+              }
+            }
+          ],
+          "minHeight": "240mm"
+        }
+      }
+    ],
+    "groups": [],
+    "batchDataSource": "records",
+    "metadata": {
+      "title": "Purchase Order - Thendral",
+      "createdAt": "2026-05-07T12:00:00.000Z",
+      "updatedAt": "2026-05-07T12:00:00.000Z",
+      "author": "AI Assistant"
+    },
+    "variables": [],
+    "dataSchema": []
+  },
+  "data": {
+    "records": [
+      {
+        "po": {
+          "supplierCode": "VNDR-104",
+          "supplierName": "SM traders",
+          "supplierAddress": "43, Kambar Street, Chennai - 600453",
+          "supplierGstin": "33AACCEPVS1ZH",
+          "supplierContact": "+91-9345678123",
+          "supplierEmail": "purchase-sm@gmail.com",
+          "date": "27-04-2024",
+          "no": "2024/PO-12",
+          "expiry": "03-05-2024",
+          "prNo": "3423-AB12",
+          "freight": "Nil",
+          "paymentDate": "7 days from date of delivery",
+          "paymentMode": "By NEFT",
+          "paymentTerms": "100% against invoice",
+          "billTo": {
+            "name": "Thendral Supermarket",
+            "address1": "No 23/2, SBI Colony.",
+            "address2": "Ragavendra Nagar, Chennai - 600124",
+            "gstin": "33APFSDF1ZV",
+            "contact": "+91-7869825463",
+            "email": "purchase-team@thendral.com"
+          },
+          "shipTo": {
+            "name": "Thendral Supermarket",
+            "address1": "No 23/2, SBI Colony.",
+            "address2": "Ragavendra Nagar, Chennai - 600124",
+            "gstin": "33APFSDF1ZV",
+            "contact": "+91-7869825463",
+            "email": "purchase-team@thendral.com"
+          },
+          "items": [
+            { "sno": "1", "productCode": "105", "productName": "Surf Excel 5 kg", "hsn": "34019011", "qty": "20", "units": "nos", "rate": "600.00", "tax": "5%", "amount": "12600.00" },
+            { "sno": "2", "productCode": "109", "productName": "Rin 1 kg", "hsn": "34019011", "qty": "25", "units": "nos", "rate": "85.00", "tax": "5%", "amount": "2231.00" },
+            { "sno": "3", "productCode": "115", "productName": "Hamam soap 150 g", "hsn": "34011100", "qty": "25", "units": "nos", "rate": "60.00", "tax": "5%", "amount": "1575.00" },
+            { "sno": "4", "productCode": "120", "productName": "Lux Soap 150 g", "hsn": "34011100", "qty": "30", "units": "nos", "rate": "53.00", "tax": "5%", "amount": "443.00" },
+            { "sno": "5", "productCode": "125", "productName": "Dove soap 125 g", "hsn": "34011100", "qty": "25", "units": "nos", "rate": "75.00", "tax": "5%", "amount": "1968.00" },
+            { "sno": "6", "productCode": "129", "productName": "Vim bar 200 g", "hsn": "08109010", "qty": "20", "units": "nos", "rate": "15.00", "tax": "5%", "amount": "315.00" },
+            { "sno": "7", "productCode": "131", "productName": "Pepsodent 150 g", "hsn": "33061020", "qty": "30", "units": "nos", "rate": "85.00", "tax": "18%", "amount": "3009.00" },
+            { "sno": "8", "productCode": "135", "productName": "Colgate 100 g", "hsn": "33061020", "qty": "40", "units": "nos", "rate": "45.00", "tax": "18%", "amount": "1800.00" },
+            { "sno": "9", "productCode": "140", "productName": "Santoor 125 g", "hsn": "34011100", "qty": "20", "units": "nos", "rate": "55.00", "tax": "5%", "amount": "1100.00" },
+            { "sno": "10", "productCode": "145", "productName": "Lifebuoy 100 g", "hsn": "34011100", "qty": "50", "units": "nos", "rate": "25.00", "tax": "5%", "amount": "1250.00" },
+            { "sno": "11", "productCode": "150", "productName": "Ariel Matic 1 kg", "hsn": "34019011", "qty": "15", "units": "nos", "rate": "220.00", "tax": "5%", "amount": "3300.00" },
+            { "sno": "12", "productCode": "155", "productName": "Tide Plus 1 kg", "hsn": "34019011", "qty": "30", "units": "nos", "rate": "110.00", "tax": "5%", "amount": "3300.00" },
+            { "sno": "13", "productCode": "160", "productName": "Comfort Blue 860 ml", "hsn": "34022090", "qty": "10", "units": "nos", "rate": "210.00", "tax": "18%", "amount": "2100.00" },
+            { "sno": "14", "productCode": "165", "productName": "Harpic Power 1 L", "hsn": "34022090", "qty": "20", "units": "nos", "rate": "170.00", "tax": "18%", "amount": "3400.00" },
+            { "sno": "15", "productCode": "170", "productName": "Lizol Floral 1 L", "hsn": "34022090", "qty": "15", "units": "nos", "rate": "180.00", "tax": "18%", "amount": "2700.00" },
+            { "sno": "16", "productCode": "175", "productName": "Colin Glass 500 ml", "hsn": "34022090", "qty": "10", "units": "nos", "rate": "95.00", "tax": "18%", "amount": "950.00" },
+            { "sno": "17", "productCode": "180", "productName": "Dettol Liquid 500 ml", "hsn": "30049087", "qty": "15", "units": "nos", "rate": "160.00", "tax": "12%", "amount": "2400.00" },
+            { "sno": "18", "productCode": "185", "productName": "Savlon Handwash 200 ml", "hsn": "34013019", "qty": "20", "units": "nos", "rate": "80.00", "tax": "18%", "amount": "1600.00" },
+            { "sno": "19", "productCode": "190", "productName": "Head & Shoulders 180 ml", "hsn": "33051090", "qty": "25", "units": "nos", "rate": "155.00", "tax": "18%", "amount": "3875.00" },
+            { "sno": "20", "productCode": "195", "productName": "Clinic Plus 175 ml", "hsn": "33051090", "qty": "30", "units": "nos", "rate": "95.00", "tax": "18%", "amount": "2850.00" },
+            { "sno": "21", "productCode": "200", "productName": "Sunsilk Black 180 ml", "hsn": "33051090", "qty": "15", "units": "nos", "rate": "130.00", "tax": "18%", "amount": "1950.00" },
+            { "sno": "22", "productCode": "205", "productName": "Patanjali Dant Kanti 100 g", "hsn": "33061020", "qty": "35", "units": "nos", "rate": "45.00", "tax": "12%", "amount": "1575.00" },
+            { "sno": "23", "productCode": "210", "productName": "Sensodyne 70 g", "hsn": "33061020", "qty": "15", "units": "nos", "rate": "130.00", "tax": "18%", "amount": "1950.00" },
+            { "sno": "24", "productCode": "215", "productName": "Margo Neem 100 g", "hsn": "34011100", "qty": "25", "units": "nos", "rate": "35.00", "tax": "5%", "amount": "875.00" },
+            { "sno": "25", "productCode": "220", "productName": "Cinthor 100 g", "hsn": "34011100", "qty": "30", "units": "nos", "rate": "32.00", "tax": "5%", "amount": "960.00" },
+            { "sno": "26", "productCode": "225", "productName": "Pears Pure & Gentle 125 g", "hsn": "34011100", "qty": "20", "units": "nos", "rate": "65.00", "tax": "5%", "amount": "1300.00" },
+            { "sno": "27", "productCode": "230", "productName": "Liril Lemon 125 g", "hsn": "34011100", "qty": "20", "units": "nos", "rate": "55.00", "tax": "5%", "amount": "1100.00" },
+            { "sno": "28", "productCode": "235", "productName": "Nivea Cream 100 ml", "hsn": "33049910", "qty": "15", "units": "nos", "rate": "150.00", "tax": "18%", "amount": "2250.00" },
+            { "sno": "29", "productCode": "240", "productName": "Vaseline Jelly 50 g", "hsn": "33049910", "qty": "20", "units": "nos", "rate": "60.00", "tax": "18%", "amount": "1200.00" },
+            { "sno": "30", "productCode": "245", "productName": "Fair & Lovely 50 g", "hsn": "33049910", "qty": "25", "units": "nos", "rate": "110.00", "tax": "18%", "amount": "2750.00" },
+            { "sno": "31", "productCode": "250", "productName": "Parachute Oil 200 ml", "hsn": "15131100", "qty": "30", "units": "nos", "rate": "90.00", "tax": "5%", "amount": "2700.00" },
+            { "sno": "32", "productCode": "255", "productName": "Bajaj Almond 100 ml", "hsn": "33059011", "qty": "20", "units": "nos", "rate": "75.00", "tax": "18%", "amount": "1500.00" },
+            { "sno": "33", "productCode": "260", "productName": "Navratna Oil 100 ml", "hsn": "33059011", "qty": "15", "units": "nos", "rate": "85.00", "tax": "18%", "amount": "1275.00" },
+            { "sno": "34", "productCode": "265", "productName": "Glow & Lovely 80 g", "hsn": "33049910", "qty": "15", "units": "nos", "rate": "140.00", "tax": "18%", "amount": "2100.00" },
+            { "sno": "35", "productCode": "270", "productName": "Odonil Room 50 g", "hsn": "33074900", "qty": "40", "units": "nos", "rate": "45.00", "tax": "18%", "amount": "1800.00" },
+            { "sno": "36", "productCode": "275", "productName": "Godrej Aer 10g", "hsn": "33074900", "qty": "30", "units": "nos", "rate": "55.00", "tax": "18%", "amount": "1650.00" },
+            { "sno": "37", "productCode": "280", "productName": "Hit Black 400 ml", "hsn": "38089191", "qty": "10", "units": "nos", "rate": "210.00", "tax": "18%", "amount": "2100.00" },
+            { "sno": "38", "productCode": "285", "productName": "Mortein Coil 10s", "hsn": "38089191", "qty": "25", "units": "nos", "rate": "40.00", "tax": "18%", "amount": "1000.00" },
+            { "sno": "39", "productCode": "290", "productName": "Good Knight Liquid 45 ml", "hsn": "38089191", "qty": "30", "units": "nos", "rate": "75.00", "tax": "18%", "amount": "2250.00" },
+            { "sno": "40", "productCode": "295", "productName": "Vim Liquid 500 ml", "hsn": "34022090", "qty": "20", "units": "nos", "rate": "105.00", "tax": "18%", "amount": "2100.00" },
+            { "sno": "41", "productCode": "300", "productName": "Pril Tamarind 500 ml", "hsn": "34022090", "qty": "15", "units": "nos", "rate": "95.00", "tax": "18%", "amount": "1425.00" },
+            { "sno": "42", "productCode": "305", "productName": "Exo Bar 250 g", "hsn": "34011941", "qty": "25", "units": "nos", "rate": "25.00", "tax": "18%", "amount": "625.00" },
+            { "sno": "43", "productCode": "310", "productName": "Ariel Perfect 500 g", "hsn": "34019011", "qty": "30", "units": "nos", "rate": "105.00", "tax": "18%", "amount": "3150.00" },
+            { "sno": "44", "productCode": "315", "productName": "Wheel Green 1 kg", "hsn": "34019011", "qty": "40", "units": "nos", "rate": "65.00", "tax": "18%", "amount": "2600.00" },
+            { "sno": "45", "productCode": "320", "productName": "Rin Ala 500 ml", "hsn": "28289011", "qty": "15", "units": "nos", "rate": "85.00", "tax": "18%", "amount": "1275.00" },
+            { "sno": "46", "productCode": "325", "productName": "Ujala Supreme 250 ml", "hsn": "32129090", "qty": "20", "units": "nos", "rate": "75.00", "tax": "18%", "amount": "1500.00" },
+            { "sno": "47", "productCode": "330", "productName": "Gillette Vector", "hsn": "82121010", "qty": "15", "units": "nos", "rate": "150.00", "tax": "18%", "amount": "2250.00" },
+            { "sno": "48", "productCode": "335", "productName": "Gillette Guard", "hsn": "82121010", "qty": "25", "units": "nos", "rate": "25.00", "tax": "18%", "amount": "625.00" },
+            { "sno": "49", "productCode": "340", "productName": "Old Spice After Shave 50 ml", "hsn": "33071010", "qty": "10", "units": "nos", "rate": "120.00", "tax": "28%", "amount": "1200.00" },
+            { "sno": "50", "productCode": "345", "productName": "Set Wet Gel 50 g", "hsn": "33059040", "qty": "15", "units": "nos", "rate": "55.00", "tax": "18%", "amount": "825.00" },
+            { "sno": "51", "productCode": "350", "productName": "Dabur Red 100 g", "hsn": "33061020", "qty": "30", "units": "nos", "rate": "55.00", "tax": "12%", "amount": "1650.00" },
+            { "sno": "52", "productCode": "355", "productName": "Meswak 100 g", "hsn": "33061020", "qty": "20", "units": "nos", "rate": "65.00", "tax": "12%", "amount": "1300.00" },
+            { "sno": "53", "productCode": "360", "productName": "Close Up 150 g", "hsn": "33061020", "qty": "25", "units": "nos", "rate": "95.00", "tax": "18%", "amount": "2375.00" },
+            { "sno": "54", "productCode": "365", "productName": "Whisper Ultra 15s", "hsn": "96190010", "qty": "30", "units": "nos", "rate": "120.00", "tax": "0%", "amount": "3600.00" },
+            { "sno": "55", "productCode": "370", "productName": "Stayfree Secure 20s", "hsn": "96190010", "qty": "25", "units": "nos", "rate": "90.00", "tax": "0%", "amount": "2250.00" },
+            { "sno": "56", "productCode": "375", "productName": "Pampers Active M 10s", "hsn": "96190010", "qty": "15", "units": "nos", "rate": "180.00", "tax": "18%", "amount": "2700.00" },
+            { "sno": "57", "productCode": "380", "productName": "Huggies Wonder M 10s", "hsn": "96190010", "qty": "15", "units": "nos", "rate": "170.00", "tax": "18%", "amount": "2550.00" },
+            { "sno": "58", "productCode": "385", "productName": "MamyPoko Pants M 12s", "hsn": "96190010", "qty": "20", "units": "nos", "rate": "190.00", "tax": "18%", "amount": "3800.00" },
+            { "sno": "59", "productCode": "390", "productName": "Johnson's Baby Soap 100 g", "hsn": "34011110", "qty": "25", "units": "nos", "rate": "65.00", "tax": "18%", "amount": "1625.00" },
+            { "sno": "60", "productCode": "395", "productName": "Himalaya Baby Powder 100 g", "hsn": "33049190", "qty": "20", "units": "nos", "rate": "85.00", "tax": "18%", "amount": "1700.00" }
+          ],
+          "total": "125430.00",
+          "discounts": "430.00",
+          "grandTotal": "125000.00"
+        }
+      }
+    ]
+  },
+  "exportedAt": "2026-05-07T12:00:00.000Z",
+  "version": "1.0.0"
+}

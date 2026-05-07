@@ -1,0 +1,206 @@
+{
+  "schema": {
+    "page": {
+      "size": "A4",
+      "orientation": "portrait",
+      "margin": {
+        "top": "15mm",
+        "bottom": "15mm",
+        "left": "15mm",
+        "right": "15mm"
+      }
+    },
+    "zones": {
+      "header": {
+        "id": "header",
+        "components": [],
+        "minHeight": "20mm"
+      },
+      "footer": {
+        "id": "footer",
+        "components": [
+          {
+            "id": "total-val",
+            "type": "text",
+            "x": 120,
+            "y": 5,
+            "width": 60,
+            "height": 10,
+            "content": "Total: {{invoice.total}} THB",
+            "style": {
+              "fontSize": 12,
+              "fontWeight": "bold"
+            },
+            "align": "right"
+          }
+        ],
+        "minHeight": "20mm"
+      }
+    },
+    "pages": [
+      {
+        "id": "page-detail",
+        "name": "Invoice Items",
+        "body": {
+          "id": "body",
+          "components": [
+            {
+              "id": "items-table",
+              "type": "table",
+              "x": 15.100000000000001,
+              "y": 47.900151316324866,
+              "width": 180,
+              "height": 40,
+              "dataSource": "{{items_list}}",
+              "showHeader": true,
+              "columns": [
+                {
+                  "id": "c1",
+                  "header": "No.",
+                  "field": "no",
+                  "width": "30pt"
+                },
+                {
+                  "id": "c2",
+                  "header": "Description",
+                  "field": "description",
+                  "width": "1fr"
+                },
+                {
+                  "id": "c3",
+                  "header": "Qty",
+                  "field": "qty",
+                  "width": "40pt"
+                },
+                {
+                  "id": "c4",
+                  "header": "Price",
+                  "field": "unitPrice",
+                  "width": "60pt"
+                },
+                {
+                  "id": "c5",
+                  "header": "Amount",
+                  "field": "amount",
+                  "width": "60pt"
+                }
+              ],
+              "style": {},
+              "repeatHeaderOnPage": true
+            },
+            {
+              "id": "cust-info",
+              "type": "text",
+              "x": 16.8,
+              "y": 20.111246744791664,
+              "width": 100,
+              "height": 6,
+              "content": "Customer: {{customer.name}}",
+              "style": {
+                "fontSize": 10,
+                "fontWeight": "bold"
+              }
+            },
+            {
+              "id": "inv-num",
+              "type": "text",
+              "x": 131.1,
+              "y": 19.903935432434075,
+              "width": 50,
+              "height": 6,
+              "content": "Number: {{invoice.number}}",
+              "style": {
+                "fontSize": 10,
+                "fontWeight": "bold"
+              },
+              "align": "right"
+            },
+            {
+              "id": "inv-title",
+              "type": "text",
+              "x": 19.5,
+              "y": 0.26336263020833073,
+              "width": 180,
+              "height": 12.9,
+              "content": "INVOICE",
+              "style": {
+                "fontSize": 20,
+                "fontWeight": "bold"
+              },
+              "align": "center"
+            }
+          ],
+          "minHeight": "50mm"
+        },
+        "footer": {
+          "id": "footer",
+          "components": [],
+          "minHeight": "20mm"
+        }
+      }
+    ],
+    "groups": [],
+    "batchDataSource": "items",
+    "fonts": [
+      {
+        "family": "Sarabun",
+        "size": 10,
+        "role": "body",
+        "embedded": true
+      }
+    ],
+    "metadata": {
+      "title": "Multi-Invoice Report",
+      "createdAt": "2026-05-05T09:16:32.677Z",
+      "updatedAt": "2026-05-05T09:16:32.677Z",
+      "author": "System"
+    },
+    "id": "multi-invoice-template",
+    "name": "Multi-Invoice Report",
+    "version": "1.0.0",
+    "variables": [],
+    "dataSchema": []
+  },
+  "data": {
+    "items": [
+      {
+        "invoice": {
+          "number": "INV-2567-00142",
+          "total": "91,485.00"
+        },
+        "customer": {
+          "name": "บริษัท ไพศาล โลจิสติกส์ จำกัด (มหาชน)"
+        },
+        "items_list": [
+          {
+            "no": "1",
+            "description": "ERP Module Service",
+            "qty": "1",
+            "unitPrice": "35,000.00",
+            "amount": "35,000.00"
+          }
+        ]
+      },
+      {
+        "invoice": {
+          "number": "INV-2567-00143",
+          "total": "12,500.00"
+        },
+        "customer": {
+          "name": "บริษัท เทสท์ จำกัด"
+        },
+        "items_list": [
+          {
+            "no": "1",
+            "description": "Consulting",
+            "qty": "2",
+            "unitPrice": "6,250.00",
+            "amount": "12,500.00"
+          }
+        ]
+      }
+    ]
+  },
+  "exportedAt": "2026-05-07T04:47:04.808Z",
+  "version": "1.0.0"
+}

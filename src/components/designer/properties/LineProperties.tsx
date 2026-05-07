@@ -1,5 +1,6 @@
 import { clsx } from 'clsx';
 import { Circle, Minus, MoreHorizontal, MoreVertical, Square, Type } from 'lucide-react';
+import { ColorPicker } from '../../shared/ColorPicker';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { PropertyRow, SectionHeader } from './Shared';
 
@@ -77,19 +78,10 @@ export function LineProperties({ component, onUpdate }: LinePropertiesProps) {
         </PropertyRow>
 
         <PropertyRow label="Color">
-          <div className="flex gap-1.5 items-center w-full">
-            <div
-              className="w-5 h-5 rounded border border-[var(--border-default)] shrink-0"
-              style={{ backgroundColor: component.color || '#000000' }}
-            />
-            <DesignerInput
-              type="text"
-              value={component.color || '#000000'}
-              onChange={(v) => onUpdate({ color: v })}
-              mono
-              placeholder="#000000"
-            />
-          </div>
+          <ColorPicker
+            color={component.color || '#000000'}
+            onChange={(color) => onUpdate({ color })}
+          />
         </PropertyRow>
 
         <PropertyRow label="Stroke Style">

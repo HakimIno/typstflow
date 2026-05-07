@@ -1,5 +1,6 @@
 import { clsx } from 'clsx';
 import { Bold, Italic, Underline } from 'lucide-react';
+import { ColorPicker } from '../../shared/ColorPicker';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { PropertyRow, SectionHeader } from './Shared';
 
@@ -94,19 +95,10 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
       </PropertyRow>
 
       <PropertyRow label="Color">
-        <div className="flex gap-1.5 items-center">
-          <div
-            className="w-5 h-5 rounded border border-[var(--border-default)]"
-            style={{ backgroundColor: style?.color || '#000000' }}
-          />
-          <DesignerInput
-            type="text"
-            value={style?.color || '#000000'}
-            onChange={(v) => onUpdateStyle({ color: v })}
-            mono
-            placeholder="#000000"
-          />
-        </div>
+        <ColorPicker
+          color={style?.color || '#000000'}
+          onChange={(color) => onUpdateStyle({ color })}
+        />
       </PropertyRow>
 
       <PropertyRow label="Line Height">

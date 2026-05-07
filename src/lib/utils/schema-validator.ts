@@ -6,8 +6,71 @@ const z = (zod as any).z || zod;
  * Zod Schema for LayoutSchema validation.
  * Ensures the document structure is intact and prevents crashes from corrupted data.
  */
+/**
+ * Deep cleans a component to ensure all fields match the expected types in the WASM engine.
+ * Specifically coerces numeric values for thickness, borderWidth, etc. into strings.
+ */
+function deepCleanComponent(comp: any): any {
+  if (!comp || typeof comp !== 'object') return comp;
+
+  const result = { ...comp };
+
+  // 1. Coerce core component properties
+  if (typeof result.thickness === 'number') {
+    result.thickness = `${result.thickness}pt`;
+  }
+  if (typeof result.dashArray === 'number') {
+    result.dashArray = `${result.dashArray}pt`;
+  }
+
+  // 2. Coerce style properties
+  if (result.style && typeof result.style === 'object') {
+    result.style = { ...result.style };
+    if (typeof result.style.borderWidth === 'number') {
+      result.style.borderWidth = `${result.style.borderWidth}pt`;
+    }
+    if (typeof result.style.cellPadding === 'number') {
+      result.style.cellPadding = `${result.style.cellPadding}pt`;
+    }
+    if (typeof result.style.lineHeight === 'string') {
+      result.style.lineHeight = parseFloat(result.style.lineHeight) || 1.2;
+    }
+  }
+
+  // 3. Coerce Table specific properties
+  if (result.type === 'table' && result.columns) {
+    result.columns = result.columns.map((col: any) => {
+      const newCol = { ...col };
+      if (typeof newCol.borderWidth === 'number') {
+        newCol.borderWidth = `${newCol.borderWidth}pt`;
+      }
+      if (typeof newCol.width === 'number') {
+        newCol.width = `${newCol.width}mm`;
+      }
+      return newCol;
+    });
+  }
+
+  // 4. Coerce nested components (for column layout / repeaters)
+  if (result.children && Array.isArray(result.children)) {
+    result.children = result.children.map(deepCleanComponent);
+  }
+  if (result.columns && Array.isArray(result.columns) && result.type === 'columns') {
+    result.columns = result.columns.map((col: any) => ({
+      ...col,
+      components: (col.components || []).map(deepCleanComponent),
+    }));
+  }
+
+  return result;
+}
+
+/**
+ * Zod Schema for LayoutSchema validation.
+ * Ensures the document structure is intact and prevents crashes from corrupted data.
+ */
 export const ComponentSchema = z
-  .object({
+  .preprocess((val) => deepCleanComponent(val), z.object({
     id: z.string(),
     type: z.string(),
     x: z.number(),
@@ -15,8 +78,7 @@ export const ComponentSchema = z
     width: z.number().optional(),
     height: z.number().optional(),
     name: z.string().optional(),
-  })
-  .passthrough();
+  }).passthrough());
 
 export const ZoneSchema = z.object({
   id: z.string(),
