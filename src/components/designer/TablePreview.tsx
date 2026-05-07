@@ -351,7 +351,7 @@ export function TablePreview({ component }: Props) {
 
         return (
           <div
-            key={`${cell.id}-${cell.page_index}`}
+            key={`${cell.section}-${cell.row_id}-${cell.col_idx}-${cell.page_index}`}
             onMouseDown={(e) => handleCellMouseDown(cell.section, cell.row_id, cell.col_idx, e)}
             onMouseEnter={() => handleCellMouseEnter(cell.section, cell.row_id, cell.col_idx)}
             className={clsx(
@@ -394,7 +394,7 @@ export function TablePreview({ component }: Props) {
               onSave={(newVal) => {
                 if (newVal === cell.content) return;
                 // Legacy support
-                if (!component[sectionKey] || component[sectionKey].length === 0) {
+                if (!component[sectionKey] || component[sectionKey]?.length === 0) {
                   if (isHeader) {
                     const newCols = [...component.columns];
                     if (newCols[cell.col_idx]) newCols[cell.col_idx].header = newVal;

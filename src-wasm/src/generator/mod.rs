@@ -39,8 +39,8 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     }
     t.push_str("#set par(leading: 0.2em, justify: false)\n\n");
 
-    // ── 4. Zone coordinate origins — from page corner, matching designer ────
-    // Zones are stacked flex-col from page corner (0,0). margin is visual only.
+    // ── 4. Zone coordinate origins ────
+    // Now that we use native page margins, the main flow container IS the Body zone.
     let h_height = parse_mm_value(
         schema.zones.header.min_height.as_deref().unwrap_or("0mm")
     );
@@ -49,9 +49,39 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     );
 
     let offset_x = "0mm".to_string();
-    let header_offset_y = "0mm".to_string();
-    let body_offset_y = format!("{}mm", h_height);
-    let footer_offset_y = format!("{}mm", page_height_mm - f_height);
+    let header_offset_y = format!("-{}mm", h_height); // Manual header pushes UP into the top margin
+    let body_offset_y = "0mm".to_string();            // Body is natively at the top of the flow container
+    let body_height = page_height_mm - h_height - f_height;
+    let footer_offset_y = format!("{}mm", body_height); // Manual footer pushes DOWN into the bottom margin
+
+    // Set page margins so the main flow area is exactly the Body zone.
+    t.push_str(&format!(
+        "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: (top: {}mm, bottom: {}mm, left: 0mm, right: 0mm),\n",
+        get_typst_paper_name(&schema.page.size),
+        is_landscape,
+        h_height,
+        f_height
+    ));
+
+    let is_global_h = schema.zones.header.repeat_on_every_page.unwrap_or(false);
+    if is_global_h {
+        let mut header_content = String::new();
+        for comp in &schema.zones.header.components {
+            header_content.push_str(&render_component(comp, data, data, "0mm", "0mm", "#"));
+        }
+        t.push_str(&format!("  header: [{}],\n", header_content));
+    }
+
+    let is_global_f = schema.zones.footer.repeat_on_every_page.unwrap_or(false);
+    if is_global_f {
+        let mut footer_content = String::new();
+        for comp in &schema.zones.footer.components {
+            footer_content.push_str(&render_component(comp, data, data, "0mm", "0mm", "#"));
+        }
+        t.push_str(&format!("  footer: [{}],\n", footer_content));
+    }
+    
+    t.push_str(")\n\n");
 
     // ── 5. Render pages ─────────────────────────────────────────────────────
     if let Some(batch_path) = &schema.batch_data_source {
@@ -108,35 +138,40 @@ fn render_document(
         // Header
         let is_global_h = schema.zones.header.repeat_on_every_page.unwrap_or(false);
         let first_only_h = schema.zones.header.show_on_first_page_only.unwrap_or(false);
-        let render_header = if is_global_h { true }
+        let render_header = if is_global_h { false } // Handled natively by #set page(header: ...)
             else if first_only_h { i == 0 }
             else { i == 0 }; // Default: show on first page
 
         if render_header {
             t.push_str(&format!("// --- PAGE {} HEADER ---\n", i + 1));
+            // Ensure manual header is pulled out of flow so it doesn't push the body down
+            t.push_str("#place(dx: 0mm, dy: 0mm)[\n");
             for comp in &schema.zones.header.components {
-                t.push_str(&render_component(comp, local_data, global_data, offset_x, header_offset_y, "#"));
+                t.push_str(&render_component(comp, local_data, global_data, offset_x, header_offset_y, "  #"));
             }
+            t.push_str("]\n");
+        }
+
+        // Footer
+        let is_global_f = schema.zones.footer.repeat_on_every_page.unwrap_or(false);
+        let last_only_f = schema.zones.footer.show_on_last_page_only.unwrap_or(false);
+        let render_footer = if is_global_f { false } // Handled natively by #set page(footer: ...)
+            else if last_only_f { i == total_pages - 1 }
+            else { i == 0 }; // Default: show on first page (Report Footer)
+
+        if render_footer {
+            t.push_str(&format!("// --- PAGE {} FOOTER ---\n", i + 1));
+            t.push_str("#place(dx: 0mm, dy: 0mm)[\n");
+            for comp in &schema.zones.footer.components {
+                t.push_str(&render_component(comp, local_data, global_data, offset_x, footer_offset_y, "  #"));
+            }
+            t.push_str("]\n");
         }
 
         // Body
         t.push_str(&format!("// --- PAGE {} BODY ---\n", i + 1));
         for comp in &page_def.body.components {
             t.push_str(&render_component(comp, local_data, global_data, offset_x, body_offset_y, "#"));
-        }
-
-        // Footer
-        let is_global_f = schema.zones.footer.repeat_on_every_page.unwrap_or(false);
-        let last_only_f = schema.zones.footer.show_on_last_page_only.unwrap_or(false);
-        let render_footer = if is_global_f { true }
-            else if last_only_f { i == total_pages - 1 }
-            else { i == 0 }; // Default: show on first page (Report Footer)
-
-        if render_footer {
-            t.push_str(&format!("// --- PAGE {} FOOTER ---\n", i + 1));
-            for comp in &schema.zones.footer.components {
-                t.push_str(&render_component(comp, local_data, global_data, offset_x, footer_offset_y, "#"));
-            }
         }
     }
     t

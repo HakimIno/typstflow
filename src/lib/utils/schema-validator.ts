@@ -70,7 +70,7 @@ function deepCleanComponent(comp: any): any {
  * Ensures the document structure is intact and prevents crashes from corrupted data.
  */
 export const ComponentSchema = z
-  .preprocess((val) => deepCleanComponent(val), z.object({
+  .preprocess((val: unknown) => deepCleanComponent(val), z.object({
     id: z.string(),
     type: z.string(),
     x: z.number(),
@@ -84,6 +84,11 @@ export const ZoneSchema = z.object({
   id: z.string(),
   components: z.array(ComponentSchema),
   minHeight: z.string().optional(),
+  background: z.string().optional(),
+  padding: z.string().optional(),
+  showOnFirstPageOnly: z.boolean().optional(),
+  showOnLastPageOnly: z.boolean().optional(),
+  repeatOnEveryPage: z.boolean().optional(),
 });
 
 const DEFAULT_PAGE_FOOTER = { id: 'footer', minHeight: '20mm', components: [] };

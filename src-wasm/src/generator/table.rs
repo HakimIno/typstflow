@@ -62,6 +62,18 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
         table_args.push(format!("fill: {}", fill_fn));
     }
 
+    let mut prefix_text = String::new();
+    if let Some(s) = style {
+        let mut t_args = Vec::new();
+        if let Some(fs) = s.font_size { t_args.push(format!("size: {}pt", fs)); }
+        if let Some(fw) = &s.font_weight { t_args.push(format!("weight: \"{}\"", fw)); }
+        if let Some(lh) = s.line_height { t_args.push(format!("leading: {}em", lh - 1.0)); }
+        if !t_args.is_empty() {
+            prefix_text = format!("#set text({})\n", t_args.join(", "));
+        }
+    }
+    
+    t.push_str(&prefix_text);
     t.push_str(&format!("#table(\n  {},\n", table_args.join(",\n  ")));
 
     // ── 2. HEADERS ────────────────────────────────────────────────────────────
@@ -125,11 +137,21 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                 for cell in &row.cells {
                     let val = resolve_binding_scoped(&cell.content, item, global);
                     let format_func = cell.format.as_deref().unwrap_or("text").to_lowercase();
-                    let inner_content = if format_func != "text" {
+                    let mut inner_content = if format_func != "text" {
                         format!("#fmt_{}(\"{}\")", format_func.replace("-", "_"), escape_string_literal(&val))
                     } else {
                         escape_typst(&val)
                     };
+
+                    if let Some(s) = &cell.style {
+                        let mut text_args = Vec::new();
+                        if let Some(fs) = s.font_size { text_args.push(format!("size: {}pt", fs)); }
+                        if let Some(fw) = &s.font_weight { text_args.push(format!("weight: \"{}\"", fw)); }
+                        if let Some(c) = &s.color { text_args.push(format!("fill: {}", format_color(c))); }
+                        if !text_args.is_empty() {
+                            inner_content = format!("[#text({})[{}]]", text_args.join(", "), inner_content);
+                        }
+                    }
 
                     let cs = cell.colspan.unwrap_or(1);
                     let rs = cell.rowspan.unwrap_or(1);
@@ -155,11 +177,21 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                 }).unwrap_or_default();
                 
                 let format_func = col.format.as_deref().unwrap_or("text").to_lowercase();
-                let inner_content = if format_func != "text" {
+                let mut inner_content = if format_func != "text" {
                     format!("#fmt_{}(\"{}\")", format_func.replace("-", "_"), escape_string_literal(&val))
                 } else {
                     escape_typst(&val)
                 };
+
+                if let Some(s) = &col.style {
+                    let mut text_args = Vec::new();
+                    if let Some(fs) = s.font_size { text_args.push(format!("size: {}pt", fs)); }
+                    if let Some(fw) = &s.font_weight { text_args.push(format!("weight: \"{}\"", fw)); }
+                    if let Some(c) = &s.color { text_args.push(format!("fill: {}", format_color(c))); }
+                    if !text_args.is_empty() {
+                        inner_content = format!("[#text({})[{}]]", text_args.join(", "), inner_content);
+                    }
+                }
 
                 let col_align = col.align.as_deref().unwrap_or("left");
                 let bg = col.background.as_deref();
@@ -250,7 +282,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
     }
 
     t.push_str(")\n");
-    wrap_placement(&c.base, &t, offset_x, offset_y, prefix)
+    wrap_flow(&c.base, &t, offset_x, offset_y, prefix)
 }
 
 fn render_hline(hl: &HLineConfig) -> String {

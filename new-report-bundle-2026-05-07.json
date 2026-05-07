@@ -1,8 +1,5 @@
 {
   "schema": {
-    "id": "new-report",
-    "name": "New Report",
-    "version": "1.0.0",
     "page": {
       "size": "A4",
       "orientation": "portrait",
@@ -13,18 +10,9 @@
         "right": "5mm"
       }
     },
-    "fonts": [
-      {
-        "family": "Sarabun",
-        "role": "body",
-        "size": 10,
-        "embedded": true
-      }
-    ],
     "zones": {
       "header": {
         "id": "header",
-        "minHeight": "34.1mm",
         "components": [
           {
             "id": "image-sh8pmyb",
@@ -108,11 +96,10 @@
             "style": "solid"
           }
         ],
-        "repeatOnEveryPage": true
+        "minHeight": "34.1mm"
       },
       "footer": {
         "id": "footer",
-        "minHeight": "30mm",
         "components": [
           {
             "id": "text-busm3vj",
@@ -155,7 +142,7 @@
             "style": "solid"
           }
         ],
-        "repeatOnEveryPage": true
+        "minHeight": "30mm"
       }
     },
     "pages": [
@@ -164,7 +151,6 @@
         "name": "Page 1",
         "body": {
           "id": "body",
-          "minHeight": "237mm",
           "components": [
             {
               "id": "text-8r80vjo",
@@ -215,14 +201,14 @@
                   "id": "col-1-1778129951320",
                   "header": "รหัสพนักงาน",
                   "field": "code",
-                  "width": "0.3fr",
+                  "width": "0.4fr",
                   "align": "center"
                 },
                 {
                   "id": "col-2-1778129951320",
                   "header": "ชื่อ-นามสกุล",
                   "field": "name",
-                  "width": "0.5fr",
+                  "width": "0.8fr",
                   "align": "left"
                 },
                 {
@@ -251,32 +237,51 @@
                   "header": "เงินเดือน (บาท)",
                   "field": "salary",
                   "width": "0.4fr",
-                  "align": "center"
+                  "align": "center",
+                  "format": "number"
                 }
               ],
               "style": {
-                "fontSize": 10,
+                "fontSize": 8,
                 "headerBackground": "#f5f5f5",
                 "borderColor": "#e0e0e0",
                 "borderWidth": "0.5pt",
-                "cellPadding": "4pt"
+                "cellPadding": "4pt",
+                "inset": "8pt"
               },
               "showHeader": true,
               "repeatHeaderOnPage": false
             }
-          ]
+          ],
+          "minHeight": "237mm"
+        },
+        "footer": {
+          "id": "footer",
+          "components": [],
+          "minHeight": "20mm"
         }
       }
     ],
     "groups": [],
-    "variables": [],
-    "dataSchema": [],
+    "fonts": [
+      {
+        "family": "Sarabun",
+        "size": 10,
+        "role": "body",
+        "embedded": true
+      }
+    ],
     "metadata": {
       "title": "New Report",
       "createdAt": "2026-05-07T04:54:17.653Z",
       "updatedAt": "2026-05-07T04:54:17.653Z",
       "author": "Antigravity"
-    }
+    },
+    "id": "new-report",
+    "name": "New Report",
+    "version": "1.0.0",
+    "variables": [],
+    "dataSchema": []
   },
   "data": {
     "reportDate": "25 มกราคม 2568",
@@ -449,6 +454,6 @@
       }
     ]
   },
-  "exportedAt": "2026-05-07T05:09:35.730Z",
+  "exportedAt": "2026-05-07T05:28:17.155Z",
   "version": "1.0.0"
 }

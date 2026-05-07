@@ -215,9 +215,37 @@ pub fn wrap_placement(base: &BaseComponent, body: &str, offset_x: &str, offset_y
         // The #box() anchors the page so subsequent weak pagebreaks WILL trigger.
         out.push_str("#pagebreak(weak: true)\n#box()\n");
     }
+    // Explicitly set alignment to top + left so it doesn't inherit alignment from parent (e.g. page header defaults to bottom)
     out.push_str(&format!(
-        "{}place(dx: {}mm, dy: {}mm)[#block(width: {}mm, height: {}mm, clip: false)[{}]]\n",
+        "{}place(top + left, dx: {}mm, dy: {}mm)[#block(width: {}mm, height: {}mm, clip: false)[{}]]\n",
         prefix, abs_x, abs_y, w, h, body
+    ));
+    out
+}
+
+/// Emit a #pad() + #block() wrapper for a component to keep it in the normal flow.
+/// This allows long components (like Tables) to natively break across pages.
+pub fn wrap_flow(base: &BaseComponent, body: &str, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+    let x = base.x.unwrap_or(0.0);
+    let y = base.y.unwrap_or(0.0);
+    let w = base.width.unwrap_or(100.0);
+
+    let offset_x_mm: f64 = offset_x.trim_end_matches("mm").trim().parse().unwrap_or(0.0);
+    let offset_y_mm: f64 = offset_y.trim_end_matches("mm").trim().parse().unwrap_or(0.0);
+    let abs_x = offset_x_mm + x;
+    let abs_y = offset_y_mm + y;
+
+    let mut out = String::new();
+    if base.page_break_before.unwrap_or(false) {
+        out.push_str("#pagebreak(weak: true)\n");
+    }
+    
+    // Using pad instead of place keeps the element in the document flow,
+    // which is required for native page breaking in Typst.
+    // Wrap in align(top + left) to ensure it starts exactly from the top-left of the flow container.
+    out.push_str(&format!(
+        "{}align(top + left)[#pad(top: {}mm, left: {}mm)[#block(width: {}mm, clip: false)[{}]]]\n",
+        prefix, abs_y, abs_x, w, body
     ));
     out
 }

@@ -248,6 +248,7 @@ pub struct TableColumn {
     pub colspan: Option<u32>,
     pub rowspan: Option<u32>,
     pub format: Option<String>,
+    pub style: Option<TextStyle>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
