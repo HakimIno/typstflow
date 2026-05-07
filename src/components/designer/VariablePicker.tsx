@@ -10,6 +10,7 @@ import {
 import { clsx } from 'clsx';
 import { Box, Braces, ChevronDown, FileText, Hash, List, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { DesignerInput } from '../shared/DesignerInput';
 
 interface VariablePickerProps {
@@ -48,6 +49,19 @@ export function VariablePicker({
   const [activeTab, setActiveTab] = useState<'fields' | 'aggregates'>('fields');
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+
+  const toggleOpen = () => {
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
 
   // Extract all paths from sample data
   const allPaths = useMemo(() => {
@@ -95,50 +109,51 @@ export function VariablePicker({
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleOpen}
         className={clsx(
-          'inline-flex items-center gap-1 px-2 py-1',
-          'text-[10px] font-medium text-[var(--text-secondary)]',
-          'bg-[var(--bg-widget)] border border-[var(--border-default)] rounded-sm',
-          'hover:bg-[var(--bg-hover)] hover:border-[var(--border-subtle)]',
-          'focus:outline-none focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]',
-          'transition-colors',
-          'disabled:opacity-50 disabled:cursor-not-allowed'
+          'inline-flex items-center gap-1.5 px-2 py-1',
+          'text-[9px] font-black uppercase tracking-[0.05em]',
+          'bg-[var(--accent-glow)] text-[var(--accent)] border border-[var(--border-accent)] rounded-[2px]',
+          'hover:brightness-110 active:scale-[0.97]',
+          'focus:outline-none transition-all',
+          'disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed'
         )}
         disabled={isEmpty}
-        title={
-          isEmpty ? 'No sample data available. Add data in the Data panel first.' : placeholder
-        }
       >
         <Braces className="w-3 h-3" />
-        <span className="hidden sm:inline">Variables</span>
-        <ChevronDown className={clsx('w-3 h-3 transition-transform', isOpen && 'rotate-180')} />
+        <span>Variables</span>
+        <ChevronDown className={clsx('w-2.5 h-2.5 transition-transform duration-200', isOpen && 'rotate-180')} />
       </button>
 
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <button
-            type="button"
-            className="fixed inset-0 z-40 cursor-default bg-transparent w-full h-full border-none p-0"
-            onClick={() => setIsOpen(false)}
-            onKeyDown={(e) => e.key === 'Escape' && setIsOpen(false)}
-            aria-label="Close variable picker"
+      {isOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] pointer-events-none">
+          {/* Backdrop (Invisible but clickable to close) */}
+          <div 
+            className="absolute inset-0 pointer-events-auto" 
+            onClick={() => setIsOpen(false)} 
           />
 
           {/* Popover */}
-          <div className="absolute z-50 right-0 mt-1 w-80 bg-[var(--bg-surface)] rounded-md shadow-2xl border border-[var(--border-default)] max-h-[450px] flex flex-col animate-in fade-in zoom-in-95 duration-100">
+          <div 
+            style={{ 
+              position: 'absolute', 
+              top: `${coords.top + 4}px`, 
+              left: `${coords.left - 240}px`, // Adjust to float left of the button
+              width: '320px' 
+            }}
+            className="pointer-events-auto bg-[var(--bg-surface)] rounded-[4px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[var(--border-default)] max-h-[450px] flex flex-col animate-in fade-in zoom-in-95 duration-150 overflow-hidden"
+          >
             {/* Tabs */}
             {showAggregates && (
-              <div className="flex p-1 gap-1 border-b border-[var(--border-default)] bg-[var(--bg-widget)]/50">
+              <div className="flex p-1 gap-1 border-b border-[var(--border-default)] bg-white/[0.02]">
                 <button
                   type="button"
                   onClick={() => setActiveTab('fields')}
                   className={clsx(
-                    'flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded-sm transition-colors',
+                    'flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded-[2px] transition-all',
                     activeTab === 'fields'
-                      ? 'bg-[var(--accent)] text-white'
-                      : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'
+                      ? 'bg-[var(--accent)] text-white shadow-sm'
+                      : 'text-[var(--text-muted)] hover:bg-white/5'
                   )}
                 >
                   Fields
@@ -147,10 +162,10 @@ export function VariablePicker({
                   type="button"
                   onClick={() => setActiveTab('aggregates')}
                   className={clsx(
-                    'flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded-sm transition-colors',
+                    'flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded-[2px] transition-all',
                     activeTab === 'aggregates'
-                      ? 'bg-[var(--accent)] text-white'
-                      : 'text-[var(--text-muted)] hover:bg-[var(--bg-hover)]'
+                      ? 'bg-[var(--accent)] text-white shadow-sm'
+                      : 'text-[var(--text-muted)] hover:bg-white/5'
                   )}
                 >
                   Aggregates
@@ -158,25 +173,23 @@ export function VariablePicker({
               </div>
             )}
 
-            {/* Header */}
-            <div className="p-2 border-b border-[var(--border-default)]">
+            {/* Search Header */}
+            <div className="p-2 bg-white/[0.01]">
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
-                <DesignerInput
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text-muted)]" />
+                <input
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
-                  onChange={(v) => setSearchQuery(v)}
-                  placeholder={
-                    activeTab === 'fields' ? 'Search fields...' : 'Search numeric fields...'
-                  }
-                  className="w-full pl-7 pr-7 py-1.5"
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={activeTab === 'fields' ? 'Search data fields...' : 'Search for functions...'}
+                  className="w-full pl-8 pr-8 py-1.5 bg-[var(--bg-widget)] border border-[var(--border-default)] text-[11px] text-[var(--text-primary)] rounded-[4px] focus:outline-none focus:border-[var(--accent)] transition-colors"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={handleClearSearch}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -184,19 +197,17 @@ export function VariablePicker({
               </div>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
+            {/* Content List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide min-h-[100px]">
               {isEmpty ? (
-                <div className="text-center py-8 text-slate-400 text-[10px]">
-                  <Braces className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>No sample data available</p>
-                  <p className="mt-1">Add data in the Data panel first</p>
+                <div className="text-center py-10 opacity-50">
+                  <Braces className="w-8 h-8 mx-auto mb-2 text-[var(--accent)] opacity-20" />
+                  <p className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-muted)]">No Data Bindings</p>
                 </div>
               ) : groupedPaths.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-[10px]">
-                  <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>No fields found</p>
-                  <p className="mt-1">Try a different search term</p>
+                <div className="text-center py-10 opacity-50">
+                  <Search className="w-8 h-8 mx-auto mb-2 text-[var(--text-muted)]" />
+                  <p className="text-[10px] font-medium">No results found</p>
                 </div>
               ) : activeTab === 'fields' ? (
                 <div className="space-y-1">
@@ -210,7 +221,7 @@ export function VariablePicker({
                   ))}
                 </div>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-2 p-1">
                   {allPaths
                     .filter((p) => getValueType(sampleData, p) === 'number' || p.includes('[*]'))
                     .map((path) => (
@@ -224,18 +235,20 @@ export function VariablePicker({
               )}
             </div>
 
-            {/* Footer */}
-            {allPaths.length > 0 && (
-              <div className="p-2 border-t border-[var(--border-default)] bg-[var(--bg-widget)]">
-                <p className="text-[9px] text-slate-500">
-                  {activeTab === 'fields'
-                    ? `${allPaths.length} field${allPaths.length !== 1 ? 's' : ''} available`
-                    : 'Select a field to create an aggregate function'}
-                </p>
+            {/* Footer Summary */}
+            {!isEmpty && (
+              <div className="px-3 py-2 border-t border-[var(--border-default)] bg-white/[0.01] flex items-center justify-between">
+                <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">
+                  {activeTab === 'fields' ? 'Data Path Explorer' : 'Function Aggregator'}
+                </span>
+                <span className="text-[8px] font-mono text-[var(--accent)] font-bold">
+                  {allPaths.length} AVAILABLE
+                </span>
               </div>
             )}
           </div>
-        </>
+        </div>,
+        document.body
       )}
     </div>
   );

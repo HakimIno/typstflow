@@ -142,7 +142,7 @@
 
 @layer components {
   .pro-panel {
-    @apply bg-[var(--bg-surface)] backdrop-blur-2xl border border-[var(--border-default)] rounded-[var(--radius-lg)] transition-all;
+    @apply bg-[var(--bg-surface)] backdrop-blur-2xl border border-[var(--border-default)] rounded-[var(--radius-lg)];
     box-shadow: var(--shadow-premium);
   }
 

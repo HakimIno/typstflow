@@ -23,9 +23,7 @@ import {
   Database,
   Type,
   Maximize,
-  AlignLeft,
-  Info,
-  RefreshCw
+  Lock
 } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { DesignerInput } from '../shared/DesignerInput';
@@ -64,6 +62,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
   const fullSchema = useDesignerStore((state) => state.schema);
   const sampleData = useDesignerStore((state) => state.sampleData);
   const activePageId = useDesignerStore((state) => state.activePageId);
+  const lockedComponentIds = useDesignerStore((state) => state.lockedComponentIds);
 
   const updateSchema = useDesignerStore((state) => state.updateSchema);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
@@ -96,7 +95,10 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
     return null;
   }, [selectedComponentIds, zones, pages]);
 
+  const isLocked = selectedComponent ? lockedComponentIds.includes(selectedComponent.id) : false;
+
   const handleNumericUpdate = (key: string, value: string) => {
+    if (isLocked) return;
     const num = Number.parseFloat(value);
     if (!Number.isNaN(num) && selectedComponent) {
       updateComponent(selectedComponent.id, { [key]: num });
@@ -104,7 +106,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
   };
 
   const handleStyleUpdate = (updates: any) => {
-    if (!selectedComponent) return;
+    if (!selectedComponent || isLocked) return;
     const currentStyle = (selectedComponent as any).style || {};
     updateComponent(selectedComponent.id, {
       style: { ...currentStyle, ...updates },
@@ -368,81 +370,102 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
       case 'data':
         return (
-          <div className="space-y-1 animate-in fade-in duration-200">
-            <section className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
-              <div className="px-2 py-1.5 border-b border-[var(--border-default)] flex items-center justify-between bg-white/[0.01]">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Content & Data</span>
-                <VariablePicker
-                  sampleData={sampleData}
-                  onSelect={(_path, binding) => {
-                    if (isText(selectedComponent)) {
-                      const currentContent = selectedComponent.content || '';
-                      updateComponent(selectedComponent.id, { content: currentContent + binding });
-                    } else if (isTable(selectedComponent)) {
-                      updateComponent(selectedComponent.id, { dataSource: binding });
-                    } else if (isBarcode(selectedComponent)) {
-                      updateComponent(selectedComponent.id, { value: binding });
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="p-2 space-y-2">
-                {isText(selectedComponent) && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Main Content Area */}
+            <div className="space-y-3">
+              {isText(selectedComponent) && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[9px] font-black uppercase tracking-[0.1em] text-[var(--text-muted)]">Text Content</span>
+                    <VariablePicker
+                      sampleData={sampleData}
+                      onSelect={(_path, binding) => {
+                        const currentContent = selectedComponent.content || '';
+                        updateComponent(selectedComponent.id, { content: currentContent + binding });
+                      }}
+                    />
+                  </div>
                   <TextEditor
                     value={selectedComponent.content || ''}
                     onChange={(value) => updateComponent(selectedComponent.id, { content: value })}
                     sampleData={sampleData}
                     textStyle={selectedComponent.style}
-                    placeholder="Type static text or {{binding}}..."
-                    className="rounded-[4px] border border-[var(--border-default)] bg-[var(--bg-surface)] min-h-[80px] text-[10px]"
+                    placeholder="Type static text or use {{variables}}..."
+                    className="rounded-[4px] border border-[var(--border-default)] bg-[var(--bg-widget)]/50 min-h-[120px] text-[11px] focus-within:border-[var(--accent)] transition-all"
                   />
-                )}
+                </div>
+              )}
 
-                {isTable(selectedComponent) && (
-                  <PropertyRow label="Data Source">
+              {isTable(selectedComponent) && (
+                <div className="space-y-3 bg-[var(--bg-widget)] p-3 rounded-[4px] border border-[var(--border-default)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-[var(--text-primary)]">Data Connection</span>
+                    <VariablePicker
+                      sampleData={sampleData}
+                      onSelect={(_path, binding) => updateComponent(selectedComponent.id, { dataSource: binding })}
+                    />
+                  </div>
+                  <PropertyRow label="Source Path">
                     <DesignerInput
                       type="text"
                       value={selectedComponent.dataSource || ''}
                       onChange={(v) => updateComponent(selectedComponent.id, { dataSource: v })}
                       mono
                       placeholder="{{path.to.array}}"
+                      className="bg-[var(--bg-surface)]"
                     />
                   </PropertyRow>
-                )}
+                </div>
+              )}
 
-                {isBarcode(selectedComponent) && (
-                  <PropertyRow label="Code Value">
+              {isBarcode(selectedComponent) && (
+                <div className="space-y-3 bg-[var(--bg-widget)] p-3 rounded-[4px] border border-[var(--border-default)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-[var(--text-primary)]">Barcode Data</span>
+                    <VariablePicker
+                      sampleData={sampleData}
+                      onSelect={(_path, binding) => updateComponent(selectedComponent.id, { value: binding })}
+                    />
+                  </div>
+                  <PropertyRow label="Value Binding">
                     <DesignerInput
                       type="text"
                       value={(selectedComponent as BarcodeComponent | QRComponent).value || ''}
                       onChange={(v) => updateComponent(selectedComponent.id, { value: v })}
                       mono
                       placeholder="{{item.id}}"
+                      className="bg-[var(--bg-surface)]"
                     />
                   </PropertyRow>
-                )}
+                </div>
+              )}
 
-                {isImage(selectedComponent) && (
-                  <ImageProperties
-                    component={selectedComponent}
-                    onUpdate={(updates) => updateComponent(selectedComponent.id, updates as any)}
-                  />
-                )}
-
-                {isPageNumber(selectedComponent) && (
-                  <div className="space-y-1">
-                    <p className="text-[8px] text-[var(--text-muted)] mb-1 uppercase font-bold">Format: {'{{page}}'} / {'{{pageTotal}}'}</p>
-                    <DesignerInput
-                      type="text"
-                      value={selectedComponent.format || ''}
-                      onChange={(v) => updateComponent(selectedComponent.id, { format: v })}
-                      placeholder="หน้าที่ {{page}} / {{pageTotal}}"
+              {isImage(selectedComponent) && (
+                <div className="bg-[var(--bg-widget)] rounded-[4px] border border-[var(--border-default)] overflow-hidden">
+                  <SectionHeader label="Image Configuration" />
+                  <div className="p-1">
+                    <ImageProperties
+                      component={selectedComponent}
+                      onUpdate={(updates) => updateComponent(selectedComponent.id, updates as any)}
                     />
                   </div>
-                )}
-              </div>
-            </section>
+                </div>
+              )}
+
+              {isPageNumber(selectedComponent) && (
+                <div className="bg-[var(--bg-widget)] p-3 rounded-[4px] border border-[var(--border-default)] space-y-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.1em] text-[var(--text-muted)]">Page Format</span>
+                  <DesignerInput
+                    type="text"
+                    value={selectedComponent.format || ''}
+                    onChange={(v) => updateComponent(selectedComponent.id, { format: v })}
+                    placeholder="หน้าที่ {{page}} / {{pageTotal}}"
+                    className="bg-[var(--bg-surface)]"
+                  />
+                  <p className="text-[8px] text-[var(--text-muted)] italic opacity-60">Use {'{{page}}'} and {'{{pageTotal}}'} tokens.</p>
+                </div>
+              )}
+            </div>
           </div>
         );
 
@@ -519,19 +542,30 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
             {(!isText(selectedComponent) && !isTable(selectedComponent) && !isImage(selectedComponent) && !isLine(selectedComponent)) && <Settings className="w-3.5 h-3.5" />}
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold tracking-tight text-[var(--text-primary)] uppercase">
-              {selectedComponent.type}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold tracking-tight text-[var(--text-primary)] uppercase">
+                {selectedComponent.type}
+              </span>
+              {isLocked && (
+                <Lock className="w-2.5 h-2.5 text-orange-400" />
+              )}
+            </div>
             <span className="text-[8px] text-[var(--text-muted)] font-mono">
-              ID: {selectedComponent.id.slice(0, 8)}
+              {isLocked ? 'READ ONLY (LOCKED)' : `ID: ${selectedComponent.id.slice(0, 8)}`}
             </span>
           </div>
         </div>
         <button
           type="button"
           onClick={() => removeComponent(selectedComponent.id)}
-          className="p-1.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded transition-colors"
-          title="Delete component"
+          disabled={isLocked}
+          className={clsx(
+            "p-1.5 rounded transition-colors",
+            isLocked
+              ? "opacity-20 cursor-not-allowed text-[var(--text-muted)]"
+              : "hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500"
+          )}
+          title={isLocked ? "Cannot delete locked component" : "Delete component"}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -562,8 +596,18 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        {renderTabContent()}
+      <div className={clsx("flex-1 overflow-auto relative", isLocked && "select-none")}>
+        {isLocked && (
+          <div className="absolute inset-0 bg-[var(--bg-surface)]/20 backdrop-blur-[1px] z-50 flex items-start justify-center pt-20 pointer-events-none">
+            <div className="bg-black/40 border border-white/5 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-2xl animate-in zoom-in-95 duration-200">
+              <Lock className="w-3 h-3 text-orange-400" />
+              <span className="text-[10px] font-bold text-white/90 uppercase tracking-widest">Locked</span>
+            </div>
+          </div>
+        )}
+        <div className={clsx(isLocked && "pointer-events-none opacity-50 grayscale-[0.5]")}>
+          {renderTabContent()}
+        </div>
       </div>
 
       {/* Footer Status */}

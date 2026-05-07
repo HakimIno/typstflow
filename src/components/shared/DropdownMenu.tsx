@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 // --- Context ---
 interface DropdownContextType {
@@ -44,11 +45,31 @@ export const DropdownMenu = memo(function DropdownMenu({
   side = 'bottom',
 }: DropdownMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+
+  const toggleMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setCoords({
+        top: side === 'bottom' ? rect.bottom + window.scrollY : rect.top + window.scrollY,
+        left: align === 'left' ? rect.left + window.scrollX : rect.right + window.scrollX,
+        width: rect.width
+      });
+    }
+    setIsOpen(!isOpen);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      if (
+        menuRef.current && 
+        !menuRef.current.contains(event.target as Node) &&
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -60,27 +81,31 @@ export const DropdownMenu = memo(function DropdownMenu({
 
   return (
     <DropdownContext.Provider value={{ isOpen, setIsOpen }}>
-      <div className={clsx('relative', className, !className?.includes('inline') && 'inline-block', isOpen && 'z-[9999]')} ref={menuRef}>
+      <div className={clsx('inline-block', className)} ref={containerRef}>
         <div
           className="w-full h-full cursor-pointer"
-          onClick={() => setIsOpen(!isOpen)}
-          onKeyDown={(e) => e.key === 'Enter' && setIsOpen(!isOpen)}
+          onClick={toggleMenu}
         >
           {trigger}
         </div>
 
-        {isOpen && (
+        {isOpen && createPortal(
           <div
+            ref={menuRef}
+            style={{
+              position: 'absolute',
+              top: `${coords.top + (side === 'bottom' ? 6 : -6)}px`,
+              left: align === 'left' ? `${coords.left}px` : 'auto',
+              right: align === 'right' ? `${window.innerWidth - coords.left}px` : 'auto',
+              zIndex: 9999
+            }}
             className={clsx(
-              'absolute min-w-[180px] pro-panel z-[9999] animate-in fade-in duration-200 flex flex-col p-1',
-              side === 'bottom'
-                ? 'top-full mt-1.5 slide-in-from-top-1'
-                : 'bottom-full mb-1.5 slide-in-from-bottom-1',
-              align === 'left' ? 'left-0' : 'right-0'
+              'min-w-[180px] pro-panel z-[9999] flex flex-col p-1 shadow-2xl'
             )}
           >
             {children}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </DropdownContext.Provider>
@@ -185,7 +210,7 @@ export const DropdownMenuSub = memo(function DropdownMenuSub({
       </button>
 
       {isSubOpen && (
-        <div className="absolute left-[calc(100%+4px)] top-0 z-[600] animate-in fade-in slide-in-from-left-1 duration-200">
+        <div className="absolute left-[calc(100%+4px)] top-0 z-[600]">
           <div className="pro-panel p-1 min-w-[180px] flex flex-col shadow-2xl">{children}</div>
         </div>
       )}
