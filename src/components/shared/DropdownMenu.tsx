@@ -94,13 +94,14 @@ export const DropdownMenu = memo(function DropdownMenu({
             ref={menuRef}
             style={{
               position: 'absolute',
-              top: `${coords.top + (side === 'bottom' ? 6 : -6)}px`,
+              top: `${coords.top}px`,
               left: align === 'left' ? `${coords.left}px` : 'auto',
               right: align === 'right' ? `${window.innerWidth - coords.left}px` : 'auto',
+              transform: side === 'top' ? 'translateY(calc(-100% - 6px))' : 'translateY(6px)',
               zIndex: 9999
             }}
             className={clsx(
-              'min-w-[180px] pro-panel z-[9999] flex flex-col p-1 shadow-2xl'
+              'min-w-[180px] max-h-[70vh] overflow-y-auto scrollbar-thin pro-panel z-[9999] flex flex-col p-1 shadow-2xl'
             )}
           >
             {children}
@@ -162,7 +163,7 @@ export const DropdownMenuHeader = memo(function DropdownMenuHeader({
   children,
 }: { children: ReactNode }) {
   return (
-    <div className="px-3 py-1.5 bg-[var(--bg-widget)] border-b border-[var(--border-default)] -mx-1 -mt-1 mb-1 rounded-t-[inherit]">
+    <div className="px-3 py-1.5 bg-[var(--bg-widget)] border-b border-[var(--border-default)] -mx-1 -mt-1 mb-1 rounded-t-[inherit] sticky top-0 z-10">
       <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest block">
         {children}
       </span>

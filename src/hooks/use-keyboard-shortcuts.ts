@@ -1,4 +1,6 @@
 import { useDesignerStore } from '@/store/designer-store';
+import { getPaperDimensions } from '@/lib/utils/paper-sizes';
+import { parseTypstUnit } from '@/lib/utils/units';
 import { useEffect } from 'react';
 
 export function useKeyboardShortcuts() {
@@ -105,6 +107,35 @@ export function useKeyboardShortcuts() {
         e.preventDefault();
         setZoom(1.0);
       }
+
+      // Smart Alignment: Cmd+Shift+H → Center H on Page, Cmd+Shift+V → Center V on Page
+      if (isMod && isShift && (e.key === 'H' || e.key === 'h') && selectedComponentIds.length > 0) {
+        e.preventDefault();
+        const store = useDesignerStore.getState();
+        const { width: pageW } = getPaperDimensions(store.schema.page.size, store.schema.page.orientation);
+        for (const id of selectedComponentIds) {
+          const comp = store.componentRegistry[id];
+          if (comp) {
+            store.updateComponent(id, { x: (pageW - (comp.width || 0)) / 2 });
+          }
+        }
+      }
+      if (isMod && isShift && (e.key === 'V' || e.key === 'v') && selectedComponentIds.length > 0) {
+        // Skip if it conflicts with Paste (Cmd+V without shift)
+        e.preventDefault();
+        const store = useDesignerStore.getState();
+        const { height: pageH } = getPaperDimensions(store.schema.page.size, store.schema.page.orientation);
+        const mTop = parseTypstUnit(store.schema.page.margin.top);
+        const mBottom = parseTypstUnit(store.schema.page.margin.bottom);
+        const contentH = pageH - mTop - mBottom;
+        for (const id of selectedComponentIds) {
+          const comp = store.componentRegistry[id];
+          if (comp) {
+            store.updateComponent(id, { y: (contentH - (comp.height || 0)) / 2 });
+          }
+        }
+      }
+
     };
 
     window.addEventListener('keydown', handleKeyDown);

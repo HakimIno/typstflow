@@ -6,20 +6,29 @@ import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { AlertTriangle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
+import { CanvasRevealEffect } from '@/components/ui/canvas-reveal-effect';
 import { Loading } from '../shared/Loading';
 
-export function PreviewPane() {
+export const PreviewPane = memo(function PreviewPane() {
   const schema = useDesignerStore((state) => state.schema);
   const sampleData = useDesignerStore((state) => state.sampleData);
   const zoom = useDesignerStore((state) => state.zoom);
   const isDragging = useDesignerStore((state) => state.dragState.isDragging);
+  const primaryColor = useDesignerStore((state) => state.primaryColor);
   const [svgContent, setSvgContent] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [shouldShowLoading, setShouldShowLoading] = useState(false);
 
   useEffect(() => {
-    // Don't trigger a new render while the user is actively dragging.
-    // The schema updates after drop (onPointerUp) will fire a fresh render.
+    if (!svgContent && !error) {
+      const timer = setTimeout(() => setShouldShowLoading(true), 1000);
+      return () => clearTimeout(timer);
+    }
+    setShouldShowLoading(false);
+  }, [svgContent, error]);
+
+  useEffect(() => {
     if (isDragging) return;
 
     let active = true;
@@ -57,10 +66,12 @@ export function PreviewPane() {
     schema.page.orientation
   );
 
+  const accentRgb = hexToRgb(primaryColor);
+
   return (
-    <div className="flex-1 flex flex-col bg-slate-400/20 shadow-inner overflow-hidden relative transition-colors duration-500">
+    <div className="flex-1 flex flex-col bg-slate-400/20 shadow-inner overflow-hidden relative">
       {/* Precision Preview Area */}
-      <div className="flex-1 overflow-auto p-8 scrollbar-thin transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform">
+      <div className="flex-1 overflow-auto p-8 scrollbar-thin">
         <div
           className={clsx(
             'origin-top-left pl-16 pr-16 pb-32',
@@ -80,9 +91,7 @@ export function PreviewPane() {
             svgContent.map((svg, idx) => (
               <div
                 key={idx}
-                className={clsx(
-                  'relative bg-white shadow-xl overflow-hidden '
-                )}
+                className="relative bg-white shadow-xl overflow-hidden"
                 style={{
                   width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
                   height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
@@ -93,22 +102,49 @@ export function PreviewPane() {
             ))
           ) : (
             <div
-              className="relative overflow-hidden "
+              className="relative overflow-hidden rounded-sm shadow-2xl"
               style={{
                 width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
                 height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
               }}
             >
-              {/* Animated Background Blobs */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none ">
-                <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] rounded-full bg-blue-400/30 blur-[80px] animate-blob" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] rounded-full bg-purple-400/30 blur-[80px] animate-blob animation-delay-2000" />
-                <div className="absolute top-[20%] right-[10%] w-[60%] h-[60%] rounded-full bg-pink-400/20 blur-[80px] animate-blob animation-delay-4000" />
+              {/* GPU-Accelerated Canvas Reveal Effect */}
+              <div className="absolute inset-0 w-full h-full">
+                <CanvasRevealEffect
+                  animationSpeed={2.5}
+                  containerClassName="bg-[#0a0a0f]"
+                  colors={[
+                    accentRgb,
+                    [accentRgb[0] * 0.6, accentRgb[1] * 0.8, accentRgb[2] * 1.2],
+                  ]}
+                  dotSize={2}
+                  showGradient={false}
+                  isStatic={true}
+                />
               </div>
 
-              <div className="relative z-10 flex h-full items-center justify-center">
-                <Loading message={'Compiling Report...'} />
+              {/* Center Content Overlay */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+                {/* Radial glow behind the icon */}
+                <div
+                  className="absolute w-40 h-40 rounded-full opacity-20 blur-3xl"
+                  style={{ backgroundColor: primaryColor }}
+                />
+
+                <div
+                  className="relative flex flex-col items-center gap-4 p-4 rounded-2xl"
+                  style={{
+                    background: 'rgba(0,0,0,0.3)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                  }}
+                >
+                  <Loading message={'Compiling Report...'} />
+                </div>
               </div>
+
+              {/* Bottom fade gradient */}
+              <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent z-[5]" />
             </div>
           )}
         </div>
@@ -125,4 +161,14 @@ export function PreviewPane() {
       </div>
     </div>
   );
+});
+
+/** Convert hex color string to [R, G, B] array (0-255) */
+function hexToRgb(hex: string): [number, number, number] {
+  const cleaned = hex.replace('#', '');
+  if (cleaned.length !== 6) return [139, 92, 246]; // fallback to purple
+  const r = Number.parseInt(cleaned.substring(0, 2), 16);
+  const g = Number.parseInt(cleaned.substring(2, 4), 16);
+  const b = Number.parseInt(cleaned.substring(4, 6), 16);
+  return [r, g, b];
 }

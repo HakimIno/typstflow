@@ -1,6 +1,8 @@
 'use client';
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { getPaperDimensions } from '@/lib/utils/paper-sizes';
+import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import {
@@ -16,6 +18,7 @@ import {
   ChevronFirst,
   ChevronLast,
   ChevronUp,
+  Maximize2,
   Trash2,
 } from 'lucide-react';
 import { memo, useMemo } from 'react';
@@ -36,7 +39,7 @@ export const SelectionToolbar = memo(function SelectionToolbar({
   const moveDown = useDesignerStore((state) => state.moveDown);
 
   const selectedComponents = useMemo(() => {
-    if (selectedComponentIds.length <= 1) return [];
+    if (selectedComponentIds.length === 0) return [];
 
     const allComps: any[] = [];
     // Check Global Zones
@@ -64,9 +67,28 @@ export const SelectionToolbar = memo(function SelectionToolbar({
     return allComps;
   }, [selectedComponentIds, schema, pageId]);
 
-  if (selectedComponents.length <= 1) return null;
+  // Page content area bounds (inside margins)
+  const pageBounds = useMemo(() => {
+    const { width, height } = getPaperDimensions(schema.page.size, schema.page.orientation);
+    const mTop = parseTypstUnit(schema.page.margin.top);
+    const mBottom = parseTypstUnit(schema.page.margin.bottom);
+    const mLeft = parseTypstUnit(schema.page.margin.left);
+    const mRight = parseTypstUnit(schema.page.margin.right);
+    return {
+      x: mLeft,
+      y: mTop,
+      width: width - mLeft - mRight,
+      height: height - mTop - mBottom,
+      pageWidth: width,
+      pageHeight: height,
+    };
+  }, [schema.page]);
 
-  // Calculate Bounds in MM
+  if (selectedComponents.length === 0) return null;
+
+  const isMulti = selectedComponents.length > 1;
+
+  // Calculate selection bounds in MM
   const minX = Math.min(...selectedComponents.map((c) => c.x || 0));
   const maxX = Math.max(...selectedComponents.map((c) => (c.x || 0) + (c.width || 0)));
   const minY = Math.min(...selectedComponents.map((c) => c.absY || 0));
@@ -79,7 +101,45 @@ export const SelectionToolbar = memo(function SelectionToolbar({
   const toolbarTop = LayoutEngine.mmToPx(minY) - 45;
   const toolbarLeft = LayoutEngine.mmToPx(minX + selectionWidth / 2);
 
-  const handleAlign = (type: string) => {
+  // --- Alignment Handlers ---
+
+  const handleAlignToPage = (type: string) => {
+    for (const comp of selectedComponents) {
+      const updates: any = {};
+      const cw = comp.width || 0;
+      const ch = comp.height || 0;
+
+      switch (type) {
+        case 'page-left':
+          updates.x = 0;
+          break;
+        case 'page-center-h':
+          updates.x = (pageBounds.pageWidth - cw) / 2;
+          break;
+        case 'page-right':
+          updates.x = pageBounds.pageWidth - cw;
+          break;
+        case 'page-top':
+          updates.y = 0;
+          break;
+        case 'page-center-v':
+          // Center within the zone's local coordinate space
+          // For body zone, the y is relative to the zone, not the full page
+          updates.y = (pageBounds.height - ch) / 2;
+          break;
+        case 'page-bottom':
+          updates.y = pageBounds.height - ch;
+          break;
+        case 'page-center-both':
+          updates.x = (pageBounds.pageWidth - cw) / 2;
+          updates.y = (pageBounds.height - ch) / 2;
+          break;
+      }
+      if (Object.keys(updates).length > 0) updateComponent(comp.id, updates);
+    }
+  };
+
+  const handleAlignToSelection = (type: string) => {
     for (const comp of selectedComponents) {
       const updates: any = {};
       switch (type) {
@@ -130,7 +190,7 @@ export const SelectionToolbar = memo(function SelectionToolbar({
   return (
     <div
       data-toolbar="true"
-      className="absolute z-[1000] flex items-center gap-1 bg-[var(--accent)] border border-[var(--border-accent)] rounded-lg p-1 shadow-2xl transition-all duration-200"
+      className="absolute z-[1000] flex items-center gap-0.5 bg-[var(--accent)] border border-[var(--border-accent)] rounded-lg p-0.5 shadow-2xl transition-all duration-200"
       style={{
         top: `${toolbarTop}px`,
         left: `${toolbarLeft}px`,
@@ -138,56 +198,70 @@ export const SelectionToolbar = memo(function SelectionToolbar({
         transformOrigin: 'bottom center',
       }}
     >
-      <div className="flex items-center gap-0.5 px-1 border-r border-white/20">
+      {/* Align to Page (always available) */}
+      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/20">
         <ActionButton
           icon={AlignStartHorizontal}
-          title="Align Left"
-          onClick={() => handleAlign('left')}
+          title={isMulti ? "Align Left" : "Align Left to Page"}
+          onClick={() => isMulti ? handleAlignToSelection('left') : handleAlignToPage('page-left')}
         />
         <ActionButton
           icon={AlignCenterHorizontal}
-          title="Center Horizontally"
-          onClick={() => handleAlign('center')}
+          title={isMulti ? "Center Horizontally" : "Center H on Page"}
+          onClick={() => isMulti ? handleAlignToSelection('center') : handleAlignToPage('page-center-h')}
         />
         <ActionButton
           icon={AlignEndHorizontal}
-          title="Align Right"
-          onClick={() => handleAlign('right')}
+          title={isMulti ? "Align Right" : "Align Right to Page"}
+          onClick={() => isMulti ? handleAlignToSelection('right') : handleAlignToPage('page-right')}
         />
       </div>
 
-      <div className="flex items-center gap-0.5 px-1 border-r border-white/20">
+      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/20">
         <ActionButton
           icon={AlignStartVertical}
-          title="Align Top"
-          onClick={() => handleAlign('top')}
+          title={isMulti ? "Align Top" : "Align Top to Page"}
+          onClick={() => isMulti ? handleAlignToSelection('top') : handleAlignToPage('page-top')}
         />
         <ActionButton
           icon={AlignCenterVertical}
-          title="Center Vertically"
-          onClick={() => handleAlign('middle')}
+          title={isMulti ? "Center Vertically" : "Center V on Page"}
+          onClick={() => isMulti ? handleAlignToSelection('middle') : handleAlignToPage('page-center-v')}
         />
         <ActionButton
           icon={AlignEndVertical}
-          title="Align Bottom"
-          onClick={() => handleAlign('bottom')}
+          title={isMulti ? "Align Bottom" : "Align Bottom to Page"}
+          onClick={() => isMulti ? handleAlignToSelection('bottom') : handleAlignToPage('page-bottom')}
         />
       </div>
 
-      <div className="flex items-center gap-0.5 px-1 border-r border-white/20">
+      {/* Center on Page — quick action (always available) */}
+      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/20">
         <ActionButton
-          icon={AlignHorizontalDistributeCenter}
-          title="Distribute Horizontally"
-          onClick={() => handleAlign('dist-h')}
-        />
-        <ActionButton
-          icon={AlignVerticalDistributeCenter}
-          title="Distribute Vertically"
-          onClick={() => handleAlign('dist-v')}
+          icon={Maximize2}
+          title="Center on Page (H+V)"
+          onClick={() => handleAlignToPage('page-center-both')}
         />
       </div>
 
-      <div className="flex items-center gap-0.5 px-1 border-r border-white/20">
+      {/* Distribute (multi-select only) */}
+      {isMulti && (
+        <div className="flex items-center gap-0.5 px-0.5 border-r border-white/20">
+          <ActionButton
+            icon={AlignHorizontalDistributeCenter}
+            title="Distribute Horizontally"
+            onClick={() => handleAlignToSelection('dist-h')}
+          />
+          <ActionButton
+            icon={AlignVerticalDistributeCenter}
+            title="Distribute Vertically"
+            onClick={() => handleAlignToSelection('dist-v')}
+          />
+        </div>
+      )}
+
+      {/* Z-Order */}
+      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/20">
         <ActionButton
           icon={ChevronLast}
           title="Bring to Front"
@@ -218,7 +292,8 @@ export const SelectionToolbar = memo(function SelectionToolbar({
         />
       </div>
 
-      <div className="flex items-center gap-0.5 px-1">
+      {/* Delete */}
+      <div className="flex items-center gap-0.5 px-0.5">
         <ActionButton
           icon={Trash2}
           title="Delete Selection"
