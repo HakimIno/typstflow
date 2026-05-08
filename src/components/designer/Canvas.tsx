@@ -16,6 +16,7 @@ import { SelectionMarquee } from './SelectionMarquee';
 import { SelectionToolbar } from './SelectionToolbar';
 import { TransientOverlay } from './TransientOverlay';
 import { Zone } from './Zone';
+import { useCanvasZoom } from '@/hooks/use-canvas-zoom';
 
 // Constants for virtualization
 const VISIBLE_PAGE_BUFFER = 4; // Increased for smoothness
@@ -40,6 +41,9 @@ export const Canvas = memo(function Canvas() {
 
   // ✅ Virtualized page range - only render pages in visible range + buffer
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 10 });
+
+  // ✅ High-performance Ctrl+Scroll / Pinch zoom
+  useCanvasZoom(scrollRef);
 
   const updateScrollPos = useCallback(() => {
     if (scrollRef.current) {

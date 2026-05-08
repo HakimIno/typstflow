@@ -23,7 +23,10 @@ export default function DesignerPage() {
 
   // Granular Selectors - Optimized for high performance
   const _hasHydrated = useDesignerStore((state) => state._hasHydrated);
-  const schema = useDesignerStore((state) => state.schema);
+  const schemaName = useDesignerStore((state) => state.schema.name);
+  const schemaVersion = useDesignerStore((state) => state.schema.version);
+  const pageSize = useDesignerStore((state) => state.schema.page.size);
+  const pageOrientation = useDesignerStore((state) => state.schema.page.orientation);
   const viewMode = useDesignerStore((state) => state.viewMode);
   const activeTab = useDesignerStore((state) => state.activeTab);
   const isSidebarOpen = useDesignerStore((state) => state.isSidebarOpen);
@@ -94,7 +97,7 @@ export default function DesignerPage() {
           {/* Stage 2: Detail Drawer (Hardware-Accelerated Slide-out) */}
           <aside
             className={clsx(
-              'absolute left-0 top-0 bottom-0 w-80 bg-[var(--bg-surface)] backdrop-blur-2xl border-r border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform shadow-[var(--shadow-premium)]',
+              'absolute left-0 top-0 bottom-0 w-80 bg-[var(--bg-surface)] border-r border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform shadow-[var(--shadow-premium)]',
               isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
             )}
           >
@@ -140,7 +143,7 @@ export default function DesignerPage() {
         {/* Right Sidebar: Properties - Professional Slide-out (Hardware Accelerated) */}
         <aside
           className={clsx(
-            'absolute right-0 top-0 bottom-0 w-64 bg-[var(--bg-surface)] backdrop-blur-2xl overflow-hidden border-l border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform shadow-[var(--shadow-premium)]',
+            'absolute right-0 top-0 bottom-0 w-64 bg-[var(--bg-surface)] overflow-hidden border-l border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform shadow-[var(--shadow-premium)]',
             isRightSidebarOpen ? 'translate-x-0' : 'translate-x-full'
           )}
         >
@@ -153,20 +156,20 @@ export default function DesignerPage() {
       </div>
 
       {/* Status Bar */}
-      <footer className="h-[26px] bg-[var(--bg-surface)] backdrop-blur-md border-t border-[var(--border-default)] text-[var(--text-muted)] px-3 flex items-center justify-between text-[9px] uppercase tracking-[0.06em] font-medium shrink-0 z-50">
+      <footer className="h-[26px] bg-[var(--bg-surface)] border-t border-[var(--border-default)] text-[var(--text-muted)] px-3 flex items-center justify-between text-[9px] uppercase tracking-[0.06em] font-medium shrink-0 z-50">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 pr-4 border-r border-[var(--border-default)]">
             <div className="w-[5px] h-[5px] bg-[var(--green)] rounded-full" />
             <span>STATUS: READY</span>
           </div>
-          <span className="text-[9px]">REPORT: {schema.name}</span>
+          <span className="text-[9px]">REPORT: {schemaName}</span>
         </div>
         <div className="flex gap-4 items-center">
           <span className="text-[9px]">
-            {schema.page.size} {schema.page.orientation}
+            {pageSize} {pageOrientation}
           </span>
           <div className="w-px h-2.5 border-r border-[var(--border-default)]" />
-          <span className="text-[9px]">V{schema.version}</span>
+          <span className="text-[9px]">V{schemaVersion}</span>
         </div>
       </footer>
 

@@ -79,7 +79,11 @@ export const AiPanel = memo(function AiPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, isLoading, thinkingStep, sendMessage, clearMessages, stop } = useAiAgent();
   const [elapsedTime, setElapsedTime] = useState(0);
-  const { aiModel, aiMode, setAiModel, setAiMode, rewindToCheckpoint } = useDesignerStore();
+  const aiModel = useDesignerStore((s) => s.aiModel);
+  const aiMode = useDesignerStore((s) => s.aiMode);
+  const setAiModel = useDesignerStore((s) => s.setAiModel);
+  const setAiMode = useDesignerStore((s) => s.setAiMode);
+  const rewindToCheckpoint = useDesignerStore((s) => s.rewindToCheckpoint);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;

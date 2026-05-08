@@ -12,6 +12,7 @@ import type {
   TextComponent,
 } from '@/types/schema';
 import { clsx } from 'clsx';
+import { useShallow } from 'zustand/react/shallow';
 import {
   FileDown,
   FileText,
@@ -55,14 +56,16 @@ type TabType = 'design' | 'layout' | 'data' | 'settings';
 export const PropertiesPanel = memo(function PropertiesPanel() {
   const [activeTab, setActiveTab] = useState<TabType>('design');
 
-  const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
+  const selectedComponentIds = useDesignerStore(useShallow((state) => state.selectedComponentIds));
   const selectedGroupId = useDesignerStore((state) => state.selectedGroupId);
-  const zones = useDesignerStore((state) => state.schema.zones);
-  const pages = useDesignerStore((state) => state.schema.pages);
-  const fullSchema = useDesignerStore((state) => state.schema);
+  const selectedZoneKey = useDesignerStore((state) => state.selectedZone);
+  const zones = useDesignerStore(useShallow((state) => state.schema.zones));
+  const pages = useDesignerStore(useShallow((state) => state.schema.pages));
+  const pageConfig = useDesignerStore(useShallow((state) => state.schema.page));
   const sampleData = useDesignerStore((state) => state.sampleData);
   const activePageId = useDesignerStore((state) => state.activePageId);
-  const lockedComponentIds = useDesignerStore((state) => state.lockedComponentIds);
+  const lockedComponentIds = useDesignerStore(useShallow((state) => state.lockedComponentIds));
+  const componentRegistry = useDesignerStore(useShallow((state) => state.componentRegistry));
 
   const updateSchema = useDesignerStore((state) => state.updateSchema);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
@@ -75,25 +78,11 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
     [pages, activePageId]
   );
 
-  // Find first selected component across all zones and pages
+  // Find first selected component using O(1) registry
   const selectedComponent = useMemo(() => {
     if (selectedComponentIds.length === 0) return null;
-    const firstId = selectedComponentIds[0];
-
-    // Check header/footer
-    for (const zone of Object.values(zones)) {
-      const found = zone.components.find((c) => c.id === firstId);
-      if (found) return found;
-    }
-
-    // Check all pages
-    for (const page of pages) {
-      const found = page.body.components.find((c) => c.id === firstId);
-      if (found) return found;
-    }
-
-    return null;
-  }, [selectedComponentIds, zones, pages]);
+    return componentRegistry[selectedComponentIds[0]] || null;
+  }, [selectedComponentIds, componentRegistry]);
 
   const isLocked = selectedComponent ? lockedComponentIds.includes(selectedComponent.id) : false;
 
@@ -144,9 +133,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               <div className="space-y-0">
                 <PropertyRow label="Paper Size">
                   <select
-                    value={fullSchema.page.size}
+                    value={pageConfig.size}
                     onChange={(e) =>
-                      updateSchema({ page: { ...fullSchema.page, size: e.target.value as any } })
+                      updateSchema({ page: { ...pageConfig, size: e.target.value as any } })
                     }
                     className="pro-input h-6 px-1 w-full text-[10px] outline-none rounded-[4px] bg-[var(--bg-widget)] border-[var(--border-default)]"
                   >
@@ -158,10 +147,10 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 </PropertyRow>
                 <PropertyRow label="Orientation">
                   <select
-                    value={fullSchema.page.orientation}
+                    value={pageConfig.orientation}
                     onChange={(e) =>
                       updateSchema({
-                        page: { ...fullSchema.page, orientation: e.target.value as any },
+                        page: { ...pageConfig, orientation: e.target.value as any },
                       })
                     }
                     className="pro-input h-6 px-1 w-full text-[10px] outline-none rounded-[4px] bg-[var(--bg-widget)] border-[var(--border-default)]"
@@ -191,12 +180,12 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   <PropertyRow key={side} label={side.charAt(0).toUpperCase()}>
                     <DesignerInput
                       type="text"
-                      value={fullSchema.page.margin[side]}
+                      value={pageConfig.margin[side]}
                       onChange={(v) =>
                         updateSchema({
                           page: {
-                            ...fullSchema.page,
-                            margin: { ...fullSchema.page.margin, [side]: v },
+                            ...pageConfig,
+                            margin: { ...pageConfig.margin, [side]: v },
                           },
                         })
                       }
@@ -491,14 +480,14 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
             {/* <section className="bg-[var(--bg-widget)] rounded border border-[var(--border-default)] overflow-hidden">
               <SectionHeader label="Zone Configuration" />
               <div className="p-2 space-y-0">
-                {(selectedZone === 'header' || selectedZone === 'footer') && (
+                {(selectedZoneKey === 'header' || selectedZoneKey === 'footer') && (
                   <PropertyRow label="Global Repeat">
                     <button
                       type="button"
                       onClick={() => {
-                        const zone = fullSchema.zones[selectedZone];
+                        const zone = zones[selectedZoneKey as 'header' | 'footer'];
                         const newValue = !zone.repeatOnEveryPage;
-                        updateZone(selectedZone, {
+                        updateZone(selectedZoneKey as any, {
                           repeatOnEveryPage: newValue,
                           showOnFirstPageOnly: false,
                           showOnLastPageOnly: false,
@@ -506,20 +495,20 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                       }}
                       className={clsx(
                         'flex items-center justify-center gap-2 px-3 py-1.5 text-[10px] font-bold rounded-md transition-all w-full border',
-                        fullSchema.zones[selectedZone].repeatOnEveryPage
+                        zones[selectedZoneKey as 'header' | 'footer'].repeatOnEveryPage
                           ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                           : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-default)]'
                       )}
                     >
                       <Layers className="w-3.5 h-3.5" />
-                      {fullSchema.zones[selectedZone].repeatOnEveryPage ? 'Repeats on Every Page' : 'Static (One Page Only)'}
+                      {zones[selectedZoneKey as 'header' | 'footer'].repeatOnEveryPage ? 'Repeats on Every Page' : 'Static (One Page Only)'}
                     </button>
                   </PropertyRow>
                 )}
                 <div className="p-2 rounded bg-blue-500/5 border border-blue-500/10 flex gap-2 mt-2">
                   <Info className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
                   <p className="text-[9px] text-blue-300/80 leading-relaxed">
-                    Components in the <strong>{selectedZone}</strong> zone are managed according to the zone settings.
+                    Components in the <strong>{selectedZoneKey}</strong> zone are managed according to the zone settings.
                   </p>
                 </div>
               </div>
@@ -610,14 +599,6 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         </div>
       </div>
 
-      {/* Footer Status */}
-      <div className="h-6 px-3 border-t border-[var(--border-default)] bg-white/[0.02] flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm shadow-green-500/50" />
-          <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Active Inspector</span>
-        </div>
-        <span className="text-[8px] text-[var(--text-muted)] font-mono">v1.2.0</span>
-      </div>
     </div>
   );
 });

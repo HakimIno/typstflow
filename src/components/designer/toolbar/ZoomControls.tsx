@@ -13,22 +13,24 @@ export const ZoomControls = memo(function ZoomControls() {
     <div className="flex items-center h-7 overflow-hidden">
       <ToolbarButton
         icon={ZoomOut}
-        onClick={() => setZoom(Math.max(0.1, zoom - 0.1))}
+        onClick={() => setZoom(Math.max(0.2, zoom / 1.15))}
         variant="toolbar-item"
-        title="Zoom Out"
+        title="Zoom Out (Cmd+-)"
         className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />
-      <div
-        className="flex items-center justify-center h-full text-[10px] font-mono text-[var(--text-secondary)] font-bold px-2 cursor-default"
-        title="Current Zoom"
+      <button
+        type="button"
+        onClick={() => setZoom(1.0)}
+        className="flex items-center justify-center h-full text-[10px] font-mono text-[var(--text-secondary)] font-bold px-2 cursor-pointer hover:text-[var(--accent)] transition-colors"
+        title="Reset to 100% (Cmd+0)"
       >
         {Math.round(zoom * 100)}%
-      </div>
+      </button>
       <ToolbarButton
         icon={ZoomIn}
-        onClick={() => setZoom(Math.min(5, zoom + 0.1))}
+        onClick={() => setZoom(Math.min(3.0, zoom * 1.15))}
         variant="toolbar-item"
-        title="Zoom In"
+        title="Zoom In (Cmd+=)"
         className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
       />
     </div>

@@ -90,6 +90,21 @@ export function useKeyboardShortcuts() {
           }
         }
       }
+
+      // Zoom: Cmd+= / Cmd+- / Cmd+0
+      const { zoom, setZoom } = useDesignerStore.getState();
+      if (isMod && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        setZoom(Math.min(3.0, zoom * 1.15));
+      }
+      if (isMod && (e.key === '-' || e.key === '_')) {
+        e.preventDefault();
+        setZoom(Math.max(0.2, zoom / 1.15));
+      }
+      if (isMod && e.key === '0') {
+        e.preventDefault();
+        setZoom(1.0);
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
