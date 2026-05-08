@@ -7,7 +7,9 @@ import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { Plus, Trash2 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
+import { DesignerPage } from './DesignerPage';
 import { DragMonitor } from './DragMonitor';
 import { Ruler } from './Ruler';
 import { SelectionMarquee } from './SelectionMarquee';
@@ -22,12 +24,15 @@ const GAP_VERTICAL_LIST = 32; // gap-8 = 32px
 const GAP_VERTICAL_GRID = 48; // gap-12 = 48px
 
 export const Canvas = memo(function Canvas() {
-  const schema = useDesignerStore((state) => state.schema);
+  const pageSize = useDesignerStore((state) => state.schema.page.size);
+  const pageOrientation = useDesignerStore((state) => state.schema.page.orientation);
   const zoom = useDesignerStore((state) => state.zoom);
   const activePageId = useDesignerStore((state) => state.activePageId);
-  const setActivePage = useDesignerStore((state) => state.setActivePage);
   const canvasLayout = useDesignerStore((state) => state.canvasLayout);
   const isDraggingGlobal = useDesignerStore((state) => state.dragState.isDragging);
+  const margin = useDesignerStore((state) => state.schema.page.margin);
+  
+  const pageIds = useDesignerStore(useShallow((state) => state.schema.pages.map((p) => p.id)));
   const [mounted, setMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
@@ -53,8 +58,8 @@ export const Canvas = memo(function Canvas() {
     if (scrollRef.current) {
       const { scrollTop, clientHeight } = scrollRef.current;
       const { height: pageHeightMm } = getPaperDimensions(
-        schema.page.size,
-        schema.page.orientation
+        pageSize,
+        pageOrientation
       );
       const currentGap = (canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom;
       const pageHeightPx = LayoutEngine.mmToPx(pageHeightMm) * zoom;
@@ -71,7 +76,7 @@ export const Canvas = memo(function Canvas() {
       // Find last visible page based on viewport height
       const lastRowIdx = Math.ceil((scrollTop + clientHeight - PADDING_TOP_PX) / totalPageHeight);
       const lastVisibleIdx = Math.min(
-        schema.pages.length - 1,
+        pageIds.length - 1,
         (lastRowIdx + VISIBLE_PAGE_BUFFER) * pagesPerRow
       );
 
@@ -85,9 +90,9 @@ export const Canvas = memo(function Canvas() {
     }
   }, [
     updateScrollPos,
-    schema.page.size,
-    schema.page.orientation,
-    schema.pages.length,
+    pageSize,
+    pageOrientation,
+    pageIds.length,
     zoom,
     canvasLayout,
   ]);
@@ -111,8 +116,8 @@ export const Canvas = memo(function Canvas() {
   }, [handleScroll]);
 
   const { width: pageWidthMm, height: pageHeightMm } = getPaperDimensions(
-    schema.page.size,
-    schema.page.orientation
+    pageSize,
+    pageOrientation
   );
 
   const currentGap = (canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom;
@@ -122,20 +127,18 @@ export const Canvas = memo(function Canvas() {
   // ✅ Pre-calculate pages to render (memoized) - BEFORE early return to fix Hooks order
   const pagesToRender = useMemo(() => {
     if (!mounted) return [];
-    // ✅ CRITICAL FIX: Don't use findIndex inside map - create a lookup map instead
-    const pageIndices = new Map(schema.pages.map((p, idx) => [p.id, idx]));
-    return schema.pages.slice(visibleRange.start, visibleRange.end + 1).map((page) => ({
-      page,
-      pIdx: pageIndices.get(page.id) ?? 0,
+    return pageIds.slice(visibleRange.start, visibleRange.end + 1).map((id, offset) => ({
+      pageId: id,
+      pIdx: visibleRange.start + offset,
     }));
-  }, [schema.pages, visibleRange, mounted]);
+  }, [pageIds, visibleRange, mounted]);
 
   if (!mounted) return <div className="flex-1 flex flex-col bg-[var(--bg-canvas)]" />;
 
-  const marginTop = parseTypstUnit(schema.page.margin.top);
-  const marginBottom = parseTypstUnit(schema.page.margin.bottom);
-  const marginLeft = parseTypstUnit(schema.page.margin.left);
-  const marginRight = parseTypstUnit(schema.page.margin.right);
+  const marginTop = parseTypstUnit(margin.top);
+  const marginBottom = parseTypstUnit(margin.bottom);
+  const marginLeft = parseTypstUnit(margin.left);
+  const marginRight = parseTypstUnit(margin.right);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative bg-[var(--bg-canvas)] contain-layout">
@@ -159,7 +162,7 @@ export const Canvas = memo(function Canvas() {
           <div className="w-6 bg-[var(--bg-surface)] border-r border-[var(--border-default)] flex-shrink-0 relative z-30 overflow-hidden">
             <Ruler
               orientation="vertical"
-              length={pageHeightMm * schema.pages.length + (schema.pages.length - 1) * 12}
+              length={pageHeightMm * pageIds.length + (pageIds.length - 1) * 12}
               scrollPos={scrollPos.y}
               zoom={zoom}
             />
@@ -170,7 +173,7 @@ export const Canvas = memo(function Canvas() {
             ref={scrollRef}
             onScroll={handleScroll}
             className={clsx(
-              'flex-1 overflow-auto p-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform bg-[var(--bg-canvas-dots)]',
+              'flex-1 overflow-auto p-0 bg-[var(--bg-canvas-dots)]',
               isDraggingGlobal && 'is-dragging-components'
             )}
           >
@@ -205,191 +208,9 @@ export const Canvas = memo(function Canvas() {
             >
               <TransientOverlay />
 
-              {pagesToRender.map(({ page, pIdx }) => {
+              {pagesToRender.map(({ pageId, pIdx }) => {
                 return (
-                  <div
-                    key={`wrapper-${page.id}`}
-                    data-page-wrapper
-                    data-page-id={page.id}
-                    style={{
-                      width: `${LayoutEngine.mmToPx(pageWidthMm) * zoom}px`,
-                      height: `${LayoutEngine.mmToPx(pageHeightMm) * zoom}px`,
-                    }}
-                    className="relative group"
-                  >
-                    <div
-                      ref={pIdx === 0 ? paperRef : null}
-                      data-paper-container
-                      data-page-id={page.id}
-                      data-zoom={zoom}
-                      onClick={() => setActivePage(page.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setActivePage(page.id);
-                        }
-                      }}
-                      // biome-ignore lint/a11y/useSemanticElements: Container div with child interactive elements
-                      role="button"
-                      tabIndex={0}
-                      className={clsx(
-                        'bg-white border border-slate-300 absolute top-0 left-0 shadow-2xl origin-top-left flex-shrink-0 rounded-[4px] contain-page high-perf-gpu',
-                        !isDraggingGlobal && 'transition-all duration-300',
-                        activePageId === page.id && 'ring-2 ring-[var(--accent)] ring-offset-2'
-                      )}
-                      style={{
-                        width: `${LayoutEngine.mmToPx(pageWidthMm)}px`,
-                        height: `${LayoutEngine.mmToPx(pageHeightMm)}px`,
-                        transform: `scale(${zoom})`,
-                      }}
-                    >
-                      <div className="absolute left-0 -top-6 text-[10px] font-bold text-slate-400 opacity-60 uppercase tracking-widest pointer-events-none group-hover:opacity-100 transition-opacity">
-                        Page {pIdx + 1}
-                      </div>
-
-                      {/* Margin Guides */}
-                      <div
-                        className="absolute border border-[var(--accent)] border-dashed pointer-events-none z-10 opacity-30"
-                        style={{
-                          top: `${LayoutEngine.mmToPx(marginTop)}px`,
-                          bottom: `${LayoutEngine.mmToPx(marginBottom)}px`,
-                          left: `${LayoutEngine.mmToPx(marginLeft)}px`,
-                          right: `${LayoutEngine.mmToPx(marginRight)}px`,
-                        }}
-                      />
-
-                      <SelectionMarquee pageId={page.id} />
-                      <SelectionToolbar pageId={page.id} />
-
-                      <div className="flex flex-col gap-0 absolute inset-0 z-20">
-                        <Zone
-                          zoneKey="header"
-                          label={
-                            schema.zones.header.repeatOnEveryPage
-                              ? 'Global Header'
-                              : 'Report Header'
-                          }
-                          components={
-                            schema.zones.header.repeatOnEveryPage ||
-                            (schema.zones.header.showOnFirstPageOnly && pIdx === 0) ||
-                            (!schema.zones.header.repeatOnEveryPage &&
-                              !schema.zones.header.showOnFirstPageOnly &&
-                              pIdx === 0)
-                              ? schema.zones.header.components
-                              : []
-                          }
-                          pageId={page.id}
-                          minHeight={schema.zones.header.minHeight}
-                          resizeEdge="bottom"
-                          pageIndex={pIdx}
-                          hidden={
-                            !(
-                              schema.zones.header.repeatOnEveryPage ||
-                              (schema.zones.header.showOnFirstPageOnly && pIdx === 0) ||
-                              (!schema.zones.header.repeatOnEveryPage &&
-                                !schema.zones.header.showOnFirstPageOnly &&
-                                pIdx === 0)
-                            )
-                          }
-                        />
-
-                        {/* Group Headers */}
-                        {(schema.groups || []).map((group) => (
-                          <Zone
-                            key={`group-h-${group.id}`}
-                            zoneKey="body"
-                            label={`Group Header: ${group.name}`}
-                            components={group.header.components}
-                            pageId={page.id}
-                            minHeight={group.header.minHeight}
-                            resizeEdge="bottom"
-                            pageIndex={pIdx}
-                            isGroupBand
-                            groupType="header"
-                            groupId={group.id}
-                          />
-                        ))}
-
-                        <Zone
-                          zoneKey="body"
-                          label="Detail Band"
-                          components={page.body.components}
-                          pageId={page.id}
-                          minHeight={page.body.minHeight}
-                          resizeEdge="none"
-                          pageIndex={pIdx}
-                        />
-
-                        {/* Group Footers (Reverse order for nested feel) */}
-                        {[...(schema.groups || [])].reverse().map((group) => (
-                          <Zone
-                            key={`group-f-${group.id}`}
-                            zoneKey="body"
-                            label={`Group Footer: ${group.name} (Summary)`}
-                            components={group.footer.components}
-                            pageId={page.id}
-                            minHeight={group.footer.minHeight}
-                            resizeEdge="top"
-                            pageIndex={pIdx}
-                            isGroupBand
-                            groupType="footer"
-                            groupId={group.id}
-                          />
-                        ))}
-
-                        <Zone
-                          zoneKey="footer"
-                          label={
-                            schema.zones.footer.repeatOnEveryPage
-                              ? 'Global Footer'
-                              : 'Report Footer'
-                          }
-                          components={
-                            schema.zones.footer.repeatOnEveryPage ||
-                            (schema.zones.footer.showOnLastPageOnly &&
-                              pIdx === schema.pages.length - 1) ||
-                            (!schema.zones.footer.repeatOnEveryPage &&
-                              !schema.zones.footer.showOnLastPageOnly &&
-                              pIdx === 0)
-                              ? schema.zones.footer.components
-                              : []
-                          }
-                          pageId={page.id}
-                          minHeight={schema.zones.footer.minHeight}
-                          resizeEdge="top"
-                          pageIndex={pIdx}
-                          hidden={
-                            !(
-                              schema.zones.footer.repeatOnEveryPage ||
-                              (schema.zones.footer.showOnLastPageOnly &&
-                                pIdx === schema.pages.length - 1) ||
-                              (!schema.zones.footer.repeatOnEveryPage &&
-                                !schema.zones.footer.showOnLastPageOnly &&
-                                pIdx === 0)
-                            )
-                          }
-                        />
-                      </div>
-
-                      {/* Remove Page Button */}
-                      {schema.pages.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            useDesignerStore.getState().removePage(page.id);
-                          }}
-                          className={clsx(
-                            'absolute p-2 rounded-full shadow-md text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100',
-                            canvasLayout === 'grid' ? 'right-0 -top-10' : '-right-12 top-0'
-                          )}
-                          title="Remove Page"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  <DesignerPage key={pageId} pageId={pageId} pIdx={pIdx} />
                 );
               })}
 
@@ -410,10 +231,10 @@ export const Canvas = memo(function Canvas() {
             </div>
 
             {/* ✅ Bottom spacer for virtualization */}
-            {visibleRange.end < schema.pages.length - 1 && (
+            {visibleRange.end < pageIds.length - 1 && (
               <div
                 style={{
-                  height: `${Math.ceil((schema.pages.length - 1 - visibleRange.end) / (canvasLayout === 'grid' ? 2 : 1)) * totalPageHeight}px`,
+                  height: `${Math.ceil((pageIds.length - 1 - visibleRange.end) / (canvasLayout === 'grid' ? 2 : 1)) * totalPageHeight}px`,
                   width:
                     canvasLayout === 'grid'
                       ? `${LayoutEngine.mmToPx(pageWidthMm) * 2 * zoom + 32}px`

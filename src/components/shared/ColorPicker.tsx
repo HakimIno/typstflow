@@ -10,6 +10,7 @@ interface ColorPickerProps {
   onChange: (color: string) => void;
   label?: string;
   className?: string;
+  compact?: boolean;
 }
 
 const PRESET_COLORS = [
@@ -95,6 +96,7 @@ export const ColorPicker = memo(function ColorPicker({
   color = '#000000',
   onChange,
   className,
+  compact,
 }: ColorPickerProps) {
   return (
     <DropdownMenu
@@ -103,18 +105,25 @@ export const ColorPicker = memo(function ColorPicker({
       trigger={
         <button
           type="button"
-          className="w-full flex items-center gap-2 px-2 py-1.5 bg-[var(--bg-widget)] hover:bg-[var(--bg-hover)] border border-[var(--border-default)] rounded-md transition-all group"
+          className={clsx(
+            "w-full flex items-center bg-[var(--bg-widget)] hover:bg-[var(--bg-hover)] border border-[var(--border-default)] rounded transition-all group",
+            compact ? "h-7 justify-center px-1" : "gap-1.5 px-1.5 py-1 h-7"
+          )}
         >
           <div
-            className="w-4 h-4 rounded-sm border border-black/10 shrink-0 shadow-sm"
+            className="w-4 h-4 rounded-full border border-black/10 shrink-0 shadow-sm"
             style={{ backgroundColor: color }}
           />
-          <span className="text-[11px] font-mono text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors uppercase">
-            {color}
-          </span>
-          <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-            <Pipette className="w-3 h-3 text-[var(--text-muted)]" />
-          </div>
+          {!compact && (
+            <span className="text-[10px] font-mono text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors uppercase leading-none">
+              {color}
+            </span>
+          )}
+          {!compact && (
+            <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+              <Pipette className="w-3 h-3 text-[var(--text-muted)]" />
+            </div>
+          )}
         </button>
       }
     >

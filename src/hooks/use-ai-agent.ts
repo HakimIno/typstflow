@@ -20,6 +20,7 @@ export interface AgentMessage {
   content: string;
   timestamp: Date;
   mode?: 'chat' | 'plan' | 'design';
+  snapshotIndex?: number;
   toolCalls?: Array<{ name: string; success: boolean; description: string }>;
 }
 
@@ -493,7 +494,8 @@ export function useAiAgent() {
       const upsertAssistantMessage = (
         content: string,
         tools?: NonNullable<AgentMessage['toolCalls']>,
-        msgMode?: AgentMessage['mode']
+        msgMode?: AgentMessage['mode'],
+        snapshot?: number
       ) => {
         setMessages((prev) => {
           const exists = prev.some((m) => m.id === assistantId);
@@ -505,6 +507,7 @@ export function useAiAgent() {
                 role: 'assistant' as const,
                 content,
                 mode: msgMode,
+                snapshotIndex: snapshot,
                 toolCalls: tools,
                 timestamp: new Date(),
               },
@@ -512,7 +515,13 @@ export function useAiAgent() {
           }
           return prev.map((m) =>
             m.id === assistantId
-              ? { ...m, content, mode: msgMode ?? m.mode, toolCalls: tools ?? m.toolCalls }
+              ? {
+                  ...m,
+                  content,
+                  mode: msgMode ?? m.mode,
+                  snapshotIndex: snapshot ?? m.snapshotIndex,
+                  toolCalls: tools ?? m.toolCalls,
+                }
               : m
           );
         });
@@ -594,6 +603,9 @@ export function useAiAgent() {
           return;
         }
 
+        // Capture history position before any tool mutates the canvas
+        const checkpoint = useDesignerStore.getState().historyIndex;
+
         // Design mode: multi-round tool loop
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
           if (controller.signal.aborted) break;
@@ -639,8 +651,8 @@ export function useAiAgent() {
             allToolCalls.push({ name: tc.function.name, success, description: result });
           }
 
-          // Update UI with accumulated tool badges
-          upsertAssistantMessage(stripIntentBlock(finalText) || 'Working...', [...allToolCalls], 'design');
+          // Update UI with accumulated tool badges (include checkpoint so Rewind appears during generation)
+          upsertAssistantMessage(stripIntentBlock(finalText) || 'Working...', [...allToolCalls], 'design', checkpoint);
 
           // Append assistant turn + tool results to conversation
           apiMessages = [
@@ -718,7 +730,8 @@ export function useAiAgent() {
         upsertAssistantMessage(
           finalContent,
           allToolCalls.length > 0 ? allToolCalls : undefined,
-          'design'
+          'design',
+          checkpoint
         );
         setMessages((prev) => {
           persistMessages(prev);

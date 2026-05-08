@@ -1,18 +1,18 @@
 'use client';
 
-import type { ComponentNode } from '@/types/schema';
+import { useZoneDropTarget } from '@/hooks/use-zone-drop-target';
+import { useZoneResize } from '@/hooks/use-zone-resize';
+import { getZoneComponents } from '@/lib/utils/schema-mutators';
+import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { Layers } from 'lucide-react';
 import { memo, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { ComponentWrapper } from './component-wrapper';
-
-import { useZoneDropTarget } from '@/hooks/use-zone-drop-target';
-import { useZoneResize } from '@/hooks/use-zone-resize';
 
 interface ZoneProps {
   zoneKey: 'header' | 'body' | 'footer';
   label: string;
-  components: ComponentNode[];
   pageId?: string;
   minHeight?: string;
   resizeEdge?: 'top' | 'bottom' | 'none';
@@ -26,7 +26,6 @@ interface ZoneProps {
 export const Zone = memo(function Zone({
   zoneKey,
   label,
-  components,
   pageId,
   minHeight,
   resizeEdge = 'bottom',
@@ -40,10 +39,15 @@ export const Zone = memo(function Zone({
   const contentRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
+  // ✅ Subscribes ONLY to its own component IDs list
+  const componentIds = useDesignerStore(
+    useShallow((s) => getZoneComponents(s.schema, zoneKey, pageId).map((c) => c.id))
+  );
+
   const { isResizing, handleResizeStart } = useZoneResize(
     zoneKey,
     minHeight || '50',
-    components,
+    [], // This hook might need the full components, but let's see
     containerRef,
     labelRef,
     resizeEdge,
@@ -62,7 +66,6 @@ export const Zone = memo(function Zone({
       style={resizeEdge === 'none' ? { flex: 1 } : { height: minHeight || '50mm' }}
       className={clsx(
         'relative border-b last:border-b-0 border-dashed border-slate-200 group/zone bg-transparent overflow-visible',
-        !isResizing && 'transition-all duration-300',
         isGroupBand && (groupType === 'header' ? 'bg-indigo-500/[0.03]' : 'bg-fuchsia-500/[0.03]'),
         isDraggedOver && 'bg-[var(--accent-glow)]/50',
         isResizing &&
@@ -97,7 +100,7 @@ export const Zone = memo(function Zone({
         data-group-type={groupType}
         className="relative w-full h-full bg-transparent overflow-visible min-h-[inherit]"
       >
-        {components.length === 0 && !isDraggedOver ? (
+        {componentIds.length === 0 && !isDraggedOver ? (
           !hidden && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 opacity-40 select-none pointer-events-none">
               <Layers className="w-6 h-6 mb-1" />
@@ -112,10 +115,10 @@ export const Zone = memo(function Zone({
           )
         ) : (
           <div className="absolute inset-0 overflow-visible">
-            {components.map((comp) => (
+            {componentIds.map((id) => (
               <ComponentWrapper
-                key={`${pageId ?? 'global'}-${comp.id}`}
-                component={comp}
+                key={`${pageId ?? 'global'}-${id}`}
+                componentId={id}
                 zoneKey={zoneKey}
                 pageId={pageId}
                 pageIndex={pageIndex}

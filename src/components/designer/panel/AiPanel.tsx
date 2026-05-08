@@ -79,7 +79,7 @@ export const AiPanel = memo(function AiPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, isLoading, thinkingStep, sendMessage, clearMessages, stop } = useAiAgent();
   const [elapsedTime, setElapsedTime] = useState(0);
-  const { aiModel, aiMode, setAiModel, setAiMode } = useDesignerStore();
+  const { aiModel, aiMode, setAiModel, setAiMode, rewindToCheckpoint } = useDesignerStore();
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -173,14 +173,28 @@ export const AiPanel = memo(function AiPanel() {
             </div>
 
             {msg.role === 'assistant' && msg.mode && msg.mode !== 'chat' && (
-              <div className="flex items-center gap-1 mt-1">
-                <Icon
-                  icon={MODE_BADGE[msg.mode].icon}
-                  className={clsx('w-3 h-3', MODE_BADGE[msg.mode].color)}
-                />
-                <span className={clsx('text-[9px] font-bold uppercase tracking-widest', MODE_BADGE[msg.mode].color)}>
-                  {MODE_BADGE[msg.mode].label}
-                </span>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-1">
+                  <Icon
+                    icon={MODE_BADGE[msg.mode].icon}
+                    className={clsx('w-3 h-3', MODE_BADGE[msg.mode].color)}
+                  />
+                  <span className={clsx('text-[9px] font-bold uppercase tracking-widest', MODE_BADGE[msg.mode].color)}>
+                    {MODE_BADGE[msg.mode].label}
+                  </span>
+                </div>
+
+                {msg.mode === 'design' && msg.snapshotIndex !== undefined && (
+                  <button
+                    type="button"
+                    onClick={() => rewindToCheckpoint(msg.snapshotIndex as number)}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/40 transition-all active:scale-95"
+                    title="Rewind canvas to before this AI turn"
+                  >
+                    <Icon icon="solar:rewind-back-bold-duotone" className="w-3 h-3" />
+                    <span className="text-[9px] font-bold uppercase tracking-widest">Rewind</span>
+                  </button>
+                )}
               </div>
             )}
 

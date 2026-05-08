@@ -530,7 +530,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)]">
+    <div className="h-full flex flex-col bg-[var(--bg-surface)]">
       {/* Header with Component Icon */}
       <div className="h-10 min-h-[40px] border-b border-[var(--border-default)] flex items-center px-2 justify-between bg-white/[0.01]">
         <div className="flex items-center gap-2">

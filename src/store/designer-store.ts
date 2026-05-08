@@ -84,6 +84,7 @@ interface DesignerState {
   previewPages: string[];
   previewStatus: 'idle' | 'compiling' | 'error';
   previewError: string | null;
+  componentRegistry: Record<string, ComponentNode>;
 
   // History
   history: LayoutSchema[];
@@ -167,6 +168,7 @@ interface DesignerState {
   setRightSidebarOpen: (open: boolean) => void;
   undo: () => void;
   redo: () => void;
+  rewindToCheckpoint: (checkpointIndex: number) => void;
   loadTemplate: (
     name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks' | 'tax-invoice' | 'multi-invoice'
   ) => void;
@@ -216,6 +218,26 @@ interface DesignerState {
 
 const MAX_HISTORY = 50;
 
+const buildComponentRegistry = (schema: LayoutSchema) => {
+  const registry: Record<string, ComponentNode> = {};
+  const processZone = (zone: Zone) => {
+    for (const comp of zone.components) {
+      registry[comp.id] = comp;
+    }
+  };
+
+  processZone(schema.zones.header);
+  processZone(schema.zones.footer);
+  for (const page of schema.pages) {
+    processZone(page.body);
+  }
+  for (const group of schema.groups || []) {
+    processZone(group.header);
+    processZone(group.footer);
+  }
+  return registry;
+};
+
 const pushHistory = (state: DesignerState, newSchema: LayoutSchema) => {
   const newHistory = state.history.slice(0, state.historyIndex + 1);
   newHistory.push(newSchema);
@@ -224,6 +246,7 @@ const pushHistory = (state: DesignerState, newSchema: LayoutSchema) => {
   }
   return {
     schema: newSchema,
+    componentRegistry: buildComponentRegistry(newSchema),
     history: newHistory,
     historyIndex: newHistory.length - 1,
   };
@@ -265,6 +288,7 @@ export const useDesignerStore = create<DesignerState>()(
   persist(
     (set) => ({
       schema: BLANK_SCHEMA,
+      componentRegistry: buildComponentRegistry(BLANK_SCHEMA),
       viewMode: 'design' as DesignerState['viewMode'],
       zoom: 1.0,
       activeTab: 'palette' as DesignerState['activeTab'],
@@ -466,7 +490,16 @@ export const useDesignerStore = create<DesignerState>()(
             (c) => ({ ...c, ...updates }) as ComponentNode
           );
           if (!changed) return state;
-          if (skipHistory) return { schema };
+          if (skipHistory) {
+            const updatedComponent = { ...state.componentRegistry[id], ...updates } as ComponentNode;
+            return {
+              schema,
+              componentRegistry: {
+                ...state.componentRegistry,
+                [id]: updatedComponent,
+              },
+            };
+          }
           return pushHistory(state, schema);
         }),
 
@@ -735,6 +768,16 @@ export const useDesignerStore = create<DesignerState>()(
           return {
             schema: state.history[newIndex],
             historyIndex: newIndex,
+          };
+        }),
+
+      rewindToCheckpoint: (checkpointIndex: number) =>
+        set((state) => {
+          const target = Math.max(0, Math.min(checkpointIndex, state.history.length - 1));
+          return {
+            schema: state.history[target],
+            historyIndex: target,
+            selectedComponentIds: [],
           };
         }),
 
@@ -1139,7 +1182,7 @@ export const useDesignerStore = create<DesignerState>()(
       storage: createJSONStorage(() => indexedDBStorage),
       partialize: (state: DesignerState) => {
         // Exclude transient state from persistence
-        const { dragState, history, historyIndex, _hasHydrated, dialog, ...rest } = state;
+        const { dragState, history, historyIndex, _hasHydrated, dialog, componentRegistry, ...rest } = state;
         return rest;
       },
       version: 3,
@@ -1172,13 +1215,9 @@ export const useDesignerStore = create<DesignerState>()(
           // Validate and repair schema on load
           const validSchema = validateAndRepairSchema(state.schema, BLANK_SCHEMA);
           if (validSchema !== state.schema) {
-            agentLogger.log({
-              source: 'system',
-              level: 'warn',
-              message: 'Corrupted schema detected and repaired on load',
-            });
             state.schema = validSchema;
           }
+          state.componentRegistry = buildComponentRegistry(state.schema);
           agentLogger.log({
             source: 'system',
             level: 'info',

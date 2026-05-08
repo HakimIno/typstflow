@@ -18,14 +18,14 @@ import { ResizeHandles } from './ResizeHandles';
 import { getComponentById, getComponentPosition } from './utils';
 
 interface Props {
-  component: ComponentNode;
+  componentId: string;
   zoneKey: 'header' | 'body' | 'footer';
   pageId?: string;
   pageIndex?: number;
 }
 
 export const ComponentWrapper = memo(function ComponentWrapper({
-  component,
+  componentId,
   zoneKey,
   pageId,
   pageIndex = 0,
@@ -35,16 +35,22 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const previewRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
+  // ✅ High-Performance Granular Subscription
+  const component = useDesignerStore((s) => s.componentRegistry[componentId]);
+
   const { isSelected, selectedIds, isHidden, isLocked, totalPages, sampleData } = useDesignerStore(
     useShallow((s) => ({
-      isSelected: s.selectedComponentIds.includes(component.id),
+      isSelected: s.selectedComponentIds.includes(componentId),
       selectedIds: s.selectedComponentIds,
-      isHidden: s.hiddenComponentIds.includes(component.id),
-      isLocked: s.lockedComponentIds.includes(component.id),
+      isHidden: s.hiddenComponentIds.includes(componentId),
+      isLocked: s.lockedComponentIds.includes(componentId),
       totalPages: s.schema.pages.length,
       sampleData: s.sampleData,
     }))
   );
+
+  // If component was deleted but React hasn't unmounted this wrapper yet
+  if (!component) return null;
 
   const selectComponent = useDesignerStore((s) => s.selectComponent);
   const toggleComponentSelection = useDesignerStore((s) => s.toggleComponentSelection);
@@ -87,14 +93,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       const store = useDesignerStore.getState();
       const currentZoom = store.zoom;
 
-      const isPartOfSelection = store.selectedComponentIds.includes(component.id);
+      const isPartOfSelection = store.selectedComponentIds.includes(componentId);
       let idsToDrag: string[];
 
       if (isPartOfSelection) {
         idsToDrag = store.selectedComponentIds;
       } else {
-        store.selectComponent(component.id);
-        idsToDrag = [component.id];
+        store.selectComponent(componentId);
+        idsToDrag = [componentId];
       }
 
       const initialPositions = new Map<string, { x: number; y: number; element: HTMLElement }>();
@@ -118,7 +124,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         startX: e.clientX,
         startY: e.clientY,
         pointerId: e.pointerId,
-        primaryId: component.id,
+        primaryId: componentId,
         grabOffsetXmm: LayoutEngine.pxToMm(grabXpx),
         grabOffsetYmm: LayoutEngine.pxToMm(grabYpx),
         hasStartedDrag: false,
@@ -151,7 +157,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           if (!dragState.hasStartedDrag) {
             if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
               dragState.hasStartedDrag = true;
-              store.setDragState({ isDragging: true, draggedComponentId: component.id });
+              store.setDragState({ isDragging: true, draggedComponentId: componentId });
               document.body.classList.add('is-dragging-components');
             } else {
               return;
@@ -297,7 +303,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       document.addEventListener('pointerup', onPointerUp);
       document.addEventListener('pointercancel', onPointerUp);
     },
-    [component.id, isEditing, zoneKey, pageId]
+    [componentId, isEditing, zoneKey, pageId]
   );
 
   const handleDoubleClick = useCallback(
@@ -305,17 +311,17 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       if (component.type === 'text') {
         e.stopPropagation();
         setIsEditing(true);
-        selectComponent(component.id);
+        selectComponent(componentId);
       }
     },
-    [component.id, component.type, selectComponent]
+    [componentId, component.type, selectComponent]
   );
 
   const handleTextChange = useCallback(
     (value: string) => {
-      updateComponent(component.id, { content: value });
+      updateComponent(componentId, { content: value });
     },
-    [component.id, updateComponent]
+    [componentId, updateComponent]
   );
 
   const handleExitEdit = useCallback(() => {
@@ -327,23 +333,23 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       e.stopPropagation();
       if (!isEditing) {
         if (e.shiftKey) {
-          toggleComponentSelection(component.id);
+          toggleComponentSelection(componentId);
         } else {
-          selectComponent(component.id);
+          selectComponent(componentId);
         }
       }
     },
-    [component.id, isEditing, selectComponent, toggleComponentSelection]
+    [componentId, isEditing, selectComponent, toggleComponentSelection]
   );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        selectComponent(component.id);
+        selectComponent(componentId);
       }
     },
-    [component.id, selectComponent]
+    [componentId, selectComponent]
   );
 
   useEffect(() => {
@@ -387,7 +393,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       height: component.height || 20,
     },
     (finalBounds) => {
-      updateComponent(component.id, finalBounds);
+      updateComponent(componentId, finalBounds);
     }
   );
 
@@ -403,7 +409,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const isMoving =
     dragStateRef.current?.isActive &&
     dragStateRef.current?.hasStartedDrag &&
-    (dragStateRef.current.primaryId === component.id ||
+    (dragStateRef.current.primaryId === componentId ||
       selectedIds.includes(dragStateRef.current.primaryId));
 
   const handleDuplicate = useCallback(
@@ -471,7 +477,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   return (
     <div
       ref={ref}
-      data-component-id={component.id}
+      data-component-id={componentId}
       onDoubleClick={handleDoubleClick}
       onPointerDown={handlePointerDown}
       onKeyDown={handleKeyDown}
