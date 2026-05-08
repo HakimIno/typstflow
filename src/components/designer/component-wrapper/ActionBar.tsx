@@ -1,15 +1,9 @@
+'use client';
+
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
-import {
-  ChevronDown,
-  ChevronFirst,
-  ChevronLast,
-  ChevronUp,
-  Copy,
-  GripVertical,
-  Trash2,
-} from 'lucide-react';
+import { Icon } from '@iconify/react';
 import type React from 'react';
 import { memo } from 'react';
 
@@ -18,7 +12,6 @@ interface ActionBarProps {
   isSelected: boolean;
   selectedIds: string[];
   isDragging: boolean;
-  dragHandleRef: React.RefObject<HTMLDivElement | null>;
   handleDuplicate: (e: React.MouseEvent) => void;
 }
 
@@ -27,7 +20,6 @@ export const ActionBar = memo(function ActionBar({
   isSelected,
   selectedIds,
   isDragging,
-  dragHandleRef,
   handleDuplicate,
 }: ActionBarProps) {
   const bringToFront = useDesignerStore((s) => s.bringToFront);
@@ -36,92 +28,106 @@ export const ActionBar = memo(function ActionBar({
   const moveDown = useDesignerStore((s) => s.moveDown);
   const removeComponent = useDesignerStore((s) => s.removeComponent);
   const removeComponents = useDesignerStore((s) => s.removeComponents);
+  const zoom = useDesignerStore((state) => state.zoom);
+
+  const isVisible = isSelected && !isDragging && selectedIds.length === 1;
+
+  if (!isVisible) return null;
 
   return (
     <div
       className={clsx(
-        'absolute -top-7 right-0 flex items-center bg-[var(--accent)] border border-[var(--border-accent)] rounded-md px-0.5 h-6.5 shadow-sm transition-opacity duration-200',
-        !isSelected || isDragging || selectedIds.length > 1
-          ? 'opacity-0 pointer-events-none'
-          : 'opacity-100'
+        'absolute -top-8 -right-2 flex items-center gap-1 bg-[var(--bg-surface)] p-0.5 px-2 z-[1000]',
       )}
+      style={{
+        transform: `scale(${1 / zoom})`,
+        transformOrigin: 'bottom right',
+        borderRadius: '100px',
+      }}
+      onClick={(e) => e.stopPropagation()}
     >
-      <div
-        ref={dragHandleRef}
-        data-drag-handle="true"
-        className="p-1 hover:bg-white/10 text-white cursor-grab active:cursor-grabbing border-r border-white/10"
-      >
-        <GripVertical className="w-3 h-3" />
+      {/* Grip */}
+      <div className="flex items-center px-1 text-gray-400 cursor-move border-r border-white/20">
+        <Icon icon="fa-solid:grip-horizontal" className="w-4 h-4" />
       </div>
 
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          bringToFront(component.id);
-        }}
-        className="p-1 hover:bg-white/10 text-white border-r border-white/10"
-        title="Bring to Front"
-      >
-        <ChevronLast className="w-3 h-3" />
-      </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          moveUp(component.id);
-        }}
-        className="p-1 hover:bg-white/10 text-white border-r border-white/10"
-        title="Bring Forward"
-      >
-        <ChevronUp className="w-3 h-3" />
-      </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          moveDown(component.id);
-        }}
-        className="p-1 hover:bg-white/10 text-white border-r border-white/10"
-        title="Send Backward"
-      >
-        <ChevronDown className="w-3 h-3" />
-      </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          sendToBack(component.id);
-        }}
-        className="p-1 hover:bg-white/10 text-white border-r border-white/10"
-        title="Send to Back"
-      >
-        <ChevronFirst className="w-3 h-3" />
-      </button>
+      {/* Z-Order */}
+      <div className="flex items-center gap-1 px-1 border-r border-white/20">
+        <ActionButton
+          icon="solar:double-alt-arrow-up-bold-duotone"
+          title="Bring to Front"
+          onClick={() => bringToFront(component.id)}
+        />
+        <ActionButton
+          icon="solar:alt-arrow-up-bold-duotone"
+          title="Bring Forward"
+          onClick={() => moveUp(component.id)}
+        />
+        <ActionButton
+          icon="solar:alt-arrow-down-bold-duotone"
+          title="Send Backward"
+          onClick={() => moveDown(component.id)}
+        />
+        <ActionButton
+          icon="solar:double-alt-arrow-down-bold-duotone"
+          title="Send to Back"
+          onClick={() => sendToBack(component.id)}
+        />
+      </div>
 
-      <button
-        type="button"
-        onClick={handleDuplicate}
-        className="p-1 hover:bg-white/10 text-white border-r border-white/10"
-        title="Duplicate"
-      >
-        <Copy className="w-3 h-3" />
-      </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (selectedIds.length > 1) {
-            removeComponents(selectedIds);
-          } else {
-            removeComponent(component.id);
-          }
-        }}
-        className="p-1 hover:bg-red-600 text-white"
-        title="Delete"
-      >
-        <Trash2 className="w-3 h-3" />
-      </button>
+      {/* Duplicate */}
+      <div className="flex items-center gap-1 px-1 border-r border-white/20">
+        <ActionButton
+          icon="solar:copy-bold-duotone"
+          title="Duplicate"
+          onClick={handleDuplicate}
+        />
+      </div>
+
+      {/* Delete */}
+      <div className="flex items-center px-0.5">
+        <ActionButton
+          icon="solar:trash-bin-trash-bold-duotone"
+          title="Delete"
+          onClick={() => {
+            if (selectedIds.length > 1) {
+              removeComponents(selectedIds);
+            } else {
+              removeComponent(component.id);
+            }
+          }}
+          className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
+        />
+      </div>
     </div>
   );
 });
+
+function ActionButton({
+  icon,
+  title,
+  onClick,
+  className
+}: {
+  icon: string;
+  title: string;
+  onClick: (e: React.MouseEvent) => void;
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick(e);
+      }}
+      className={clsx(
+        'p-1 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-all duration-150',
+        className
+      )}
+      title={title}
+    >
+      <Icon icon={icon} className="w-4 h-4" />
+    </button>
+  );
+}

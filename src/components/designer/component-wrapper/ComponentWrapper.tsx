@@ -1,7 +1,7 @@
 'use client';
 
 import { useDesignerStore } from '@/store/designer-store';
-import type { ComponentNode, TextComponent } from '@/types/schema';
+import type { TextComponent } from '@/types/schema';
 import { clsx } from 'clsx';
 import { Lock } from 'lucide-react';
 import type React from 'react';
@@ -31,7 +31,6 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   pageIndex = 0,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const dragHandleRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
@@ -170,6 +169,20 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           for (const [, pos] of dragState.initialPositions) {
             pos.element.style.transform = `translate(${tx}px, ${ty}px)`;
           }
+
+          // Sync SelectionToolbar in the same rAF frame — no store round-trip needed
+          const toolbar = document.querySelector<HTMLElement>('[data-toolbar="true"]');
+          if (toolbar) {
+            toolbar.style.setProperty('--toolbar-drag-dx', `${tx}px`);
+            toolbar.style.setProperty('--toolbar-drag-dy', `${ty}px`);
+          }
+
+          // Update store for other UI elements (like SelectionToolbar) to follow
+          store.setDragState({
+            isDragging: true,
+            currentX: tx,
+            currentY: ty
+          });
         });
       };
 
@@ -292,7 +305,13 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
         dragStateRef.current = null;
         document.body.classList.remove('is-dragging-components');
-        store.setDragState({ isDragging: false, draggedComponentId: null });
+        store.setDragState({ isDragging: false, draggedComponentId: null, currentX: 0, currentY: 0 });
+
+        const toolbar = document.querySelector<HTMLElement>('[data-toolbar="true"]');
+        if (toolbar) {
+          toolbar.style.removeProperty('--toolbar-drag-dx');
+          toolbar.style.removeProperty('--toolbar-drag-dy');
+        }
 
         document.removeEventListener('pointermove', onPointerMove);
         document.removeEventListener('pointerup', onPointerUp);
@@ -368,8 +387,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
       if (
         editorContainerRef.current &&
-        !editorContainerRef.current.contains(target) &&
-        !dragHandleRef.current?.contains(target)
+        !editorContainerRef.current.contains(target)
       ) {
         setIsEditing(false);
       }
@@ -460,13 +478,13 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         'transition-none cursor-default select-none group focus:outline-none high-perf-gpu',
         isSelected
           ? clsx(
-              'z-50 ring-2 ring-[var(--accent)] ring-inset shadow-md',
-              component.type === 'text' ? 'bg-white/[0.02]' : 'bg-white/10'
-            )
+            'z-50 ring-2 ring-[var(--accent)] ring-inset shadow-md',
+            component.type === 'text' ? 'bg-white/[0.02]' : 'bg-white/10'
+          )
           : clsx(
-              'z-10 ring-inset hover:ring-1 hover:ring-white/20',
-              component.type === 'text' ? 'bg-transparent' : 'bg-white/5 hover:bg-white/10'
-            ),
+            'z-10 ring-inset hover:ring-1 hover:ring-white/20',
+            component.type === 'text' ? 'bg-transparent' : 'bg-white/5 hover:bg-white/10'
+          ),
         isSelected && !isLocked && 'z-[100]',
         isMoving && 'is-moving z-[100] ring-2 ring-[var(--accent)] shadow-lg',
         isResizing && 'ring-2 ring-[var(--accent)] shadow-lg z-[100]'
@@ -508,7 +526,6 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           isSelected={isSelected}
           selectedIds={selectedIds}
           isDragging={!!dragStateRef.current?.isActive}
-          dragHandleRef={dragHandleRef}
           handleDuplicate={handleDuplicate}
         />
       )}

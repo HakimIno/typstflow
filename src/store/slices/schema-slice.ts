@@ -34,6 +34,7 @@ export type SchemaSlice = Pick<
   | 'nudgeSelected'
   | 'updateLastSnapped'
   | 'setSelectedZone'
+  | 'updateComponents'
 >;
 
 export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice> = (set, _get) => ({
@@ -127,6 +128,37 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
         };
       }
       return pushHistory(state, schema);
+    }),
+
+  updateComponents: (updatesMap, skipHistory) =>
+    set((state) => {
+      let currentSchema = state.schema;
+      let anyChanged = false;
+      const newRegistry = { ...state.componentRegistry };
+
+      for (const [id, updates] of Object.entries(updatesMap)) {
+        const { schema, changed } = mapComponentInSchema(
+          currentSchema,
+          id,
+          (c) => ({ ...c, ...updates }) as ComponentNode
+        );
+        if (changed) {
+          currentSchema = schema;
+          anyChanged = true;
+          if (skipHistory) {
+            newRegistry[id] = { ...newRegistry[id], ...updates } as ComponentNode;
+          }
+        }
+      }
+
+      if (!anyChanged) return state;
+      if (skipHistory) {
+        return {
+          schema: currentSchema,
+          componentRegistry: newRegistry,
+        };
+      }
+      return pushHistory(state, currentSchema);
     }),
 
   setSelectedZone: (zone: ZoneKey | null) => set({ selectedZone: zone }),

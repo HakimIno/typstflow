@@ -171,7 +171,12 @@ export interface DesignerState {
   sendToBack: (id: string) => void;
   moveUp: (id: string) => void;
   moveDown: (id: string) => void;
+  bringToFrontMany: (ids: string[]) => void;
+  sendToBackMany: (ids: string[]) => void;
+  moveUpMany: (ids: string[]) => void;
+  moveDownMany: (ids: string[]) => void;
   updateLastSnapped: (x: number, y: number, pageId: string | null) => void;
+  updateComponents: (updatesMap: Record<string, Partial<ComponentNode>>, skipHistory?: boolean) => void;
 
   // Keyboard/Clipboard Actions
   copySelected: () => void;

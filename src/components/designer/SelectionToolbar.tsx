@@ -5,23 +5,9 @@ import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import {
-  AlignCenterHorizontal,
-  AlignCenterVertical,
-  AlignEndHorizontal,
-  AlignEndVertical,
-  AlignHorizontalDistributeCenter,
-  AlignStartHorizontal,
-  AlignStartVertical,
-  AlignVerticalDistributeCenter,
-  ChevronDown,
-  ChevronFirst,
-  ChevronLast,
-  ChevronUp,
-  Maximize2,
-  Trash2,
-} from 'lucide-react';
-import { memo, useMemo } from 'react';
+import { Icon } from '@iconify/react';
+import { memo, useMemo, useRef } from 'react';
+import type { ComponentNode } from '@/types/schema';
 
 export const SelectionToolbar = memo(function SelectionToolbar({
   pageId,
@@ -30,13 +16,15 @@ export const SelectionToolbar = memo(function SelectionToolbar({
 }) {
   const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
   const schema = useDesignerStore((state) => state.schema);
-  const updateComponent = useDesignerStore((state) => state.updateComponent);
+  const updateComponents = useDesignerStore((state) => state.updateComponents);
   const removeComponents = useDesignerStore((state) => state.removeComponents);
   const zoom = useDesignerStore((state) => state.zoom);
-  const bringToFront = useDesignerStore((state) => state.bringToFront);
-  const sendToBack = useDesignerStore((state) => state.sendToBack);
-  const moveUp = useDesignerStore((state) => state.moveUp);
-  const moveDown = useDesignerStore((state) => state.moveDown);
+  const bringToFrontMany = useDesignerStore((state) => state.bringToFrontMany);
+  const sendToBackMany = useDesignerStore((state) => state.sendToBackMany);
+  const moveUpMany = useDesignerStore((state) => state.moveUpMany);
+  const moveDownMany = useDesignerStore((state) => state.moveDownMany);
+  const duplicateSelected = useDesignerStore((state) => state.duplicateSelected);
+
 
   const selectedComponents = useMemo(() => {
     if (selectedComponentIds.length === 0) return [];
@@ -84,26 +72,33 @@ export const SelectionToolbar = memo(function SelectionToolbar({
     };
   }, [schema.page]);
 
-  if (selectedComponents.length === 0) return null;
-
-  const isMulti = selectedComponents.length > 1;
-
-  // Calculate selection bounds in MM
-  const minX = Math.min(...selectedComponents.map((c) => c.x || 0));
-  const maxX = Math.max(...selectedComponents.map((c) => (c.x || 0) + (c.width || 0)));
-  const minY = Math.min(...selectedComponents.map((c) => c.absY || 0));
-  const maxY = Math.max(...selectedComponents.map((c) => (c.absY || 0) + (c.height || 0)));
+  // Calculate selection bounds (safe with empty array — guarded by early return below)
+  const minX = selectedComponents.length > 1 ? Math.min(...selectedComponents.map((c) => c.x || 0)) : 0;
+  const maxX = selectedComponents.length > 1 ? Math.max(...selectedComponents.map((c) => (c.x || 0) + (c.width || 20))) : 0;
+  const minY = selectedComponents.length > 1 ? Math.min(...selectedComponents.map((c) => c.absY || 0)) : 0;
+  const maxY = selectedComponents.length > 1 ? Math.max(...selectedComponents.map((c) => {
+    const h = c.height || (c.type === 'text' ? 5 : 10);
+    return (c.absY || 0) + h;
+  })) : 0;
 
   const selectionWidth = maxX - minX;
   const selectionHeight = maxY - minY;
 
-  // Position the toolbar above the selection
-  const toolbarTop = LayoutEngine.mmToPx(minY) - 45;
-  const toolbarLeft = LayoutEngine.mmToPx(minX + selectionWidth / 2);
+  // Base position (schema-derived, no drag offset)
+  const baseTop = LayoutEngine.mmToPx(minY) - 40;
+  const baseLeft = LayoutEngine.mmToPx(minX + selectionWidth / 2);
+
+  // Ref needed to set data-toolbar attribute; CSS vars set directly by ComponentWrapper in same rAF
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  if (selectedComponents.length <= 1) return null;
+
+  const isMulti = selectedComponents.length > 1;
 
   // --- Alignment Handlers ---
 
   const handleAlignToPage = (type: string) => {
+    const updatesMap: Record<string, Partial<ComponentNode>> = {};
     for (const comp of selectedComponents) {
       const updates: any = {};
       const cw = comp.width || 0;
@@ -123,8 +118,6 @@ export const SelectionToolbar = memo(function SelectionToolbar({
           updates.y = 0;
           break;
         case 'page-center-v':
-          // Center within the zone's local coordinate space
-          // For body zone, the y is relative to the zone, not the full page
           updates.y = (pageBounds.height - ch) / 2;
           break;
         case 'page-bottom':
@@ -135,35 +128,13 @@ export const SelectionToolbar = memo(function SelectionToolbar({
           updates.y = (pageBounds.height - ch) / 2;
           break;
       }
-      if (Object.keys(updates).length > 0) updateComponent(comp.id, updates);
+      if (Object.keys(updates).length > 0) updatesMap[comp.id] = updates;
     }
+    if (Object.keys(updatesMap).length > 0) updateComponents(updatesMap);
   };
 
   const handleAlignToSelection = (type: string) => {
-    for (const comp of selectedComponents) {
-      const updates: any = {};
-      switch (type) {
-        case 'left':
-          updates.x = minX;
-          break;
-        case 'center':
-          updates.x = minX + selectionWidth / 2 - (comp.width || 0) / 2;
-          break;
-        case 'right':
-          updates.x = maxX - (comp.width || 0);
-          break;
-        case 'top':
-          updates.y = comp.y - (comp.absY - minY);
-          break;
-        case 'middle':
-          updates.y = comp.y + (minY + selectionHeight / 2 - (comp.absY + (comp.height || 0) / 2));
-          break;
-        case 'bottom':
-          updates.y = comp.y + (maxY - (comp.absY + (comp.height || 0)));
-          break;
-      }
-      if (Object.keys(updates).length > 0) updateComponent(comp.id, updates);
-    }
+    const updatesMap: Record<string, Partial<ComponentNode>> = {};
 
     if (type === 'dist-h') {
       const sorted = [...selectedComponents].sort((a, b) => (a.x || 0) - (b.x || 0));
@@ -171,141 +142,160 @@ export const SelectionToolbar = memo(function SelectionToolbar({
       const gap = (selectionWidth - totalCompsWidth) / (sorted.length - 1);
       let currentX = minX;
       for (const comp of sorted) {
-        updateComponent(comp.id, { x: currentX });
+        updatesMap[comp.id] = { x: currentX };
         currentX += (comp.width || 0) + gap;
       }
     } else if (type === 'dist-v') {
       const sorted = [...selectedComponents].sort((a, b) => (a.absY || 0) - (b.absY || 0));
-      const totalCompsHeight = sorted.reduce((sum, c) => sum + (c.height || 0), 0);
+      const totalCompsHeight = sorted.reduce((sum, c) => sum + (c.height || (c.type === 'text' ? 5 : 10)), 0);
       const gap = (selectionHeight - totalCompsHeight) / (sorted.length - 1);
       let currentAbsY = minY;
       for (const comp of sorted) {
         const diff = currentAbsY - comp.absY;
-        updateComponent(comp.id, { y: (comp.y || 0) + diff });
+        updatesMap[comp.id] = { y: (comp.y || 0) + diff };
         currentAbsY += (comp.height || 0) + gap;
       }
+    } else if (type === 'stack-v') {
+      const sorted = [...selectedComponents].sort((a, b) => (a.absY || 0) - (b.absY || 0));
+      let currentAbsY = minY;
+      const fixedGap = 5; // Increased to 5mm for better visibility
+      for (const comp of sorted) {
+        const diff = currentAbsY - comp.absY;
+        updatesMap[comp.id] = { y: (comp.y || 0) + diff };
+        // Use component height or fallback to 10mm (text) or 15mm (others)
+        const h = comp.height || (comp.type === 'text' ? 10 : 15);
+        currentAbsY += h + fixedGap;
+      }
+    } else if (type === 'stack-h') {
+      const sorted = [...selectedComponents].sort((a, b) => (a.x || 0) - (b.x || 0));
+      let currentX = minX;
+      const fixedGap = 5; // 5mm gap
+      for (const comp of sorted) {
+        updatesMap[comp.id] = { x: currentX };
+        const w = comp.width || (comp.type === 'text' ? 40 : 30);
+        currentX += w + fixedGap;
+      }
+    } else {
+      for (const comp of selectedComponents) {
+        const updates: any = {};
+        switch (type) {
+          case 'left':
+            updates.x = minX;
+            break;
+          case 'center':
+            updates.x = minX + selectionWidth / 2 - (comp.width || 0) / 2;
+            break;
+          case 'right':
+            updates.x = maxX - (comp.width || 0);
+            break;
+          case 'top':
+            updates.y = (comp.y || 0) - (comp.absY - minY);
+            break;
+          case 'middle':
+            updates.y = (comp.y || 0) + (minY + selectionHeight / 2 - (comp.absY + (comp.height || 0) / 2));
+            break;
+          case 'bottom':
+            updates.y = (comp.y || 0) + (maxY - (comp.absY + (comp.height || 0)));
+            break;
+        }
+        if (Object.keys(updates).length > 0) updatesMap[comp.id] = updates;
+      }
     }
+
+    if (Object.keys(updatesMap).length > 0) updateComponents(updatesMap);
   };
 
   return (
     <div
+      ref={toolbarRef}
       data-toolbar="true"
-      className="absolute z-[1000] flex items-center gap-0.5 bg-[var(--accent)] border border-[var(--border-accent)] rounded-lg p-0.5 shadow-2xl transition-all duration-200"
+      className="absolute z-[1000] flex items-center gap-1 bg-[var(--bg-surface)] backdrop-blur-2xl  p-0.5"
       style={{
-        top: `${toolbarTop}px`,
-        left: `${toolbarLeft}px`,
-        transform: `translateX(-50%) scale(${1 / zoom})`,
+        top: `${baseTop}px`,
+        left: `${baseLeft}px`,
+        transform: `translateX(calc(-50% + var(--toolbar-drag-dx, 0px))) translateY(var(--toolbar-drag-dy, 0px)) scale(${1 / zoom})`,
         transformOrigin: 'bottom center',
+        borderRadius: '100px',
       }}
     >
-      {/* Align to Page (always available) */}
-      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/20">
+      {/* Alignment Section */}
+      <div className="flex items-center gap-1 px-1 border-r border-white/5">
         <ActionButton
-          icon={AlignStartHorizontal}
+          icon="solar:align-left-bold-duotone"
           title={isMulti ? "Align Left" : "Align Left to Page"}
           onClick={() => isMulti ? handleAlignToSelection('left') : handleAlignToPage('page-left')}
         />
         <ActionButton
-          icon={AlignCenterHorizontal}
+          icon="solar:align-horizontal-center-bold-duotone"
           title={isMulti ? "Center Horizontally" : "Center H on Page"}
           onClick={() => isMulti ? handleAlignToSelection('center') : handleAlignToPage('page-center-h')}
         />
         <ActionButton
-          icon={AlignEndHorizontal}
+          icon="solar:align-right-bold-duotone"
           title={isMulti ? "Align Right" : "Align Right to Page"}
           onClick={() => isMulti ? handleAlignToSelection('right') : handleAlignToPage('page-right')}
         />
       </div>
 
-      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/20">
-        <ActionButton
-          icon={AlignStartVertical}
-          title={isMulti ? "Align Top" : "Align Top to Page"}
-          onClick={() => isMulti ? handleAlignToSelection('top') : handleAlignToPage('page-top')}
-        />
-        <ActionButton
-          icon={AlignCenterVertical}
-          title={isMulti ? "Center Vertically" : "Center V on Page"}
-          onClick={() => isMulti ? handleAlignToSelection('middle') : handleAlignToPage('page-center-v')}
-        />
-        <ActionButton
-          icon={AlignEndVertical}
-          title={isMulti ? "Align Bottom" : "Align Bottom to Page"}
-          onClick={() => isMulti ? handleAlignToSelection('bottom') : handleAlignToPage('page-bottom')}
-        />
-      </div>
 
-      {/* Center on Page — quick action (always available) */}
-      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/20">
-        <ActionButton
-          icon={Maximize2}
-          title="Center on Page (H+V)"
-          onClick={() => handleAlignToPage('page-center-both')}
-        />
-      </div>
-
-      {/* Distribute (multi-select only) */}
+      {/* Distribution & Stacking (Spacing) */}
       {isMulti && (
-        <div className="flex items-center gap-0.5 px-0.5 border-r border-white/20">
+        <div className="flex items-center gap-1 px-1 border-r border-white/5">
           <ActionButton
-            icon={AlignHorizontalDistributeCenter}
-            title="Distribute Horizontally"
-            onClick={() => handleAlignToSelection('dist-h')}
-          />
-          <ActionButton
-            icon={AlignVerticalDistributeCenter}
-            title="Distribute Vertically"
-            onClick={() => handleAlignToSelection('dist-v')}
+            icon="solar:documents-minimalistic-bold-duotone"
+            title="Stack Vertically (5mm gap)"
+            onClick={() => handleAlignToSelection('stack-v')}
           />
         </div>
       )}
 
-      {/* Z-Order */}
-      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/20">
+      {/* Z-Order Tools */}
+      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/5">
         <ActionButton
-          icon={ChevronLast}
+          icon="solar:double-alt-arrow-up-bold-duotone"
           title="Bring to Front"
-          onClick={() => {
-            for (const id of selectedComponentIds) bringToFront(id);
-          }}
+          onClick={() => bringToFrontMany(selectedComponentIds)}
         />
         <ActionButton
-          icon={ChevronUp}
+          icon="solar:alt-arrow-up-bold-duotone"
           title="Bring Forward"
-          onClick={() => {
-            for (const id of selectedComponentIds) moveUp(id);
-          }}
+          onClick={() => moveUpMany(selectedComponentIds)}
         />
         <ActionButton
-          icon={ChevronDown}
+          icon="solar:alt-arrow-down-bold-duotone"
           title="Send Backward"
-          onClick={() => {
-            for (const id of selectedComponentIds) moveDown(id);
-          }}
+          onClick={() => moveDownMany(selectedComponentIds)}
         />
         <ActionButton
-          icon={ChevronFirst}
+          icon="solar:double-alt-arrow-down-bold-duotone"
           title="Send to Back"
-          onClick={() => {
-            for (const id of selectedComponentIds) sendToBack(id);
-          }}
+          onClick={() => sendToBackMany(selectedComponentIds)}
         />
       </div>
 
-      {/* Delete */}
-      <div className="flex items-center gap-0.5 px-0.5">
+      {/* Duplicate Section */}
+      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/5">
         <ActionButton
-          icon={Trash2}
+          icon="solar:copy-bold-duotone"
+          title="Duplicate Selection"
+          onClick={() => duplicateSelected()}
+        />
+      </div>
+
+      {/* Destruction Section */}
+      <div className="flex items-center gap-0.5 px-1">
+        <ActionButton
+          icon="solar:trash-bin-trash-bold-duotone"
           title="Delete Selection"
           onClick={() => removeComponents(selectedComponentIds)}
-          className="hover:bg-red-500"
+          className="hover:bg-red-500/20 text-red-400 hover:text-red-300"
         />
       </div>
     </div>
   );
 });
 
-function ActionButton({ icon: Icon, title, onClick, className }: any) {
+function ActionButton({ icon, title, onClick, className }: { icon: string; title: string; onClick: () => void; className?: string }) {
   return (
     <button
       type="button"
@@ -314,12 +304,14 @@ function ActionButton({ icon: Icon, title, onClick, className }: any) {
         onClick();
       }}
       className={clsx(
-        'p-1.5 rounded-md hover:bg-white/20 text-white transition-colors duration-150',
+        'p-1.5 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white transition-all duration-150 group relative',
         className
       )}
       title={title}
     >
-      <Icon className="w-3.5 h-3.5" />
+      <Icon icon={icon} className="w-4 h-4" />
+
+      {/* Simple minimalist tooltip effect on hover can be handled by 'title' attribute or a custom one if requested */}
     </button>
   );
 }
