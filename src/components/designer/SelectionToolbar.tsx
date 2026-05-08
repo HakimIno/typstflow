@@ -6,7 +6,7 @@ import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { Icon } from '@iconify/react';
-import { memo, useMemo, useRef } from 'react';
+import { memo, useMemo, useRef, useState } from 'react';
 import type { ComponentNode } from '@/types/schema';
 
 export const SelectionToolbar = memo(function SelectionToolbar({
@@ -24,6 +24,9 @@ export const SelectionToolbar = memo(function SelectionToolbar({
   const moveUpMany = useDesignerStore((state) => state.moveUpMany);
   const moveDownMany = useDesignerStore((state) => state.moveDownMany);
   const duplicateSelected = useDesignerStore((state) => state.duplicateSelected);
+  const [stackGap, setStackGap] = useState(5);
+  const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
+
 
 
   const selectedComponents = useMemo(() => {
@@ -136,66 +139,68 @@ export const SelectionToolbar = memo(function SelectionToolbar({
   const handleAlignToSelection = (type: string) => {
     const updatesMap: Record<string, Partial<ComponentNode>> = {};
 
+    // Helper to get consistent dimensions
+    const getDim = (c: any) => ({
+      w: c.width || (c.type === 'text' ? 40 : 30),
+      h: c.height || (c.type === 'text' ? 10 : 15)
+    });
+
     if (type === 'dist-h') {
       const sorted = [...selectedComponents].sort((a, b) => (a.x || 0) - (b.x || 0));
-      const totalCompsWidth = sorted.reduce((sum, c) => sum + (c.width || 0), 0);
+      const totalCompsWidth = sorted.reduce((sum, c) => sum + getDim(c).w, 0);
       const gap = (selectionWidth - totalCompsWidth) / (sorted.length - 1);
       let currentX = minX;
       for (const comp of sorted) {
         updatesMap[comp.id] = { x: currentX };
-        currentX += (comp.width || 0) + gap;
+        currentX += getDim(comp).w + gap;
       }
     } else if (type === 'dist-v') {
       const sorted = [...selectedComponents].sort((a, b) => (a.absY || 0) - (b.absY || 0));
-      const totalCompsHeight = sorted.reduce((sum, c) => sum + (c.height || (c.type === 'text' ? 5 : 10)), 0);
+      const totalCompsHeight = sorted.reduce((sum, c) => sum + getDim(c).h, 0);
       const gap = (selectionHeight - totalCompsHeight) / (sorted.length - 1);
       let currentAbsY = minY;
       for (const comp of sorted) {
         const diff = currentAbsY - comp.absY;
         updatesMap[comp.id] = { y: (comp.y || 0) + diff };
-        currentAbsY += (comp.height || 0) + gap;
+        currentAbsY += getDim(comp).h + gap;
       }
     } else if (type === 'stack-v') {
       const sorted = [...selectedComponents].sort((a, b) => (a.absY || 0) - (b.absY || 0));
       let currentAbsY = minY;
-      const fixedGap = 5; // Increased to 5mm for better visibility
       for (const comp of sorted) {
         const diff = currentAbsY - comp.absY;
         updatesMap[comp.id] = { y: (comp.y || 0) + diff };
-        // Use component height or fallback to 10mm (text) or 15mm (others)
-        const h = comp.height || (comp.type === 'text' ? 10 : 15);
-        currentAbsY += h + fixedGap;
+        currentAbsY += getDim(comp).h + stackGap;
       }
     } else if (type === 'stack-h') {
       const sorted = [...selectedComponents].sort((a, b) => (a.x || 0) - (b.x || 0));
       let currentX = minX;
-      const fixedGap = 5; // 5mm gap
       for (const comp of sorted) {
         updatesMap[comp.id] = { x: currentX };
-        const w = comp.width || (comp.type === 'text' ? 40 : 30);
-        currentX += w + fixedGap;
+        currentX += getDim(comp).w + stackGap;
       }
     } else {
       for (const comp of selectedComponents) {
         const updates: any = {};
+        const { w, h } = getDim(comp);
         switch (type) {
           case 'left':
             updates.x = minX;
             break;
           case 'center':
-            updates.x = minX + selectionWidth / 2 - (comp.width || 0) / 2;
+            updates.x = minX + selectionWidth / 2 - w / 2;
             break;
           case 'right':
-            updates.x = maxX - (comp.width || 0);
+            updates.x = maxX - w;
             break;
           case 'top':
             updates.y = (comp.y || 0) - (comp.absY - minY);
             break;
           case 'middle':
-            updates.y = (comp.y || 0) + (minY + selectionHeight / 2 - (comp.absY + (comp.height || 0) / 2));
+            updates.y = (comp.y || 0) + (minY + selectionHeight / 2 - (comp.absY + h / 2));
             break;
           case 'bottom':
-            updates.y = (comp.y || 0) + (maxY - (comp.absY + (comp.height || 0)));
+            updates.y = (comp.y || 0) + (maxY - (comp.absY + h));
             break;
         }
         if (Object.keys(updates).length > 0) updatesMap[comp.id] = updates;
@@ -209,7 +214,7 @@ export const SelectionToolbar = memo(function SelectionToolbar({
     <div
       ref={toolbarRef}
       data-toolbar="true"
-      className="absolute z-[1000] flex items-center gap-1 bg-[var(--bg-surface)] backdrop-blur-2xl  p-0.5"
+      className="absolute z-[1000] flex items-center gap-1 bg-[var(--bg-surface)] backdrop-blur-2xl p-0.5"
       style={{
         top: `${baseTop}px`,
         left: `${baseLeft}px`,
@@ -218,72 +223,171 @@ export const SelectionToolbar = memo(function SelectionToolbar({
         borderRadius: '100px',
       }}
     >
-      {/* Alignment Section */}
-      <div className="flex items-center gap-1 px-1 border-r border-white/5">
-        <ActionButton
-          icon="solar:align-left-bold-duotone"
-          title={isMulti ? "Align Left" : "Align Left to Page"}
-          onClick={() => isMulti ? handleAlignToSelection('left') : handleAlignToPage('page-left')}
-        />
-        <ActionButton
-          icon="solar:align-horizontal-center-bold-duotone"
-          title={isMulti ? "Center Horizontally" : "Center H on Page"}
-          onClick={() => isMulti ? handleAlignToSelection('center') : handleAlignToPage('page-center-h')}
-        />
-        <ActionButton
-          icon="solar:align-right-bold-duotone"
-          title={isMulti ? "Align Right" : "Align Right to Page"}
-          onClick={() => isMulti ? handleAlignToSelection('right') : handleAlignToPage('page-right')}
-        />
-      </div>
-
-
-      {/* Distribution & Stacking (Spacing) */}
-      {isMulti && (
-        <div className="flex items-center gap-1 px-1 border-r border-white/5">
+      {/* Alignment Group */}
+      <ToolbarGroup
+        icon="solar:align-bottom-bold-duotone"
+        title="Alignment"
+        isActive={hoveredGroup === 'align'}
+        onHover={(v) => setHoveredGroup(v ? 'align' : null)}
+      >
+        <div className="flex items-center gap-0.5">
           <ActionButton
-            icon="solar:documents-minimalistic-bold-duotone"
-            title="Stack Vertically (5mm gap)"
-            onClick={() => handleAlignToSelection('stack-v')}
+            icon="solar:align-left-bold-duotone"
+            title={isMulti ? "Align Left" : "Align Left to Page"}
+            onClick={() => isMulti ? handleAlignToSelection('left') : handleAlignToPage('page-left')}
+          />
+          <ActionButton
+            icon="solar:align-horizontal-center-bold-duotone"
+            title={isMulti ? "Center Horizontally" : "Center H on Page"}
+            onClick={() => isMulti ? handleAlignToSelection('center') : handleAlignToPage('page-center-h')}
+          />
+          <ActionButton
+            icon="solar:align-right-bold-duotone"
+            title={isMulti ? "Align Right" : "Align Right to Page"}
+            onClick={() => isMulti ? handleAlignToSelection('right') : handleAlignToPage('page-right')}
+          />
+          <div className="w-[1px] h-3 bg-white/10 mx-1" />
+          <ActionButton
+            icon="solar:align-top-bold-duotone"
+            title={isMulti ? "Align Top" : "Align Top to Page"}
+            onClick={() => isMulti ? handleAlignToSelection('top') : handleAlignToPage('page-top')}
+          />
+          <ActionButton
+            icon="solar:align-vertical-center-bold-duotone"
+            title={isMulti ? "Center Vertically" : "Center V on Page"}
+            onClick={() => isMulti ? handleAlignToSelection('middle') : handleAlignToPage('page-center-v')}
+          />
+          <ActionButton
+            icon="solar:align-bottom-bold-duotone"
+            title={isMulti ? "Align Bottom" : "Align Bottom to Page"}
+            onClick={() => isMulti ? handleAlignToSelection('bottom') : handleAlignToPage('page-bottom')}
           />
         </div>
+      </ToolbarGroup>
+
+      <div className="w-[1px] h-4 bg-white/5 mx-0.5" />
+
+      {/* Spacing & Distribution Group */}
+      {isMulti && (
+        <>
+          <ToolbarGroup
+            icon="solar:reorder-bold-duotone"
+            title="Spacing & Stacking"
+            isActive={hoveredGroup === 'spacing'}
+            onHover={(v) => setHoveredGroup(v ? 'spacing' : null)}
+          >
+            <div className="pro-panel p-2  min-w-[180px] flex flex-col gap-2 bg-[var(--bg-surface-solid)]/95 backdrop-blur-xl border-white/10 relative">
+              {/* Compact Header */}
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-sm font-black text-blue-400 tabular-nums">{stackGap}</span>
+                  <span className="text-[8px] font-bold text-zinc-500 uppercase">mm</span>
+                </div>
+                {/* Minimalist Presets */}
+                <div className="flex gap-0.5">
+                  {[0, 2, 5, 10].map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setStackGap(v)}
+                      className={clsx(
+                        "text-[9px] px-1.5 py-0.5 rounded transition-all font-medium",
+                        stackGap === v ? "bg-blue-500 text-white" : "bg-white/5 text-zinc-500 hover:bg-white/10"
+                      )}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Ultra-thin Slider */}
+              <input
+                type="range"
+                min="0"
+                max="50"
+                step="0.5"
+                value={stackGap}
+                onChange={(e) => setStackGap(parseFloat(e.target.value))}
+                className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-blue-500"
+              />
+
+              <div className="h-[1px] bg-white/5 mx-1" />
+
+              {/* Action Icons Grid */}
+              <div className="flex items-center justify-center gap-1">
+                <ActionButton
+                  icon="solar:list-bold-duotone"
+                  title="Stack Vertical"
+                  onClick={() => handleAlignToSelection('stack-v')}
+                />
+                <ActionButton
+                  icon="solar:list-down-minimalistic-bold-duotone"
+                  title="Stack Horizontal"
+                  onClick={() => handleAlignToSelection('stack-h')}
+                />
+                <div className="w-[1px] h-3 bg-white/10 mx-1" />
+                <ActionButton
+                  icon="solar:align-vertical-spacing-bold-duotone"
+                  title="Distribute Vertical"
+                  onClick={() => handleAlignToSelection('dist-v')}
+                />
+                <ActionButton
+                  icon="solar:flip-horizontal-bold-duotone"
+                  title="Distribute Horizontal"
+                  onClick={() => handleAlignToSelection('dist-h')}
+                />
+              </div>
+
+              {/* Arrow */}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-px w-3 h-2 bg-[var(--bg-surface-solid)]/95 [clip-path:polygon(0_0,100%_0,50%_100%)]" />
+            </div>
+          </ToolbarGroup>
+          <div className="w-[1px] h-4 bg-white/5 mx-0.5" />
+        </>
       )}
 
-      {/* Z-Order Tools */}
-      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/5">
-        <ActionButton
-          icon="solar:double-alt-arrow-up-bold-duotone"
-          title="Bring to Front"
-          onClick={() => bringToFrontMany(selectedComponentIds)}
-        />
-        <ActionButton
-          icon="solar:alt-arrow-up-bold-duotone"
-          title="Bring Forward"
-          onClick={() => moveUpMany(selectedComponentIds)}
-        />
-        <ActionButton
-          icon="solar:alt-arrow-down-bold-duotone"
-          title="Send Backward"
-          onClick={() => moveDownMany(selectedComponentIds)}
-        />
-        <ActionButton
-          icon="solar:double-alt-arrow-down-bold-duotone"
-          title="Send to Back"
-          onClick={() => sendToBackMany(selectedComponentIds)}
-        />
-      </div>
+      {/* Layering Group */}
+      <ToolbarGroup
+        icon="solar:layers-bold-duotone"
+        title="Arrange Layers"
+        isActive={hoveredGroup === 'layer'}
+        onHover={(v) => setHoveredGroup(v ? 'layer' : null)}
+      >
+        <div className="flex items-center gap-0.5">
+          <ActionButton
+            icon="solar:double-alt-arrow-up-bold-duotone"
+            title="Bring to Front"
+            onClick={() => bringToFrontMany(selectedComponentIds)}
+          />
+          <ActionButton
+            icon="solar:alt-arrow-up-bold-duotone"
+            title="Bring Forward"
+            onClick={() => moveUpMany(selectedComponentIds)}
+          />
+          <ActionButton
+            icon="solar:alt-arrow-down-bold-duotone"
+            title="Send Backward"
+            onClick={() => moveDownMany(selectedComponentIds)}
+          />
+          <ActionButton
+            icon="solar:double-alt-arrow-down-bold-duotone"
+            title="Send to Back"
+            onClick={() => sendToBackMany(selectedComponentIds)}
+          />
+        </div>
+      </ToolbarGroup>
+
+      <div className="w-[1px] h-4 bg-white/5 mx-0.5" />
 
       {/* Duplicate Section */}
-      <div className="flex items-center gap-0.5 px-0.5 border-r border-white/5">
-        <ActionButton
-          icon="solar:copy-bold-duotone"
-          title="Duplicate Selection"
-          onClick={() => duplicateSelected()}
-        />
-      </div>
+      <ActionButton
+        icon="solar:copy-bold-duotone"
+        title="Duplicate Selection"
+        onClick={() => duplicateSelected()}
+      />
 
       {/* Destruction Section */}
-      <div className="flex items-center gap-0.5 px-1">
+      <div className="flex items-center gap-0.5 pl-0.5 border-l border-white/5">
         <ActionButton
           icon="solar:trash-bin-trash-bold-duotone"
           title="Delete Selection"
@@ -294,6 +398,47 @@ export const SelectionToolbar = memo(function SelectionToolbar({
     </div>
   );
 });
+
+function ToolbarGroup({
+  icon,
+  title,
+  children,
+  isActive,
+  onHover
+}: {
+  icon: string;
+  title: string;
+  children: React.ReactNode;
+  isActive: boolean;
+  onHover: (v: boolean) => void
+}) {
+  return (
+    <div
+      className="relative flex items-center group/group"
+      onMouseEnter={() => onHover(true)}
+      onMouseLeave={() => onHover(false)}
+    >
+      <div className={clsx(
+        "p-1.5 rounded-md transition-all duration-200 cursor-default",
+        isActive ? "bg-white/10 text-white" : "text-zinc-400 hover:text-white hover:bg-white/5"
+      )}>
+        <Icon icon={icon} className="w-4 h-4" />
+      </div>
+
+      {/* Floating Panel */}
+      <div className={clsx(
+        "absolute bottom-full left-1/2 -translate-x-1/2 pb-3 transition-all duration-300 origin-bottom z-[1100]",
+        isActive ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-2 pointer-events-none"
+      )}>
+        <div className="pro-panel p-1 backdrop-blur-xl border-white/10 relative">
+          {children}
+          {/* Arrow */}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-px w-3 h-2 bg-[var(--bg-surface-solid)]/95 [clip-path:polygon(0_0,100%_0,50%_100%)]" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ActionButton({ icon, title, onClick, className }: { icon: string; title: string; onClick: () => void; className?: string }) {
   return (
