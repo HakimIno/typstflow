@@ -49,7 +49,7 @@ function getWorker(): Worker {
   return worker;
 }
 
-async function callWorker(type: string, payload: any): Promise<any> {
+async function callWorker(type: string, payload: any, transfer?: Transferable[]): Promise<any> {
   const id = generateId();
   const w = getWorker();
 
@@ -61,7 +61,11 @@ async function callWorker(type: string, payload: any): Promise<any> {
 
   return new Promise((resolve, reject) => {
     pendingRequests.set(id, { resolve, reject });
-    w.postMessage({ type, id, payload });
+    if (transfer && transfer.length > 0) {
+      w.postMessage({ type, id, payload }, transfer);
+    } else {
+      w.postMessage({ type, id, payload });
+    }
   });
 }
 
@@ -106,4 +110,20 @@ export async function renderReportToPdf(schema: any, data: any): Promise<Uint8Ar
  */
 export async function generateReportTypst(schema: any, data: any): Promise<string> {
   return callWorker('GENERATE_REPORT_TYPST', { schema, data });
+}
+
+/**
+ * Register a font in the WASM engine at runtime.
+ * Pass raw TTF/OTF bytes. The ArrayBuffer is transferred (zero-copy).
+ */
+export async function registerFontInWasm(data: ArrayBuffer): Promise<boolean> {
+  const copy = data.slice(0);
+  return callWorker('REGISTER_FONT', copy, [copy]);
+}
+
+/**
+ * Get list of font family names currently available in the WASM engine.
+ */
+export async function getWasmFontNames(): Promise<string[]> {
+  return callWorker('GET_FONT_NAMES', null);
 }

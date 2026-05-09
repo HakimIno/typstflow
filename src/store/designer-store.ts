@@ -17,6 +17,7 @@ import { createPreviewSlice } from './slices/preview-slice';
 import { createTemplateSlice } from './slices/template-slice';
 import { createIOSlice } from './slices/io-slice';
 import { createDialogSlice } from './slices/dialog-slice';
+import { createFontSlice } from './slices/font-slice';
 
 export const useDesignerStore = create<DesignerState>()(
   persist(
@@ -30,6 +31,7 @@ export const useDesignerStore = create<DesignerState>()(
       ...createTemplateSlice(...a),
       ...createIOSlice(...a),
       ...createDialogSlice(...a),
+      ...createFontSlice()(...a),
       // Override schema/history/componentRegistry with proper initial values
       schema: BLANK_SCHEMA,
       componentRegistry: buildComponentRegistry(BLANK_SCHEMA),
@@ -40,7 +42,7 @@ export const useDesignerStore = create<DesignerState>()(
       name: 'designer-storage',
       storage: createJSONStorage(() => indexedDBStorage),
       partialize: (state: DesignerState) => {
-        const { dragState, history, historyIndex, _hasHydrated, dialog, componentRegistry, ...rest } = state;
+        const { dragState, history, historyIndex, _hasHydrated, dialog, componentRegistry, loadingFonts, ...rest } = state;
         return rest;
       },
       version: 3,

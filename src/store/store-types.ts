@@ -1,4 +1,5 @@
 import type { ComponentNode, GroupDefinition, LayoutSchema, Zone, ZoneKey } from '@/types/schema';
+import type { FontSlice } from './slices/font-slice';
 
 export interface DialogOptions {
   title: string;
@@ -17,7 +18,7 @@ export interface DialogState extends DialogOptions {
   isOpen: boolean;
 }
 
-export interface DesignerState {
+export interface DesignerState extends FontSlice {
   // Schema
   schema: LayoutSchema;
 

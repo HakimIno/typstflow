@@ -15,6 +15,7 @@ export const PreviewPane = memo(function PreviewPane() {
   const sampleData = useDesignerStore((state) => state.sampleData);
   const zoom = useDesignerStore((state) => state.zoom);
   const isDragging = useDesignerStore((state) => state.dragState.isDragging);
+  const fontLoadedAt = useDesignerStore((state) => state.fontLoadedAt);
   const primaryColor = useDesignerStore((state) => state.primaryColor);
   const [svgContent, setSvgContent] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +58,7 @@ export const PreviewPane = memo(function PreviewPane() {
       active = false;
       clearTimeout(timeoutId);
     };
-  }, [schema, sampleData, isDragging]);
+  }, [schema, sampleData, isDragging, fontLoadedAt]);
 
   const canvasLayout = useDesignerStore((state) => state.canvasLayout);
 

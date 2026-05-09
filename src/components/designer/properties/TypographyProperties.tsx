@@ -1,7 +1,10 @@
+'use client';
+
 import { clsx } from 'clsx';
 import { Bold, Italic, Underline } from 'lucide-react';
 import { ColorPicker } from '../../shared/ColorPicker';
 import { DesignerInput } from '../../shared/DesignerInput';
+import { FontFamilyPicker } from './FontFamilyPicker';
 import { PropertyRow, SectionHeader } from './Shared';
 
 interface TypographyPropertiesProps {
@@ -9,33 +12,16 @@ interface TypographyPropertiesProps {
   onUpdateStyle: (updates: any) => void;
 }
 
-const FONTS = [
-  { id: 'Sarabun', name: 'Sarabun' },
-  { id: 'Noto Sans Thai', name: 'Noto Sans Thai' },
-  { id: 'Inter', name: 'Inter (UI)' },
-  { id: 'Noto Serif Thai', name: 'Noto Serif Thai' },
-  { id: 'Noto Sans Mono', name: 'Noto Sans Mono' },
-  { id: 'sans-serif', name: 'System Sans' },
-  { id: 'serif', name: 'System Serif' },
-];
-
 export function TypographyProperties({ style, onUpdateStyle }: TypographyPropertiesProps) {
   return (
     <section>
       <SectionHeader label="Typography" />
 
       <PropertyRow label="Font Family">
-        <select
+        <FontFamilyPicker
           value={style?.fontFamily || 'Sarabun'}
-          onChange={(e) => onUpdateStyle({ fontFamily: e.target.value })}
-          className="w-full bg-[var(--bg-widget)] border border-[var(--border-default)] text-[10px] text-[var(--text-primary)] rounded-[4px] px-1.5 py-1 focus:outline-none focus:border-[var(--accent)]"
-        >
-          {FONTS.map((font) => (
-            <option key={font.id} value={font.id}>
-              {font.name}
-            </option>
-          ))}
-        </select>
+          onChange={(family) => onUpdateStyle({ fontFamily: family })}
+        />
       </PropertyRow>
 
       <PropertyRow label="Font Size (pt)">

@@ -260,6 +260,17 @@ self.onmessage = async (e: MessageEvent) => {
         self.postMessage({ id, type: 'success', payload: source });
         break;
       }
+      case 'REGISTER_FONT': {
+        const bytes = new Uint8Array(payload as ArrayBuffer);
+        const success = bridge.register_font(bytes);
+        self.postMessage({ id, type: 'success', payload: success });
+        break;
+      }
+      case 'GET_FONT_NAMES': {
+        const names = Array.from(bridge.get_font_names() as string[]);
+        self.postMessage({ id, type: 'success', payload: names });
+        break;
+      }
     }
   } catch (err: any) {
     console.error('Typst Worker [RENDER ERROR]:', err);

@@ -159,11 +159,32 @@ export class TypstBridge {
             wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
         }
     }
+    /**
+     * Return sorted list of available font family names as a JS Array of strings.
+     * @returns {any}
+     */
+    get_font_names() {
+        const ret = wasm.typstbridge_get_font_names(this.__wbg_ptr);
+        return ret;
+    }
     constructor() {
         const ret = wasm.typstbridge_new();
         this.__wbg_ptr = ret >>> 0;
         TypstBridgeFinalization.register(this, this.__wbg_ptr, this);
         return this;
+    }
+    /**
+     * Register a font at runtime. Accepts raw TTF/OTF bytes.
+     * Returns true if at least one font face was loaded successfully.
+     * Requires &mut self — safe in single-threaded WASM context.
+     * @param {Uint8Array} data
+     * @returns {boolean}
+     */
+    register_font(data) {
+        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.typstbridge_register_font(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
     }
     /**
      * @param {string} virtual_path
@@ -438,6 +459,10 @@ function __wbg_get_imports() {
         __wbg_prototypesetcall_3e05eb9545565046: function(arg0, arg1, arg2) {
             Uint8Array.prototype.set.call(getArrayU8FromWasm0(arg0, arg1), arg2);
         },
+        __wbg_push_6bdbc990be5ac37b: function(arg0, arg1) {
+            const ret = arg0.push(arg1);
+            return ret;
+        },
         __wbg_set_6be42768c690e380: function(arg0, arg1, arg2) {
             arg0[arg1] = arg2;
         },
@@ -447,6 +472,9 @@ function __wbg_get_imports() {
         __wbg_value_7f6052747ccf940f: function(arg0) {
             const ret = arg0.value;
             return ret;
+        },
+        __wbg_warn_2b0a27f629a4bb1e: function(arg0) {
+            console.warn(arg0);
         },
         __wbindgen_cast_0000000000000001: function(arg0) {
             // Cast intrinsic for `F64 -> Externref`.

@@ -25,7 +25,17 @@ export class TypstBridge {
     [Symbol.dispose](): void;
     clear_images(): void;
     generate_report_typst(schema_json: string, data_json: string): string;
+    /**
+     * Return sorted list of available font family names as a JS Array of strings.
+     */
+    get_font_names(): any;
     constructor();
+    /**
+     * Register a font at runtime. Accepts raw TTF/OTF bytes.
+     * Returns true if at least one font face was loaded successfully.
+     * Requires &mut self — safe in single-threaded WASM context.
+     */
+    register_font(data: Uint8Array): boolean;
     register_image(virtual_path: string, data: Uint8Array): void;
     render_pdf(source_code: string): Uint8Array;
     render_report_pdf(schema_json: string, data_json: string): Uint8Array;
@@ -54,12 +64,12 @@ export interface InitOutput {
     readonly qcms_profile_is_bogus: (a: number) => number;
     readonly lut_inverse_interp16: (a: number, b: number, c: number) => number;
     readonly lut_interp_linear16: (a: number, b: number, c: number) => number;
-    readonly __wbg_tableengine_free: (a: number, b: number) => void;
-    readonly tableengine_resolve: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly __wbg_typstbridge_free: (a: number, b: number) => void;
     readonly typstbridge_clear_images: (a: number) => void;
     readonly typstbridge_generate_report_typst: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
+    readonly typstbridge_get_font_names: (a: number) => any;
     readonly typstbridge_new: () => number;
+    readonly typstbridge_register_font: (a: number, b: number, c: number) => number;
     readonly typstbridge_register_image: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly typstbridge_render_pdf: (a: number, b: number, c: number) => [number, number, number, number];
     readonly typstbridge_render_report_pdf: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
@@ -74,6 +84,8 @@ export interface InitOutput {
     readonly layoutengine_new: () => number;
     readonly layoutengine_query_rect: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number];
     readonly layoutengine_remove_node: (a: number, b: number, c: number) => void;
+    readonly __wbg_tableengine_free: (a: number, b: number) => void;
+    readonly tableengine_resolve: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly qcms_enable_iccv4: () => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

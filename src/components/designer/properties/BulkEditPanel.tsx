@@ -19,6 +19,7 @@ import {
 import { memo, useMemo } from 'react';
 import { ColorPicker } from '../../shared/ColorPicker';
 import { DesignerInput } from '../../shared/DesignerInput';
+import { FontFamilyPicker } from './FontFamilyPicker';
 import { PropertyRow, SectionHeader } from './Shared';
 
 // ── Constants ────────────────────────────────────────────────────────────
@@ -51,16 +52,6 @@ const TYPE_ICONS: Record<string, string> = {
   'page-number': '#',
   'page-break-indicator': '⤓',
 };
-
-const FONTS = [
-  { id: 'Sarabun', name: 'Sarabun' },
-  { id: 'Noto Sans Thai', name: 'Noto Sans Thai' },
-  { id: 'Inter', name: 'Inter (UI)' },
-  { id: 'Noto Serif Thai', name: 'Noto Serif Thai' },
-  { id: 'Noto Sans Mono', name: 'Noto Sans Mono' },
-  { id: 'sans-serif', name: 'System Sans' },
-  { id: 'serif', name: 'System Serif' },
-];
 
 // ── Helper: compute mixed value ──────────────────────────────────────────
 
@@ -280,22 +271,11 @@ export const BulkEditPanel = memo(function BulkEditPanel({
             <SectionHeader label="Typography" />
 
             <PropertyRow label="Font">
-              <select
+              <FontFamilyPicker
                 value={isMixed(fontFamily) ? '' : (fontFamily as string) || 'Sarabun'}
-                onChange={(e) => onBulkStyleUpdate({ fontFamily: e.target.value })}
-                className="w-full bg-[var(--bg-widget)] border border-[var(--border-default)] text-[10px] text-[var(--text-primary)] rounded-[4px] px-1.5 py-1 focus:outline-none focus:border-[var(--accent)]"
-              >
-                {isMixed(fontFamily) && (
-                  <option value="" disabled>
-                    — mixed —
-                  </option>
-                )}
-                {FONTS.map((font) => (
-                  <option key={font.id} value={font.id}>
-                    {font.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(family) => onBulkStyleUpdate({ fontFamily: family })}
+                mixed={isMixed(fontFamily)}
+              />
             </PropertyRow>
 
             <PropertyRow label="Size (pt)">

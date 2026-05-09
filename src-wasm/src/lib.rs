@@ -103,6 +103,46 @@ impl TypstBridge {
         }
     }
 
+    
+    /// Register a font at runtime. Accepts raw TTF/OTF bytes.
+    /// Returns true if at least one font face was loaded successfully.
+    /// Requires &mut self — safe in single-threaded WASM context.
+    pub fn register_font(&mut self, data: Vec<u8>) -> bool {
+        let bytes = Bytes::new(data);
+        let mut count = 0usize;
+        for i in 0.. {
+            if let Some(font) = Font::new(bytes.clone(), i) {
+                self.fonts.push(font);
+                count += 1;
+            } else {
+                break;
+            }
+        }
+        if count > 0 {
+            self.font_book = LazyHash::new(FontBook::from_fonts(&self.fonts));
+            web_sys::console::log_1(&format!("✅ Font registered: {} face(s)", count).into());
+            true
+        } else {
+            web_sys::console::warn_1(&"⚠️ register_font: no valid font faces in data".into());
+            false
+        }
+    }
+
+    /// Return sorted list of available font family names as a JS Array of strings.
+    pub fn get_font_names(&self) -> JsValue {
+        use std::collections::HashSet;
+        let families: HashSet<String> = self.fonts.iter()
+            .map(|f| f.info().family.to_string())
+            .collect();
+        let mut sorted: Vec<String> = families.into_iter().collect();
+        sorted.sort();
+        let array = js_sys::Array::new();
+        for name in &sorted {
+            array.push(&JsValue::from_str(name));
+        }
+        array.into()
+    }
+
     pub fn render_svg(&self, source_code: &str) -> Result<String, JsValue> {
         let world = WasmWorld::new(source_code, self);
         let output = typst::compile(&world).output;
