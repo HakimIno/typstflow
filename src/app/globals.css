@@ -1,16 +1,12 @@
+@import url("https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+/* Sarabun Local Fallback (Only if needed) */
 @font-face {
-  font-family: "Sarabun";
+  font-family: "Sarabun-Local";
   src: url("/fonts/Sarabun-Regular.ttf") format("truetype");
   font-weight: normal;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: "Sarabun";
-  src: url("/fonts/Sarabun-Bold.ttf") format("truetype");
-  font-weight: bold;
   font-style: normal;
 }
 
@@ -183,7 +179,9 @@
   }
 
   .snap-guide {
-    @apply outline-1 outline-dashed outline-[var(--accent)] opacity-60 pointer-events-none;
+    @apply outline-1 outline-[var(--accent)] opacity-80 pointer-events-none;
+    box-shadow: 0 0 8px var(--accent-glow);
+    filter: drop-shadow(0 0 2px var(--accent));
   }
 
   .coord-pill {

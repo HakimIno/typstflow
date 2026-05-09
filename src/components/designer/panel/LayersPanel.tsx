@@ -521,7 +521,7 @@ export const LayersPanel = memo(function LayersPanel() {
     <BasePanel>
       <PanelHeader
         title="Layers"
-        icon="solar:layers-minimalistic-bold"
+        icon={Layers}
         actions={
           <button
             type="button"

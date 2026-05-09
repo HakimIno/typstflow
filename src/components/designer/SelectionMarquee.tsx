@@ -138,18 +138,20 @@ export const SelectionMarquee = memo(function SelectionMarquee({
 
   return (
     <div
+      className="absolute border-2 border-[var(--accent)] bg-[var(--accent-glow)] rounded-sm z-[1000] pointer-events-none transition-[border-color,background-color]"
       style={{
-        position: 'absolute',
         left: `${left}px`,
         top: `${top}px`,
         width: `${width}px`,
         height: `${height}px`,
-        border: '1px dashed var(--accent)',
-        backgroundColor: 'var(--accent-glow)',
-        opacity: 0.3,
-        pointerEvents: 'none',
-        zIndex: 1000,
+        boxShadow: '0 0 15px var(--accent-glow)',
+        backgroundColor: 'rgba(0, 111, 238, 0.12)', // Slightly stronger than default glow
+        borderStyle: 'solid',
+        borderWidth: '1.5px',
+        backdropFilter: 'blur(1px)', // Subtle blur for premium feel
       }}
-    />
+    >
+
+    </div>
   );
 });

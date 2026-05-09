@@ -311,8 +311,10 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
     set((state) => {
       if (state.historyIndex <= 0) return state;
       const newIndex = state.historyIndex - 1;
+      const restoredSchema = state.history[newIndex];
       return {
-        schema: state.history[newIndex],
+        schema: restoredSchema,
+        componentRegistry: buildComponentRegistry(restoredSchema),
         historyIndex: newIndex,
       };
     }),
@@ -321,8 +323,10 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
     set((state) => {
       if (state.historyIndex >= state.history.length - 1) return state;
       const newIndex = state.historyIndex + 1;
+      const restoredSchema = state.history[newIndex];
       return {
-        schema: state.history[newIndex],
+        schema: restoredSchema,
+        componentRegistry: buildComponentRegistry(restoredSchema),
         historyIndex: newIndex,
       };
     }),
@@ -330,8 +334,10 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
   rewindToCheckpoint: (checkpointIndex: number) =>
     set((state) => {
       const target = Math.max(0, Math.min(checkpointIndex, state.history.length - 1));
+      const restoredSchema = state.history[target];
       return {
-        schema: state.history[target],
+        schema: restoredSchema,
+        componentRegistry: buildComponentRegistry(restoredSchema),
         historyIndex: target,
         selectedComponentIds: [],
       };

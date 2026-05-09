@@ -77,7 +77,7 @@ export const Palette = memo(function Palette() {
 
   return (
     <BasePanel>
-      <PanelHeader title="Element Library" icon="solar:widget-3-outline" />
+      <PanelHeader title="Element Library" icon={LayoutDashboard} />
 
       {/* Search Bar - Compact */}
       <div className="p-2 border-b border-[var(--border-default)] shrink-0">
@@ -117,7 +117,7 @@ export const Palette = memo(function Palette() {
 interface PaletteItemProps {
   type: string;
   label: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
 const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: PaletteItemProps) {

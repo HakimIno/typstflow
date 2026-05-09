@@ -376,8 +376,12 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Element;
+      if (!target) return;
+
+      // Tippy suggestion popup is appended to body — don't close editor when clicking it
+      if (target.closest?.('.tippy-box') || target.closest?.('.tippy-content')) return;
+
       if (
-        !target ||
         target.closest?.('[data-variable-dropdown="true"]') ||
         target.parentElement?.classList.contains('z-50') ||
         target.parentElement?.parentElement?.classList.contains('z-50')

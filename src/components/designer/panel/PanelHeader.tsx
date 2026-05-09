@@ -7,23 +7,31 @@ import type { ReactNode } from 'react';
 
 interface PanelHeaderProps {
   title?: string;
-  icon?: string;
+  icon?: any;
   actions?: ReactNode;
   children?: ReactNode; // Alternative to title/icon for custom headers like DataPanel tabs
   onClose?: () => void;
 }
 
-export function PanelHeader({ title, icon, actions, children, onClose }: PanelHeaderProps) {
+export function PanelHeader({ title, icon: IconComponent, actions, children, onClose }: PanelHeaderProps) {
   const setSidebarOpen = useDesignerStore((state) => state.setSidebarOpen);
+
+  const renderIcon = () => {
+    if (!IconComponent) return null;
+    if (typeof IconComponent === 'string') {
+      return <Icon icon={IconComponent} className="w-3.5 h-3.5 text-[var(--accent)]" />;
+    }
+    return <IconComponent className="w-3.5 h-3.5 text-[var(--accent)]" />;
+  };
 
   return (
     <div className="px-3 py-2 bg-white/5 flex items-center justify-between border-b border-[var(--border-default)] shrink-0 min-h-[40px]">
       <div className="flex items-center gap-2">
         {children || (
           <>
-            {icon && (
+            {IconComponent && (
               <div className="w-5 h-5 flex items-center justify-center rounded p-1 bg-[var(--accent)]/10">
-                <Icon icon={icon} className="w-3.5 h-3.5 text-[var(--accent)]" />
+                {renderIcon()}
               </div>
             )}
             {title && (
@@ -49,3 +57,4 @@ export function PanelHeader({ title, icon, actions, children, onClose }: PanelHe
     </div>
   );
 }
+

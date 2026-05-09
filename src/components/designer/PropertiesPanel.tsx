@@ -32,6 +32,7 @@ import { TablePropertiesPanel } from './TablePropertiesPanel';
 import { TextEditor } from './TextEditor';
 import { VariablePicker } from './VariablePicker';
 import { AlignmentProperties } from './properties/AlignmentProperties';
+import { BulkEditPanel } from './properties/BulkEditPanel';
 import { FormatPicker } from './properties/FormatPicker';
 import { GeometryProperties } from './properties/GeometryProperties';
 import { GroupProperties } from './properties/GroupProperties';
@@ -69,8 +70,10 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
   const updateSchema = useDesignerStore((state) => state.updateSchema);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
+  const updateComponents = useDesignerStore((state) => state.updateComponents);
   const updateZone = useDesignerStore((state) => state.updateZone);
   const removeComponent = useDesignerStore((state) => state.removeComponent);
+  const removeComponents = useDesignerStore((state) => state.removeComponents);
   const updatePageDataSource = useDesignerStore((state) => state.updatePageDataSource);
 
   const activePage = useMemo(
@@ -218,34 +221,34 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
   // ---- 3. MULTIPLE SELECTION VIEW ----
   if (selectedComponentIds.length > 1) {
+    const bulkSelectedComponents = selectedComponentIds
+      .map((id) => componentRegistry[id])
+      .filter(Boolean) as ComponentNode[];
+
+    const handleBulkUpdate = (updates: Partial<ComponentNode>) => {
+      const updatesMap: Record<string, Partial<ComponentNode>> = {};
+      for (const comp of bulkSelectedComponents) {
+        updatesMap[comp.id] = updates;
+      }
+      updateComponents(updatesMap);
+    };
+
+    const handleBulkStyleUpdate = (styleUpdates: any) => {
+      const updatesMap: Record<string, Partial<ComponentNode>> = {};
+      for (const comp of bulkSelectedComponents) {
+        const currentStyle = (comp as any).style || {};
+        updatesMap[comp.id] = { style: { ...currentStyle, ...styleUpdates } } as any;
+      }
+      updateComponents(updatesMap);
+    };
+
     return (
-      <div className="h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)]">
-        <div className="h-10 bg-white/[0.02] border-b border-[var(--border-default)] flex items-center px-4 gap-2">
-          <Layers className="w-4 h-4 text-[var(--accent)]" />
-          <span className="text-[12px] font-bold tracking-tight">Bulk Edit ({selectedComponentIds.length})</span>
-        </div>
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-[var(--accent-glow)] flex items-center justify-center mb-4 border border-[var(--border-accent)] shadow-lg shadow-[var(--accent)]/10 rotate-3">
-            <Layers className="w-7 h-7 text-[var(--accent)]" />
-          </div>
-          <h3 className="text-[14px] font-bold text-[var(--text-primary)] mb-1">
-            Multiple Selection
-          </h3>
-          <p className="text-[11px] text-[var(--text-muted)] mb-8 max-w-[180px] leading-relaxed">
-            Editing properties for multiple items is coming soon. Currently, you can only perform bulk deletion.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              for (const id of selectedComponentIds) removeComponent(id);
-            }}
-            className="flex items-center gap-2 px-6 py-2.5 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/20 rounded-lg transition-all text-[11px] font-bold uppercase tracking-wider shadow-sm"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete All Selected
-          </button>
-        </div>
-      </div>
+      <BulkEditPanel
+        selectedComponents={bulkSelectedComponents}
+        onBulkUpdate={handleBulkUpdate}
+        onBulkStyleUpdate={handleBulkStyleUpdate}
+        onDeleteAll={() => removeComponents(selectedComponentIds)}
+      />
     );
   }
 

@@ -119,10 +119,10 @@ export function TextEditor({
     if (!editorRef.current) return null;
     const textarea = editorRef.current;
     const cursorPos = textarea.selectionStart;
-    const beforeCursor = value.substring(0, cursorPos);
+    const beforeCursor = textarea.value.substring(0, cursorPos);
     const match = beforeCursor.match(/\{\{([^}]*)$/);
     return match ? match[1] : null;
-  }, [value]);
+  }, []);
 
   const updateDropdownState = useCallback(() => {
     const currentBinding = getCurrentBinding();
@@ -291,15 +291,15 @@ export function TextEditor({
     };
   }, []);
 
-  // Ensure focus on mount for inline editor
+  const inlineInitialized = useRef(false);
   useEffect(() => {
-    if (inline && editorRef.current) {
+    if (inline && editorRef.current && !inlineInitialized.current) {
+      inlineInitialized.current = true;
       editorRef.current.focus();
-      // Move cursor to end of text
-      const len = value.length;
+      const len = editorRef.current.value.length;
       editorRef.current.setSelectionRange(len, len);
     }
-  }, [inline, value.length]); // Run once when inline mode is activated or value length changes on mount
+  }, [inline]);
 
   const sharedStyles: React.CSSProperties = {
     fontFamily: `${textStyle.fontFamily || 'Sarabun'}, "Noto Sans Thai", sans-serif`,

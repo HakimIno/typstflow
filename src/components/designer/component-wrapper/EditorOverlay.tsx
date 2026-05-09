@@ -51,7 +51,6 @@ export const EditorOverlay = memo(function EditorOverlay({
           minHeight: `${component.height || 20}px`,
           display: 'block',
         }}
-        textareaClassName="resize-none"
         onExit={handleExitEdit}
       />
     </div>

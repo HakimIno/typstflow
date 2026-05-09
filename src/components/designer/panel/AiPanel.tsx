@@ -2,7 +2,36 @@
 
 import { type AgentMessage, useAiAgent } from '@/hooks/use-ai-agent';
 import { clsx } from 'clsx';
-import { Icon } from '@iconify/react';
+import {
+  MessageCircle,
+  ListTodo,
+  Zap,
+  Layers,
+  Type,
+  Table,
+  Image,
+  Minus,
+  Space,
+  Pencil,
+  Trash2,
+  Database,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Sparkles,
+  PlusSquare,
+  RefreshCw,
+  PlayCircle,
+  User,
+  AlertTriangle,
+  History,
+  ChevronRight,
+  PlusCircle,
+  ChevronDown,
+  ListChecks,
+  Mic,
+  Send,
+} from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { BasePanel } from './BasePanel';
 import { PanelHeader } from './PanelHeader';
@@ -12,46 +41,46 @@ import { DropdownMenu, DropdownMenuItem, DropdownMenuHeader } from '@/components
 
 const MODE_BADGE: Record<
   NonNullable<AgentMessage['mode']>,
-  { label: string; icon: string; color: string }
+  { label: string; icon: any; color: string }
 > = {
-  chat: { label: 'Chat', icon: 'solar:chat-round-dots-bold-duotone', color: 'text-[var(--text-muted)]' },
-  plan: { label: 'Plan', icon: 'solar:map-point-bold-duotone', color: 'text-blue-400' },
-  design: { label: 'Design', icon: 'solar:bolt-circle-bold-duotone', color: 'text-yellow-400' },
+  chat: { label: 'Chat', icon: MessageCircle, color: 'text-[var(--text-muted)]' },
+  plan: { label: 'Plan', icon: ListTodo, color: 'text-blue-400' },
+  design: { label: 'Design', icon: Zap, color: 'text-yellow-400' },
 };
 
-const iconMap: Record<string, string> = {
-  get_layout: 'solar:layers-minimalistic-bold-duotone',
-  add_text: 'solar:text-field-bold-duotone',
-  add_table: 'solar:confetti-bold-duotone',
-  add_image: 'solar:gallery-bold-duotone',
-  add_line: 'solar:adhesive-plaster-2-line-duotone',
-  add_spacer: 'solar:sidebar-minimize-bold-duotone',
-  update_component: 'solar:pen-new-square-bold-duotone',
-  delete_component: 'solar:trash-bin-trash-bold-duotone',
-  set_sample_data: 'solar:database-bold-duotone',
+const iconMap: Record<string, any> = {
+  get_layout: Layers,
+  add_text: Type,
+  add_table: Table,
+  add_image: Image,
+  add_line: Minus,
+  add_spacer: Space,
+  update_component: Pencil,
+  delete_component: Trash2,
+  set_sample_data: Database,
 };
 
-const statusMap: Record<string, { icon: string; color: string }> = {
-  success: { icon: 'solar:check-circle-bold-duotone', color: 'text-green-500' },
-  error: { icon: 'solar:close-circle-bold-duotone', color: 'text-red-500' },
-  pending: { icon: 'solar:refresh-circle-bold-duotone', color: 'animate-spin text-blue-500' },
+const statusMap: Record<string, { icon: any; color: string }> = {
+  success: { icon: CheckCircle2, color: 'text-green-500' },
+  error: { icon: XCircle, color: 'text-red-500' },
+  pending: { icon: Loader2, color: 'animate-spin text-blue-500' },
 };
 
 const SUGGESTIONS = [
   {
-    icon: 'solar:magic-stick-3-bold-duotone',
+    icon: Sparkles,
     label: 'Invoice layout',
     color: 'text-blue-400',
     prompt: 'Create a basic invoice layout with company header, items table, and total',
   },
   {
-    icon: 'solar:widget-add-bold-duotone',
+    icon: PlusSquare,
     label: 'Add table',
     color: 'text-yellow-400',
     prompt: 'Add a data table to the body with columns for name, quantity, price, and total',
   },
   {
-    icon: 'solar:refresh-bold-duotone',
+    icon: RefreshCw,
     label: 'Load template',
     color: 'text-purple-400',
     prompt: 'Load the invoice template',
@@ -59,17 +88,18 @@ const SUGGESTIONS = [
 ];
 
 function ToolCallItem({ call }: { call: NonNullable<AgentMessage['toolCalls']>[number] }) {
+  const StatusIcon = statusMap[call.success ? 'success' : 'error'].icon;
+  const ToolIcon = iconMap[call.name] || PlayCircle;
+
   return (
     <div className="flex items-center gap-1 py-0.5 px-1 group/item" title={call.description}>
       {call.success !== undefined && (
-        <Icon
-          icon={statusMap[call.success ? 'success' : 'error'].icon}
+        <StatusIcon
           className={clsx('w-3 h-3', statusMap[call.success ? 'success' : 'error'].color)}
         />
       )}
-      <Icon icon={iconMap[call.name] || 'solar:play-circle-bold-duotone'} className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover/item:text-[var(--accent)] transition-colors" />
+      <ToolIcon className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover/item:text-[var(--accent)] transition-colors" />
       <span className="text-[10px] text-[var(--text-primary)] font-medium">{call.name}</span>
-
     </div>
   );
 }
@@ -114,7 +144,7 @@ export const AiPanel = memo(function AiPanel() {
 
   return (
     <BasePanel allowOverflow>
-      <PanelHeader title="AI Assistant" icon="solar:adhesive-plaster-bold-duotone" />
+      <PanelHeader title="AI Assistant" icon={Sparkles} />
 
       {/* Chat History */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-none">
@@ -139,7 +169,7 @@ export const AiPanel = memo(function AiPanel() {
                 )}
               >
                 {msg.role === 'user' ? (
-                  <Icon icon="solar:user-bold-duotone" className="w-3 h-3 text-[var(--text-secondary)]" />
+                  <User className="w-3 h-3 text-[var(--text-secondary)]" />
                 ) : (
                   <div className="rounded-full bg-white">
                     <img className="w-5 h-5 rounded-full overflow-hidden" src="/logo.png" alt="TypstFlow" />
@@ -166,7 +196,7 @@ export const AiPanel = memo(function AiPanel() {
               {msg.content.startsWith('Error:') ? (
                 <>
                   <div className="flex items-center gap-1.5 text-red-500 font-bold uppercase text-[9px] tracking-widest">
-                    <Icon icon="solar:danger-bold-duotone" className="w-3 h-3" />
+                    <AlertTriangle className="w-3 h-3" />
                     System Error
                   </div>
                   <div className="text-[10px] opacity-90">{msg.content.replace('Error: ', '')}</div>
@@ -179,10 +209,10 @@ export const AiPanel = memo(function AiPanel() {
             {msg.role === 'assistant' && msg.mode && msg.mode !== 'chat' && (
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex items-center gap-1">
-                  <Icon
-                    icon={MODE_BADGE[msg.mode].icon}
-                    className={clsx('w-3 h-3', MODE_BADGE[msg.mode].color)}
-                  />
+                  {(() => {
+                    const BadgeIcon = MODE_BADGE[msg.mode].icon;
+                    return <BadgeIcon className={clsx('w-3 h-3', MODE_BADGE[msg.mode].color)} />;
+                  })()}
                   <span className={clsx('text-[9px] font-bold uppercase tracking-widest', MODE_BADGE[msg.mode].color)}>
                     {MODE_BADGE[msg.mode].label}
                   </span>
@@ -195,7 +225,7 @@ export const AiPanel = memo(function AiPanel() {
                     className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/40 transition-all active:scale-95"
                     title="Rewind canvas to before this AI turn"
                   >
-                    <Icon icon="solar:rewind-back-bold-duotone" className="w-3 h-3" />
+                    <History className="w-3 h-3" />
                     <span className="text-[9px] font-bold uppercase tracking-widest">Rewind</span>
                   </button>
                 )}
@@ -206,7 +236,7 @@ export const AiPanel = memo(function AiPanel() {
               <div className="max-w-full mt-2 pt-2 border-t border-[var(--border-subtle)]/20">
                 <details className="group">
                   <summary className="flex items-center gap-2 cursor-pointer list-none text-[9px] font-bold text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
-                    <Icon icon="solar:alt-arrow-right-linear" className="w-2.5 h-2.5 transition-transform group-open:rotate-90" />
+                    <ChevronRight className="w-2.5 h-2.5 transition-transform group-open:rotate-90" />
                     <span className="uppercase tracking-widest opacity-80">
                       System Activity ({msg.toolCalls.length})
                     </span>
@@ -229,7 +259,7 @@ export const AiPanel = memo(function AiPanel() {
 
             <div className="flex items-center gap-3 relative z-10">
               <div className="relative flex items-center justify-center w-4 h-4">
-                <Icon icon="solar:magic-stick-3-bold-duotone" className="w-3.5 h-3.5 text-[var(--accent)] animate-pulse" />
+                <Sparkles className="w-3.5 h-3.5 text-[var(--accent)] animate-pulse" />
                 <div className="absolute inset-0 rounded-full border border-[var(--accent)]/30 animate-ping" />
               </div>
               <div className="flex-1">
@@ -252,20 +282,23 @@ export const AiPanel = memo(function AiPanel() {
 
       {/* Quick Suggestions */}
       <div className="px-2 py-1 flex items-center gap-1.5 overflow-x-auto scrollbar-none no-scrollbar">
-        {SUGGESTIONS.map((s) => (
-          <button
-            key={s.label}
-            onClick={() => {
-              setInput(s.prompt);
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--bg-widget)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] rounded-full transition-all shrink-0 group"
-          >
-            <Icon icon={s.icon} className={clsx('w-3 h-3', s.color)} />
-            <span className="text-[9px] font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
-              {s.label}
-            </span>
-          </button>
-        ))}
+        {SUGGESTIONS.map((s) => {
+          const SugIcon = s.icon;
+          return (
+            <button
+              key={s.label}
+              onClick={() => {
+                setInput(s.prompt);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--bg-widget)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] rounded-full transition-all shrink-0 group"
+            >
+              <SugIcon className={clsx('w-3 h-3', s.color)} />
+              <span className="text-[9px] font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
+                {s.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Input Area */}
@@ -293,7 +326,7 @@ export const AiPanel = memo(function AiPanel() {
                 title="Clear chat"
                 className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               >
-                <Icon icon="solar:add-circle-bold-duotone" className="w-6 h-6" />
+                <PlusCircle className="w-6 h-6" />
               </button>
 
               <div className="w-[1px] h-3.5 bg-white/10" />
@@ -309,7 +342,7 @@ export const AiPanel = memo(function AiPanel() {
                       {AI_MODELS.find((m) => m.id === aiModel)?.label.toLowerCase().replace(/\s+/g, '-') ||
                         aiModel.split('/').pop()}
                     </span>
-                    <Icon icon="solar:alt-arrow-down-linear" className="w-3 h-3 text-[var(--text-muted)]" />
+                    <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />
                   </button>
                 }
               >
@@ -337,9 +370,9 @@ export const AiPanel = memo(function AiPanel() {
                     className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-white/5 rounded-lg transition-colors group"
                   >
                     {aiMode === 'plan' ? (
-                      <Icon icon="solar:list-down-minimalistic-bold-duotone" className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-primary)]" />
+                      <ListChecks className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-primary)]" />
                     ) : (
-                      <Icon icon="solar:bolt-circle-bold-duotone" className="w-3.5 h-3.5 text-yellow-400" />
+                      <Zap className="w-3.5 h-3.5 text-yellow-400" />
                     )}
                     <span className="text-[10px] font-bold text-[var(--text-muted)] group-hover:text-[var(--text-primary)]">
                       {aiMode === 'plan' ? 'Plan' : 'Act'}
@@ -349,13 +382,13 @@ export const AiPanel = memo(function AiPanel() {
               >
                 <DropdownMenuHeader>Agent Mode</DropdownMenuHeader>
                 <DropdownMenuItem
-                  icon={() => <Icon icon="solar:list-down-minimalistic-bold-duotone" className="w-3.5 h-3.5" />}
+                  icon={() => <ListChecks className="w-3.5 h-3.5" />}
                   label="Plan Mode"
                   onClick={() => setAiMode('plan')}
                   className={aiMode === 'plan' ? 'bg-white/5 text-[var(--accent)]' : ''}
                 />
                 <DropdownMenuItem
-                  icon={() => <Icon icon="solar:bolt-circle-bold-duotone" className="w-3.5 h-3.5" />}
+                  icon={() => <Zap className="w-3.5 h-3.5" />}
                   label="Act Mode"
                   onClick={() => setAiMode('act')}
                   className={aiMode === 'act' ? 'bg-white/5 text-[var(--accent)]' : ''}
@@ -368,7 +401,7 @@ export const AiPanel = memo(function AiPanel() {
                 type="button"
                 className="p-2 rounded-full bg-[var(--bg-widget)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] transition-all active:scale-95"
               >
-                <Icon icon="solar:microphone-3-bold-duotone" className="w-4 h-4" />
+                <Mic className="w-4 h-4" />
               </button>
 
               {isLoading ? (
@@ -378,7 +411,7 @@ export const AiPanel = memo(function AiPanel() {
                   className="p-2 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)] transition-all animate-in zoom-in duration-200"
                   title="Stop generation"
                 >
-                  <Icon icon="solar:close-circle-bold-duotone" className="w-4 h-4" />
+                  <XCircle className="w-4 h-4" />
                 </button>
               ) : (
                 input.trim() && (
@@ -387,7 +420,7 @@ export const AiPanel = memo(function AiPanel() {
                     onClick={handleSend}
                     className="p-2 rounded-full bg-[var(--accent)] text-white shadow-[var(--accent-glow)] transition-all animate-in zoom-in duration-200"
                   >
-                    <Icon icon="solar:plain-bold-duotone" className="w-3.5 h-3.5" />
+                    <Send className="w-3.5 h-3.5" />
                   </button>
                 )
               )}
@@ -398,3 +431,4 @@ export const AiPanel = memo(function AiPanel() {
     </BasePanel>
   );
 });
+
