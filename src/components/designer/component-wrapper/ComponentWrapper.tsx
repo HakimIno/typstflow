@@ -407,6 +407,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     };
   }, [isEditing]);
 
+  const zoom = useDesignerStore((s) => s.zoom);
   const { localBounds, isResizing, handleResizeStart, syncBounds } = useResizable(
     {
       x: component.x || 0,
@@ -416,7 +417,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     },
     (finalBounds) => {
       updateComponent(componentId, finalBounds);
-    }
+    },
+    zoom
   );
 
   useEffect(() => {

@@ -12,6 +12,7 @@ import { Palette } from '@/components/designer/panel/Palette';
 import { AlertDialog } from '@/components/shared/AlertDialog';
 import { DesignerErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useFontInstaller } from '@/hooks/use-font-installer';
 
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
@@ -20,6 +21,7 @@ import { useEffect, useState } from 'react';
 export default function DesignerPage() {
   const [mounted, setMounted] = useState(false);
   useKeyboardShortcuts();
+  useFontInstaller(); // Re-register persisted fonts on hydration
 
   // Granular Selectors - Optimized for high performance
   const _hasHydrated = useDesignerStore((state) => state._hasHydrated);

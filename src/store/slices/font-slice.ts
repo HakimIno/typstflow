@@ -44,10 +44,11 @@ export function createFontSlice(): StateCreator<DesignerState, [], [], FontSlice
     markFontInstalled: (family) => {
       set((s) => ({
         loadingFonts: s.loadingFonts.filter((f) => f !== family),
+        // Always refresh installedAt so per-font selectors detect the change on re-registration
         installedFonts: s.installedFonts.some((f) => f.family === family)
-          ? s.installedFonts
+          ? s.installedFonts.map((f) => (f.family === family ? { ...f, installedAt: Date.now() } : f))
           : [...s.installedFonts, { family, installedAt: Date.now() }],
-        fontLoadedAt: Date.now(), // triggers PreviewPane re-render
+        fontLoadedAt: Date.now(),
       }));
     },
 

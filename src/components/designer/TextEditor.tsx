@@ -302,7 +302,7 @@ export function TextEditor({
   }, [inline]);
 
   const sharedStyles: React.CSSProperties = {
-    fontFamily: `${textStyle.fontFamily || 'Sarabun'}, "Noto Sans Thai", sans-serif`,
+    fontFamily: `${textStyle.fontFamily || 'Sarabun'}, "Geist", "Inter", "Sarabun-Local", "Noto Sans Thai", sans-serif`,
     fontSize: textStyle.fontSize ? `${textStyle.fontSize}pt` : '10pt',
     lineHeight: textStyle.lineHeight || 1.2,
     letterSpacing: textStyle.letterSpacing || 'normal',

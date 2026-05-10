@@ -10,7 +10,11 @@ interface Bounds {
   height: number;
 }
 
-export function useResizable(initialBounds: Bounds, onResizeEnd: (finalBounds: Bounds) => void) {
+export function useResizable(
+  initialBounds: Bounds,
+  onResizeEnd: (finalBounds: Bounds) => void,
+  zoom = 1
+) {
   const [localBounds, setLocalBounds] = useState<Bounds>(initialBounds);
   const [isResizing, setIsResizing] = useState<string | null>(null);
 
@@ -33,8 +37,8 @@ export function useResizable(initialBounds: Bounds, onResizeEnd: (finalBounds: B
       const initH = currentBoundsRef.current.height;
 
       const onMouseMove = (moveEvent: MouseEvent) => {
-        const dx = LayoutEngine.pxToMm(moveEvent.clientX - startX);
-        const dy = LayoutEngine.pxToMm(moveEvent.clientY - startY);
+        const dx = LayoutEngine.pxToMm((moveEvent.clientX - startX) / zoom);
+        const dy = LayoutEngine.pxToMm((moveEvent.clientY - startY) / zoom);
 
         let newX = initX;
         let newY = initY;

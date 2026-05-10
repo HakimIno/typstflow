@@ -34,6 +34,7 @@ export interface DesignerState extends FontSlice {
   canvasLayout: 'vertical' | 'grid';
   aiModel: string;
   aiMode: 'plan' | 'act';
+  scrollToPageId: string | null;
 
   // Selection
   selectedComponentIds: string[];
@@ -140,6 +141,7 @@ export interface DesignerState extends FontSlice {
   setViewMode: (mode: 'design' | 'preview' | 'split') => void;
   setActiveTab: (tab: 'palette' | 'outline' | 'data' | 'ai') => void;
   setActivePage: (pageId: string | null) => void;
+  setScrollToPageId: (pageId: string | null) => void;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
   toggleRightSidebar: () => void;

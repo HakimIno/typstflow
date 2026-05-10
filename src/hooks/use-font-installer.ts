@@ -12,15 +12,20 @@ export function useFontInstaller() {
   const installedFonts = useDesignerStore((s) => s.installedFonts);
   const loadingFonts = useDesignerStore((s) => s.loadingFonts);
 
-  // Re-register persisted fonts into browser + WASM after page reload
+  const _hasHydrated = useDesignerStore((s) => s._hasHydrated);
+
+  // Re-register persisted fonts into browser + WASM after IndexedDB hydration completes.
+  // Must depend on _hasHydrated — running before hydration means installedFonts is still the
+  // default (Sarabun only) and nothing gets re-installed.
   useEffect(() => {
+    if (!_hasHydrated) return;
+
     const families = installedFonts
       .filter((f) => f.family !== 'Sarabun' && !fontManager.isWasmLoaded(f.family))
       .map((f) => f.family);
 
     if (families.length === 0) return;
 
-    // Re-install sequentially; each success calls markFontInstalled → fontLoadedAt → preview re-renders
     (async () => {
       for (const family of families) {
         markFontLoading(family);
@@ -29,7 +34,7 @@ export function useFontInstaller() {
         else markFontFailed(family);
       }
     })();
-  }, []); // run once on mount
+  }, [_hasHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const installFont = useCallback(
     async (family: string): Promise<boolean> => {

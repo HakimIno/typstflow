@@ -25,11 +25,13 @@ import {
   Layers,
   Lock,
   QrCode,
+  Search,
   Square,
   Table,
   Trash2,
   Type,
   Unlock,
+  X,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -65,15 +67,8 @@ type RenderItem =
 
 const ComponentIcon = memo(({ type, isSelected }: { type: string; isSelected?: boolean }) => {
   const iconClass = clsx(
-    'w-3.5 h-3.5 transition-all duration-200',
-    isSelected ? 'scale-110' : 'group-hover:scale-110'
-  );
-
-  const containerClass = clsx(
-    'w-6 h-6 rounded-md flex items-center justify-center shrink-0 border transition-all duration-300',
-    isSelected
-      ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-[0_0_12px_rgba(0,111,238,0.4)]'
-      : 'bg-[var(--bg-widget)] text-[var(--text-secondary)] border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]'
+    'w-4 h-4 transition-transform duration-200 group-hover:scale-110',
+    isSelected ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] group-hover:text-[var(--accent)]'
   );
 
   const getIcon = () => {
@@ -86,7 +81,7 @@ const ComponentIcon = memo(({ type, isSelected }: { type: string; isSelected?: b
         return <Table className={iconClass} />;
       case 'line':
         return <Square className={iconClass} />;
-      case 'qrcode':
+      case 'qr':
       case 'barcode':
         return <QrCode className={iconClass} />;
       default:
@@ -94,7 +89,7 @@ const ComponentIcon = memo(({ type, isSelected }: { type: string; isSelected?: b
     }
   };
 
-  return <div className={containerClass}>{getIcon()}</div>;
+  return <div className="flex items-center justify-center shrink-0">{getIcon()}</div>;
 });
 
 const LayerItem = memo(
@@ -122,6 +117,8 @@ const LayerItem = memo(
     );
 
     const selectComponent = useDesignerStore((state) => state.selectComponent);
+    const setActivePage = useDesignerStore((state) => state.setActivePage);
+    const setScrollToPageId = useDesignerStore((state) => state.setScrollToPageId);
     const toggleVisibility = useDesignerStore((state) => state.toggleComponentVisibility);
     const toggleLock = useDesignerStore((state) => state.toggleComponentLock);
     const renameComponent = useDesignerStore((state) => state.renameComponent);
@@ -173,10 +170,18 @@ const LayerItem = memo(
       renameComponent(component.id, name);
     };
 
+    const handleSelect = useCallback(() => {
+      selectComponent(component.id);
+      if (pageId) {
+        setActivePage(pageId);
+        setScrollToPageId(pageId);
+      }
+    }, [component.id, pageId, selectComponent, setActivePage, setScrollToPageId]);
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        selectComponent(component.id);
+        handleSelect();
       }
     };
 
@@ -184,14 +189,12 @@ const LayerItem = memo(
       <div
         ref={ref}
         className={clsx(
-          'w-[calc(100%-12px)] mx-auto group relative flex items-center gap-2.5 px-2.5 py-1.5 cursor-pointer transition-all duration-200 select-none rounded-lg h-[36px] my-0.5',
-          isSelected
-            ? 'bg-[var(--accent-glow)] border border-[var(--accent)]/30 shadow-[0_2px_8px_rgba(0,0,0,0.05)]'
-            : 'border border-transparent hover:bg-[var(--bg-widget)] hover:border-[var(--border-subtle)] hover:shadow-sm',
+          'w-full group relative flex items-center gap-3 px-4 py-0 cursor-pointer select-none h-[32px]',
+          isSelected && 'bg-white/5',
           isDragging && 'opacity-40 grayscale',
           isHidden && 'opacity-50'
         )}
-        onClick={() => selectComponent(component.id)}
+        onClick={handleSelect}
         onKeyDown={handleKeyDown}
       >
         {closestEdge === 'top' && (
@@ -202,56 +205,45 @@ const LayerItem = memo(
         )}
 
         <div className="relative flex items-center gap-3 flex-1 min-w-0">
-          <GripVertical className="w-3 h-3 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 -ml-1" />
           <ComponentIcon type={component.type} isSelected={isSelected} />
           <div className="flex-1 min-w-0">
             {isEditing ? (
               <DesignerInput
                 autoFocus
                 variant="ghost"
-                className="text-[11px] font-medium p-0 text-[var(--text-primary)]"
+                className="text-[12px] font-medium p-0 text-[var(--accent)]"
                 value={name}
                 onChange={(v: string) => setName(v)}
                 onBlur={handleRename}
                 onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && handleRename()}
               />
             ) : (
-              <div className="flex flex-col">
-                <span
-                  className={clsx(
-                    'block text-[12px] font-medium truncate transition-colors leading-tight',
-                    isSelected
-                      ? 'text-[var(--text-primary)]'
-                      : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'
-                  )}
-                  onDoubleClick={() => setIsEditing(true)}
-                >
-                  {component.name ||
-                    (component.type === 'text' ? component.content : component.type)}
-                </span>
-                <span className="text-[10px] text-[var(--text-muted)] font-normal opacity-60">
-                  {component.type}
-                </span>
-              </div>
+              <span
+                className={clsx(
+                  'block text-[13px] font-medium truncate leading-tight transition-colors',
+                  isSelected
+                    ? 'text-[var(--accent)]'
+                    : 'text-[var(--text-muted)] group-hover:text-[var(--accent)]'
+                )}
+                onDoubleClick={() => setIsEditing(true)}
+              >
+                {component.name ||
+                  (component.type === 'text' ? component.content : component.type)}
+              </span>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-all duration-200 scale-95 group-hover:scale-100 origin-right">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               toggleVisibility(component.id);
             }}
-            className={clsx(
-              'p-1.5 hover:bg-[var(--bg-hover)] rounded-md transition-colors',
-              isHidden
-                ? 'text-[var(--accent)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            )}
+            className="p-1 hover:text-[var(--accent)] transition-colors text-[var(--accent)]/60"
           >
-            {isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            {isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
           <button
             type="button"
@@ -259,14 +251,9 @@ const LayerItem = memo(
               e.stopPropagation();
               toggleLock(component.id);
             }}
-            className={clsx(
-              'p-1.5 hover:bg-[var(--bg-hover)] rounded-md transition-colors',
-              isLocked
-                ? 'text-orange-500'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            )}
+            className="p-1 hover:text-[var(--accent)] transition-colors text-[var(--accent)]/60"
           >
-            {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+            {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
           </button>
           <button
             type="button"
@@ -294,55 +281,69 @@ const LayerItem = memo(
 
 // --- Hook: useFlattenedLayers ---
 
-function useFlattenedLayers(collapsedGroups: Set<string>) {
+function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
   const schema = useDesignerStore(useShallow((state) => state.schema));
+  const query = searchQuery.toLowerCase().trim();
 
   return useMemo(() => {
+    const isMatch = (comp: ComponentNode) => {
+      if (!query) return true;
+      const name = (comp.name || '').toLowerCase();
+      const type = (comp.type || '').toLowerCase();
+      const content = comp.type === 'text' ? (comp.content || '').toLowerCase() : '';
+      return name.includes(query) || type.includes(query) || content.includes(query);
+    };
+
     const items: RenderItem[] = [];
 
     // 1. Header
-    const headerComps = schema.zones.header.components;
+    const headerComps = schema.zones.header.components.filter(isMatch);
     const isHeaderGlobal = schema.zones.header.repeatOnEveryPage;
-    items.push({
-      type: 'zone-header',
-      zoneKey: 'header',
-      label: isHeaderGlobal ? 'Global Header' : 'Report Header',
-      count: headerComps.length,
-    });
-    if (!collapsedGroups.has('header') && headerComps.length > 0) {
-      const reversed = [...headerComps].reverse();
-      for (let i = 0; i < reversed.length; i++) {
-        items.push({
-          type: 'component',
-          component: reversed[i],
-          zoneKey: 'header',
-          index: headerComps.length - 1 - i,
-        });
+    if (!query || headerComps.length > 0) {
+      items.push({
+        type: 'zone-header',
+        zoneKey: 'header',
+        label: isHeaderGlobal ? 'Global Header' : 'Report Header',
+        count: headerComps.length,
+      });
+      if ((!collapsedGroups.has('header') || query) && headerComps.length > 0) {
+        const reversed = [...headerComps].reverse();
+        for (let i = 0; i < reversed.length; i++) {
+          items.push({
+            type: 'component',
+            component: reversed[i],
+            zoneKey: 'header',
+            index: schema.zones.header.components.findIndex(c => c.id === reversed[i].id),
+          });
+        }
       }
     }
 
     // 2. Groups (Headers)
     for (const group of schema.groups || []) {
       const gHeaderKey = `group-${group.id}-header`;
-      items.push({
-        type: 'zone-header',
-        zoneKey: 'header',
-        label: `Group Header: ${group.field}`,
-        groupId: group.id,
-        groupType: 'header',
-        count: group.header.components.length,
-      });
-      if (!collapsedGroups.has(gHeaderKey) && group.header.components.length > 0) {
-        const reversed = [...group.header.components].reverse();
-        for (let i = 0; i < reversed.length; i++) {
-          items.push({
-            type: 'component',
-            component: reversed[i],
-            zoneKey: 'header',
-            index: group.header.components.length - 1 - i,
-            groupId: group.id,
-            groupType: 'header',
-          });
+      const gHeaderComps = group.header.components.filter(isMatch);
+      if (!query || gHeaderComps.length > 0) {
+        items.push({
+          type: 'zone-header',
+          zoneKey: 'header',
+          label: `Group Header: ${group.field}`,
+          groupId: group.id,
+          groupType: 'header',
+          count: gHeaderComps.length,
+        });
+        if ((!collapsedGroups.has(gHeaderKey) || query) && gHeaderComps.length > 0) {
+          const reversed = [...gHeaderComps].reverse();
+          for (let i = 0; i < reversed.length; i++) {
+            items.push({
+              type: 'component',
+              component: reversed[i],
+              zoneKey: 'header',
+              index: group.header.components.findIndex(c => c.id === reversed[i].id),
+              groupId: group.id,
+              groupType: 'header',
+            });
+          }
         }
       }
     }
@@ -350,87 +351,99 @@ function useFlattenedLayers(collapsedGroups: Set<string>) {
     // 3. Pages (Detail Band)
     for (let pIdx = 0; pIdx < schema.pages.length; pIdx++) {
       const page = schema.pages[pIdx];
-      items.push({ type: 'page-separator', pageId: page.id, index: pIdx });
+      const bodyComps = page.body.components.filter(isMatch);
 
-      const bodyComps = page.body.components;
-      const groupKey = `body-${page.id}`;
-      items.push({
-        type: 'zone-header',
-        zoneKey: 'body',
-        label: 'Detail Band',
-        pageId: page.id,
-        count: bodyComps.length,
-      });
+      if (!query || bodyComps.length > 0) {
+        if (!query) {
+          items.push({ type: 'page-separator', pageId: page.id, index: pIdx });
+        }
 
-      if (!collapsedGroups.has(groupKey) && bodyComps.length > 0) {
-        const reversed = [...bodyComps].reverse();
-        for (let i = 0; i < reversed.length; i++) {
-          items.push({
-            type: 'component',
-            component: reversed[i],
-            zoneKey: 'body',
-            index: bodyComps.length - 1 - i,
-            pageId: page.id,
-          });
+        const groupKey = `body-${page.id}`;
+        items.push({
+          type: 'zone-header',
+          zoneKey: 'body',
+          label: query ? `Page ${pIdx + 1} - Detail Band` : 'Detail Band',
+          pageId: page.id,
+          count: bodyComps.length,
+        });
+
+        if ((!collapsedGroups.has(groupKey) || query) && bodyComps.length > 0) {
+          const reversed = [...bodyComps].reverse();
+          for (let i = 0; i < reversed.length; i++) {
+            items.push({
+              type: 'component',
+              component: reversed[i],
+              zoneKey: 'body',
+              index: page.body.components.findIndex(c => c.id === reversed[i].id),
+              pageId: page.id,
+            });
+          }
         }
       }
     }
 
-    // 4. Groups (Footers) - Rendered in same order as headers but at bottom
+    // 4. Groups (Footers)
     const groups = schema.groups || [];
     for (let i = groups.length - 1; i >= 0; i--) {
       const group = groups[i];
       const gFooterKey = `group-${group.id}-footer`;
+      const gFooterComps = group.footer.components.filter(isMatch);
+      if (!query || gFooterComps.length > 0) {
+        items.push({
+          type: 'zone-header',
+          zoneKey: 'footer',
+          label: `Group Footer: ${group.field}`,
+          groupId: group.id,
+          groupType: 'footer',
+          count: gFooterComps.length,
+        });
+        if ((!collapsedGroups.has(gFooterKey) || query) && gFooterComps.length > 0) {
+          const reversed = [...gFooterComps].reverse();
+          for (let j = 0; j < reversed.length; j++) {
+            items.push({
+              type: 'component',
+              component: reversed[j],
+              zoneKey: 'footer',
+              index: group.footer.components.findIndex(c => c.id === reversed[j].id),
+              groupId: group.id,
+              groupType: 'footer',
+            });
+          }
+        }
+      }
+    }
+
+    // 5. Footer
+    const footerComps = schema.zones.footer.components.filter(isMatch);
+    const isFooterGlobal = schema.zones.footer.repeatOnEveryPage;
+    if (!query || footerComps.length > 0) {
+      if (!query) {
+        items.push({
+          type: 'global-separator',
+          label: isFooterGlobal ? 'Global' : 'Document End',
+        });
+      }
       items.push({
         type: 'zone-header',
         zoneKey: 'footer',
-        label: `Group Footer: ${group.field}`,
-        groupId: group.id,
-        groupType: 'footer',
-        count: group.footer.components.length,
+        label: isFooterGlobal ? 'Global Footer' : 'Page Footer',
+        count: footerComps.length,
       });
-      if (!collapsedGroups.has(gFooterKey) && group.footer.components.length > 0) {
-        const reversed = [...group.footer.components].reverse();
-        for (let j = 0; j < reversed.length; j++) {
+      if ((!collapsedGroups.has('footer') || query) && footerComps.length > 0) {
+        const reversed = [...footerComps].reverse();
+        for (let i = 0; i < reversed.length; i++) {
           items.push({
             type: 'component',
-            component: reversed[j],
+            component: reversed[i],
             zoneKey: 'footer',
-            index: group.footer.components.length - 1 - j,
-            groupId: group.id,
-            groupType: 'footer',
+            index: schema.zones.footer.components.findIndex(c => c.id === reversed[i].id),
           });
         }
       }
     }
 
-    // 5. Footer (with separator so it doesn't visually attach to the last page)
-    const footerComps = schema.zones.footer.components;
-    const isFooterGlobal = schema.zones.footer.repeatOnEveryPage;
-    items.push({
-      type: 'global-separator',
-      label: isFooterGlobal ? 'Global' : 'Document End',
-    });
-    items.push({
-      type: 'zone-header',
-      zoneKey: 'footer',
-      label: isFooterGlobal ? 'Global Footer' : 'Page Footer',
-      count: footerComps.length,
-    });
-    if (!collapsedGroups.has('footer') && footerComps.length > 0) {
-      const reversed = [...footerComps].reverse();
-      for (let i = 0; i < reversed.length; i++) {
-        items.push({
-          type: 'component',
-          component: reversed[i],
-          zoneKey: 'footer',
-          index: footerComps.length - 1 - i,
-        });
-      }
-    }
-
     return items;
-  }, [schema, collapsedGroups]);
+  }, [schema, collapsedGroups, query]);
 }
 
 // --- Main Component ---
@@ -450,7 +463,8 @@ export const LayersPanel = memo(function LayersPanel() {
   );
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const flattenedLayers = useFlattenedLayers(collapsedGroups);
+  const [searchQuery, setSearchQuery] = useState('');
+  const flattenedLayers = useFlattenedLayers(collapsedGroups, searchQuery);
 
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -459,10 +473,10 @@ export const LayersPanel = memo(function LayersPanel() {
     getScrollElement: () => parentRef.current,
     estimateSize: (index) => {
       const item = flattenedLayers[index];
-      if (item.type === 'page-separator') return 32;
+      if (item.type === 'page-separator') return 36;
       if (item.type === 'global-separator') return 36;
-      if (item.type === 'zone-header') return 34;
-      return 40; // Component (36px + margins)
+      if (item.type === 'zone-header') return 32;
+      return 32; // Component (32px)
     },
     overscan: 10,
   });
@@ -548,6 +562,32 @@ export const LayersPanel = memo(function LayersPanel() {
         }
       />
 
+      {/* Search Bar */}
+      <div className="px-3 pt-1 pb-2">
+        <div className="relative group">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
+          <input
+            type="text"
+            placeholder="Search components..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-black/20 border border-white/5 rounded-md py-1.5 pl-8 pr-3 text-[12px] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]/50 focus:bg-black/40 transition-all placeholder:text-[var(--text-muted)]/50"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-white/10 rounded-full"
+            >
+              <X className="w-3 h-3 text-[var(--text-muted)]" />
+            </button>
+          )}
+        </div>
+
+
+      </div>
+
+      <hr className="border-white/5" />
+
       {/* Virtualized List Container */}
       <div ref={parentRef} className="flex-1 overflow-y-auto scrollbar-hide py-1">
         {isEmpty ? (
@@ -586,14 +626,16 @@ export const LayersPanel = memo(function LayersPanel() {
                   }}
                 >
                   {item.type === 'page-separator' && (
-                    <div className="px-3.5 py-1.5 flex items-center gap-2 mt-4 first:mt-2">
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="w-1 h-1 rounded-full bg-[var(--accent)]" />
-                        <span className="text-[11px] font-bold text-[var(--text-primary)]">
-                          Page {item.index + 1}
-                        </span>
-                      </div>
-                      <div className="flex-1 h-px bg-[var(--border-subtle)] opacity-40" />
+                    <div
+                      className="px-4 h-[36px] flex items-center justify-between border-b border-white/5 bg-white/[0.02] cursor-pointer hover:bg-white/[0.05] transition-colors group/page"
+                      onClick={() => {
+                        useDesignerStore.getState().setActivePage(item.pageId);
+                        useDesignerStore.getState().setScrollToPageId(item.pageId);
+                      }}
+                    >
+                      <span className="text-[11px] font-bold text-[var(--text-muted)] group-hover/page:text-[var(--text-primary)] uppercase tracking-widest transition-colors">
+                        Page {item.index + 1}
+                      </span>
                     </div>
                   )}
 
@@ -702,18 +744,33 @@ const ZoneHeader = memo(
       }
     };
 
+    const handleToggle = (e: React.MouseEvent | React.KeyboardEvent) => {
+      e.stopPropagation();
+      const key = item.groupId ? `group-${item.groupId}-${item.groupType}` : zoneId;
+      toggleGroup(key);
+    };
+
     return (
       <div
         ref={ref}
         className={clsx(
-          'w-[calc(100%-8px)] mx-auto h-[calc(100%-4px)] my-0.5 flex items-center gap-2 px-1.5 transition-all cursor-pointer group rounded-md',
+          'w-full h-full flex items-center gap-2 px-3 transition-all cursor-pointer group',
           isSelected
-            ? 'bg-[var(--bg-widget)] text-[var(--accent)] border border-[var(--accent)]/20 shadow-sm'
-            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-widget)]/50',
-          isDraggedOver && 'ring-2 ring-inset ring-[var(--accent)] bg-[var(--accent-glow)]/30'
+            ? 'bg-white/10 text-[var(--accent)]'
+            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]',
+          isDraggedOver && 'bg-[var(--accent)]/10'
         )}
-        onClick={handleSelect}
-        onKeyDown={handleKeyDown}
+        onClick={(e) => {
+          handleSelect();
+          handleToggle(e);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleSelect();
+            handleToggle(e);
+          }
+        }}
       >
         <button
           type="button"

@@ -15,6 +15,7 @@ export type UISlice = Pick<
   | 'aiModel'
   | 'aiMode'
   | '_hasHydrated'
+  | 'scrollToPageId'
   | 'setZoom'
   | 'setViewMode'
   | 'setActiveTab'
@@ -28,7 +29,9 @@ export type UISlice = Pick<
   | 'setCanvasLayout'
   | 'setAiModel'
   | 'setAiMode'
+  | 'setAiMode'
   | 'setHasHydrated'
+  | 'setScrollToPageId'
 >;
 
 export const createUISlice: StateCreator<DesignerState, [], [], UISlice> = (set, _get) => ({
@@ -44,6 +47,7 @@ export const createUISlice: StateCreator<DesignerState, [], [], UISlice> = (set,
   aiModel: 'anthropic/claude-sonnet-4-5',
   aiMode: 'plan' as DesignerState['aiMode'],
   _hasHydrated: false,
+  scrollToPageId: null,
 
   setHasHydrated: (state) => set({ _hasHydrated: state }),
   setZoom: (zoom: number) => set({ zoom: Math.max(0.2, Math.min(zoom, 3.0)) }),
@@ -65,4 +69,5 @@ export const createUISlice: StateCreator<DesignerState, [], [], UISlice> = (set,
   setCanvasLayout: (layout: 'vertical' | 'grid') => set({ canvasLayout: layout }),
   setAiModel: (model: string) => set({ aiModel: model }),
   setAiMode: (mode: 'plan' | 'act') => set({ aiMode: mode }),
+  setScrollToPageId: (pageId: string | null) => set({ scrollToPageId: pageId }),
 });

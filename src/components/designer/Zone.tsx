@@ -63,14 +63,20 @@ export const Zone = memo(function Zone({
       data-is-group-band={isGroupBand}
       data-group-id={groupId}
       data-group-type={groupType}
-      style={resizeEdge === 'none' ? { flex: 1 } : { height: minHeight || '50mm' }}
+      style={
+        hidden
+          ? { height: 0, overflow: 'hidden', border: 'none' }
+          : resizeEdge === 'none'
+            ? { flex: 1 }
+            : { height: minHeight || '50mm' }
+      }
       className={clsx(
         'relative border-b last:border-b-0 border-dashed border-slate-200 group/zone bg-transparent overflow-visible',
         isGroupBand && (groupType === 'header' ? 'bg-indigo-500/[0.03]' : 'bg-fuchsia-500/[0.03]'),
         isDraggedOver && 'bg-[var(--accent-glow)]/50',
         isResizing &&
           'ring-1 ring-[var(--accent)] z-50 shadow-lg !transition-none will-change-[height] [contain:size_layout]',
-        hidden && 'border-none'
+        hidden && 'pointer-events-none'
       )}
     >
       {/* Vertical Side Label (External to Paper) */}
@@ -100,8 +106,8 @@ export const Zone = memo(function Zone({
         data-group-type={groupType}
         className="relative w-full h-full bg-transparent overflow-visible min-h-[inherit]"
       >
-        {componentIds.length === 0 && !isDraggedOver ? (
-          !hidden && (
+        {!hidden && (
+          componentIds.length === 0 && !isDraggedOver ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 opacity-40 select-none pointer-events-none">
               <Layers className="w-6 h-6 mb-1" />
               <p className="text-[9px] font-bold uppercase tracking-widest text-center px-4">
@@ -112,19 +118,19 @@ export const Zone = memo(function Zone({
                 </span>
               </p>
             </div>
+          ) : (
+            <div className="absolute inset-0 overflow-visible">
+              {componentIds.map((id) => (
+                <ComponentWrapper
+                  key={`${pageId ?? 'global'}-${id}`}
+                  componentId={id}
+                  zoneKey={zoneKey}
+                  pageId={pageId}
+                  pageIndex={pageIndex}
+                />
+              ))}
+            </div>
           )
-        ) : (
-          <div className="absolute inset-0 overflow-visible">
-            {componentIds.map((id) => (
-              <ComponentWrapper
-                key={`${pageId ?? 'global'}-${id}`}
-                componentId={id}
-                zoneKey={zoneKey}
-                pageId={pageId}
-                pageIndex={pageIndex}
-              />
-            ))}
-          </div>
         )}
       </div>
 
@@ -139,7 +145,7 @@ export const Zone = memo(function Zone({
       )}
 
       {/* Resize Handle */}
-      {resizeEdge !== 'none' && (
+      {resizeEdge !== 'none' && !hidden && (
         <div
           onMouseDown={handleResizeStart}
           className={clsx(

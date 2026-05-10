@@ -15,6 +15,8 @@ import { PageNumberPreview } from './previews/PageNumberPreview';
 import { SpacerPreview } from './previews/SpacerPreview';
 import { SummaryBoxPreview } from './previews/SummaryBoxPreview';
 import { TextPreview } from './previews/TextPreview';
+import { QRPreview } from './previews/QRPreview';
+import type { QRComponent } from '@/types/schema';
 
 interface Props {
   component: ComponentNode;
@@ -41,8 +43,9 @@ export const ComponentPreview = memo(function ComponentPreview({
     case 'image':
       return <ImagePreview component={component} />;
     case 'barcode':
-    case 'qr':
       return <BarcodePreview component={component} sampleData={sampleData} />;
+    case 'qr':
+      return <QRPreview component={component as QRComponent} sampleData={sampleData} />;
     case 'summary-box':
       return <SummaryBoxPreview component={component} sampleData={sampleData} />;
     case 'page-break-indicator':

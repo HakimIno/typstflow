@@ -5,17 +5,14 @@ import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { DesignerPage } from './DesignerPage';
 import { DragMonitor } from './DragMonitor';
 import { Ruler } from './Ruler';
-import { SelectionMarquee } from './SelectionMarquee';
-import { SelectionToolbar } from './SelectionToolbar';
 import { TransientOverlay } from './TransientOverlay';
-import { Zone } from './Zone';
 import { useCanvasZoom } from '@/hooks/use-canvas-zoom';
 
 // Constants for virtualization
@@ -32,11 +29,14 @@ export const Canvas = memo(function Canvas() {
   const canvasLayout = useDesignerStore((state) => state.canvasLayout);
   const isDraggingGlobal = useDesignerStore((state) => state.dragState.isDragging);
   const margin = useDesignerStore((state) => state.schema.page.margin);
+  const scrollToPageId = useDesignerStore((state) => state.scrollToPageId);
+  const setScrollToPageId = useDesignerStore((state) => state.setScrollToPageId);
   
   const pageIds = useDesignerStore(useShallow((state) => state.schema.pages.map((p) => p.id)));
   const [mounted, setMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
+  const pendingScrollRef = useRef<string | null>(null);
   const [scrollPos, setScrollPos] = useState({ x: 0, y: 0 });
 
   // ✅ Virtualized page range - only render pages in visible range + buffer
@@ -65,8 +65,8 @@ export const Canvas = memo(function Canvas() {
         pageSize,
         pageOrientation
       );
-      const currentGap = (canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom;
-      const pageHeightPx = LayoutEngine.mmToPx(pageHeightMm) * zoom;
+      const currentGap = Math.round((canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom);
+      const pageHeightPx = Math.round(LayoutEngine.mmToPx(pageHeightMm) * zoom);
       const totalPageHeight = pageHeightPx + currentGap;
       const pagesPerRow = canvasLayout === 'grid' ? 2 : 1;
 
@@ -114,6 +114,60 @@ export const Canvas = memo(function Canvas() {
     return () => clearTimeout(t);
   }, [updateScrollPos]);
 
+  // Phase 1: Scroll to page — immediate if visible, math estimate + Phase 2 correction if not
+  useEffect(() => {
+    if (!scrollToPageId || !scrollRef.current) return;
+    const pageIdx = pageIds.indexOf(scrollToPageId);
+    if (pageIdx === -1) {
+      setScrollToPageId(null);
+      return;
+    }
+
+    setScrollToPageId(null);
+
+    // If page is already in the DOM, do a precise scroll immediately (no Phase 2 needed).
+    // Without this check, pendingScrollRef stays set and Phase 2 fires on the next user scroll,
+    // snapping the canvas back unexpectedly.
+    const pageEl = scrollRef.current.querySelector<HTMLElement>(
+      `[data-page-wrapper][data-page-id="${scrollToPageId}"]`
+    );
+    if (pageEl) {
+      const containerRect = scrollRef.current.getBoundingClientRect();
+      const pageRect = pageEl.getBoundingClientRect();
+      const exactScrollTop = scrollRef.current.scrollTop + pageRect.top - containerRect.top - 32;
+      scrollRef.current.scrollTo({ top: exactScrollTop, behavior: 'auto' });
+      return;
+    }
+
+    // Page is outside the rendered range — scroll to the math estimate and let Phase 2 correct.
+    const { height: pageHeightMm } = getPaperDimensions(pageSize, pageOrientation);
+    const pageHeightPx = Math.round(LayoutEngine.mmToPx(pageHeightMm) * zoom);
+    const currentGap = Math.round((canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom);
+    const rowIdx = Math.floor(pageIdx / (canvasLayout === 'grid' ? 2 : 1));
+    const targetScrollTop = PADDING_TOP_PX + rowIdx * (pageHeightPx + currentGap);
+    scrollRef.current.scrollTo({ top: targetScrollTop - 32, behavior: 'auto' });
+    pendingScrollRef.current = scrollToPageId;
+  }, [scrollToPageId, pageIds, pageSize, pageOrientation, zoom, canvasLayout, setScrollToPageId]);
+
+  // Phase 2: After visibleRange updates the page is now in the DOM — correct with exact element position
+  useEffect(() => {
+    if (!pendingScrollRef.current || !scrollRef.current) return;
+    const id = pendingScrollRef.current;
+    // Clear immediately so stale refs don't fire on future visibleRange changes
+    pendingScrollRef.current = null;
+
+    const pageEl = scrollRef.current.querySelector<HTMLElement>(
+      `[data-page-wrapper][data-page-id="${id}"]`
+    );
+    if (!pageEl) return;
+
+    const containerRect = scrollRef.current.getBoundingClientRect();
+    const pageRect = pageEl.getBoundingClientRect();
+    const exactScrollTop = scrollRef.current.scrollTop + pageRect.top - containerRect.top - 32;
+
+    scrollRef.current.scrollTo({ top: exactScrollTop, behavior: 'auto' });
+  }, [visibleRange]);
+
   // Recalculate visible range when zoom or page count changes
   useEffect(() => {
     handleScroll();
@@ -124,9 +178,9 @@ export const Canvas = memo(function Canvas() {
     pageOrientation
   );
 
-  const currentGap = (canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom;
-  const pageHeightPx = LayoutEngine.mmToPx(pageHeightMm);
-  const totalPageHeight = pageHeightPx * zoom + currentGap;
+  const currentGap = Math.round((canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom);
+  const pageHeightPx = Math.round(LayoutEngine.mmToPx(pageHeightMm) * zoom);
+  const totalPageHeight = pageHeightPx + currentGap;
 
   // ✅ Pre-calculate pages to render (memoized) - BEFORE early return to fix Hooks order
   const pagesToRender = useMemo(() => {
@@ -176,8 +230,9 @@ export const Canvas = memo(function Canvas() {
           <div
             ref={scrollRef}
             onScroll={handleScroll}
+            style={{ overflowAnchor: 'none' }}
             className={clsx(
-              'flex-1 overflow-auto p-0 bg-[var(--bg-canvas-dots)]',
+              'flex-1 overflow-auto p-0 bg-[var(--bg-canvas-dots)] scroll-smooth-auto',
               isDraggingGlobal && 'is-dragging-components'
             )}
           >
