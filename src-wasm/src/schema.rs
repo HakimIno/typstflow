@@ -284,6 +284,11 @@ pub struct TableStyle {
     pub font_family: Option<String>,
     pub cell_padding: Option<String>,
     pub header_text_color: Option<String>,
+    pub header_color: Option<String>,
+    pub header_font_size: Option<f64>,
+    pub header_font_weight: Option<String>,
+    pub body_font_size: Option<f64>,
+    pub body_color: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

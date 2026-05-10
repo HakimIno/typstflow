@@ -31,12 +31,19 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
 
     // ── Fill pattern ─────────────────────────────────────────────────────────
     const fillPattern = style?.fillPattern ?? 'header-only';
-    const headerBg = formatColor(style?.headerBackground ?? '#e2e8f0');
-    const color1 = formatColor(style?.stripedColor1 ?? style?.alternateRowBackground ?? '#f8fafc');
-    const color2 = formatColor(style?.stripedColor2 ?? '#ffffff');
+    const headerBg = formatColor(style?.headerBackground ?? '#f1f5f9');
+    const color1 = formatColor(style?.stripedColor1 ?? style?.alternateRowBackground ?? '#ffffff');
+    const color2 = formatColor(style?.stripedColor2 ?? '#f8fafc');
     const headerRowCount = comp.headerRows?.length ?? (comp.showHeader !== false ? 1 : 0);
 
     const fillFn = buildFillFn(fillPattern, headerRowCount, headerBg, color1, color2);
+
+    // ── Text Defaults ──────────────────────────────────────────────────────────
+    const headerFontSize = style?.headerFontSize ?? 10;
+    const headerColor = formatColor(style?.headerColor ?? '#000000');
+    const headerWeight = style?.headerFontWeight ?? 'bold';
+    const bodyFontSize = style?.bodyFontSize ?? 10;
+    const bodyColor = formatColor(style?.bodyColor ?? '#334155');
 
     // ── Table args ────────────────────────────────────────────────────────────
     const inset = style?.inset ?? style?.cellPadding ?? '7pt';
@@ -51,7 +58,13 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
       parts.push(`  table.header(repeat: ${repeat},\n`);
       for (const row of comp.headerRows) {
         for (const cell of row.cells) {
-          parts.push(renderStructuredCell(cell, true));
+          parts.push(
+            renderStructuredCell(cell, {
+              size: headerFontSize,
+              color: headerColor,
+              weight: headerWeight,
+            })
+          );
         }
       }
       parts.push('  ),\n');
@@ -65,12 +78,14 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         const rs = col.rowspan ?? 1;
         const align = col.align ?? 'center';
         const header = escapeTypst(col.header);
+
+        const content = `[#set text(size: ${headerFontSize}pt, fill: ${headerColor}, weight: "${headerWeight}"); #set align(${align}); ${header}]`;
+
         if (cs === 1 && rs === 1) {
-          parts.push(`    [#set align(${align}); *${header}*],\n`);
+          parts.push(`    ${content},\n`);
         } else {
           parts.push(
-            `    table.cell(x: ${x}, y: 0, colspan: ${cs}, rowspan: ${rs})` +
-              `[#set align(${align}); *${header}*],\n`
+            `    table.cell(x: ${x}, y: 0, colspan: ${cs}, rowspan: ${rs})${content},\n`
           );
         }
         for (let i = 1; i < cs; i++) covered.add(x + i);
@@ -88,13 +103,15 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           return Array.isArray(raw) ? raw : [];
         })();
 
-    for (const item of dataItems) {
+    const renderRow = (item: any) => {
       if (comp.detailRows && comp.detailRows.length > 0) {
         for (const row of comp.detailRows) {
           for (const cell of row.cells) {
             const val = resolveBinding(cell.content, item as Record<string, unknown>, ctx.global);
             const content = `[${escapeTypst(val)}]`;
-            parts.push(renderStructuredCell(cell, false, content));
+            parts.push(
+              renderStructuredCell(cell, { size: bodyFontSize, color: bodyColor, weight: 'regular' }, content)
+            );
           }
         }
       } else {
@@ -114,20 +131,46 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           const align = col.align ?? 'left';
           const bg = col.background ? formatColor(col.background) : null;
 
+          const cellText = `[#set text(size: ${bodyFontSize}pt, fill: ${bodyColor}); #set align(${align}); ${content.slice(1, -1)}]`;
+
           if (cs === 1 && rs === 1 && !bg) {
-            parts.push(`  [#set align(${align}); ${content.slice(1, -1)}],\n`);
+            parts.push(`  ${cellText},\n`);
           } else {
             const args: string[] = [`x: ${x}`];
             if (cs > 1) args.push(`colspan: ${cs}`);
             if (rs > 1) args.push(`rowspan: ${rs}`);
             if (bg) args.push(`fill: ${bg}`);
-            parts.push(
-              `  table.cell(${args.join(', ')})[#set align(${align}); ${content.slice(1, -1)}],\n`
-            );
+            parts.push(`  table.cell(${args.join(', ')})${cellText},\n`);
           }
           for (let i = 1; i < cs; i++) covered.add(x + i);
         }
       }
+    };
+
+    if (comp.groupBy && !isStatic) {
+      const groups: Record<string, any[]> = {};
+      for (const item of dataItems) {
+        const key = String(resolvePath(comp.groupBy, item) || 'Other');
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+      }
+
+      for (const [groupKey, items] of Object.entries(groups)) {
+        const gh = comp.groupHeaderStyle;
+        const ghBg = formatColor(gh?.background || '#f1f5f9');
+        const ghColor = formatColor(gh?.color || '#000000');
+        const ghSize = gh?.fontSize || 10;
+        const ghText = resolveBinding(comp.groupHeaderFormat || '{{group}}', { group: groupKey, ...items[0] }, ctx.global);
+
+        parts.push(
+          `  table.cell(colspan: ${cols.length}, fill: ${ghBg})` +
+            `[#set text(size: ${ghSize}pt, fill: ${ghColor}, weight: "bold"); ${escapeTypst(ghText)}],\n`
+        );
+
+        for (const item of items) renderRow(item);
+      }
+    } else {
+      for (const item of dataItems) renderRow(item);
     }
 
     // ── Footer rows ───────────────────────────────────────────────────────────
@@ -209,8 +252,8 @@ function buildFillFn(
 }
 
 function renderStructuredCell(
-  cell: { colspan?: number; rowspan?: number; fill?: string; align?: string; inset?: string },
-  bold: boolean,
+  cell: any,
+  textStyle: { size: number; color: string; weight: string },
   contentOverride?: string
 ): string {
   const cs = cell.colspan ?? 1;
@@ -222,8 +265,12 @@ function renderStructuredCell(
   if (cell.align) args.push(`align: ${cell.align}`);
   if (cell.inset) args.push(`inset: ${cell.inset}`);
 
-  const content = contentOverride ?? '[(cell)]';
-  const wrapped = bold ? content.replace(/^\[/, '[*').replace(/\]$/, '*]') : content;
+  const content = contentOverride ?? `[${escapeTypst(cell.content)}]`;
+  const color = formatColor(cell.style?.color || textStyle.color);
+  const size = cell.style?.fontSize || textStyle.size;
+  const weight = cell.style?.fontWeight || textStyle.weight;
+
+  const wrapped = `[#set text(size: ${size}pt, fill: ${color}, weight: "${weight}"); ${content.slice(1, -1)}]`;
 
   if (args.length === 0) return `    ${wrapped},\n`;
   return `    table.cell(${args.join(', ')})${wrapped},\n`;

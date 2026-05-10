@@ -39,10 +39,9 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
 
     // Fill
     let fill_pattern = style.and_then(|s| s.fill_pattern.as_deref()).unwrap_or("header-only");
-    let header_bg = style.and_then(|s| s.header_background.as_deref()).unwrap_or("#e2e8f0");
-    let color1 = style.and_then(|s| s.striped_color1.as_deref().or(s.alternate_row_background.as_deref())).unwrap_or("#f8fafc");
-    let color2 = style.and_then(|s| s.striped_color2.as_deref()).unwrap_or("#ffffff");
-
+    let header_bg = style.and_then(|s| s.header_background.as_deref()).unwrap_or("#f1f5f9");
+    let color1 = style.and_then(|s| s.striped_color1.as_deref().or(s.alternate_row_background.as_deref())).unwrap_or("#ffffff");
+    let color2 = style.and_then(|s| s.striped_color2.as_deref()).unwrap_or("#f8fafc");
     let header_rows_count = if let Some(h_rows) = &c.header_rows {
         h_rows.len() as u32
     } else if c.show_header.unwrap_or(true) {
@@ -61,6 +60,13 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
         };
         table_args.push(format!("fill: {}", fill_fn));
     }
+
+    // ── Text Defaults ──────────────────────────────────────────────────────────
+    let header_font_size = style.and_then(|s| s.header_font_size).unwrap_or(10.0);
+    let header_color = style.and_then(|s| s.header_color.as_deref().or(s.header_text_color.as_deref())).unwrap_or("#000000");
+    let header_font_weight = style.and_then(|s| s.header_font_weight.as_deref()).unwrap_or("bold");
+    let body_font_size = style.and_then(|s| s.body_font_size).unwrap_or(10.0);
+    let body_color = style.and_then(|s| s.body_color.as_deref()).unwrap_or("#334155");
 
     let mut prefix_text = String::new();
     if let Some(s) = style {
@@ -90,25 +96,54 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
         }
     }
 
+    let global_header_bg = style.and_then(|s| s.header_background.as_deref());
+
     if let Some(header_rows) = &c.header_rows {
         t.push_str(&format!("  table.header(repeat: {},\n", repeat));
-        for row in header_rows {
-            for cell in &row.cells {
-                let content = escape_typst(&cell.content);
-                let cs = cell.colspan.unwrap_or(1);
-                let rs = cell.rowspan.unwrap_or(1);
-                let mut args = Vec::new();
-                if cs > 1 { args.push(format!("colspan: {}", cs)); }
-                if rs > 1 { args.push(format!("rowspan: {}", rs)); }
-                if let Some(f) = &cell.fill { args.push(format!("fill: {}", format_color(f))); }
-                if let Some(a) = &cell.align { args.push(format!("align: {}", a)); }
-                if let Some(i) = &cell.inset { args.push(format!("inset: {}", i)); }
+        for (y, row) in header_rows.iter().enumerate() {
+            for (x, cell) in row.cells.iter().enumerate() {
+                // Check cell_styles for header:row:col or header:col
+                let cell_key = format!("header:{}", x); // Simple column-based key
+                let specific_key = format!("header:{}:{}", y, x); // Row-specific key
                 
-                if args.is_empty() {
-                    t.push_str(&format!("    [*{}*],\n", content));
-                } else {
-                    t.push_str(&format!("    table.cell({})[*{}*],\n", args.join(", "), content));
+                let mut cell_style = cell.style.clone();
+                if let Some(s) = style {
+                    if let Some(cs_map) = &s.cell_styles {
+                        if let Some(cs) = cs_map.get(&specific_key).or(cs_map.get(&cell_key)) {
+                            let mut merged = cell_style.unwrap_or(TextStyle {
+                                font_size: None, font_family: None, font_weight: None, color: None,
+                                italic: None, underline: None, line_height: None, letter_spacing: None,
+                                justify: None, text_transform: None,
+                            });
+                            if let Some(sz) = cs.size { merged.font_size = Some(sz); }
+                            if let Some(wt) = &cs.weight { merged.font_weight = Some(wt.clone()); }
+                            if let Some(cl) = &cs.color { merged.color = Some(cl.clone()); }
+                            cell_style = Some(merged);
+                        }
+                    }
                 }
+
+                let inner = render_cell_text_with_style(
+                    &cell.content,
+                    cell_style.as_ref(),
+                    header_font_size, 
+                    header_color, 
+                    header_font_weight
+                );
+                
+                // Also check for fill/align overrides in cell_styles
+                let mut cell_fill = cell.fill.clone().or_else(|| global_header_bg.map(|s| s.to_string()));
+                let mut cell_align = cell.align.clone();
+                if let Some(s) = style {
+                    if let Some(cs_map) = &s.cell_styles {
+                        if let Some(cs) = cs_map.get(&specific_key).or(cs_map.get(&cell_key)) {
+                            if cs.fill.is_some() { cell_fill = cs.fill.clone(); }
+                            if cs.align.is_some() { cell_align = cs.align.clone(); }
+                        }
+                    }
+                }
+
+                t.push_str(&format!("    {},\n", render_cell_container_v2(cell, &inner, cell_fill, cell_align)));
             }
         }
         t.push_str("  ),\n");
@@ -119,14 +154,49 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
             if covered.contains(&x) { continue; }
             let cs = col.colspan.unwrap_or(1);
             let rs = col.rowspan.unwrap_or(1);
-            let col_align = col.align.as_deref().unwrap_or("center");
+            
+            // Check cell_styles for header:col
+            let cell_key = format!("header:{}", x);
+            let mut col_style = col.style.clone();
+            let mut col_fill = col.background.clone().or_else(|| global_header_bg.map(|s| s.to_string()));
+            let mut col_align = col.align.clone();
+
+            if let Some(s) = style {
+                if let Some(cs_map) = &s.cell_styles {
+                    if let Some(cs) = cs_map.get(&cell_key) {
+                        let mut merged = col_style.unwrap_or(TextStyle {
+                            font_size: None, font_family: None, font_weight: None, color: None,
+                            italic: None, underline: None, line_height: None, letter_spacing: None,
+                            justify: None, text_transform: None,
+                        });
+                        if let Some(sz) = cs.size { merged.font_size = Some(sz); }
+                        if let Some(wt) = &cs.weight { merged.font_weight = Some(wt.clone()); }
+                        if let Some(cl) = &cs.color { merged.color = Some(cl.clone()); }
+                        col_style = Some(merged);
+                        if cs.fill.is_some() { col_fill = cs.fill.clone(); }
+                        if cs.align.is_some() { col_align = cs.align.clone(); }
+                    }
+                }
+            }
+
+            let final_align = col_align.unwrap_or_else(|| "center".to_string());
             let header_text = escape_typst(col.header.as_deref().unwrap_or(""));
 
-            if cs == 1 && rs == 1 {
-                t.push_str(&format!("    [#set align({}); *{}*],\n", col_align, header_text));
-            } else {
-                t.push_str(&format!("    table.cell(x: {}, y: 0, colspan: {}, rowspan: {})[#set align({}); *{}*],\n", x, cs, rs, col_align, header_text));
-            }
+            let mut args = Vec::new();
+            if cs > 1 { args.push(format!("colspan: {}", cs)); }
+            if rs > 1 { args.push(format!("rowspan: {}", rs)); }
+            args.push(format!("align: {}", final_align));
+            if let Some(f) = col_fill { args.push(format!("fill: {}", format_color(&f))); }
+            
+            let inner = render_cell_text_with_style(
+                &header_text,
+                col_style.as_ref(),
+                header_font_size, 
+                header_color, 
+                header_font_weight
+            );
+
+            t.push_str(&format!("    table.cell({})[{}],\n", args.join(", "), inner));
 
             for i in 1..(cs as usize) { covered.insert(x + i); }
         }
@@ -143,38 +213,52 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
     // ── 4. DATA ROWS ─────────────────────────────────────────────────────────
     let is_static = c.is_static.unwrap_or(false);
 
-    let render_item = |item: &Value, t_out: &mut String| {
+    let render_item = |item: &Value, t_out: &mut String, _row_idx: usize| {
         if let Some(detail_rows) = &c.detail_rows {
-            for row in detail_rows {
-                for cell in &row.cells {
+            for (y, row) in detail_rows.iter().enumerate() {
+                for (x, cell) in row.cells.iter().enumerate() {
                     let val = resolve_binding_scoped(&cell.content, item, global);
                     let format_func = cell.format.as_deref().unwrap_or("text").to_lowercase();
-                    let mut inner_content = if format_func != "text" {
+                    let inner_content = if format_func != "text" {
                         format!("#fmt_{}(\"{}\")", format_func.replace("-", "_"), escape_string_literal(&val))
                     } else {
                         escape_typst(&val)
                     };
 
-                    if let Some(s) = &cell.style {
-                        let mut text_args = Vec::new();
-                        if let Some(fs) = s.font_size { text_args.push(format!("size: {}pt", fs)); }
-                        if let Some(fw) = &s.font_weight { text_args.push(format!("weight: \"{}\"", fw)); }
-                        if let Some(c) = &s.color { text_args.push(format!("fill: {}", format_color(c))); }
-                        if !text_args.is_empty() {
-                            inner_content = format!("#text({})[{}]", text_args.join(", "), inner_content);
+                    // Check cell_styles for data:x or data:y:x
+                    let cell_key = format!("data:{}", x);
+                    let specific_key = format!("data:{}:{}", y, x);
+                    
+                    let mut cell_style = cell.style.clone();
+                    let mut cell_fill = cell.fill.clone();
+                    let mut cell_align = cell.align.clone();
+
+                    if let Some(s) = style {
+                        if let Some(cs_map) = &s.cell_styles {
+                            if let Some(cs) = cs_map.get(&specific_key).or(cs_map.get(&cell_key)) {
+                                let mut merged = cell_style.unwrap_or(TextStyle {
+                                    font_size: None, font_family: None, font_weight: None, color: None,
+                                    italic: None, underline: None, line_height: None, letter_spacing: None,
+                                    justify: None, text_transform: None,
+                                });
+                                if let Some(sz) = cs.size { merged.font_size = Some(sz); }
+                                if let Some(wt) = &cs.weight { merged.font_weight = Some(wt.clone()); }
+                                if let Some(cl) = &cs.color { merged.color = Some(cl.clone()); }
+                                cell_style = Some(merged);
+                                if cs.fill.is_some() { cell_fill = cs.fill.clone(); }
+                                if cs.align.is_some() { cell_align = cs.align.clone(); }
+                            }
                         }
                     }
 
-                    let cs = cell.colspan.unwrap_or(1);
-                    let rs = cell.rowspan.unwrap_or(1);
-                    let mut args = Vec::new();
-                    if cs > 1 { args.push(format!("colspan: {}", cs)); }
-                    if rs > 1 { args.push(format!("rowspan: {}", rs)); }
-                    if let Some(f) = &cell.fill { args.push(format!("fill: {}", format_color(f))); }
-                    if let Some(a) = &cell.align { args.push(format!("align: {}", a)); }
-                    if let Some(i) = &cell.inset { args.push(format!("inset: {}", i)); }
-                    
-                    t_out.push_str(&format!("  table.cell({})[{}],\n", args.join(", "), inner_content));
+                    let inner = render_cell_text_with_style(
+                        &inner_content, 
+                        cell_style.as_ref(), 
+                        body_font_size, 
+                        body_color, 
+                        "regular"
+                    );
+                    t_out.push_str(&format!("  {},\n", render_cell_container_v2(cell, &inner, cell_fill, cell_align)));
                 }
             }
         } else {
@@ -189,32 +273,54 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                 }).unwrap_or_default();
                 
                 let format_func = col.format.as_deref().unwrap_or("text").to_lowercase();
-                let mut inner_content = if format_func != "text" {
+                let inner_content = if format_func != "text" {
                     format!("#fmt_{}(\"{}\")", format_func.replace("-", "_"), escape_string_literal(&val))
                 } else {
                     escape_typst(&val)
                 };
 
-                if let Some(s) = &col.style {
-                    let mut text_args = Vec::new();
-                    if let Some(fs) = s.font_size { text_args.push(format!("size: {}pt", fs)); }
-                    if let Some(fw) = &s.font_weight { text_args.push(format!("weight: \"{}\"", fw)); }
-                    if let Some(c) = &s.color { text_args.push(format!("fill: {}", format_color(c))); }
-                    if !text_args.is_empty() {
-                        inner_content = format!("#text({})[{}]", text_args.join(", "), inner_content);
+                // Check cell_styles for data:x
+                let cell_key = format!("data:{}", x);
+                let mut col_style = col.style.clone();
+                let mut col_fill = col.background.clone();
+                let mut col_align = col.align.clone();
+
+                if let Some(s) = style {
+                    if let Some(cs_map) = &s.cell_styles {
+                        if let Some(cs) = cs_map.get(&cell_key) {
+                            let mut merged = col_style.unwrap_or(TextStyle {
+                                font_size: None, font_family: None, font_weight: None, color: None,
+                                italic: None, underline: None, line_height: None, letter_spacing: None,
+                                justify: None, text_transform: None,
+                            });
+                            if let Some(sz) = cs.size { merged.font_size = Some(sz); }
+                            if let Some(wt) = &cs.weight { merged.font_weight = Some(wt.clone()); }
+                            if let Some(cl) = &cs.color { merged.color = Some(cl.clone()); }
+                            col_style = Some(merged);
+                            if cs.fill.is_some() { col_fill = cs.fill.clone(); }
+                            if cs.align.is_some() { col_align = cs.align.clone(); }
+                        }
                     }
                 }
 
-                let col_align = col.align.as_deref().unwrap_or("left");
-                let bg = col.background.as_deref();
+                let color = col_style.as_ref().and_then(|s| s.color.as_deref()).unwrap_or(body_color);
+                let size = col_style.as_ref().and_then(|s| s.font_size).unwrap_or(body_font_size);
+                let weight = col_style.as_ref().and_then(|s| s.font_weight.as_deref()).unwrap_or("regular");
+
+                let final_align = col_align.as_deref().unwrap_or_else(|| col.align.as_deref().unwrap_or("left"));
                 
                 let mut args = Vec::new();
-                args.push(format!("align: {}", col_align));
-                if let Some(b) = bg { args.push(format!("fill: {}", format_color(b))); }
+                args.push(format!("align: {}", final_align));
+                if let Some(f) = col_fill { args.push(format!("fill: {}", format_color(&f))); }
                 if cs > 1 { args.push(format!("colspan: {}", cs)); }
                 if rs > 1 { args.push(format!("rowspan: {}", rs)); }
                 
-                t_out.push_str(&format!("  table.cell({})[{}],\n", args.join(", "), inner_content));
+                let inner = format!(
+                    "#set text(size: {}pt, fill: {}, weight: \"{}\"); {}", 
+                    size, format_color(color), weight, inner_content
+                );
+
+                t_out.push_str(&format!("  table.cell({})[{}],\n", args.join(", "), inner));
 
                 for i in 1..(cs as usize) { covered.insert(x + i); }
             }
@@ -222,7 +328,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
     };
 
     if is_static {
-        render_item(local, &mut t);
+        render_item(local, &mut t, 0);
     } else {
         let path = c.data_source.replace("{{", "").replace("}}", "").trim().to_string();
         let arr_opt = resolve_path(&path, local)
@@ -264,12 +370,15 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                     
                     if let Some(Value::Object(s)) = &c.group_header_style {
                         let mut text_args = Vec::new();
-                        if let Some(Value::Number(fs)) = s.get("fontSize") { text_args.push(format!("size: {}pt", fs)); }
-                        if let Some(Value::String(fw)) = s.get("fontWeight") { text_args.push(format!("weight: \"{}\"", fw)); }
-                        if let Some(Value::String(c)) = s.get("color") { text_args.push(format!("fill: {}", format_color(c))); }
-                        if !text_args.is_empty() {
-                            inner_content = format!("#text({})[{}]", text_args.join(", "), inner_content);
-                        }
+                        let fs = s.get("fontSize").and_then(|v| v.as_f64()).unwrap_or(9.0);
+                        let fw = s.get("fontWeight").and_then(|v| v.as_str()).unwrap_or("bold");
+                        let color = s.get("color").and_then(|v| v.as_str()).unwrap_or("#000000");
+                        
+                        text_args.push(format!("size: {}pt", fs));
+                        text_args.push(format!("weight: \"{}\"", fw));
+                        text_args.push(format!("fill: {}", format_color(color)));
+                        
+                        inner_content = format!("#set text({}); {}", text_args.join(", "), inner_content);
                         
                         if let Some(Value::String(bg)) = s.get("background") {
                             cell_args.push_str(&format!(", fill: {}", format_color(bg)));
@@ -279,18 +388,18 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                         }
                     } else {
                         cell_args.push_str(&format!(", fill: {}, align: left", format_color("#f1f5f9")));
-                        inner_content = format!("#text(weight: \"bold\")[{}]", inner_content);
+                        inner_content = format!("#set text(weight: \"bold\"); {}", inner_content);
                     }
                     
                     t.push_str(&format!("  table.cell({})[{}],\n", cell_args, inner_content));
                     
-                    for item in group_items {
-                        render_item(item, &mut t);
+                    for (item_idx, item) in group_items.iter().enumerate() {
+                        render_item(item, &mut t, item_idx);
                     }
                 }
             } else {
-                for item in &arr {
-                    render_item(item, &mut t);
+                for (item_idx, item) in arr.iter().enumerate() {
+                    render_item(item, &mut t, item_idx);
                 }
             }
         }
@@ -356,6 +465,35 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
 
     t.push_str(")\n");
     wrap_flow(&c.base, &t, offset_x, offset_y, prefix)
+}
+
+
+fn render_cell_text_with_style(content: &str, style: Option<&TextStyle>, default_size: f64, default_color: &str, default_weight: &str) -> String {
+    let size = style.and_then(|s| s.font_size).unwrap_or(default_size);
+    let color = style.and_then(|s| s.color.as_deref()).unwrap_or(default_color);
+    let weight = style.and_then(|s| s.font_weight.as_deref()).unwrap_or(default_weight);
+    
+    format!("#set text(size: {}pt, fill: {}, weight: \"{}\"); {}", size, format_color(color), weight, content)
+}
+
+fn render_cell_container_v2(cell: &TableCell, inner: &str, fill_override: Option<String>, align_override: Option<String>) -> String {
+    let mut args = Vec::new();
+    if let Some(cs) = cell.colspan { if cs > 1 { args.push(format!("colspan: {}", cs)); } }
+    if let Some(rs) = cell.rowspan { if rs > 1 { args.push(format!("rowspan: {}", rs)); } }
+    
+    let fill = fill_override.or_else(|| cell.fill.clone());
+    if let Some(f) = fill { args.push(format!("fill: {}", format_color(&f))); }
+    
+    let align = align_override.or_else(|| cell.align.clone());
+    if let Some(a) = align { args.push(format!("align: {}", a)); }
+    
+    if let Some(i) = &cell.inset { args.push(format!("inset: {}", i)); }
+    
+    if args.is_empty() {
+        format!("[{}]", inner)
+    } else {
+        format!("table.cell({})[{}]", args.join(", "), inner)
+    }
 }
 
 fn render_hline(hl: &HLineConfig) -> String {

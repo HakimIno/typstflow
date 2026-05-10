@@ -183,7 +183,7 @@ export const AiPanel = memo(function AiPanel() {
 
             <div
               className={clsx(
-                'max-w-[85%] px-3 py-2 rounded-2xl text-[11px] leading-relaxed transition-all duration-300',
+                'max-w-[85%] px-3 py-2 rounded-2xl text-[11px] leading-relaxed transition-all duration-300 select-text cursor-text',
                 msg.role === 'user'
                   ? 'bg-[var(--accent)] text-white rounded-tr-none shadow-sm'
                   : msg.content.startsWith('Error:')

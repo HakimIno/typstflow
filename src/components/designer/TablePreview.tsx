@@ -8,6 +8,7 @@ import type { TableComponent, TableRow } from '@/types/schema';
 import { clsx } from 'clsx';
 import React, { useState, useCallback, useEffect } from 'react';
 import { TableActionToolbar } from './TableActionToolbar';
+import { parseTypstUnit } from '@/lib/utils/units';
 
 function InlineCellInput({
   initialValue,
@@ -98,6 +99,29 @@ export function TablePreview({ component }: Props) {
           ],
         };
       }
+
+      // ── Grouping Simulation ────────────────────────────────────────────────
+      // If groupBy is enabled, inject a sample group header row for real-time style preview
+      if (engineInput.groupBy) {
+        const groupHeaderRow: TableRow = {
+          id: 'preview-group-header',
+          type: 'data', // WASM engine expects 'data', 'header', or 'footer'
+          cells: [
+            {
+              id: 'gh-cell',
+              content: engineInput.groupHeaderFormat || `Group: {{${engineInput.groupBy}}}`,
+              colspan: engineInput.columns.length,
+              align: 'left',
+            },
+          ],
+          height: '10mm',
+        };
+        engineInput = {
+          ...engineInput,
+          detailRows: [groupHeaderRow, ...(engineInput.detailRows || [])],
+        };
+      }
+
       const pageHeightMm = 297; // A4 height for now
       const res = tableEngine.resolve(engineInput, pageHeightMm, 0);
       setResolvedLayout(res);
@@ -349,13 +373,61 @@ export function TablePreview({ component }: Props) {
         const isResizingRow =
           resizingRowInfo?.section === sectionKey && resizingRowInfo?.index === rowIdx;
 
+        const isGroupHeader = cell.row_id === 'preview-group-header';
+
+        // --- Style Calculation ---
+        const style = component.style || {};
+        const ghStyle = component.groupHeaderStyle || {};
+        const pattern = style.fillPattern || 'header-only';
+        const c1 = style.stripedColor1 || '#ffffff';
+        const c2 = style.stripedColor2 || '#f8fafc';
+        const headerBg = style.headerBackground || '#f1f5f9';
+        const headerColor = style.headerColor || '#000000';
+        const bodyColor = style.bodyColor || '#334155';
+        const headerFontSize = style.headerFontSize || 10;
+        const bodyFontSize = style.bodyFontSize || 10;
+        const headerFontWeight = style.headerFontWeight || 'bold';
+        const cellPadding = parseTypstUnit(style.inset || '2mm');
+        const borderWidth = parseTypstUnit(style.borderWidth || '0.2mm');
+
+        let cellFill = cell.fill || 'transparent';
+        if (!cell.fill) {
+          if (isGroupHeader) {
+            cellFill = ghStyle.background || '#f1f5f9';
+          } else if (isHeader) {
+            cellFill = headerBg;
+          } else {
+            if (pattern === 'striped-rows') {
+              cellFill = rowIdx % 2 === 0 ? c1 : c2;
+            } else if (pattern === 'striped-cols') {
+              cellFill = cell.col_idx % 2 === 0 ? c1 : c2;
+            } else if (pattern === 'checkerboard') {
+              cellFill = (rowIdx + cell.col_idx) % 2 === 0 ? c1 : c2;
+            } else if (pattern === 'header-only') {
+              cellFill = 'transparent';
+            }
+          }
+        }
+
+        const textColor = isGroupHeader
+          ? ghStyle.color || '#000000'
+          : isHeader
+            ? headerColor
+            : bodyColor;
+        const fontSize = isGroupHeader
+          ? ghStyle.fontSize || 9
+          : isHeader
+            ? headerFontSize
+            : bodyFontSize;
+        const fontWeight = isHeader ? headerFontWeight : 'normal';
+
         return (
           <div
             key={`${cell.section}-${cell.row_id}-${cell.col_idx}-${cell.page_index}`}
             onMouseDown={(e) => handleCellMouseDown(cell.section, cell.row_id, cell.col_idx, e)}
             onMouseEnter={() => handleCellMouseEnter(cell.section, cell.row_id, cell.col_idx)}
             className={clsx(
-              'absolute flex items-center p-2 border-r border-b overflow-hidden group/cell transition-colors cursor-cell',
+              'absolute flex items-center overflow-hidden group/cell transition-colors cursor-cell border-b border-r',
               isSelected
                 ? 'ring-2 ring-[var(--accent)] ring-inset bg-blue-50/50 z-10'
                 : 'hover:bg-slate-50/50'
@@ -365,10 +437,10 @@ export function TablePreview({ component }: Props) {
               top: `${LayoutEngine.mmToPx(cell.y)}px`,
               width: `${LayoutEngine.mmToPx(cell.width)}px`,
               height: `${LayoutEngine.mmToPx(cell.height)}px`,
-              backgroundColor:
-                cell.fill ||
-                (isHeader ? component.style?.headerBackground || '#f1f5f9' : 'transparent'),
+              backgroundColor: cellFill,
               borderColor: borderColor,
+              borderWidth: `${LayoutEngine.mmToPx(borderWidth)}px`,
+              padding: `${LayoutEngine.mmToPx(cellPadding)}px`,
               justifyContent:
                 cell.align === 'center'
                   ? 'center'
@@ -380,15 +452,15 @@ export function TablePreview({ component }: Props) {
             <InlineCellInput
               className={clsx(
                 'w-full bg-transparent border-none focus:ring-0 outline-none placeholder:text-slate-300',
-                isHeader
-                  ? 'text-[10px] font-bold text-slate-700 opacity-80 group-hover/cell:opacity-100'
-                  : 'text-[10px] font-mono text-slate-600',
-                cell.fill && !isHeader ? 'text-white' : ''
+                isHeader || isGroupHeader ? '' : 'font-mono'
               )}
               style={{
                 textAlign:
                   cell.align === 'center' ? 'center' : cell.align === 'right' ? 'right' : 'left',
                 fontFamily: component.style?.fontFamily || 'inherit',
+                color: textColor,
+                fontSize: `${fontSize}px`,
+                fontWeight: isGroupHeader ? 'bold' : fontWeight,
               }}
               initialValue={cell.content || ''}
               placeholder={isHeader ? '' : '{{binding}}'}

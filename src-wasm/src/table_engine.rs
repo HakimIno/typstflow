@@ -18,6 +18,30 @@ pub struct TableComponentInput {
     pub footer_rows: Option<Vec<TableRowInput>>,
     #[serde(rename = "repeatHeaderOnPage")]
     pub repeat_header: Option<bool>,
+    pub style: Option<TableStyleInput>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TableStyleInput {
+    pub font_size: Option<f32>,
+    pub header_font_size: Option<f32>,
+    pub header_font_weight: Option<String>,
+    pub header_background: Option<String>,
+    pub header_color: Option<String>,
+    pub body_font_size: Option<f32>,
+    pub body_color: Option<String>,
+    pub cell_styles: Option<HashMap<String, CellStyleInput>>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CellStyleInput {
+    pub fill: Option<String>,
+    pub align: Option<String>,
+    pub weight: Option<String>,
+    pub size: Option<f32>,
+    pub color: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -41,6 +65,13 @@ pub struct TableCellInput {
     pub rowspan: Option<usize>,
     pub align: Option<String>,
     pub fill: Option<String>,
+    pub style: Option<TextStyleInput>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TextStyleInput {
+    pub font_size: Option<f32>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -179,8 +210,33 @@ impl TableEngine {
 
                     // Estimate Text Wrapping Height (if row height isn't fixed large enough)
                     let text = cell.content.clone().unwrap_or_default();
-                    let font_size_mm = 3.5; // Approx 10pt
-                    let char_width = font_size_mm * 0.5;
+                    
+                    let mut font_size_pt = 10.0;
+                    let mut is_bold = false;
+
+                    if let Some(s) = &cell.style {
+                        if let Some(fs) = s.font_size { font_size_pt = fs; }
+                    } else if let Some(s) = &table.style {
+                        // 1. Check cell_styles map first
+                        let cell_key = format!("{}:{}", section, col_ptr);
+                        if let Some(cs) = s.cell_styles.as_ref().and_then(|m| m.get(&cell_key)) {
+                            if let Some(size) = cs.size { font_size_pt = size; }
+                            if let Some(weight) = &cs.weight { is_bold = weight == "bold"; }
+                        } else {
+                            // 2. Fallback to section defaults
+                            if section == "header" {
+                                if let Some(fs) = s.header_font_size { font_size_pt = fs; }
+                                if let Some(fw) = &s.header_font_weight { is_bold = fw == "bold"; }
+                            } else {
+                                if let Some(fs) = s.body_font_size { font_size_pt = fs; }
+                            }
+                        }
+                    }
+                    
+                    let font_size_mm = font_size_pt * 0.3528; // pt to mm
+                    // Bold text is generally wider, adjust char_width estimate
+                    let char_width_factor = if is_bold { 0.6 } else { 0.5 };
+                    let char_width = font_size_mm * char_width_factor;
                     let chars_per_line = (cell_w / char_width).max(1.0);
                     let estimated_lines = (text.chars().count() as f32 / chars_per_line).ceil().max(1.0);
                     let content_height = estimated_lines * (font_size_mm * 1.2) + 2.0; // + padding

@@ -241,6 +241,12 @@ export interface TableStyle {
   fillPattern?: FillPattern; // fill pattern preset
   stripedColor1?: string; // even row/col color for patterns
   stripedColor2?: string; // odd row/col color for patterns
+  headerBackground?: string;
+  headerColor?: string;
+  headerFontSize?: number;
+  headerFontWeight?: string;
+  bodyFontSize?: number;
+  bodyColor?: string;
   stroke?: string | StrokeConfig; // global stroke config
   columnGutter?: string; // space between columns
   rowGutter?: string; // space between rows

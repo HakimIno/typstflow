@@ -310,10 +310,10 @@ interface ApiResponse {
   }>;
 }
 
-const MAX_TOOL_ROUNDS = 4;
-const HISTORY_WINDOW = 4; // UI messages to include in each request
+const MAX_TOOL_ROUNDS = 8;
+const HISTORY_WINDOW = 6; // UI messages to include in each request
 
-type IntentMode = 'chat' | 'plan' | 'design';
+type IntentMode = 'chat' | 'plan' | 'design' | 'quick';
 
 // Fast client-side pre-classifier — skips server round-trip for obvious cases
 function quickClassify(text: string): IntentMode | null {
@@ -327,23 +327,32 @@ function quickClassify(text: string): IntentMode | null {
     return 'chat';
   }
 
-  // Explicit planning vocabulary → plan (discuss before building)
+  // Explicit planning vocabulary → plan
   if (
-    /ช่วยวางแผน|help me plan|let'?s plan|advise( me)?|what should (i|we) include|best (way|structure|approach) (to|for)|how should i (design|layout|structure)|planning|วางแผน|แนะนำ layout/.test(
-      t
-    )
+    /ช่วยวางแผน|help me plan|let'?s plan|advise( me)?|what should (i|we) include|best (way|structure|approach) (to|for)|how should i (design|layout|structure)|planning|วางแผน|แนะนำ layout/.test(t)
   ) {
     return 'plan';
   }
 
-  // Explicit imperative build actions → design immediately
+  // Single-element CRUD → quick (1 API call, no get_layout loop)
+  // Pattern: short action on one specific element type
+  const isShort = t.length <= 80;
+  if (isShort) {
+    if (/^(เพิ่ม|add|insert|place)\s+(text|ข้อความ|image|รูป|line|เส้น|spacer|ช่องว่าง)/.test(t)) return 'quick';
+    if (/^(ลบ|delete|remove)\s/.test(t)) return 'quick';
+    if (/^(แก้ไข|update|change|edit|move|ย้าย|ปรับ)\s/.test(t) && !/(layout|ทั้งหมด|all|invoice|report)/.test(t)) return 'quick';
+  }
+
+  // Full layout / complex build → design (multi-round loop)
   if (
-    /^(add |create |build |make |load |delete |remove |update |change |สร้าง |เพิ่ม |ทำ |โหลด |ลบ |แก้ไข )/.test(
-      t
-    )
+    /^(create |build |make |สร้าง |ออกแบบ |design |load |โหลด |ทำ )(invoice|layout|report|template|รายงาน|ใบแจ้ง|ใบเสร็จ|เอกสาร)/.test(t) ||
+    /invoice|layout|template|report|ใบแจ้ง|ใบเสร็จ|รายงาน/.test(t)
   ) {
     return 'design';
   }
+
+  // Short direct imperative (เพิ่ม/add with no matching element type above) → quick if short
+  if (isShort && /^(เพิ่ม |add |ลบ |delete |remove )/.test(t)) return 'quick';
 
   return null; // uncertain — let the server classifier decide
 }
@@ -548,6 +557,7 @@ export function useAiAgent() {
           chat: 'Thinking...',
           plan: 'Planning strategy...',
           design: 'Building layout...',
+          quick: 'Applying...',
         };
         setThinkingStep(STEP_LABELS[intent]);
 
@@ -600,6 +610,40 @@ export function useAiAgent() {
             persistMessages(prev);
             return prev;
           });
+          return;
+        }
+
+        // Quick mode: single API call, no loop, no auto sample-data — for simple CRUD
+        if (intent === 'quick') {
+          const { schema } = useDesignerStore.getState();
+          const data = await callApi(
+            [{ role: 'user', content }], // skip history window — context is in system prompt
+            schema,
+            undefined,
+            controller.signal,
+            'quick',
+            aiModel,
+            aiMode
+          );
+          const msg = data.choices?.[0]?.message;
+          const quickToolCalls = msg?.tool_calls ?? [];
+          const quickText = msg?.content ?? '';
+          const executedCalls: NonNullable<AgentMessage['toolCalls']> = [];
+          for (const tc of quickToolCalls) {
+            let result: string;
+            let success = true;
+            try {
+              const parsedArgs = JSON.parse(tc.function.arguments) as Record<string, unknown>;
+              result = execTool(tc.function.name, parsedArgs);
+            } catch (e) {
+              result = e instanceof Error ? e.message : String(e);
+              success = false;
+            }
+            executedCalls.push({ name: tc.function.name, success, description: result });
+          }
+          const displayText = quickText || (executedCalls.length > 0 ? 'Done!' : '(no response)');
+          upsertAssistantMessage(displayText, executedCalls.length > 0 ? executedCalls : undefined, 'design');
+          setMessages((prev) => { persistMessages(prev); return prev; });
           return;
         }
 
