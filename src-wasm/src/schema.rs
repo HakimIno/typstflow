@@ -281,6 +281,7 @@ pub struct TableStyle {
     pub gutter: Option<String>,
     pub font_size: Option<f64>,
     pub font_weight: Option<String>,
+    pub font_family: Option<String>,
     pub cell_padding: Option<String>,
     pub header_text_color: Option<String>,
 }

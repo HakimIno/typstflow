@@ -201,19 +201,32 @@ pub fn render_page_number(c: &PageNumberComponent, local: &Value, global: &Value
         .replace("{{pageTotal}}", "#context { counter(page).final().at(0) }");
 
     let mut body = String::new();
-    if let Some(s) = &c.style {
+    let content = if let Some(s) = &c.style {
         let size = s.font_size.unwrap_or(10.0);
         let weight = s.font_weight.as_deref().unwrap_or("regular");
         let font = s.font_family.as_deref().unwrap_or("Sarabun");
         let color = s.color.as_deref().unwrap_or("#000000");
         let align = c.base.align.as_deref().unwrap_or("left");
+        let style = if s.italic.unwrap_or(false) { "italic" } else { "normal" };
+        let underline = s.underline.unwrap_or(false);
+        
         body.push_str(&format!(
-            "#set align({})\n#set text(font: \"{}\", size: {}pt, weight: \"{}\", fill: {})\n",
-            align, font, size, weight, format_color(color)
+            "#set align({})\n#set text(font: (\"{}\", \"Sarabun\", \"sans-serif\"), size: {}pt, weight: \"{}\", style: \"{}\", fill: {})\n",
+            align, font, size, weight, style, format_color(color)
         ));
-    }
 
-    body.push_str(&format!("#context [{}]", display));
+        if underline {
+            format!("#underline[{}]", display)
+        } else {
+            display
+        }
+    } else {
+        let align = c.base.align.as_deref().unwrap_or("left");
+        body.push_str(&format!("#set align({})\n", align));
+        display
+    };
+
+    body.push_str(&format!("#context [{}]", content));
     wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
 }
 

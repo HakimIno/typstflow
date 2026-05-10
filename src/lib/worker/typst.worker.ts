@@ -243,6 +243,32 @@ self.onmessage = async (e: MessageEvent) => {
         self.postMessage({ id, type: 'success', payload: svg });
         break;
       }
+      case 'RENDER_REPORT_SVG_STREAM': {
+        const { schema, data } = payload;
+        const now = new Date();
+        bridge.set_today(now.getFullYear(), now.getMonth() + 1, now.getDate());
+        const preparedSchema = injectImagesIntoSchema(schema);
+        const svgString = bridge.render_report_svg(
+          JSON.stringify(preparedSchema),
+          JSON.stringify(data),
+        );
+        const pages = svgString
+          .split('<!-- PAGE_BREAK -->')
+          .filter((s: string) => s.trim().length > 0);
+
+        const CHUNK_SIZE = 10;
+        for (let i = 0; i < pages.length; i += CHUNK_SIZE) {
+          self.postMessage({
+            id,
+            type: 'progress',
+            payload: { pages: pages.slice(i, i + CHUNK_SIZE), startIdx: i },
+          });
+          // Yield to let the main thread process this chunk before sending the next.
+          await new Promise((r) => setTimeout(r, 0));
+        }
+        self.postMessage({ id, type: 'success', payload: null });
+        break;
+      }
       case 'RENDER_REPORT_PDF': {
         const { schema, data } = payload;
         const now = new Date();

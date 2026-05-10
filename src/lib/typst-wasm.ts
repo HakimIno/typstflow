@@ -1,7 +1,11 @@
 let worker: Worker | null = null;
 const pendingRequests = new Map<
   string,
-  { resolve: (value: any) => void; reject: (reason?: any) => void }
+  {
+    resolve: (value: any) => void;
+    reject: (reason?: any) => void;
+    onProgress?: (pages: string[], startIdx: number) => void;
+  }
 >();
 let workerReadyPromise: Promise<void> | null = null;
 let resolveWorkerReady: (() => void) | null = null;
@@ -33,6 +37,11 @@ function getWorker(): Worker {
     const request = pendingRequests.get(id);
     if (!request) return;
 
+    if (type === 'progress') {
+      request.onProgress?.(payload.pages, payload.startIdx);
+      return; // keep request alive — more chunks incoming
+    }
+
     pendingRequests.delete(id);
     if (type === 'success') {
       request.resolve(payload);
@@ -53,8 +62,6 @@ async function callWorker(type: string, payload: any, transfer?: Transferable[])
   const id = generateId();
   const w = getWorker();
 
-  // Only await the ready promise once — after it resolves, isWorkerReady
-  // is set and workerReadyPromise is nulled, so future calls skip this branch.
   if (!isWorkerReady && workerReadyPromise) {
     await workerReadyPromise;
   }
@@ -66,6 +73,24 @@ async function callWorker(type: string, payload: any, transfer?: Transferable[])
     } else {
       w.postMessage({ type, id, payload });
     }
+  });
+}
+
+async function callWorkerStream(
+  type: string,
+  payload: any,
+  onProgress: (pages: string[], startIdx: number) => void,
+): Promise<void> {
+  const id = generateId();
+  const w = getWorker();
+
+  if (!isWorkerReady && workerReadyPromise) {
+    await workerReadyPromise;
+  }
+
+  return new Promise((resolve, reject) => {
+    pendingRequests.set(id, { resolve, reject, onProgress });
+    w.postMessage({ type, id, payload });
   });
 }
 
@@ -110,6 +135,18 @@ export async function renderReportToPdf(schema: any, data: any): Promise<Uint8Ar
  */
 export async function generateReportTypst(schema: any, data: any): Promise<string> {
   return callWorker('GENERATE_REPORT_TYPST', { schema, data });
+}
+
+/**
+ * Streams rendered SVG pages back in chunks as they are ready.
+ * onChunk is called repeatedly with each batch; resolves when all pages are sent.
+ */
+export async function renderReportToSvgStream(
+  schema: any,
+  data: any,
+  onChunk: (pages: string[], startIdx: number) => void,
+): Promise<void> {
+  return callWorkerStream('RENDER_REPORT_SVG_STREAM', { schema, data }, onChunk);
 }
 
 /**

@@ -259,7 +259,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         return (
           <div className="space-y-1 animate-in fade-in duration-200">
             <section className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
-              {(isText(selectedComponent) || isTable(selectedComponent)) && (
+              {(isText(selectedComponent) || isTable(selectedComponent) || isPageNumber(selectedComponent)) && (
                 <TypographyProperties
                   style={(selectedComponent as any).style}
                   onUpdateStyle={handleStyleUpdate}

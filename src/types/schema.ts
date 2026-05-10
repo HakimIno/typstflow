@@ -235,6 +235,7 @@ export interface TableStyle {
   footerRows?: number;
   rowHeights?: string[];
   gutter?: string; // padding between cells
+  fontFamily?: string; // Global table font
   // --- New: Typst table API extensions ---
   inset?: string; // global cell padding (e.g. "7pt")
   fillPattern?: FillPattern; // fill pattern preset

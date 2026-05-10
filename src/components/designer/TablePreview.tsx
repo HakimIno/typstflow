@@ -388,6 +388,7 @@ export function TablePreview({ component }: Props) {
               style={{
                 textAlign:
                   cell.align === 'center' ? 'center' : cell.align === 'right' ? 'right' : 'left',
+                fontFamily: component.style?.fontFamily || 'inherit',
               }}
               initialValue={cell.content || ''}
               placeholder={isHeader ? '' : '{{binding}}'}

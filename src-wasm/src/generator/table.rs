@@ -67,6 +67,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
         let mut t_args = Vec::new();
         if let Some(fs) = s.font_size { t_args.push(format!("size: {}pt", fs)); }
         if let Some(fw) = &s.font_weight { t_args.push(format!("weight: \"{}\"", fw)); }
+        if let Some(ff) = &s.font_family { t_args.push(format!("font: \"{}\"", ff)); }
         if let Some(lh) = s.line_height { t_args.push(format!("leading: {}em", lh - 1.0)); }
         if !t_args.is_empty() {
             prefix_text = format!("#set text({})\n", t_args.join(", "));
