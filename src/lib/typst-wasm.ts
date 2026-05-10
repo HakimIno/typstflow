@@ -1,3 +1,5 @@
+export type PdfExportStage = 'compressing' | 'compiling';
+
 let worker: Worker | null = null;
 const pendingRequests = new Map<
   string,
@@ -5,6 +7,7 @@ const pendingRequests = new Map<
     resolve: (value: any) => void;
     reject: (reason?: any) => void;
     onProgress?: (pages: string[], startIdx: number) => void;
+    onStage?: (stage: PdfExportStage) => void;
   }
 >();
 let workerReadyPromise: Promise<void> | null = null;
@@ -30,7 +33,7 @@ function getWorker(): Worker {
     if (type === 'READY') {
       resolveWorkerReady?.();
       isWorkerReady = true;
-      workerReadyPromise = null; // Clear so future calls skip the await entirely
+      workerReadyPromise = null;
       return;
     }
 
@@ -38,8 +41,15 @@ function getWorker(): Worker {
     if (!request) return;
 
     if (type === 'progress') {
+      // SVG streaming chunk: { pages: string[], startIdx: number }
       request.onProgress?.(payload.pages, payload.startIdx);
       return; // keep request alive — more chunks incoming
+    }
+
+    if (type === 'stage') {
+      // PDF export stage update: 'compressing' | 'compiling'
+      request.onStage?.(payload as PdfExportStage);
+      return; // keep request alive — PDF result still coming
     }
 
     pendingRequests.delete(id);
@@ -117,27 +127,6 @@ export async function renderToPdf(mainContent: string): Promise<Uint8Array> {
 }
 
 /**
- * Renders a full report to an SVG string using the WASM-powered engine.
- */
-export async function renderReportToSvg(schema: any, data: any): Promise<string> {
-  return callWorker('RENDER_REPORT_SVG', { schema, data });
-}
-
-/**
- * Renders a full report to a PDF Uint8Array using the WASM-powered engine.
- */
-export async function renderReportToPdf(schema: any, data: any): Promise<Uint8Array> {
-  return callWorker('RENDER_REPORT_PDF', { schema, data });
-}
-
-/**
- * Generates the Typst source code for a report using the Rust generator.
- */
-export async function generateReportTypst(schema: any, data: any): Promise<string> {
-  return callWorker('GENERATE_REPORT_TYPST', { schema, data });
-}
-
-/**
  * Streams rendered SVG pages back in chunks as they are ready.
  * onChunk is called repeatedly with each batch; resolves when all pages are sent.
  */
@@ -147,6 +136,47 @@ export async function renderReportToSvgStream(
   onChunk: (pages: string[], startIdx: number) => void,
 ): Promise<void> {
   return callWorkerStream('RENDER_REPORT_SVG_STREAM', { schema, data }, onChunk);
+}
+
+/**
+ * Renders a full report to a PDF Uint8Array.
+ * Images are compressed (resize + JPEG re-encode) in the worker before WASM
+ * receives them, reducing PDF file size by 40–80% for image-heavy documents.
+ *
+ * @param onStage - Optional callback fired when the worker changes phase:
+ *   'compressing' (image optimization) → 'compiling' (Typst → PDF).
+ *   Use this to drive progress UI.
+ */
+export async function renderReportToPdf(
+  schema: any,
+  data: any,
+  onStage?: (stage: PdfExportStage) => void,
+): Promise<Uint8Array> {
+  const id = generateId();
+  const w = getWorker();
+
+  if (!isWorkerReady && workerReadyPromise) {
+    await workerReadyPromise;
+  }
+
+  return new Promise((resolve, reject) => {
+    pendingRequests.set(id, { resolve, reject, onStage });
+    w.postMessage({ type: 'RENDER_REPORT_PDF', id, payload: { schema, data } });
+  });
+}
+
+/**
+ * Renders a full report to a PDF Uint8Array using the WASM-powered engine.
+ */
+export async function renderReportToSvg(schema: any, data: any): Promise<string> {
+  return callWorker('RENDER_REPORT_SVG', { schema, data });
+}
+
+/**
+ * Generates the Typst source code for a report using the Rust generator.
+ */
+export async function generateReportTypst(schema: any, data: any): Promise<string> {
+  return callWorker('GENERATE_REPORT_TYPST', { schema, data });
 }
 
 /**

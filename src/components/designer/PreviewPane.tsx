@@ -9,9 +9,14 @@ import { AlertTriangle } from 'lucide-react';
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CanvasRevealEffect } from '@/components/ui/canvas-reveal-effect';
 import { Loading } from '../shared/Loading';
+import { CanvasToolbar } from './CanvasToolbar';
+import { useMemo } from 'react';
 
-const ROW_GAP = 32;
-const COL_GAP = 32;
+const ROW_GAP_LIST = 32; // gap-8 = 32px
+const ROW_GAP_GRID = 48; // gap-12 = 48px
+const COL_GAP = 32;     // 32px horizontal gap
+const PADDING_TOP = 48; // pt-12 = 48px
+const PADDING_SIDE = 64; // px-16 = 64px
 const OVERSCAN = 2;
 
 /**
@@ -62,10 +67,15 @@ export const PreviewPane = memo(function PreviewPane() {
   const fontLoadedAt = useDesignerStore((state) => state.fontLoadedAt);
   const primaryColor = useDesignerStore((state) => state.primaryColor);
   const canvasLayout = useDesignerStore((state) => state.canvasLayout);
+  const scrollToPageId = useDesignerStore((state) => state.scrollToPageId);
+  const setScrollToPageId = useDesignerStore((state) => state.setScrollToPageId);
+
+  const pageIds = useMemo(() => schema.pages.map((p) => p.id), [schema.pages]);
 
   const [svgContent, setSvgContent] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shouldShowLoading, setShouldShowLoading] = useState(false);
+  const [activePreviewPageIdx, setActivePreviewPageIdx] = useState(1);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -114,6 +124,7 @@ export const PreviewPane = memo(function PreviewPane() {
     };
   }, [schema, sampleData, isDragging, fontLoadedAt]);
 
+
   const { width: pageWidthMm, height: pageHeightMm } = getPaperDimensions(
     schema.page.size,
     schema.page.orientation
@@ -128,15 +139,48 @@ export const PreviewPane = memo(function PreviewPane() {
   const scaledHeightPx = naturalHeightPx * zoom;
 
   const cols = canvasLayout === 'grid' ? 2 : 1;
+  const currentGapY = (canvasLayout === 'grid' ? ROW_GAP_GRID : ROW_GAP_LIST) * zoom;
+  const currentGapX = COL_GAP * zoom;
+
   const pages = svgContent ?? [];
   const rowCount = Math.ceil(pages.length / cols);
 
   const virtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => scaledHeightPx + ROW_GAP,
+    estimateSize: () => scaledHeightPx + currentGapY,
     overscan: OVERSCAN,
   });
+
+  // Track active page in preview via scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (scrollRef.current) {
+        const { scrollTop, clientHeight } = scrollRef.current;
+        const middle = scrollTop + clientHeight / 2;
+        const rowIdx = Math.floor((middle - PADDING_TOP) / (scaledHeightPx + currentGapY));
+        const pageIdx = Math.max(0, Math.min(pages.length - 1, rowIdx * cols));
+        setActivePreviewPageIdx(pageIdx + 1);
+      }
+    };
+
+    const container = scrollRef.current;
+    container?.addEventListener('scroll', handleScroll);
+    return () => container?.removeEventListener('scroll', handleScroll);
+  }, [scaledHeightPx, currentGapY, pages.length, cols]);
+
+  // Support scrollToPageId for synchronized navigation
+  useEffect(() => {
+    if (scrollToPageId) {
+      const idx = pageIds.indexOf(scrollToPageId);
+      if (idx !== -1) {
+        const rowIdx = Math.floor(idx / cols);
+        virtualizer.scrollToIndex(rowIdx, { align: 'start', behavior: 'auto' });
+        // Small delay to ensure virtualizer has updated
+        setTimeout(() => setScrollToPageId(null), 50);
+      }
+    }
+  }, [scrollToPageId, pageIds, cols, virtualizer, setScrollToPageId]);
 
   // When zoom or layout changes, reset TanStack Virtual's size cache so
   // row heights are re-estimated from the new scaledHeightPx value.
@@ -147,12 +191,23 @@ export const PreviewPane = memo(function PreviewPane() {
   }, [zoom, canvasLayout]);
 
   const accentRgb = hexToRgb(primaryColor);
-  const contentWidth = cols === 2 ? scaledWidthPx * 2 + COL_GAP : scaledWidthPx;
+  const contentWidth = cols === 2 ? scaledWidthPx * 2 + currentGapX : scaledWidthPx;
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-400/20 shadow-inner overflow-hidden relative">
-      <div ref={scrollRef} className="flex-1 overflow-auto scrollbar-thin">
-        <div className="p-8 pb-32">
+    <div className="PreviewPane flex-1 flex flex-col bg-slate-400/20 shadow-inner overflow-hidden relative">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-auto scrollbar-thin"
+        data-canvas-scroll-container
+      >
+        <div
+          className="pb-32 flex flex-col "
+          style={{
+            paddingTop: `${PADDING_TOP}px`,
+            paddingLeft: `${PADDING_SIDE}px`,
+            paddingRight: `${PADDING_SIDE}px`,
+          }}
+        >
           {pages.length > 0 ? (
             <div
               style={{
@@ -171,10 +226,11 @@ export const PreviewPane = memo(function PreviewPane() {
                     style={{
                       position: 'absolute',
                       top: vRow.start,
-                      left: 0,
-                      width: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: `${contentWidth}px`,
                       display: 'flex',
-                      gap: `${COL_GAP}px`,
+                      gap: `${currentGapX}px`,
                     }}
                   >
                     {rowPages.map((svg, i) => (
@@ -241,6 +297,15 @@ export const PreviewPane = memo(function PreviewPane() {
           </div>
         )}
       </div>
+      <CanvasToolbar
+        mode="preview"
+        activePage={activePreviewPageIdx}
+        totalPageCount={pages.length}
+        onPageChange={(idx) => {
+          const rowIdx = Math.floor(idx / cols);
+          virtualizer.scrollToIndex(rowIdx, { align: 'start', behavior: 'auto' });
+        }}
+      />
     </div>
   );
 });

@@ -2,10 +2,7 @@ import init, { TypstBridge } from '../wasm-bridge/typst_bridge';
 
 let bridge: TypstBridge | null = null;
 
-// Image cache: tracks which images are currently registered in the WASM bridge.
-// Key = "<compId>:<dataLength>:<first32chars>" — cheap but reliable identity check.
-// This avoids bridge.clear_images() + full re-decode on every render call.
-const imageCache = new Map<string, string>(); // cacheKey → virtualPath
+const imageCache = new Map<string, string>();
 let lastImagesHash = '';
 
 async function initialize() {
@@ -21,6 +18,8 @@ async function initialize() {
     });
   }
 }
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
 
 function getMimeFromDataUrl(dataUrl: string): string | undefined {
   const match = dataUrl.match(/^data:([^;]+);/);
@@ -66,14 +65,137 @@ function dataUrlToBytes(dataUrl: string): Uint8Array {
 }
 
 function getImageCacheKey(compId: string, srcData: string): string {
-  // Length + prefix is fast and effectively unique for normal usage
   return `${compId}:${srcData.length}:${srcData.slice(0, 32)}`;
 }
 
+// ── Image Compression ─────────────────────────────────────────────────────────
+
+/** Max pixel dimension for PDF images — 150 DPI on A4 (210mm × ~1240px) with headroom. */
+const PDF_MAX_DIMENSION = 1800;
+/** JPEG quality for PDF export — visually lossless for print, ~40-70% smaller than PNG. */
+const PDF_JPEG_QUALITY = 0.88;
+
 /**
- * Walk components, register new/changed images, and swap comp.src to virtual paths.
- * Uses imageCache to skip re-decoding unchanged images.
+ * Sample corners, edges, and center of the canvas to detect semi-transparent pixels.
+ * Uses 7 small 32×32 regions instead of reading the full image — O(1) for any size.
  */
+function detectAlpha(ctx: OffscreenCanvasRenderingContext2D, w: number, h: number): boolean {
+  const sw = Math.min(w, 32);
+  const sh = Math.min(h, 32);
+  const cx = Math.floor((w - sw) / 2);
+  const cy = Math.floor((h - sh) / 2);
+  const regions: [number, number, number, number][] = [
+    [0,      0,      sw, sh], // top-left
+    [w - sw, 0,      sw, sh], // top-right
+    [0,      h - sh, sw, sh], // bottom-left
+    [w - sw, h - sh, sw, sh], // bottom-right
+    [cx,     0,      sw, sh], // top-center
+    [0,      cy,     sw, sh], // left-center
+    [cx,     cy,     sw, sh], // center
+  ];
+  for (const [rx, ry, rw, rh] of regions) {
+    const data = ctx.getImageData(rx, ry, rw, rh).data;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] < 255) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Compress a single image data URL for PDF embedding:
+ * - Resize to PDF_MAX_DIMENSION if larger (preserves aspect ratio)
+ * - Convert to JPEG (0.88 quality) unless image has alpha transparency
+ * - Keep as PNG if transparent (JPEG has no alpha channel)
+ * - Skip tiny images (≤ 200px) — already minimal
+ * - Return original if compressed result is not meaningfully smaller (< 5% gain)
+ */
+async function compressImageForPdf(dataUrl: string): Promise<string> {
+  try {
+    const resp = await fetch(dataUrl);
+    const blob = await resp.blob();
+    const bitmap = await createImageBitmap(blob);
+    const { width, height } = bitmap;
+
+    // Tiny images (icons, stamps, small logos) — skip, not worth the overhead
+    if (width <= 200 && height <= 200) {
+      bitmap.close();
+      return dataUrl;
+    }
+
+    const scale = Math.min(1, PDF_MAX_DIMENSION / Math.max(width, height));
+    const w = Math.max(1, Math.round(width * scale));
+    const h = Math.max(1, Math.round(height * scale));
+
+    const canvas = new OffscreenCanvas(w, h);
+    const ctx = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+
+    // Only check for alpha on formats that support it
+    const mightHaveAlpha = blob.type === 'image/png' || blob.type === 'image/webp';
+    const transparent = mightHaveAlpha && detectAlpha(ctx, w, h);
+
+    const outType = transparent ? 'image/png' : 'image/jpeg';
+    const outBlob = await canvas.convertToBlob({
+      type: outType,
+      quality: transparent ? undefined : PDF_JPEG_QUALITY,
+    });
+
+    // Only accept compressed version if it's meaningfully smaller
+    if (outBlob.size >= blob.size * 0.95) return dataUrl;
+
+    // Blob → base64 data URL (8 KB chunks to avoid call-stack overflow on large images)
+    const buf = await outBlob.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    const parts: string[] = [];
+    for (let i = 0; i < bytes.length; i += 8192) {
+      parts.push(String.fromCharCode(...bytes.subarray(i, Math.min(i + 8192, bytes.length))));
+    }
+    return `data:${outType};base64,${btoa(parts.join(''))}`;
+  } catch {
+    return dataUrl; // Graceful fallback — never break export on compression error
+  }
+}
+
+/**
+ * Walk every image component in the schema and compress all in parallel.
+ * Mutates comp.srcData in-place (safe — the schema received via postMessage
+ * is a structured-clone copy; the main thread's store is untouched).
+ */
+async function compressSchemaImages(schema: any): Promise<void> {
+  const tasks: Promise<void>[] = [];
+
+  const collect = (comps: any[]) => {
+    if (!Array.isArray(comps)) return;
+    for (const comp of comps) {
+      if (comp.type === 'image' && comp.srcData) {
+        tasks.push(
+          compressImageForPdf(comp.srcData).then((compressed) => {
+            comp.srcData = compressed;
+          }),
+        );
+      }
+      if (comp.type === 'repeater') collect(comp.children ?? []);
+      if (comp.type === 'columns') {
+        for (const col of comp.columns ?? []) collect(col.components ?? []);
+      }
+    }
+  };
+
+  collect(schema.zones?.header?.components ?? []);
+  collect(schema.zones?.footer?.components ?? []);
+  for (const page of schema.pages ?? []) collect(page.body?.components ?? []);
+  for (const g of schema.groups ?? []) {
+    collect(g.header?.components ?? []);
+    collect(g.footer?.components ?? []);
+  }
+
+  await Promise.all(tasks);
+}
+
+// ── Image Registry ────────────────────────────────────────────────────────────
+
 function walkComponents(components: any[], activeCacheKeys: Set<string>): void {
   if (!components || !Array.isArray(components)) return;
 
@@ -115,10 +237,6 @@ function walkComponents(components: any[], activeCacheKeys: Set<string>): void {
   }
 }
 
-/**
- * Build a cheap hash of all image identities in the schema.
- * Used to detect whether any images have changed since the last render.
- */
 function computeImagesHash(schema: any): string {
   const parts: string[] = [];
   const collect = (comps: any[]) => {
@@ -140,18 +258,10 @@ function computeImagesHash(schema: any): string {
   return parts.join('|');
 }
 
-/**
- * Walk the schema, register image bytes in the WASM bridge (only if changed),
- * and replace comp.src with virtual paths. Also injects dummy components into
- * empty zones to force the WASM bridge to render them.
- */
 function injectImagesIntoSchema(schema: any): any {
   if (!bridge || !schema?.zones) return schema;
 
   const s = schema;
-
-  // Only clear + re-register images when something has actually changed.
-  // Most renders (text edits, position moves) touch no images — skip entirely.
   const currentHash = computeImagesHash(s);
   const imagesChanged = currentHash !== lastImagesHash;
 
@@ -199,13 +309,14 @@ function injectImagesIntoSchema(schema: any): any {
     }
   }
 
-  // Prune stale entries from the local cache (not from WASM — bridge manages its own memory)
   for (const key of imageCache.keys()) {
     if (!activeCacheKeys.has(key)) imageCache.delete(key);
   }
 
   return s;
 }
+
+// ── Message Handler ───────────────────────────────────────────────────────────
 
 self.onmessage = async (e: MessageEvent) => {
   const { type, payload, id } = e.data;
@@ -263,7 +374,6 @@ self.onmessage = async (e: MessageEvent) => {
             type: 'progress',
             payload: { pages: pages.slice(i, i + CHUNK_SIZE), startIdx: i },
           });
-          // Yield to let the main thread process this chunk before sending the next.
           await new Promise((r) => setTimeout(r, 0));
         }
         self.postMessage({ id, type: 'success', payload: null });
@@ -273,8 +383,16 @@ self.onmessage = async (e: MessageEvent) => {
         const { schema, data } = payload;
         const now = new Date();
         bridge.set_today(now.getFullYear(), now.getMonth() + 1, now.getDate());
+
+        // Stage 1: compress all images in parallel before WASM sees them
+        self.postMessage({ id, type: 'stage', payload: 'compressing' });
+        await compressSchemaImages(schema);
+
+        // Stage 2: compile Typst → PDF via WASM
+        self.postMessage({ id, type: 'stage', payload: 'compiling' });
         const preparedSchema = injectImagesIntoSchema(schema);
         const pdf = bridge.render_report_pdf(JSON.stringify(preparedSchema), JSON.stringify(data));
+
         self.postMessage({ id, type: 'success', payload: pdf }, {
           transfer: [pdf.buffer],
         } as any);

@@ -1,9 +1,18 @@
 'use client';
 
+import type { PdfExportStage } from '@/lib/typst-wasm';
 import { useDesignerStore } from '@/store/designer-store';
 import { Download, PanelRight, Play } from 'lucide-react';
 import { memo, useState } from 'react';
 import { ToolbarButton } from './ToolbarButton';
+
+type ExportState = 'idle' | PdfExportStage;
+
+const EXPORT_LABEL: Record<ExportState, string> = {
+  idle: 'Export PDF',
+  compressing: 'Optimizing...',
+  compiling: 'Compiling...',
+};
 
 export const ToolbarActions = memo(function ToolbarActions() {
   const schema = useDesignerStore((state) => state.schema);
@@ -11,15 +20,18 @@ export const ToolbarActions = memo(function ToolbarActions() {
   const isRightSidebarOpen = useDesignerStore((state) => state.isRightSidebarOpen);
   const toggleRightSidebar = useDesignerStore((state) => state.toggleRightSidebar);
 
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportState, setExportState] = useState<ExportState>('idle');
+  const isExporting = exportState !== 'idle';
 
   const handleExport = async () => {
     const { renderReportToPdf } = await import('@/lib/typst-wasm');
     const { downloadPdf } = await import('@/lib/export-utils');
 
-    setIsExporting(true);
+    setExportState('compressing');
     try {
-      const pdfBytes = await renderReportToPdf(schema, sampleData);
+      const pdfBytes = await renderReportToPdf(schema, sampleData, (stage) => {
+        setExportState(stage);
+      });
       downloadPdf(pdfBytes, `${schema.name || 'report'}.pdf`);
     } catch (error) {
       console.error('Export failed:', error);
@@ -30,7 +42,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
         confirmLabel: 'Close',
       });
     } finally {
-      setIsExporting(false);
+      setExportState('idle');
     }
   };
 
@@ -73,11 +85,11 @@ export const ToolbarActions = memo(function ToolbarActions() {
 
       <ToolbarButton
         icon={isExporting ? undefined : Play}
-        label={isExporting ? 'Exporting...' : 'Run PDF'}
+        label={EXPORT_LABEL[exportState]}
         onClick={handleExport}
         disabled={isExporting}
         variant="primary"
-        title="Generate Final PDF"
+        title="Generate optimized PDF"
         className="!h-7 !px-3 shadow-sm shadow-[var(--accent-glow)]"
       >
         {isExporting && (

@@ -13,6 +13,7 @@ import { DesignerPage } from './DesignerPage';
 import { DragMonitor } from './DragMonitor';
 import { Ruler } from './Ruler';
 import { TransientOverlay } from './TransientOverlay';
+import { CanvasToolbar } from './CanvasToolbar';
 import { useCanvasZoom } from '@/hooks/use-canvas-zoom';
 
 // Constants for virtualization
@@ -31,8 +32,10 @@ export const Canvas = memo(function Canvas() {
   const margin = useDesignerStore((state) => state.schema.page.margin);
   const scrollToPageId = useDesignerStore((state) => state.scrollToPageId);
   const setScrollToPageId = useDesignerStore((state) => state.setScrollToPageId);
+  const setActivePage = useDesignerStore((state) => state.setActivePage);
   
-  const pageIds = useDesignerStore(useShallow((state) => state.schema.pages.map((p) => p.id)));
+  const pages = useDesignerStore((state) => state.schema.pages);
+  const pageIds = useMemo(() => pages.map((p) => p.id), [pages]);
   const [mounted, setMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
@@ -91,12 +94,22 @@ export const Canvas = memo(function Canvas() {
         }
         return prev;
       });
+
+      // ✅ Update active page ID based on scroll (middle of viewport)
+      const viewportMiddle = scrollTop + clientHeight / 2;
+      const middleRowIdx = Math.floor((viewportMiddle - PADDING_TOP_PX) / totalPageHeight);
+      const middlePageIdx = Math.max(0, Math.min(pageIds.length - 1, middleRowIdx * pagesPerRow));
+      if (pageIds[middlePageIdx] !== activePageId) {
+        setActivePage(pageIds[middlePageIdx]);
+      }
     }
   }, [
     updateScrollPos,
     pageSize,
     pageOrientation,
-    pageIds.length,
+    pageIds,
+    activePageId,
+    setActivePage,
     zoom,
     canvasLayout,
   ]);
@@ -199,7 +212,7 @@ export const Canvas = memo(function Canvas() {
   const marginRight = parseTypstUnit(margin.right);
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden relative bg-[var(--bg-canvas)] contain-layout">
+    <div className="Canvas flex-1 flex flex-col overflow-hidden relative bg-[var(--bg-canvas)] contain-layout">
       <DragMonitor />
       <div className="flex-1 flex flex-col relative overflow-hidden transform-gpu">
         {/* Top Ruler Row */}
@@ -230,6 +243,7 @@ export const Canvas = memo(function Canvas() {
           <div
             ref={scrollRef}
             onScroll={handleScroll}
+            data-canvas-scroll-container
             style={{ overflowAnchor: 'none' }}
             className={clsx(
               'flex-1 overflow-auto p-0 bg-[var(--bg-canvas-dots)] scroll-smooth-auto',
@@ -304,6 +318,8 @@ export const Canvas = memo(function Canvas() {
             )}
           </div>
         </div>
+        
+        <CanvasToolbar mode="design" />
       </div>
     </div>
   );
