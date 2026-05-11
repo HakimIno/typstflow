@@ -9,7 +9,7 @@ export const columnsPlugin: ComponentPlugin<ColumnLayoutComponent> = {
     if (!isVisible(comp.visible, ctx.local, ctx.global)) return '';
 
     const gap = comp.gap ?? '10pt';
-    const widths = comp.columns.map((c) => c.width.replace('*', 'fr')).join(', ');
+    const widths = comp.columns.map((c) => c.width.replace('*', '1fr')).join(', ');
 
     const colContents = comp.columns
       .map((col) => {
@@ -22,6 +22,6 @@ export const columnsPlugin: ComponentPlugin<ColumnLayoutComponent> = {
       .join(', ');
 
     const body = `#grid(columns: (${widths}), gutter: ${gap}, ${colContents})`;
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.layoutType);
   },
 };

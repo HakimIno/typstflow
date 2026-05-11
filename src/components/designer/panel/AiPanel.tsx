@@ -31,6 +31,8 @@ import {
   ListChecks,
   Mic,
   Send,
+  Paperclip,
+  X,
 } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { BasePanel } from './BasePanel';
@@ -46,6 +48,7 @@ const MODE_BADGE: Record<
   chat: { label: 'Chat', icon: MessageCircle, color: 'text-[var(--text-muted)]' },
   plan: { label: 'Plan', icon: ListTodo, color: 'text-blue-400' },
   design: { label: 'Design', icon: Zap, color: 'text-yellow-400' },
+  import: { label: 'Import', icon: Sparkles, color: 'text-purple-400' },
 };
 
 const iconMap: Record<string, any> = {
@@ -106,8 +109,12 @@ function ToolCallItem({ call }: { call: NonNullable<AgentMessage['toolCalls']>[n
 
 export const AiPanel = memo(function AiPanel() {
   const [input, setInput] = useState('');
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { messages, isLoading, thinkingStep, sendMessage, clearMessages, stop } = useAiAgent();
+  const { messages, isLoading, thinkingStep, sendMessage, clearMessages, importTemplate, stop } = useAiAgent();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const aiModel = useDesignerStore((s) => s.aiModel);
   const aiMode = useDesignerStore((s) => s.aiMode);
@@ -137,9 +144,70 @@ export const AiPanel = memo(function AiPanel() {
 
   const handleSend = () => {
     const text = input.trim();
-    if (!text || isLoading) return;
+    if ((!text && !attachedImage) || isLoading) return;
     setInput('');
-    sendMessage(text);
+    sendMessage(text, attachedImage ?? undefined);
+    setAttachedImage(null);
+  };
+
+  const readFileAsBase64 = (file: File): void => {
+    const reader = new FileReader();
+    reader.onload = (evt) => setAttachedImage(evt.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleChatAttachClick = () => chatFileInputRef.current?.click();
+
+  const handleChatFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) readFileAsBase64(file);
+    e.target.value = '';
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) readFileAsBase64(file);
+        break;
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => setIsDragOver(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) readFileAsBase64(file);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      importTemplate(base64);
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input
+    e.target.value = '';
   };
 
   return (
@@ -202,7 +270,14 @@ export const AiPanel = memo(function AiPanel() {
                   <div className="text-[10px] opacity-90">{msg.content.replace('Error: ', '')}</div>
                 </>
               ) : (
-                msg.content
+                <div className="space-y-2">
+                  {msg.image && (
+                    <div className="relative rounded-lg overflow-hidden border border-white/10 shadow-lg">
+                      <img src={msg.image} alt="Uploaded template" className="max-w-full h-auto" />
+                    </div>
+                  )}
+                  <div>{msg.content}</div>
+                </div>
               )}
             </div>
 
@@ -282,6 +357,17 @@ export const AiPanel = memo(function AiPanel() {
 
       {/* Quick Suggestions */}
       <div className="px-2 py-1 flex items-center gap-1.5 overflow-x-auto scrollbar-none no-scrollbar">
+        <button
+          type="button"
+          onClick={handleImportClick}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 border border-[var(--accent)]/20 rounded-full transition-all shrink-0 group shadow-[0_0_10px_rgba(var(--accent-rgb),0.1)]"
+        >
+          <Sparkles className="w-3 h-3 text-[var(--accent)]" />
+          <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-wider">
+            AI Import Template
+          </span>
+        </button>
+
         {SUGGESTIONS.map((s) => {
           const SugIcon = s.icon;
           return (
@@ -302,8 +388,35 @@ export const AiPanel = memo(function AiPanel() {
       </div>
 
       {/* Input Area */}
-      <div className="p-0.5 bg-[var(--bg-widget)] border-t border-[var(--border-default)] relative z-50 overflow-visible">
+      <div
+        className={clsx(
+          'p-0.5 bg-[var(--bg-widget)] border-t border-[var(--border-default)] relative z-50 overflow-visible transition-colors',
+          isDragOver && 'border-[var(--accent)] bg-[var(--accent)]/5'
+        )}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <div className="flex flex-col rounded-lg bg-[var(--bg-app)] overflow-visible">
+          {attachedImage && (
+            <div className="px-3 pt-3 pb-1">
+              <div className="relative inline-block">
+                <img
+                  src={attachedImage}
+                  alt="Attached"
+                  className="max-h-20 rounded-lg border border-[var(--border-subtle)] object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setAttachedImage(null)}
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[var(--bg-widget)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)] hover:text-red-400 hover:border-red-400/50 transition-colors"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
           <textarea
             rows={2}
             value={input}
@@ -314,7 +427,8 @@ export const AiPanel = memo(function AiPanel() {
                 handleSend();
               }
             }}
-            placeholder="Describe what you want to build..."
+            onPaste={handlePaste}
+            placeholder={isDragOver ? 'Drop image here...' : 'Describe what you want to build...'}
             className="w-full bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] p-4 pt-5 resize-none min-h-[80px] leading-relaxed"
           />
 
@@ -399,6 +513,20 @@ export const AiPanel = memo(function AiPanel() {
             <div className="flex items-center gap-0.5">
               <button
                 type="button"
+                onClick={handleChatAttachClick}
+                title="Attach image"
+                className={clsx(
+                  'p-2 rounded-full border transition-all active:scale-95',
+                  attachedImage
+                    ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)]'
+                    : 'bg-[var(--bg-widget)] border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--accent)]'
+                )}
+              >
+                <Paperclip className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
                 className="p-2 rounded-full bg-[var(--bg-widget)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] transition-all active:scale-95"
               >
                 <Mic className="w-4 h-4" />
@@ -414,7 +542,7 @@ export const AiPanel = memo(function AiPanel() {
                   <XCircle className="w-4 h-4" />
                 </button>
               ) : (
-                input.trim() && (
+                (input.trim() || attachedImage) && (
                   <button
                     type="button"
                     onClick={handleSend}
@@ -428,6 +556,20 @@ export const AiPanel = memo(function AiPanel() {
           </div>
         </div>
       </div>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*,application/pdf"
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={chatFileInputRef}
+        onChange={handleChatFileChange}
+        accept="image/*"
+        className="hidden"
+      />
     </BasePanel>
   );
 });

@@ -53,6 +53,6 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
       `weight: "${weight}", style: "${fontStyle}", fill: ${color}, tracking: ${tracking})`;
     body += underline ? `[#underline${contentBlock}]` : contentBlock;
 
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.layoutType);
   },
 };

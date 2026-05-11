@@ -19,6 +19,14 @@ function deepCleanComponent(comp: any): any {
   if (typeof result.thickness === 'number') {
     result.thickness = `${result.thickness}pt`;
   }
+
+  // Handle margins (support both number and string with units)
+  if (typeof result.marginTop === 'number') {
+    result.marginTop = `${result.marginTop}mm`;
+  }
+  if (typeof result.marginBottom === 'number') {
+    result.marginBottom = `${result.marginBottom}mm`;
+  }
   if (typeof result.dashArray === 'number') {
     result.dashArray = `${result.dashArray}pt`;
   }
@@ -66,6 +74,27 @@ function deepCleanComponent(comp: any): any {
 }
 
 /**
+ * Deep cleans a zone to ensure it uses the correct layout for its contents.
+ */
+function deepCleanZone(zone: any): any {
+  if (!zone || typeof zone !== 'object') return zone;
+  
+  const result = { ...zone };
+  if (result.components && Array.isArray(result.components)) {
+    result.components = result.components.map(deepCleanComponent);
+    
+    // HEURISTIC: If a zone contains a table, it almost certainly should be a "flow" zone
+    // to allow for page breaks. This fixes legacy absolute-only bundles.
+    const hasTable = result.components.some((c: any) => c.type === 'table');
+    if (hasTable && !result.layoutType) {
+      result.layoutType = 'flow';
+    }
+  }
+  
+  return result;
+}
+
+/**
  * Zod Schema for LayoutSchema validation.
  * Ensures the document structure is intact and prevents crashes from corrupted data.
  */
@@ -76,7 +105,7 @@ export const ComponentSchema = z
     x: z.number(),
     y: z.number(),
     width: z.number().optional(),
-    height: z.number().optional(),
+    height: z.union([z.number(), z.literal('auto')]).optional(),
     name: z.string().optional(),
     repeatHeaderOnPage: z.union([z.boolean(), z.string()]).optional(),
     groupBy: z.string().optional(),
@@ -84,16 +113,18 @@ export const ComponentSchema = z
     groupHeaderStyle: z.any().optional(),
   }).passthrough());
 
-export const ZoneSchema = z.object({
-  id: z.string(),
-  components: z.array(ComponentSchema),
-  minHeight: z.string().optional(),
-  background: z.string().optional(),
-  padding: z.string().optional(),
-  showOnFirstPageOnly: z.boolean().optional(),
-  showOnLastPageOnly: z.boolean().optional(),
-  repeatOnEveryPage: z.boolean().optional(),
-});
+export const ZoneSchema = z
+  .preprocess((val: unknown) => deepCleanZone(val), z.object({
+    id: z.string(),
+    components: z.array(ComponentSchema),
+    layoutType: z.enum(['absolute', 'flow']).optional(),
+    minHeight: z.string().optional(),
+    background: z.string().optional(),
+    padding: z.string().optional(),
+    showOnFirstPageOnly: z.boolean().optional(),
+    showOnLastPageOnly: z.boolean().optional(),
+    repeatOnEveryPage: z.boolean().optional(),
+  }).passthrough());
 
 const DEFAULT_PAGE_FOOTER = { id: 'footer', minHeight: '20mm', components: [] };
 

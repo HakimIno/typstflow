@@ -323,6 +323,39 @@ Components on canvas: ${totalComponents} total (header: ${zones.header.component
 Data fields: ${dataFields}`;
 }
 
+// ─── Import prompt (vision-based reconstruction) ───────────────────────────
+function buildImportPrompt(schema: LayoutSchema): string {
+  const { page } = schema;
+  const base = PAPER_DIMS[page.size] ?? PAPER_DIMS.A4;
+  const [pageW, pageH] = page.orientation === 'landscape' ? [base.h, base.w] : [base.w, base.h];
+  const ml = parseMarginMm(page.margin.left);
+  const mr = parseMarginMm(page.margin.right);
+  const mt = parseMarginMm(page.margin.top);
+  const mb = parseMarginMm(page.margin.bottom);
+  const usableW = Math.round(pageW - ml - mr);
+  const usableH = Math.round(pageH - mt - mb);
+
+  return `You are a high-fidelity Document Reconstruction Agent for TypstFlow.
+Your task is to analyze the provided image of a document template and reproduce it EXACTLY using the available tools.
+
+## Precision Requirements:
+1. **Coordinates**: Use mm. The usable area is ${usableW}x${usableH}mm.
+2. **Structure**: 
+   - Identify the Header (top), Body (middle), and Footer (bottom).
+   - Detect tables, lines, images, and text blocks.
+3. **Bindings**: Use {{binding_name}} for any variable data you see (e.g., invoice numbers, dates, customer names).
+4. **Style**: Match font sizes (pt), weights (bold/regular), and colors (hex) as closely as possible.
+
+## Workflow:
+- Call tools to place elements.
+- Batch your tool calls (up to 10 at a time).
+- Start with the Header, then Body, then Footer.
+- For tables, identify columns and headers carefully.
+- Finally, call set_sample_data with realistic data for all bindings you created.
+
+Your response must be exclusively tool calls to build this layout from scratch.`;
+}
+
 // ─── Design prompt (full agent) ───────────────────────────────────────────────
 function buildSystemPrompt(schema: LayoutSchema, sessionIntent?: string, aiMode?: 'plan' | 'act'): string {
   const { page, zones, pages, dataSchema } = schema;
@@ -473,7 +506,7 @@ export async function POST(req: NextRequest) {
     }>;
     schema: LayoutSchema;
     sessionIntent?: string;
-    mode?: 'design' | 'plan' | 'chat' | 'quick';
+    mode?: 'design' | 'plan' | 'chat' | 'quick' | 'import';
     model?: string;
     aiMode?: 'plan' | 'act';
   };
@@ -483,6 +516,7 @@ export async function POST(req: NextRequest) {
   const isChatMode = body.mode === 'chat';
   const isPlanMode = body.mode === 'plan';
   const isQuickMode = body.mode === 'quick';
+  const isImportMode = body.mode === 'import';
 
   let systemPrompt: string;
   if (isChatMode) {
@@ -491,6 +525,8 @@ export async function POST(req: NextRequest) {
     systemPrompt = buildSystemPrompt(body.schema, body.sessionIntent, 'plan');
   } else if (isQuickMode) {
     systemPrompt = buildQuickPrompt(body.schema);
+  } else if (isImportMode) {
+    systemPrompt = buildImportPrompt(body.schema);
   } else {
     systemPrompt = buildSystemPrompt(body.schema, body.sessionIntent, body.aiMode);
   }
@@ -512,7 +548,7 @@ export async function POST(req: NextRequest) {
         { role: 'system', content: systemPrompt },
         ...body.messages,
       ],
-      ...(hasTools ? { tools: TOOLS, tool_choice: isQuickMode ? 'required' : 'auto' } : {}),
+      ...(hasTools ? { tools: TOOLS, tool_choice: isQuickMode || isImportMode ? 'required' : 'auto' } : {}),
     }),
   });
 

@@ -39,8 +39,6 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     }
     t.push_str("#set par(leading: 0.2em, justify: false)\n\n");
 
-    // ── 4. Zone coordinate origins ────
-    // Now that we use native page margins, the main flow container IS the Body zone.
     let h_height = parse_mm_value(
         schema.zones.header.min_height.as_deref().unwrap_or("0mm")
     );
@@ -48,35 +46,35 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
         schema.zones.footer.min_height.as_deref().unwrap_or("0mm")
     );
 
-    let offset_x = "0mm".to_string();
-    let header_offset_y = format!("-{}mm", h_height); // Manual header pushes UP into the top margin
-    let body_offset_y = "0mm".to_string();            // Body is natively at the top of the flow container
-    let body_height = page_height_mm - h_height - f_height;
-    let footer_offset_y = format!("{}mm", body_height); // Manual footer pushes DOWN into the bottom margin
-
-    // Set page margins so the main flow area is exactly the Body zone.
+    // We use margin: 0mm as requested for total absolute control.
     t.push_str(&format!(
-        "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: (top: {}mm, bottom: {}mm, left: 0mm, right: 0mm),\n",
+        "#set page(\n  paper: \"{}\",\n  flipped: {},\n  margin: 0mm,\n)\n",
         get_typst_paper_name(&schema.page.size),
         is_landscape,
-        h_height,
-        f_height
     ));
 
+    let offset_x = "0mm".to_string();
+    
+    let body_offset_y = format!("{}mm", h_height); 
+    let header_offset_y = "0mm".to_string(); 
+    let footer_offset_y = format!("{}mm", page_height_mm - f_height);
+
     let is_global_h = schema.zones.header.repeat_on_every_page.unwrap_or(false);
+    let h_layout = schema.zones.header.layout_type.as_deref().unwrap_or("absolute");
     if is_global_h {
         let mut header_content = String::new();
         for comp in &schema.zones.header.components {
-            header_content.push_str(&render_component(comp, data, data, "0mm", "0mm", "#"));
+            header_content.push_str(&render_component(comp, data, data, &offset_x, "0mm", "#", h_layout));
         }
         t.push_str(&format!("  header: [{}],\n", header_content));
     }
 
     let is_global_f = schema.zones.footer.repeat_on_every_page.unwrap_or(false);
+    let f_layout = schema.zones.footer.layout_type.as_deref().unwrap_or("absolute");
     if is_global_f {
         let mut footer_content = String::new();
         for comp in &schema.zones.footer.components {
-            footer_content.push_str(&render_component(comp, data, data, "0mm", "0mm", "#"));
+            footer_content.push_str(&render_component(comp, data, data, &offset_x, "0mm", "#", f_layout));
         }
         t.push_str(&format!("  footer: [{}],\n", footer_content));
     }
@@ -136,6 +134,7 @@ fn render_document(
         }
 
         // Header
+        let h_layout = schema.zones.header.layout_type.as_deref().unwrap_or("absolute");
         let is_global_h = schema.zones.header.repeat_on_every_page.unwrap_or(false);
         let first_only_h = schema.zones.header.show_on_first_page_only.unwrap_or(false);
         let render_header = if is_global_h { false } // Handled natively by #set page(header: ...)
@@ -147,12 +146,13 @@ fn render_document(
             // Ensure manual header is pulled out of flow so it doesn't push the body down
             t.push_str("#place(dx: 0mm, dy: 0mm)[\n");
             for comp in &schema.zones.header.components {
-                t.push_str(&render_component(comp, local_data, global_data, offset_x, header_offset_y, "  #"));
+                t.push_str(&render_component(comp, local_data, global_data, offset_x, header_offset_y, "  #", h_layout));
             }
             t.push_str("]\n");
         }
 
         // Footer
+        let f_layout = schema.zones.footer.layout_type.as_deref().unwrap_or("absolute");
         let is_global_f = schema.zones.footer.repeat_on_every_page.unwrap_or(false);
         let last_only_f = schema.zones.footer.show_on_last_page_only.unwrap_or(false);
         let render_footer = if is_global_f { false } // Handled natively by #set page(footer: ...)
@@ -163,15 +163,16 @@ fn render_document(
             t.push_str(&format!("// --- PAGE {} FOOTER ---\n", i + 1));
             t.push_str("#place(dx: 0mm, dy: 0mm)[\n");
             for comp in &schema.zones.footer.components {
-                t.push_str(&render_component(comp, local_data, global_data, offset_x, footer_offset_y, "  #"));
+                t.push_str(&render_component(comp, local_data, global_data, offset_x, footer_offset_y, "  #", f_layout));
             }
             t.push_str("]\n");
         }
 
         // Body
+        let body_layout = page_def.body.layout_type.as_deref().unwrap_or("absolute");
         t.push_str(&format!("// --- PAGE {} BODY ---\n", i + 1));
         for comp in &page_def.body.components {
-            t.push_str(&render_component(comp, local_data, global_data, offset_x, body_offset_y, "#"));
+            t.push_str(&render_component(comp, local_data, global_data, offset_x, body_offset_y, "#", body_layout));
         }
     }
     t
@@ -196,9 +197,10 @@ fn render_groups(
         None => {
             // Innermost level: render the detail band (page 0 body) for each item
             let mut out = String::new();
+            let body_layout = schema.pages[0].body.layout_type.as_deref().unwrap_or("absolute");
             for item in items {
                 for comp in &schema.pages[0].body.components {
-                    out.push_str(&render_component(comp, item, global_data, offset_x, body_offset_y, "#"));
+                    out.push_str(&render_component(comp, item, global_data, offset_x, body_offset_y, "#", body_layout));
                 }
             }
             return out;
@@ -250,10 +252,11 @@ fn render_groups(
         if let Some(header) = &group.header {
             out.push_str(&format!("// GROUP [{}] HEADER\n", group.id));
             let header_offset = format!("{}mm", current_y_mm);
+            let h_layout = header.layout_type.as_deref().unwrap_or("absolute");
             for comp in &header.components {
                 out.push_str(&render_component_with_items(
                     comp, first_item, global_data, group_items,
-                    offset_x, &header_offset, "#"
+                    offset_x, &header_offset, "#", h_layout
                 ));
             }
             let h_height = parse_mm_value(header.min_height.as_deref().unwrap_or("0mm"));
@@ -277,10 +280,11 @@ fn render_groups(
         if let Some(footer) = &group.footer {
             out.push_str(&format!("// GROUP [{}] FOOTER\n", group.id));
             let footer_offset = format!("{}mm", current_y_mm);
+            let f_layout = footer.layout_type.as_deref().unwrap_or("absolute");
             for comp in &footer.components {
                 out.push_str(&render_component_with_items(
                     comp, first_item, global_data, group_items,
-                    offset_x, &footer_offset, "#"
+                    offset_x, &footer_offset, "#", f_layout
                 ));
             }
         }
@@ -298,6 +302,7 @@ fn render_component_with_items(
     offset_x: &str,
     offset_y: &str,
     prefix: &str,
+    layout_type: &str,
 ) -> String {
     match node {
         ComponentNode::Text(c) => {
@@ -312,12 +317,12 @@ fn render_component_with_items(
             };
             // Disable further binding resolution in render_text by clearing binding markers
             c2.content = c2.content.clone();
-            render_text(&c2, local, global, offset_x, offset_y, prefix)
+            render_text(&c2, local, global, offset_x, offset_y, prefix, layout_type)
         }
         ComponentNode::SummaryBox(c) => {
-            render_summary_box(c, local, global, items, offset_x, offset_y, prefix)
+            render_summary_box(c, local, global, items, offset_x, offset_y, prefix, layout_type)
         }
-        _ => render_component(node, local, global, offset_x, offset_y, prefix),
+        _ => render_component(node, local, global, offset_x, offset_y, prefix, layout_type),
     }
 }
 
@@ -328,23 +333,24 @@ fn render_component(
     offset_x: &str,
     offset_y: &str,
     prefix: &str,
+    layout_type: &str,
 ) -> String {
     match node {
-        ComponentNode::Text(c) => render_text(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Line(c) => render_line(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Image(c) => render_image(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Table(c) => render_table(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Spacer(c) => render_spacer(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Barcode(c) => render_barcode(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Qr(c) => render_qr(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::PageNumber(c) => render_page_number(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::PageBreakIndicator(c) => render_page_break_indicator(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::SummaryBox(c) => render_summary_box(c, local, global, &[], offset_x, offset_y, prefix),
-        ComponentNode::Repeater(c) => render_repeater(c, local, global, offset_x, offset_y, prefix,
-            &|child, l, g, ox, oy, px| render_component(child, l, g, ox, oy, px)
+        ComponentNode::Text(c) => render_text(c, local, global, offset_x, offset_y, prefix, layout_type),
+        ComponentNode::Line(c) => render_line(c, local, global, offset_x, offset_y, prefix, layout_type),
+        ComponentNode::Image(c) => render_image(c, local, global, offset_x, offset_y, prefix, layout_type),
+        ComponentNode::Table(c) => render_table(c, local, global, offset_x, offset_y, prefix, layout_type),
+        ComponentNode::Spacer(c) => render_spacer(c, local, global, offset_x, offset_y, prefix, layout_type),
+        ComponentNode::Barcode(c) => render_barcode(c, local, global, offset_x, offset_y, prefix, layout_type),
+        ComponentNode::Qr(c) => render_qr(c, local, global, offset_x, offset_y, prefix, layout_type),
+        ComponentNode::PageNumber(c) => render_page_number(c, local, global, offset_x, offset_y, prefix, layout_type),
+        ComponentNode::PageBreakIndicator(c) => render_page_break_indicator(c, local, global, offset_x, offset_y, prefix, layout_type),
+        ComponentNode::SummaryBox(c) => render_summary_box(c, local, global, &[], offset_x, offset_y, prefix, layout_type),
+        ComponentNode::Repeater(c) => render_repeater(c, local, global, offset_x, offset_y, prefix, layout_type,
+            &|child, l, g, ox, oy, px, lt| render_component(child, l, g, ox, oy, px, lt)
         ),
-        ComponentNode::Columns(c) => render_columns(c, local, global, offset_x, offset_y, prefix,
-            &|child, l, g, ox, oy, px| render_component(child, l, g, ox, oy, px)
+        ComponentNode::Columns(c) => render_columns(c, local, global, offset_x, offset_y, prefix, layout_type,
+            &|child, l, g, ox, oy, px, lt| render_component(child, l, g, ox, oy, px, lt)
         ),
     }
 }

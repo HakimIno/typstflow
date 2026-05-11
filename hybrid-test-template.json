@@ -1,0 +1,211 @@
+{
+  "schema": {
+    "id": "hybrid-test-001",
+    "name": "Hybrid Layout Engine Test",
+    "version": "1.0.0",
+    "page": {
+      "size": "A4",
+      "orientation": "portrait",
+      "margin": {
+        "top": "20mm",
+        "bottom": "20mm",
+        "left": "10mm",
+        "right": "10mm"
+      }
+    },
+    "zones": {
+      "header": {
+        "id": "header",
+        "components": [],
+        "minHeight": "40mm"
+      },
+      "footer": {
+        "id": "footer",
+        "components": [],
+        "minHeight": "15mm"
+      }
+    },
+    "pages": [
+      {
+        "id": "page-1",
+        "name": "Report Page",
+        "body": {
+          "id": "body",
+          "layoutType": "flow",
+          "components": [
+            {
+              "id": "intro-text",
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 190,
+              "height": 10,
+              "content": "รายงานสรุปรายการสินค้า (Hybrid Flow Engine Test)",
+              "style": {
+                "fontSize": 20,
+                "fontWeight": "bold"
+              }
+            },
+            {
+              "id": "desc-text",
+              "type": "text",
+              "x": 0,
+              "y": 2,
+              "width": 190,
+              "height": 15,
+              "content": "ตารางด้านล่างนี้ใช้การดึงข้อมูลจากตัวแปร (Dynamic Data) จำนวน 100 รายการ เพื่อทดสอบระบบ Hybrid Engine ว่าสามารถจัดการข้อมูลจำนวนมากข้ามหน้ากระดาษได้อย่างถูกต้องหรือไม่ โดยในโหมด Flow คอมโพเนนต์จะไหลต่อกันไปเรื่อยๆ"
+            },
+            {
+              "id": "main-table",
+              "type": "table",
+              "x": 0,
+              "y": 5,
+              "width": 190,
+              "height": "auto",
+              "dataSource": "{{items}}",
+              "columns": [
+                { "id": "col1", "header": "ลำดับ", "field": "index", "width": "0.3fr", "align": "center" },
+                { "id": "col2", "header": "รหัสสินค้า", "field": "sku", "width": "0.5fr", "align": "left" },
+                { "id": "col3", "header": "ชื่อรายการสินค้า", "field": "name", "width": "1.2fr", "align": "left" },
+                { "id": "col4", "header": "สต็อก", "field": "qty", "width": "0.3fr", "align": "center" },
+                { "id": "col5", "header": "ราคา/หน่วย", "field": "price", "width": "0.4fr", "align": "right" }
+              ],
+              "style": {
+                "fontSize": 9,
+                "headerBackground": "#f8fafc",
+                "fillPattern": "striped-rows",
+                "stripedColor1": "#ffffff",
+                "stripedColor2": "#f1f5f9"
+              },
+              "summaryRows": [
+                {
+                  "id": "sum-1",
+                  "label": "สรุปรายการ:",
+                  "value": "ข้อมูลทั้งหมด {{items.length}} รายการ ตรวจสอบแล้วครบถ้วน (ข้อความนี้จะปรากฏต่อท้ายตารางเสมอ ไม่ว่าตารางจะยาวกี่หน้าก็ตาม)",
+                  "style": "total",
+                  "separator": true
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "groups": [],
+    "variables": [],
+    "dataSchema": [],
+    "fonts": [
+      { "family": "Sarabun", "size": 10, "role": "body", "embedded": true }
+    ],
+    "metadata": {
+      "title": "Hybrid Flow Engine Test",
+      "createdAt": "2024-05-11T00:00:00Z",
+      "updatedAt": "2024-05-11T00:00:00Z",
+      "author": "TypstFlow Agent"
+    }
+  },
+  "data": {
+    "items": [
+      { "index": 1, "sku": "P-001", "name": "กระดาษ A4 80 แกรม (Double A)", "qty": 150, "price": 125 },
+      { "index": 2, "sku": "P-002", "name": "ปากกาลูกลื่น 0.5มม. (น้ำเงิน)", "qty": 500, "price": 12 },
+      { "index": 3, "sku": "P-003", "name": "แฟ้มใส่เอกสาร A4 (ใส)", "qty": 200, "price": 45 },
+      { "index": 4, "sku": "P-004", "name": "เครื่องเย็บกระดาษ No.10", "qty": 80, "price": 185 },
+      { "index": 5, "sku": "P-005", "name": "ลวดเย็บกระดาษ No.10", "qty": 300, "price": 15 },
+      { "index": 6, "sku": "P-006", "name": "กรรไกร 7 นิ้ว (สแตนเลส)", "qty": 45, "price": 95 },
+      { "index": 7, "sku": "P-007", "name": "สมุดบันทึกมีเส้น 50 แผ่น", "qty": 120, "price": 35 },
+      { "index": 8, "sku": "P-008", "name": "เทปใส 1 นิ้ว (ม้วน)", "qty": 180, "price": 28 },
+      { "index": 9, "sku": "P-009", "name": "กาวแท่ง 40 กรัม", "qty": 90, "price": 65 },
+      { "index": 10, "sku": "P-010", "name": "ไม้บรรทัดเหล็ก 12 นิ้ว", "qty": 150, "price": 40 },
+      { "index": 11, "sku": "P-011", "name": "Item 11 Data", "qty": 100, "price": 100 },
+      { "index": 12, "sku": "P-012", "name": "Item 12 Data", "qty": 100, "price": 100 },
+      { "index": 13, "sku": "P-013", "name": "Item 13 Data", "qty": 100, "price": 100 },
+      { "index": 14, "sku": "P-014", "name": "Item 14 Data", "qty": 100, "price": 100 },
+      { "index": 15, "sku": "P-015", "name": "Item 15 Data", "qty": 100, "price": 100 },
+      { "index": 16, "sku": "P-016", "name": "Item 16 Data", "qty": 100, "price": 100 },
+      { "index": 17, "sku": "P-017", "name": "Item 17 Data", "qty": 100, "price": 100 },
+      { "index": 18, "sku": "P-018", "name": "Item 18 Data", "qty": 100, "price": 100 },
+      { "index": 19, "sku": "P-019", "name": "Item 19 Data", "qty": 100, "price": 100 },
+      { "index": 20, "sku": "P-020", "name": "Item 20 Data", "qty": 100, "price": 100 },
+      { "index": 21, "sku": "P-021", "name": "Item 21 Data", "qty": 100, "price": 100 },
+      { "index": 22, "sku": "P-022", "name": "Item 22 Data", "qty": 100, "price": 100 },
+      { "index": 23, "sku": "P-023", "name": "Item 23 Data", "qty": 100, "price": 100 },
+      { "index": 24, "sku": "P-024", "name": "Item 24 Data", "qty": 100, "price": 100 },
+      { "index": 25, "sku": "P-025", "name": "Item 25 Data", "qty": 100, "price": 100 },
+      { "index": 26, "sku": "P-026", "name": "Item 26 Data", "qty": 100, "price": 100 },
+      { "index": 27, "sku": "P-027", "name": "Item 27 Data", "qty": 100, "price": 100 },
+      { "index": 28, "sku": "P-028", "name": "Item 28 Data", "qty": 100, "price": 100 },
+      { "index": 29, "sku": "P-029", "name": "Item 29 Data", "qty": 100, "price": 100 },
+      { "index": 30, "sku": "P-030", "name": "Item 30 Data", "qty": 100, "price": 100 },
+      { "index": 31, "sku": "P-031", "name": "Item 31 Data", "qty": 100, "price": 100 },
+      { "index": 32, "sku": "P-032", "name": "Item 32 Data", "qty": 100, "price": 100 },
+      { "index": 33, "sku": "P-033", "name": "Item 33 Data", "qty": 100, "price": 100 },
+      { "index": 34, "sku": "P-034", "name": "Item 34 Data", "qty": 100, "price": 100 },
+      { "index": 35, "sku": "P-035", "name": "Item 35 Data", "qty": 100, "price": 100 },
+      { "index": 36, "sku": "P-036", "name": "Item 36 Data", "qty": 100, "price": 100 },
+      { "index": 37, "sku": "P-037", "name": "Item 37 Data", "qty": 100, "price": 100 },
+      { "index": 38, "sku": "P-038", "name": "Item 38 Data", "qty": 100, "price": 100 },
+      { "index": 39, "sku": "P-039", "name": "Item 39 Data", "qty": 100, "price": 100 },
+      { "index": 40, "sku": "P-040", "name": "Item 40 Data", "qty": 100, "price": 100 },
+      { "index": 41, "sku": "P-041", "name": "Item 41 Data", "qty": 100, "price": 100 },
+      { "index": 42, "sku": "P-042", "name": "Item 42 Data", "qty": 100, "price": 100 },
+      { "index": 43, "sku": "P-043", "name": "Item 43 Data", "qty": 100, "price": 100 },
+      { "index": 44, "sku": "P-044", "name": "Item 44 Data", "qty": 100, "price": 100 },
+      { "index": 45, "sku": "P-045", "name": "Item 45 Data", "qty": 100, "price": 100 },
+      { "index": 46, "sku": "P-046", "name": "Item 46 Data", "qty": 100, "price": 100 },
+      { "index": 47, "sku": "P-047", "name": "Item 47 Data", "qty": 100, "price": 100 },
+      { "index": 48, "sku": "P-048", "name": "Item 48 Data", "qty": 100, "price": 100 },
+      { "index": 49, "sku": "P-049", "name": "Item 49 Data", "qty": 100, "price": 100 },
+      { "index": 50, "sku": "P-050", "name": "Item 50 Data", "qty": 100, "price": 100 },
+      { "index": 51, "sku": "P-051", "name": "Item 51 Data", "qty": 100, "price": 100 },
+      { "index": 52, "sku": "P-052", "name": "Item 52 Data", "qty": 100, "price": 100 },
+      { "index": 53, "sku": "P-053", "name": "Item 53 Data", "qty": 100, "price": 100 },
+      { "index": 54, "sku": "P-054", "name": "Item 54 Data", "qty": 100, "price": 100 },
+      { "index": 55, "sku": "P-055", "name": "Item 55 Data", "qty": 100, "price": 100 },
+      { "index": 56, "sku": "P-056", "name": "Item 56 Data", "qty": 100, "price": 100 },
+      { "index": 57, "sku": "P-057", "name": "Item 57 Data", "qty": 100, "price": 100 },
+      { "index": 58, "sku": "P-058", "name": "Item 58 Data", "qty": 100, "price": 100 },
+      { "index": 59, "sku": "P-059", "name": "Item 59 Data", "qty": 100, "price": 100 },
+      { "index": 60, "sku": "P-060", "name": "Item 60 Data", "qty": 100, "price": 100 },
+      { "index": 61, "sku": "P-061", "name": "Item 61 Data", "qty": 100, "price": 100 },
+      { "index": 62, "sku": "P-062", "name": "Item 62 Data", "qty": 100, "price": 100 },
+      { "index": 63, "sku": "P-063", "name": "Item 63 Data", "qty": 100, "price": 100 },
+      { "index": 64, "sku": "P-064", "name": "Item 64 Data", "qty": 100, "price": 100 },
+      { "index": 65, "sku": "P-065", "name": "Item 65 Data", "qty": 100, "price": 100 },
+      { "index": 66, "sku": "P-066", "name": "Item 66 Data", "qty": 100, "price": 100 },
+      { "index": 67, "sku": "P-067", "name": "Item 67 Data", "qty": 100, "price": 100 },
+      { "index": 68, "sku": "P-068", "name": "Item 68 Data", "qty": 100, "price": 100 },
+      { "index": 69, "sku": "P-069", "name": "Item 69 Data", "qty": 100, "price": 100 },
+      { "index": 70, "sku": "P-070", "name": "Item 70 Data", "qty": 100, "price": 100 },
+      { "index": 71, "sku": "P-071", "name": "Item 71 Data", "qty": 100, "price": 100 },
+      { "index": 72, "sku": "P-072", "name": "Item 72 Data", "qty": 100, "price": 100 },
+      { "index": 73, "sku": "P-073", "name": "Item 73 Data", "qty": 100, "price": 100 },
+      { "index": 74, "sku": "P-074", "name": "Item 74 Data", "qty": 100, "price": 100 },
+      { "index": 75, "sku": "P-075", "name": "Item 75 Data", "qty": 100, "price": 100 },
+      { "index": 76, "sku": "P-076", "name": "Item 76 Data", "qty": 100, "price": 100 },
+      { "index": 77, "sku": "P-077", "name": "Item 77 Data", "qty": 100, "price": 100 },
+      { "index": 78, "sku": "P-078", "name": "Item 78 Data", "qty": 100, "price": 100 },
+      { "index": 79, "sku": "P-079", "name": "Item 79 Data", "qty": 100, "price": 100 },
+      { "index": 80, "sku": "P-080", "name": "Item 80 Data", "qty": 100, "price": 100 },
+      { "index": 81, "sku": "P-081", "name": "Item 81 Data", "qty": 100, "price": 100 },
+      { "index": 82, "sku": "P-082", "name": "Item 82 Data", "qty": 100, "price": 100 },
+      { "index": 83, "sku": "P-083", "name": "Item 83 Data", "qty": 100, "price": 100 },
+      { "index": 84, "sku": "P-084", "name": "Item 84 Data", "qty": 100, "price": 100 },
+      { "index": 85, "sku": "P-085", "name": "Item 85 Data", "qty": 100, "price": 100 },
+      { "index": 86, "sku": "P-086", "name": "Item 86 Data", "qty": 100, "price": 100 },
+      { "index": 87, "sku": "P-087", "name": "Item 87 Data", "qty": 100, "price": 100 },
+      { "index": 88, "sku": "P-088", "name": "Item 88 Data", "qty": 100, "price": 100 },
+      { "index": 89, "sku": "P-089", "name": "Item 89 Data", "qty": 100, "price": 100 },
+      { "index": 90, "sku": "P-090", "name": "Item 90 Data", "qty": 100, "price": 100 },
+      { "index": 91, "sku": "P-091", "name": "Item 91 Data", "qty": 100, "price": 100 },
+      { "index": 92, "sku": "P-092", "name": "Item 92 Data", "qty": 100, "price": 100 },
+      { "index": 93, "sku": "P-093", "name": "Item 93 Data", "qty": 100, "price": 100 },
+      { "index": 94, "sku": "P-094", "name": "Item 94 Data", "qty": 100, "price": 100 },
+      { "index": 95, "sku": "P-095", "name": "Item 95 Data", "qty": 100, "price": 100 },
+      { "index": 96, "sku": "P-096", "name": "Item 96 Data", "qty": 100, "price": 100 },
+      { "index": 97, "sku": "P-097", "name": "Item 97 Data", "qty": 100, "price": 100 },
+      { "index": 98, "sku": "P-098", "name": "Item 98 Data", "qty": 100, "price": 100 },
+      { "index": 99, "sku": "P-099", "name": "Item 99 Data", "qty": 100, "price": 100 },
+      { "index": 100, "sku": "P-100", "name": "Item 100 Data", "qty": 100, "price": 100 }
+    ]
+  }
+}

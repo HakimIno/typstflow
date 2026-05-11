@@ -37,8 +37,8 @@ pub struct NodeInput {
     pub page_id: Option<String>,
     pub x: f64,
     pub y: f64,
-    pub width: f64,
-    pub height: f64,
+    pub width: serde_json::Value,
+    pub height: serde_json::Value,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -57,6 +57,14 @@ pub struct SnapResult {
 #[derive(Serialize, Deserialize)]
 pub struct QueryResult {
     pub ids: Vec<String>,
+}
+
+fn parse_f64(v: &serde_json::Value) -> f64 {
+    match v {
+        serde_json::Value::Number(n) => n.as_f64().unwrap_or(0.0),
+        serde_json::Value::String(s) => s.parse::<f64>().unwrap_or(0.0),
+        _ => 0.0,
+    }
 }
 
 #[wasm_bindgen]
@@ -85,8 +93,8 @@ impl LayoutEngine {
             page_id: node.page_id,
             x: node.x,
             y: node.y,
-            width: node.width,
-            height: node.height,
+            width: parse_f64(&node.width),
+            height: parse_f64(&node.height),
         };
         // Remove existing node with same ID if any
         self.remove_node(&layout_node.id);
@@ -113,14 +121,17 @@ impl LayoutEngine {
         let nodes: Vec<NodeInput> = serde_wasm_bindgen::from_value(inputs)?;
         let mut layout_nodes = Vec::with_capacity(nodes.len());
         for node in nodes {
+            let x = if node.x.is_finite() { node.x } else { 0.0 };
+            let y = if node.y.is_finite() { node.y } else { 0.0 };
+
             layout_nodes.push(LayoutNode {
                 id: node.id,
                 zone: node.zone,
                 page_id: node.page_id,
-                x: node.x,
-                y: node.y,
-                width: node.width,
-                height: node.height,
+                x,
+                y,
+                width: parse_f64(&node.width),
+                height: parse_f64(&node.height),
             });
         }
         // Bulk loading is faster

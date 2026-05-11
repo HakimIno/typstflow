@@ -3,14 +3,14 @@ use serde_json::Value;
 use super::utils::*;
 use std::collections::HashSet;
 
-pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, layout_type: &str) -> String {
     let mut t = String::new();
     let cols = &c.columns;
     let style = c.style.as_ref();
 
     // ── 1. TABLE DEFINITION ──────────────────────────────────────────────────
     let mut table_args = Vec::new();
-    table_args.push(format!("columns: ({})", cols.iter().map(|col| col.width.clone().replace("*", "fr")).collect::<Vec<_>>().join(", ")));
+    table_args.push(format!("columns: ({})", cols.iter().map(|col| col.width.clone().replace("*", "1fr")).collect::<Vec<_>>().join(", ")));
     
     // Inset
     let inset = style.and_then(|s| s.inset.as_deref().or(s.cell_padding.as_deref())).unwrap_or("7pt");
@@ -455,16 +455,26 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
             let escaped_label = escape_typst(&row.label);
             let escaped_val = escape_typst(&val);
             let weight = if row.style.as_deref() == Some("total") { "bold" } else { "regular" };
-            let span = if cols.len() > 1 { cols.len() - 1 } else { 1 };
+            let label_span = 1;
+            let value_span = if cols.len() > 1 { cols.len() - 1 } else { 1 };
+            
             t.push_str(&format!(
-                "  table.cell(colspan: {}, align: right)[*{}*],\n  [#text(weight: \"{}\")[{}]],\n",
-                span, escaped_label, weight, escaped_val
+                "  table.cell(colspan: {}, align: right)[*{}*],\n  table.cell(colspan: {}, align: left)[#text(weight: \"{}\")[{}]],\n",
+                label_span, escaped_label, value_span, weight, escaped_val
             ));
         }
     }
 
     t.push_str(")\n");
-    wrap_flow(&c.base, &t, offset_x, offset_y, prefix)
+    // Always use auto height for tables in the generator to ensure they can grow/break
+    let mut base_for_wrap = c.base.clone();
+    base_for_wrap.height = None;
+
+    if layout_type == "flow" {
+        wrap_flow(&base_for_wrap, &t, offset_x, offset_y, prefix)
+    } else {
+        wrap_placement(&base_for_wrap, &t, offset_x, offset_y, prefix)
+    }
 }
 
 

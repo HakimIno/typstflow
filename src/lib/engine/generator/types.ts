@@ -16,6 +16,8 @@ export interface RenderContext {
   readonly offsetX: number;
   /** Zone Y origin in mm from page corner (stacked: header → body → footer). */
   readonly offsetY: number;
+  /** Current zone layout type. */
+  readonly layoutType: 'absolute' | 'flow';
   /** Full layout schema — available for plugins that need page/font config. */
   readonly schema: LayoutSchema;
   /**

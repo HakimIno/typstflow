@@ -385,6 +385,12 @@ function __wbg_get_imports() {
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
             getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
         },
+        __wbg___wbindgen_bigint_get_as_i64_2c5082002e4826e2: function(arg0, arg1) {
+            const v = arg1;
+            const ret = typeof(v) === 'bigint' ? v : undefined;
+            getDataViewMemory0().setBigInt64(arg0 + 8 * 1, isLikeNone(ret) ? BigInt(0) : ret, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, !isLikeNone(ret), true);
+        },
         __wbg___wbindgen_boolean_get_a86c216575a75c30: function(arg0) {
             const v = arg0;
             const ret = typeof(v) === 'boolean' ? v : undefined;
@@ -401,6 +407,10 @@ function __wbg_get_imports() {
             const ret = arg0 in arg1;
             return ret;
         },
+        __wbg___wbindgen_is_bigint_6c98f7e945dacdde: function(arg0) {
+            const ret = typeof(arg0) === 'bigint';
+            return ret;
+        },
         __wbg___wbindgen_is_function_49868bde5eb1e745: function(arg0) {
             const ret = typeof(arg0) === 'function';
             return ret;
@@ -412,6 +422,10 @@ function __wbg_get_imports() {
         },
         __wbg___wbindgen_is_undefined_c0cca72b82b86f4d: function(arg0) {
             const ret = arg0 === undefined;
+            return ret;
+        },
+        __wbg___wbindgen_jsval_eq_7d430e744a913d26: function(arg0, arg1) {
+            const ret = arg0 === arg1;
             return ret;
         },
         __wbg___wbindgen_jsval_loose_eq_3a72ae764d46d944: function(arg0, arg1) {
@@ -443,6 +457,10 @@ function __wbg_get_imports() {
             const ret = arg0.done;
             return ret;
         },
+        __wbg_entries_616b1a459b85be0b: function(arg0) {
+            const ret = Object.entries(arg0);
+            return ret;
+        },
         __wbg_error_38bec0a78dd8ded8: function(arg0) {
             console.error(arg0);
         },
@@ -456,6 +474,10 @@ function __wbg_get_imports() {
         },
         __wbg_getMonth_288607689622719c: function(arg0) {
             const ret = arg0.getMonth();
+            return ret;
+        },
+        __wbg_get_4848e350b40afc16: function(arg0, arg1) {
+            const ret = arg0[arg1 >>> 0];
             return ret;
         },
         __wbg_get_ed0642c4b9d31ddf: function() { return handleError(function (arg0, arg1) {
@@ -480,6 +502,16 @@ function __wbg_get_imports() {
             const ret = result;
             return ret;
         },
+        __wbg_instanceof_Map_a10a2795ef4bfe97: function(arg0) {
+            let result;
+            try {
+                result = arg0 instanceof Map;
+            } catch (_) {
+                result = false;
+            }
+            const ret = result;
+            return ret;
+        },
         __wbg_instanceof_Uint8Array_4b8da683deb25d72: function(arg0) {
             let result;
             try {
@@ -492,6 +524,10 @@ function __wbg_get_imports() {
         },
         __wbg_isArray_db61795ad004c139: function(arg0) {
             const ret = Array.isArray(arg0);
+            return ret;
+        },
+        __wbg_isSafeInteger_ea83862ba994770c: function(arg0) {
+            const ret = Number.isSafeInteger(arg0);
             return ret;
         },
         __wbg_iterator_de403ef31815a3e6: function() {
@@ -558,12 +594,17 @@ function __wbg_get_imports() {
             const ret = arg0;
             return ret;
         },
-        __wbindgen_cast_0000000000000002: function(arg0, arg1) {
+        __wbindgen_cast_0000000000000002: function(arg0) {
+            // Cast intrinsic for `I64 -> Externref`.
+            const ret = arg0;
+            return ret;
+        },
+        __wbindgen_cast_0000000000000003: function(arg0, arg1) {
             // Cast intrinsic for `Ref(String) -> Externref`.
             const ret = getStringFromWasm0(arg0, arg1);
             return ret;
         },
-        __wbindgen_cast_0000000000000003: function(arg0) {
+        __wbindgen_cast_0000000000000004: function(arg0) {
             // Cast intrinsic for `U64 -> Externref`.
             const ret = BigInt.asUintN(64, arg0);
             return ret;

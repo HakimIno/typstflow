@@ -5,7 +5,8 @@ use std::collections::HashMap;
 // Definitions for Input
 #[derive(Deserialize, Clone)]
 pub struct TableComponentInput {
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     pub x: Option<f32>,
     pub y: Option<f32>,
     pub width: Option<f32>,
@@ -46,20 +47,23 @@ pub struct CellStyleInput {
 
 #[derive(Deserialize, Clone)]
 pub struct TableColumnInput {
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     pub width: String, // "auto", "1fr", "30mm"
 }
 
 #[derive(Deserialize, Clone)]
 pub struct TableRowInput {
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     pub cells: Vec<TableCellInput>,
     pub height: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
 pub struct TableCellInput {
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     pub content: Option<String>,
     pub colspan: Option<usize>,
     pub rowspan: Option<usize>,
@@ -255,9 +259,9 @@ impl TableEngine {
                     }
 
                     row_cells_to_add.push(ResolvedCell {
-                        id: cell.id.clone(),
+                        id: cell.id.clone().unwrap_or_default(),
                         section: section.to_string(),
-                        row_id: row.id.clone(),
+                        row_id: row.id.clone().unwrap_or_default(),
                         col_idx: col_ptr,
                         x: current_x,
                         y: 0.0, // placeholder, will be set after row_height is finalized

@@ -225,6 +225,7 @@ export class TypstGenerator {
         groupItems,
         offsetX,
         offsetY,
+        layoutType: zone.layoutType || 'absolute',
         schema,
         render: renderChild,
         ...overrides,

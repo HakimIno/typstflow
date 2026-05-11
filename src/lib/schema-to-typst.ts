@@ -171,7 +171,7 @@ function renderTable(table: TableComponent, data: Record<string, any>): string {
 
   // 1. Columns
   t += '  columns: (';
-  t += columns.map((c) => (c.width || '1fr').replace('*', 'fr')).join(', ');
+  t += columns.map((c) => (c.width || '1fr').replace('*', '1fr')).join(', ');
   t += '),\n';
 
   // 2. Row heights (if specified)

@@ -14,7 +14,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     const parts: string[] = [];
 
     // ── Column widths ─────────────────────────────────────────────────────────
-    const colWidths = cols.map((c) => c.width.replace('*', 'fr')).join(', ');
+    const colWidths = cols.map((c) => c.width.replace('*', '1fr')).join(', ');
 
     // ── Stroke ────────────────────────────────────────────────────────────────
     const borderWidth = style?.borderWidth ?? '0.5pt';
@@ -181,7 +181,17 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         for (const cell of row.cells) {
           const val = resolveBinding(cell.content, ctx.local, ctx.global);
           const content = escapeTypst(val);
-          parts.push(renderStructuredCell(cell, true, `[${content}]`));
+          parts.push(
+            renderStructuredCell(
+              cell,
+              {
+                size: bodyFontSize,
+                color: bodyColor,
+                weight: 'regular',
+              },
+              `[${content}]`
+            )
+          );
         }
       }
       parts.push('  ),\n');
@@ -224,7 +234,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     }
 
     parts.push(')\n');
-    return wrapPlacement(comp, parts.join(''), ctx.offsetX, ctx.offsetY);
+    return wrapPlacement(comp, parts.join(''), ctx.offsetX, ctx.offsetY, ctx.layoutType);
   },
 };
 

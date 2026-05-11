@@ -92,6 +92,7 @@ pub struct Zone {
     pub show_on_first_page_only: Option<bool>,
     pub show_on_last_page_only: Option<bool>,
     pub repeat_on_every_page: Option<bool>,
+    pub layout_type: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -122,13 +123,13 @@ pub struct BaseComponent {
     pub x: Option<f64>,
     pub y: Option<f64>,
     pub width: Option<f64>,
-    pub height: Option<f64>,
+    pub height: Option<serde_json::Value>,
     pub align: Option<String>,
     pub visible: Option<String>,
     pub format: Option<String>,
     pub page_break_before: Option<bool>,
-    pub margin_top: Option<f64>,
-    pub margin_bottom: Option<f64>,
+    pub margin_top: Option<serde_json::Value>,
+    pub margin_bottom: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -161,7 +162,7 @@ pub struct TextStyle {
 #[serde(rename_all = "camelCase")]
 pub struct TableCell {
     #[serde(default)]
-    pub id: String,
+    pub id: Option<String>,
     #[serde(default)]
     pub content: String,
     pub colspan: Option<u32>,
@@ -179,7 +180,7 @@ pub struct TableCell {
 #[serde(rename_all = "camelCase")]
 pub struct TableRow {
     #[serde(default)]
-    pub id: String,
+    pub id: Option<String>,
     #[serde(default)]
     pub r#type: String,
     pub cells: Vec<TableCell>,
@@ -191,7 +192,8 @@ pub struct TableRow {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HLineConfig {
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     pub y: u32,
     pub start: Option<u32>,
     pub end: Option<u32>,
@@ -203,7 +205,8 @@ pub struct HLineConfig {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VLineConfig {
-    pub id: String,
+    #[serde(default)]
+    pub id: Option<String>,
     pub x: u32,
     pub start: Option<u32>,
     pub end: Option<u32>,
@@ -240,7 +243,7 @@ pub struct TableComponent {
 #[serde(rename_all = "camelCase")]
 pub struct TableColumn {
     #[serde(default)]
-    pub id: String,
+    pub id: Option<String>,
     #[serde(default)]
     pub header: Option<String>,
     #[serde(default)]

@@ -9,6 +9,7 @@ import { Layers } from 'lucide-react';
 import { memo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ComponentWrapper } from './component-wrapper';
+import type { Zone as ZoneData } from '@/types/schema';
 
 interface ZoneProps {
   zoneKey: 'header' | 'body' | 'footer';
@@ -41,8 +42,32 @@ export const Zone = memo(function Zone({
 
   // ✅ Subscribes ONLY to its own component IDs list
   const componentIds = useDesignerStore(
-    useShallow((s) => getZoneComponents(s.schema, zoneKey, pageId).map((c) => c.id))
+    useShallow((s) => {
+      let zone: ZoneData | undefined;
+      if (groupId) {
+        const g = s.schema.groups.find((g) => g.id === groupId);
+        zone = groupType === 'header' ? g?.header : g?.footer;
+      } else if (zoneKey === 'body') {
+        zone = s.schema.pages.find((p) => p.id === (pageId || s.activePageId))?.body;
+      } else {
+        zone = s.schema.zones[zoneKey as 'header' | 'footer'];
+      }
+      return zone?.components.map((c) => c.id) || [];
+    })
   );
+
+  const layoutType = useDesignerStore((s) => {
+    let zone: ZoneData | undefined;
+    if (groupId) {
+      const g = s.schema.groups.find((g) => g.id === groupId);
+      zone = groupType === 'header' ? g?.header : g?.footer;
+    } else if (zoneKey === 'body') {
+      zone = s.schema.pages.find((p) => p.id === (pageId || s.activePageId))?.body;
+    } else {
+      zone = s.schema.zones[zoneKey as 'header' | 'footer'];
+    }
+    return zone?.layoutType || 'absolute';
+  });
 
   const { isResizing, handleResizeStart } = useZoneResize(
     zoneKey,
@@ -55,6 +80,8 @@ export const Zone = memo(function Zone({
     groupId,
     groupType
   );
+  const setSelectedZone = useDesignerStore((s) => s.setSelectedZone);
+  const selectComponent = useDesignerStore((s) => s.selectComponent);
   const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef, pageId, groupId, groupType);
 
   return (
@@ -63,6 +90,11 @@ export const Zone = memo(function Zone({
       data-is-group-band={isGroupBand}
       data-group-id={groupId}
       data-group-type={groupType}
+      onClick={(e) => {
+        e.stopPropagation();
+        setSelectedZone(zoneKey);
+        selectComponent(null as any);
+      }}
       style={
         hidden
           ? { height: 0, overflow: 'hidden', border: 'none' }
@@ -119,7 +151,12 @@ export const Zone = memo(function Zone({
               </p>
             </div>
           ) : (
-            <div className="absolute inset-0 overflow-visible">
+            <div
+              className={clsx(
+                'absolute inset-0 overflow-visible',
+                layoutType === 'flow' && 'flex flex-col relative !inset-auto h-auto min-h-full'
+              )}
+            >
               {componentIds.map((id) => (
                 <ComponentWrapper
                   key={`${pageId ?? 'global'}-${id}`}
@@ -127,6 +164,7 @@ export const Zone = memo(function Zone({
                   zoneKey={zoneKey}
                   pageId={pageId}
                   pageIndex={pageIndex}
+                  layoutType={layoutType}
                 />
               ))}
             </div>

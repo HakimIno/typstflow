@@ -19,9 +19,10 @@ export interface AgentMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  mode?: 'chat' | 'plan' | 'design';
+  mode?: 'chat' | 'plan' | 'design' | 'import';
   snapshotIndex?: number;
   toolCalls?: Array<{ name: string; success: boolean; description: string }>;
+  image?: string; // base64
 }
 
 // ─── Session Memory ───────────────────────────────────────────────────────────
@@ -313,7 +314,7 @@ interface ApiResponse {
 const MAX_TOOL_ROUNDS = 8;
 const HISTORY_WINDOW = 6; // UI messages to include in each request
 
-type IntentMode = 'chat' | 'plan' | 'design' | 'quick';
+type IntentMode = 'chat' | 'plan' | 'design' | 'quick' | 'import';
 
 // Fast client-side pre-classifier — skips server round-trip for obvious cases
 function quickClassify(text: string): IntentMode | null {
@@ -485,11 +486,12 @@ export function useAiAgent() {
   }, []);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, imageBase64?: string) => {
       const userMsg: AgentMessage = {
         id: crypto.randomUUID(),
         role: 'user',
         content,
+        image: imageBase64,
         timestamp: new Date(),
       };
       const uiHistory = [...messages, userMsg];
@@ -499,7 +501,7 @@ export function useAiAgent() {
       setThinkingStep('Analyzing request...');
 
       const assistantId = crypto.randomUUID();
-      
+
       const upsertAssistantMessage = (
         content: string,
         tools?: NonNullable<AgentMessage['toolCalls']>,
@@ -542,6 +544,88 @@ export function useAiAgent() {
       try {
         const sessionIntent = serializeMemory(sessionMemoryRef.current);
 
+        // Image-attached messages → use vision/import flow
+        if (imageBase64) {
+          const { schema } = useDesignerStore.getState();
+          const checkpoint = useDesignerStore.getState().historyIndex;
+          const allToolCalls: NonNullable<AgentMessage['toolCalls']> = [];
+          setThinkingStep('Analyzing image...');
+
+          const multimodalMessages: ApiMsg[] = [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: content || 'Reconstruct this document layout from the image.',
+                },
+                { type: 'image_url', image_url: { url: imageBase64 } },
+              ] as any,
+            },
+          ];
+
+          for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+            if (controller.signal.aborted) break;
+            setThinkingStep(round === 0 ? 'Analyzing image...' : `Applying step ${round + 1}...`);
+
+            const data = await callApi(
+              multimodalMessages,
+              schema,
+              undefined,
+              controller.signal,
+              'import',
+              aiModel,
+              aiMode
+            );
+            const apiMsg = data.choices?.[0]?.message;
+            const finalText = apiMsg?.content ?? '';
+            const toolCalls = apiMsg?.tool_calls ?? [];
+
+            if (toolCalls.length === 0) {
+              upsertAssistantMessage(
+                finalText || 'Done!',
+                allToolCalls.length > 0 ? allToolCalls : undefined,
+                'import',
+                checkpoint
+              );
+              break;
+            }
+
+            const toolResults: Array<{ id: string; result: string }> = [];
+            for (const tc of toolCalls) {
+              let result: string;
+              let success = true;
+              try {
+                setThinkingStep(`Applying: ${tc.function.name.replace(/_/g, ' ')}...`);
+                const parsedArgs = JSON.parse(tc.function.arguments) as Record<string, unknown>;
+                result = execTool(tc.function.name, parsedArgs);
+              } catch (e) {
+                result = e instanceof Error ? e.message : String(e);
+                success = false;
+              }
+              toolResults.push({ id: tc.id, result });
+              allToolCalls.push({ name: tc.function.name, success, description: result });
+            }
+
+            upsertAssistantMessage('Processing image...', [...allToolCalls], 'import', checkpoint);
+
+            multimodalMessages.push({
+              role: 'assistant',
+              content: finalText || null,
+              tool_calls: toolCalls,
+            });
+            for (const r of toolResults) {
+              multimodalMessages.push({ role: 'tool', tool_call_id: r.id, content: r.result });
+            }
+          }
+
+          setMessages((prev) => {
+            persistMessages(prev);
+            return prev;
+          });
+          return;
+        }
+
         // Quick client-side classify first — skip network round-trip for obvious cases
         const quickResult = quickClassify(content);
         let intent: IntentMode;
@@ -558,6 +642,7 @@ export function useAiAgent() {
           plan: 'Planning strategy...',
           design: 'Building layout...',
           quick: 'Applying...',
+          import: 'Analyzing image...',
         };
         setThinkingStep(STEP_LABELS[intent]);
 
@@ -811,5 +896,117 @@ export function useAiAgent() {
     setThinkingStep('');
   }, []);
 
-  return { messages, isLoading, thinkingStep, error, sendMessage, clearMessages, stop };
+  const importTemplate = useCallback(
+    async (imageBase64: string) => {
+      const userMsg: AgentMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: 'Importing template from image...',
+        image: imageBase64,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setIsLoading(true);
+      setError(null);
+      setThinkingStep('Analyzing template layout...');
+
+      const assistantId = crypto.randomUUID();
+      const upsertAssistantMessage = (content: string, tools?: NonNullable<AgentMessage['toolCalls']>, snapshot?: number) => {
+        setMessages((prev) => {
+          const exists = prev.some((m) => m.id === assistantId);
+          const msg: AgentMessage = {
+            id: assistantId,
+            role: 'assistant',
+            content,
+            mode: 'import',
+            snapshotIndex: snapshot,
+            toolCalls: tools,
+            timestamp: new Date(),
+          };
+          if (!exists) return [...prev, msg];
+          return prev.map((m) => (m.id === assistantId ? { ...m, content, toolCalls: tools, snapshotIndex: snapshot } : m));
+        });
+      };
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      try {
+        const { schema } = useDesignerStore.getState();
+        const checkpoint = useDesignerStore.getState().historyIndex;
+        const allToolCalls: NonNullable<AgentMessage['toolCalls']> = [];
+        const newBindings: string[] = [];
+
+        // Build multimodal message for the API
+        const multimodalMessages: ApiMsg[] = [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Reconstruct this document layout exactly.' },
+              { type: 'image_url', image_url: { url: imageBase64 } },
+            ] as any,
+          },
+        ];
+
+        // Multi-round loop similar to design mode
+        for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+          if (controller.signal.aborted) break;
+          setThinkingStep(round === 0 ? 'Analyzing image...' : `Reconstructing step ${round + 1}...`);
+
+          const data = await callApi(
+            multimodalMessages,
+            schema,
+            undefined,
+            controller.signal,
+            'import',
+            aiModel,
+            aiMode
+          );
+          
+          const msg = data.choices?.[0]?.message;
+          const finalText = msg?.content ?? '';
+          const toolCalls = msg?.tool_calls ?? [];
+
+          if (toolCalls.length === 0) break;
+
+          const toolResults: Array<{ id: string; result: string }> = [];
+          for (const tc of toolCalls) {
+            let result: string;
+            let success = true;
+            try {
+              setThinkingStep(`Placing: ${tc.function.name.replace(/_/g, ' ')}...`);
+              const parsedArgs = JSON.parse(tc.function.arguments) as Record<string, unknown>;
+              result = execTool(tc.function.name, parsedArgs);
+              newBindings.push(...extractBindingsFromArgs(parsedArgs));
+            } catch (e) {
+              result = e instanceof Error ? e.message : String(e);
+              success = false;
+            }
+            toolResults.push({ id: tc.id, result });
+            allToolCalls.push({ name: tc.function.name, success, description: result });
+          }
+
+          upsertAssistantMessage('Importing layout elements...', [...allToolCalls], checkpoint);
+
+          multimodalMessages.push({ role: 'assistant', content: finalText || null, tool_calls: toolCalls });
+          for (const r of toolResults) {
+            multimodalMessages.push({ role: 'tool', tool_call_id: r.id, content: r.result });
+          }
+        }
+
+        upsertAssistantMessage('Template import complete! I have reconstructed the layout and added sample data.', allToolCalls, checkpoint);
+        setMessages((prev) => { persistMessages(prev); return prev; });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg);
+        upsertAssistantMessage(`Error: ${msg}`);
+      } finally {
+        setIsLoading(false);
+        setThinkingStep('');
+      }
+    },
+    [aiModel, aiMode]
+  );
+
+  return { messages, isLoading, thinkingStep, error, sendMessage, clearMessages, importTemplate, stop };
 }

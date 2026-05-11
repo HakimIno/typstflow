@@ -64,6 +64,7 @@ export interface FontConfig {
 export interface Zone {
   id: string;
   components: ComponentNode[];
+  layoutType?: 'absolute' | 'flow';
   minHeight?: string;
   background?: string;
   padding?: string;
@@ -94,7 +95,7 @@ export interface BaseComponent {
   x?: number; // Absolute X in mm
   y?: number; // Absolute Y in mm
   width?: number; // Width in mm
-  height?: number; // Height in mm
+  height?: number | 'auto'; // Height in mm or 'auto' for flow layout
   marginTop?: string;
   marginBottom?: string;
   pageBreakBefore?: boolean;

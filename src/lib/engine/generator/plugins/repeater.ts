@@ -27,6 +27,6 @@ export const repeaterPlugin: ComponentPlugin<RepeaterComponent> = {
     // Repeater itself is just a transparent container — no #place wrapper needed;
     // children are rendered with their own placement, offset by the repeater's position.
     const body = parts.join('');
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.layoutType);
   },
 };

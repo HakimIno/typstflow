@@ -71,6 +71,14 @@ export function TablePreview({ component }: Props) {
   useEffect(() => {
     tableEngine.initWasm().then(() => {
       let engineInput = component;
+      // Ensure columns have IDs (WASM engine requirement)
+      if (engineInput.columns) {
+        engineInput.columns = engineInput.columns.map((c, i) => ({
+          ...c,
+          id: c.id || `col-${i}`,
+        }));
+      }
+
       // Synthesize for legacy tables
       if (!engineInput.headerRows || engineInput.headerRows.length === 0) {
         engineInput = {

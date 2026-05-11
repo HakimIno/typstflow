@@ -27,7 +27,12 @@ pub fn paper_dimensions(size: &str, landscape: bool) -> (f64, f64) {
 }
 
 pub fn parse_mm_value(val: &str) -> f64 {
-    val.replace("mm", "").trim().parse().unwrap_or(0.0)
+    let parsed: f64 = val.replace("mm", "").trim().parse().unwrap_or(0.0);
+    if parsed.is_finite() {
+        parsed
+    } else {
+        0.0
+    }
 }
 
 #[allow(dead_code)]
@@ -113,12 +118,26 @@ pub fn resolve_binding_with_aggregates(
                 // Normal binding — try local then global
                 let val_opt = resolve_path(inner, local)
                     .or_else(|| resolve_path(inner, global));
-                val_opt
-                    .map(|v| match v {
+
+                if let Some(v) = val_opt {
+                    match v {
                         Value::String(s) => s.clone(),
                         _ => v.to_string(),
-                    })
-                    .unwrap_or_else(|| format!("{{{{{}}}}}", inner))
+                    }
+                } else if inner.ends_with(".length") {
+                    // Special case for .length property on arrays
+                    let path = &inner[..inner.len() - 7];
+                    let array_opt = resolve_path(path, local)
+                        .or_else(|| resolve_path(path, global));
+                    
+                    if let Some(Value::Array(arr)) = array_opt {
+                        arr.len().to_string()
+                    } else {
+                        format!("{{{{{}}}}}", inner)
+                    }
+                } else {
+                    format!("{{{{{}}}}}", inner)
+                }
             };
 
             result.push_str(&resolved);
@@ -195,13 +214,30 @@ pub fn apply_text_transform(s: &str, transform: &str) -> String {
     }
 }
 
+pub fn format_dimension(val: &Option<Value>, default_mm: f64) -> String {
+    match val {
+        Some(Value::Number(n)) => format!("{}mm", n.as_f64().unwrap_or(default_mm)),
+        Some(Value::String(s)) => {
+            let s = s.trim();
+            if s == "auto" {
+                "auto".to_string()
+            } else if s.ends_with("mm") || s.ends_with("pt") || s.ends_with("cm") || s.ends_with('%') || s.ends_with("fr") {
+                s.to_string()
+            } else {
+                format!("{}mm", s)
+            }
+        }
+        _ => format!("{}mm", default_mm),
+    }
+}
+
 /// Emit a #place() + #block() wrapper for a component.
 /// offset_x/offset_y are zone origins (from page corner); x/y are component coords within the zone.
 pub fn wrap_placement(base: &BaseComponent, body: &str, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let x = base.x.unwrap_or(0.0);
     let y = base.y.unwrap_or(0.0);
     let w = base.width.unwrap_or(100.0);
-    let h = base.height.unwrap_or(20.0);
+    let h_typst = format_dimension(&base.height, 20.0);
 
     // Compute absolute mm positions, combining zone offset + component coord.
     let offset_x_mm: f64 = offset_x.trim_end_matches("mm").trim().parse().unwrap_or(0.0);
@@ -217,8 +253,8 @@ pub fn wrap_placement(base: &BaseComponent, body: &str, offset_x: &str, offset_y
     }
     // Explicitly set alignment to top + left so it doesn't inherit alignment from parent (e.g. page header defaults to bottom)
     out.push_str(&format!(
-        "{}place(top + left, dx: {}mm, dy: {}mm)[#block(width: {}mm, height: {}mm, clip: false)[{}]]\n",
-        prefix, abs_x, abs_y, w, h, body
+        "{}place(top + left, dx: {}mm, dy: {}mm)[#block(width: {}mm, height: {}, clip: false)[{}]]\n",
+        prefix, abs_x, abs_y, w, h_typst, body
     ));
     out
 }
@@ -227,9 +263,9 @@ pub fn wrap_placement(base: &BaseComponent, body: &str, offset_x: &str, offset_y
 /// This allows long components (like Tables) to natively break across pages.
 pub fn wrap_flow(base: &BaseComponent, body: &str, offset_x: &str, offset_y: &str, prefix: &str) -> String {
     let x = base.x.unwrap_or(0.0);
-    let y = base.y.unwrap_or(0.0);
     let w = base.width.unwrap_or(100.0);
 
+    let y = base.y.unwrap_or(0.0);
     let offset_x_mm: f64 = offset_x.trim_end_matches("mm").trim().parse().unwrap_or(0.0);
     let offset_y_mm: f64 = offset_y.trim_end_matches("mm").trim().parse().unwrap_or(0.0);
     let abs_x = offset_x_mm + x;
@@ -240,12 +276,12 @@ pub fn wrap_flow(base: &BaseComponent, body: &str, offset_x: &str, offset_y: &st
         out.push_str("#pagebreak(weak: true)\n");
     }
     
-    // Using pad instead of place keeps the element in the document flow,
-    // which is required for native page breaking in Typst.
-    // Wrap in align(top + left) to ensure it starts exactly from the top-left of the flow container.
+    // In flow layout, we use 'y' as top padding for the component.
+    // Note: If multiple components are in a flow, their 'y' values in an absolute schema
+    // would normally be cumulative. For now, we assume 'y' is the desired offset from the previous element or top.
     out.push_str(&format!(
-        "{}align(top + left)[#pad(top: {}mm, left: {}mm)[#block(width: {}mm, clip: false)[{}]]]\n",
-        prefix, abs_y, abs_x, w, body
+        "{}pad(left: {}mm, top: {}mm)[#block(width: {}mm, clip: false)[{}]]\n",
+        prefix, abs_x, abs_y, w, body
     ));
     out
 }

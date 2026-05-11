@@ -91,6 +91,10 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
   const handleNumericUpdate = (key: string, value: string) => {
     if (isLocked) return;
+    if (key === 'height' && value === 'auto') {
+      updateComponent(selectedComponent!.id, { [key]: 'auto' });
+      return;
+    }
     const num = Number.parseFloat(value);
     if (!Number.isNaN(num) && selectedComponent) {
       updateComponent(selectedComponent.id, { [key]: num });
@@ -115,6 +119,106 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         </div>
         <div className="flex-1 overflow-auto p-2">
           <GroupProperties groupId={selectedGroupId} />
+        </div>
+      </div>
+    );
+  }
+
+  // ---- 1.5 ZONE SELECTION VIEW ----
+  if (selectedZoneKey && !selectedComponent) {
+    const zone =
+      selectedZoneKey === 'body'
+        ? activePage.body
+        : zones[selectedZoneKey as 'header' | 'footer'];
+
+    return (
+      <div className="h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)]">
+        <div className="h-10 bg-white/[0.02] border-b border-[var(--border-default)] flex items-center px-4 gap-2">
+          <Layout className="w-4 h-4 text-[var(--accent)]" />
+          <span className="text-[12px] font-bold tracking-tight">
+            Zone: {selectedZoneKey.toUpperCase()}
+          </span>
+        </div>
+        <div className="flex-1 overflow-auto">
+          <section className="border-b border-[var(--border-default)]">
+            <SectionHeader label="Layout Engine" />
+            <div className="p-3 space-y-3">
+              <div className="flex bg-[var(--bg-widget)] p-1 rounded-md border border-[var(--border-default)]">
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateZone(selectedZoneKey, { layoutType: 'absolute' }, activePageId || undefined)
+                  }
+                  className={clsx(
+                    'flex-1 py-1.5 text-[10px] font-bold rounded transition-all',
+                    zone?.layoutType !== 'flow'
+                      ? 'bg-[var(--accent)] text-white shadow-sm'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                  )}
+                >
+                  Absolute
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateZone(selectedZoneKey, { layoutType: 'flow' }, activePageId || undefined)
+                  }
+                  className={clsx(
+                    'flex-1 py-1.5 text-[10px] font-bold rounded transition-all',
+                    zone?.layoutType === 'flow'
+                      ? 'bg-[var(--accent)] text-white shadow-sm'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                  )}
+                >
+                  Flow
+                </button>
+              </div>
+              <p className="text-[9px] text-[var(--text-muted)] px-1 leading-relaxed italic opacity-80">
+                {zone?.layoutType === 'flow'
+                  ? 'Flow mode stacks components vertically. Dynamic content (tables/repeaters) will push following elements down automatically.'
+                  : 'Absolute mode uses fixed X/Y coordinates. Components will stay at their assigned positions regardless of content growth.'}
+              </p>
+            </div>
+          </section>
+
+          <section className="border-b border-[var(--border-default)]">
+            <SectionHeader label="Zone Styling" />
+            <div className="space-y-0">
+              <PropertyRow label="Min Height">
+                <DesignerInput
+                  value={zone?.minHeight || '50mm'}
+                  onChange={(v) => updateZone(selectedZoneKey, { minHeight: v }, activePageId || undefined)}
+                  mono
+                  placeholder="50mm"
+                />
+              </PropertyRow>
+              {(selectedZoneKey === 'header' || selectedZoneKey === 'footer') && (
+                <PropertyRow label="Global Repeat">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const z = zones[selectedZoneKey as 'header' | 'footer'];
+                      const newValue = !z.repeatOnEveryPage;
+                      updateZone(selectedZoneKey as any, {
+                        repeatOnEveryPage: newValue,
+                        showOnFirstPageOnly: false,
+                        showOnLastPageOnly: false,
+                      });
+                    }}
+                    className={clsx(
+                      'flex items-center justify-center gap-2 px-2 py-1 text-[9px] font-bold rounded transition-all w-full border uppercase tracking-widest',
+                      zone?.repeatOnEveryPage
+                        ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                        : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-default)] hover:bg-[var(--bg-hover)]'
+                    )}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    {zone?.repeatOnEveryPage ? 'Repeating' : 'Static'}
+                  </button>
+                </PropertyRow>
+              )}
+            </div>
+          </section>
         </div>
       </div>
     );

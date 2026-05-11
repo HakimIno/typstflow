@@ -24,6 +24,6 @@ export const pageNumberPlugin: ComponentPlugin<PageNumberComponent> = {
       `#set text(font: "${font}", size: ${size}pt, weight: "${weight}", fill: ${color})\n` +
       `#context [${display}]`;
 
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.layoutType);
   },
 };

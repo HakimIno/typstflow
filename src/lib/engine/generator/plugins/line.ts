@@ -15,7 +15,7 @@ export const linePlugin: ComponentPlugin<LineComponent> = {
 
     // Advanced manual override
     if (comp.stroke) {
-      return wrapPlacement(comp, `#line(start: ${start}, end: ${end}, stroke: ${comp.stroke})`, ctx.offsetX, ctx.offsetY);
+      return wrapPlacement(comp, `#line(start: ${start}, end: ${end}, stroke: ${comp.stroke})`, ctx.offsetX, ctx.offsetY, ctx.layoutType);
     }
 
     const thickness = comp.thickness ?? '1pt';
@@ -44,7 +44,7 @@ export const linePlugin: ComponentPlugin<LineComponent> = {
 
     const stroke = `(${strokeParts.join(', ')})`;
 
-    return wrapPlacement(comp, `#line(start: ${start}, end: ${end}, stroke: ${stroke})`, ctx.offsetX, ctx.offsetY);
+    return wrapPlacement(comp, `#line(start: ${start}, end: ${end}, stroke: ${stroke})`, ctx.offsetX, ctx.offsetY, ctx.layoutType);
   },
 
 

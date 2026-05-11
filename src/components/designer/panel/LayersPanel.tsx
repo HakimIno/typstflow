@@ -41,12 +41,12 @@ import { PanelHeader } from './PanelHeader';
 // --- Types ---
 
 type RenderItem =
-  | { type: 'header-label'; label: string; zoneKey: string }
+  | { type: 'header-label'; label: string; zoneKey: ZoneKey }
   | { type: 'page-separator'; pageId: string; index: number }
   | { type: 'global-separator'; label: string }
   | {
     type: 'zone-header';
-    zoneKey: string;
+    zoneKey: ZoneKey;
     label: string;
     pageId?: string;
     count: number;
@@ -56,7 +56,7 @@ type RenderItem =
   | {
     type: 'component';
     component: ComponentNode;
-    zoneKey: string;
+    zoneKey: ZoneKey;
     index: number;
     pageId?: string;
     groupId?: string;
@@ -695,7 +695,7 @@ const ZoneHeader = memo(
     updateZone,
     schema,
   }: {
-    item: any;
+    item: RenderItem & { type: 'zone-header' };
     selectedGroupId: string | null;
     selectedZone: ZoneKey | null;
     collapsedGroups: Set<string>;
@@ -732,7 +732,7 @@ const ZoneHeader = memo(
       if (item.groupId) {
         useDesignerStore.getState().selectGroup(item.groupId);
       } else {
-        setSelectedZone(item.zoneKey as any);
+        setSelectedZone(item.zoneKey);
         useDesignerStore.getState().selectGroup(null);
       }
     };

@@ -22,6 +22,7 @@ interface Props {
   zoneKey: 'header' | 'body' | 'footer';
   pageId?: string;
   pageIndex?: number;
+  layoutType?: 'absolute' | 'flow';
 }
 
 export const ComponentWrapper = memo(function ComponentWrapper({
@@ -29,6 +30,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   zoneKey,
   pageId,
   pageIndex = 0,
+  layoutType = 'absolute',
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -413,7 +415,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       x: component.x || 0,
       y: component.y || 0,
       width: component.width || 100,
-      height: component.height || 20,
+      height: typeof component.height === 'number' ? component.height : 20,
     },
     (finalBounds) => {
       updateComponent(componentId, finalBounds);
@@ -426,7 +428,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       x: component.x || 0,
       y: component.y || 0,
       width: component.width || 100,
-      height: component.height || 20,
+      height: typeof component.height === 'number' ? component.height : 20,
     });
   }, [component.x, component.y, component.width, component.height, syncBounds]);
 
@@ -463,11 +465,15 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
   const containerStyle = useMemo(
     () => ({
-      position: 'absolute' as const,
-      top: `${y}px`,
-      left: `${x}px`,
+      position: layoutType === 'flow' ? ('relative' as const) : ('absolute' as const),
+      top: layoutType === 'flow' ? 'auto' : `${y}px`,
+      left: layoutType === 'flow' ? 'auto' : `${x}px`,
+      marginLeft: layoutType === 'flow' ? `${x}px` : 'auto',
       width: `${width}px`,
-      height: `${height}px`,
+      height: layoutType === 'flow' && (component.type === 'table' || component.type === 'repeater' || component.height === 'auto') 
+        ? 'auto' 
+        : `${height}px`,
+      minHeight: layoutType === 'flow' ? '10px' : 'auto',
       outline: 'none',
       boxSizing: 'border-box' as const,
       willChange: isMoving ? 'transform' : ('auto' as const),
@@ -475,7 +481,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       opacity: isHidden ? 0 : 1,
       pointerEvents: isHidden || (isLocked && !isMoving) ? ('none' as const) : ('auto' as const),
     }),
-    [x, y, width, height, isMoving, isHidden, isLocked]
+    [x, y, width, height, isMoving, isHidden, isLocked, layoutType, component.type, component.height]
   );
 
   const containerClassName = useMemo(

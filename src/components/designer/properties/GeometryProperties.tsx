@@ -5,11 +5,13 @@ interface GeometryPropertiesProps {
   x: number;
   y: number;
   width: number;
-  height: number;
+  height: number | 'auto';
   onUpdate: (key: string, value: string) => void;
 }
 
 export function GeometryProperties({ x, y, width, height, onUpdate }: GeometryPropertiesProps) {
+  const isAutoHeight = height === 'auto';
+
   return (
     <section>
       <SectionHeader label="Geometry (mm)" />
@@ -30,13 +32,27 @@ export function GeometryProperties({ x, y, width, height, onUpdate }: GeometryPr
           />
         </PropertyRow>
         <PropertyRow label="Height">
-          <DesignerInput
-            type="number"
-            step="1"
-            min={1}
-            value={height || 0}
-            onChange={(v) => onUpdate('height', v)}
-          />
+          <div className="flex gap-1">
+            <DesignerInput
+              type={isAutoHeight ? 'text' : 'number'}
+              step="1"
+              min={1}
+              value={isAutoHeight ? 'AUTO' : (height || 0)}
+              disabled={isAutoHeight}
+              onChange={(v) => onUpdate('height', v)}
+            />
+            <button
+              type="button"
+              onClick={() => onUpdate('height', isAutoHeight ? '20' : 'auto')}
+              className={`px-1.5 rounded text-[8px] font-bold border transition-colors ${
+                isAutoHeight
+                  ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                  : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border-default)] hover:bg-[var(--bg-hover)]'
+              }`}
+            >
+              AUTO
+            </button>
+          </div>
         </PropertyRow>
       </div>
     </section>
