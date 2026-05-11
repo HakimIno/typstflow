@@ -194,3 +194,17 @@ export async function registerFontInWasm(data: ArrayBuffer): Promise<boolean> {
 export async function getWasmFontNames(): Promise<string[]> {
   return callWorker('GET_FONT_NAMES', null);
 }
+
+/**
+ * Parse CSV binary data using the high-performance Rust parser in the worker.
+ */
+export async function parseCsv(data: Uint8Array): Promise<string> {
+  return callWorker('PARSE_CSV', data);
+}
+
+/**
+ * Parse Excel binary data (XLSX, XLS, ODS) using the high-performance Rust parser in the worker.
+ */
+export async function parseXlsx(data: Uint8Array): Promise<string> {
+  return callWorker('PARSE_XLSX', data);
+}

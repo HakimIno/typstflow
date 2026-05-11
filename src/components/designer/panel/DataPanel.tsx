@@ -234,15 +234,6 @@ export const DataPanel = memo(function DataPanel() {
       <PanelHeader
         actions={
           <div className="flex items-center gap-1.5">
-            {schema.dataSchema.length > 0 && (
-              <button
-                type="button"
-                onClick={handleFromSchema}
-                className="text-[9px] text-[var(--accent)] hover:text-[var(--text-primary)] font-bold uppercase tracking-wider border border-[var(--accent)]/40 px-2 py-0.5 rounded-[4px] hover:bg-[var(--accent)]/10 transition-colors"
-              >
-                From Schema
-              </button>
-            )}
             {view === 'editor' && (
               <button
                 type="button"
@@ -307,6 +298,7 @@ export const DataPanel = memo(function DataPanel() {
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 relative group">
             <Editor
+              key={editorKey}
               height="100%"
               defaultLanguage="json"
               theme={theme === 'dark' ? 'typstflow-dark' : 'light'}
@@ -341,6 +333,12 @@ export const DataPanel = memo(function DataPanel() {
                 fontFamily: "'JetBrains Mono', monospace",
                 padding: { top: 12, bottom: 12 },
                 placeholder: 'วาง JSON data ที่นี่…',
+                formatOnPaste: true,
+                formatOnType: true,
+                autoClosingBrackets: 'always',
+                autoClosingQuotes: 'always',
+                folding: true,
+                wordWrap: 'on',
               }}
             />
             {/* Error Indicator */}

@@ -415,6 +415,16 @@ self.onmessage = async (e: MessageEvent) => {
         self.postMessage({ id, type: 'success', payload: names });
         break;
       }
+      case 'PARSE_CSV': {
+        const jsonStr = bridge.parse_csv_bytes(payload as Uint8Array);
+        self.postMessage({ id, type: 'success', payload: jsonStr });
+        break;
+      }
+      case 'PARSE_XLSX': {
+        const jsonStr = bridge.parse_xlsx(payload as Uint8Array);
+        self.postMessage({ id, type: 'success', payload: jsonStr });
+        break;
+      }
     }
   } catch (err: any) {
     console.error('Typst Worker [RENDER ERROR]:', err);

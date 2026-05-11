@@ -31,6 +31,20 @@ export class TypstBridge {
     get_font_names(): any;
     constructor();
     /**
+     * Parse CSV string into JSON array of objects.
+     * High-performance parsing using Rust's csv crate with smart type inference.
+     */
+    parse_csv(csv_data: string): string;
+    /**
+     * Parse CSV bytes into JSON array of objects.
+     */
+    parse_csv_bytes(data: Uint8Array): string;
+    /**
+     * Parse Excel bytes (XLSX, XLS, ODS, XLSB) into JSON array of objects from the first sheet.
+     * Uses high-performance calamine reader.
+     */
+    parse_xlsx(data: Uint8Array): string;
+    /**
      * Register a font at runtime. Accepts raw TTF/OTF bytes.
      * Returns true if at least one font face was loaded successfully.
      * Requires &mut self — safe in single-threaded WASM context.
@@ -64,21 +78,8 @@ export interface InitOutput {
     readonly qcms_profile_is_bogus: (a: number) => number;
     readonly lut_inverse_interp16: (a: number, b: number, c: number) => number;
     readonly lut_interp_linear16: (a: number, b: number, c: number) => number;
-    readonly __wbg_typstbridge_free: (a: number, b: number) => void;
-    readonly typstbridge_clear_images: (a: number) => void;
-    readonly typstbridge_generate_report_typst: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
-    readonly typstbridge_get_font_names: (a: number) => any;
-    readonly typstbridge_new: () => number;
-    readonly typstbridge_register_font: (a: number, b: number, c: number) => number;
-    readonly typstbridge_register_image: (a: number, b: number, c: number, d: number, e: number) => void;
-    readonly typstbridge_render_pdf: (a: number, b: number, c: number) => [number, number, number, number];
-    readonly typstbridge_render_report_pdf: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
-    readonly typstbridge_render_report_svg: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
-    readonly typstbridge_render_svg: (a: number, b: number, c: number) => [number, number, number, number];
-    readonly typstbridge_set_today: (a: number, b: number, c: number, d: number) => void;
-    readonly __wbg_tableengine_free: (a: number, b: number) => void;
-    readonly tableengine_resolve: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly __wbg_layoutengine_free: (a: number, b: number) => void;
+    readonly __wbg_tableengine_free: (a: number, b: number) => void;
     readonly layoutengine_clear: (a: number) => void;
     readonly layoutengine_find_snaps: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
     readonly layoutengine_insert_node: (a: number, b: any) => [number, number];
@@ -86,6 +87,22 @@ export interface InitOutput {
     readonly layoutengine_new: () => number;
     readonly layoutengine_query_rect: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number];
     readonly layoutengine_remove_node: (a: number, b: number, c: number) => void;
+    readonly tableengine_resolve: (a: number, b: number, c: number, d: number) => [number, number, number];
+    readonly __wbg_typstbridge_free: (a: number, b: number) => void;
+    readonly typstbridge_clear_images: (a: number) => void;
+    readonly typstbridge_generate_report_typst: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
+    readonly typstbridge_get_font_names: (a: number) => any;
+    readonly typstbridge_new: () => number;
+    readonly typstbridge_parse_csv: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly typstbridge_parse_csv_bytes: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly typstbridge_parse_xlsx: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly typstbridge_register_font: (a: number, b: number, c: number) => number;
+    readonly typstbridge_register_image: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly typstbridge_render_pdf: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly typstbridge_render_report_pdf: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
+    readonly typstbridge_render_report_svg: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
+    readonly typstbridge_render_svg: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly typstbridge_set_today: (a: number, b: number, c: number, d: number) => void;
     readonly qcms_enable_iccv4: () => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

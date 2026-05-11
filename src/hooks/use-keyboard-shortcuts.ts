@@ -18,9 +18,15 @@ export function useKeyboardShortcuts() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore shortcuts if the user is typing in an input/textarea
+      // Ignore shortcuts if the user is typing in an input/textarea or a code editor
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        target.closest('.monaco-editor') ||
+        target.closest('.cm-editor') // Support for CodeMirror in the future
+      ) {
         return;
       }
 
