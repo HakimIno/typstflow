@@ -79,7 +79,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         const align = col.align ?? 'center';
         const header = escapeTypst(col.header);
 
-        const content = `[#set text(size: ${headerFontSize}pt, fill: ${headerColor}, weight: "${headerWeight}"); #set align(${align}); ${header}]`;
+        const content = `[\n      #set text(size: ${headerFontSize}pt, fill: ${headerColor}, weight: "${headerWeight}")\n      #set align(${align})\n      ${header}\n    ]`;
 
         if (cs === 1 && rs === 1) {
           parts.push(`    ${content},\n`);
@@ -131,7 +131,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           const align = col.align ?? 'left';
           const bg = col.background ? formatColor(col.background) : null;
 
-          const cellText = `[#set text(size: ${bodyFontSize}pt, fill: ${bodyColor}); #set align(${align}); ${content.slice(1, -1)}]`;
+          const cellText = `[\n    #set text(size: ${bodyFontSize}pt, fill: ${bodyColor})\n    #set align(${align})\n    ${content.slice(1, -1)}\n  ]`;
 
           if (cs === 1 && rs === 1 && !bg) {
             parts.push(`  ${cellText},\n`);
@@ -173,21 +173,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
       for (const item of dataItems) renderRow(item);
     }
 
-    // ── Footer rows ───────────────────────────────────────────────────────────
-    if (comp.footerRows && comp.footerRows.length > 0) {
-      const repeatFooter = comp.footerRows[0].repeat !== false;
-      parts.push(`  table.footer(repeat: ${repeatFooter},\n`);
-      for (const row of comp.footerRows) {
-        for (const cell of row.cells) {
-          const val = resolveBinding(cell.content, ctx.local, ctx.global);
-          const content = escapeTypst(val);
-          parts.push(renderStructuredCell(cell, true, `[${content}]`));
-        }
-      }
-      parts.push('  ),\n');
-    }
-
-    // ── Summary rows (legacy) ─────────────────────────────────────────────────
+    // ── Summary rows (legacy) (Moved before footer for Typst compliance) ────
     if (comp.summaryRows && comp.summaryRows.length > 0) {
       const span = cols.length > 1 ? cols.length - 1 : 1;
       for (const row of comp.summaryRows) {
@@ -196,9 +182,23 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         const weight = row.style?.fontWeight === 'bold' ? 'bold' : 'regular';
         parts.push(
           `  table.cell(colspan: ${span}, align: right)[*${escapeTypst(row.label)}*],\n` +
-            `  [#text(weight: "${weight}")[${escapeTypst(val)}]],\n`
+            `  [\n    #set text(weight: "${weight}")\n    ${escapeTypst(val)}\n  ],\n`
         );
       }
+    }
+
+    // ── Footer rows ───────────────────────────────────────────────────────────
+    if (comp.footerRows && comp.footerRows.length > 0) {
+      const repeatFooter = comp.footerRows[0].repeat !== false;
+      parts.push(`  table.footer(repeat: ${repeatFooter},\n`);
+      for (const row of comp.footerRows) {
+        for (const cell of row.cells) {
+          const val = resolveBinding(cell.content, ctx.local, ctx.global);
+          const content = escapeTypst(val);
+          parts.push(renderStructuredCell(cell, { size: bodyFontSize, color: bodyColor, weight: 'bold' }, `[*${content}*]`));
+        }
+      }
+      parts.push('  ),\n');
     }
 
     // ── hlines / vlines ───────────────────────────────────────────────────────
@@ -265,12 +265,13 @@ function renderStructuredCell(
   if (cell.align) args.push(`align: ${cell.align}`);
   if (cell.inset) args.push(`inset: ${cell.inset}`);
 
-  const content = contentOverride ?? `[${escapeTypst(cell.content)}]`;
   const color = formatColor(cell.style?.color || textStyle.color);
   const size = cell.style?.fontSize || textStyle.size;
   const weight = cell.style?.fontWeight || textStyle.weight;
+  const leading = cell.style?.lineHeight ? cell.style.lineHeight - 1 : 0.2;
 
-  const wrapped = `[#set text(size: ${size}pt, fill: ${color}, weight: "${weight}"); ${content.slice(1, -1)}]`;
+  const inner = contentOverride ? contentOverride.slice(1, -1) : escapeTypst(cell.content);
+  const wrapped = `[\n    #set par(leading: ${leading}em)\n    #set text(size: ${size}pt, fill: ${color}, weight: "${weight}")\n    ${inner}\n  ]`;
 
   if (args.length === 0) return `    ${wrapped},\n`;
   return `    table.cell(${args.join(', ')})${wrapped},\n`;

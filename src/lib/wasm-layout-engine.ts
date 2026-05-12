@@ -1,4 +1,4 @@
-import init, { LayoutEngine } from '../../src-wasm/pkg/typst_bridge';
+import init, { LayoutEngine } from './wasm-bridge/typst_bridge';
 
 /**
  * WASM Layout Engine wrapper.

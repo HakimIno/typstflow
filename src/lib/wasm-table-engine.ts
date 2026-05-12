@@ -1,5 +1,5 @@
 import type { TableComponent } from '@/types/schema';
-import init, { TableEngine } from '../../src-wasm/pkg/typst_bridge';
+import init, { TableEngine } from './wasm-bridge/typst_bridge';
 
 export interface ResolvedCell {
   id: string;

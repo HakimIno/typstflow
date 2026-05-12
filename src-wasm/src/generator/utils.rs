@@ -226,8 +226,10 @@ pub fn wrap_placement(base: &BaseComponent, body: &str, offset_x: &str, offset_y
 /// Emit a flow wrapper for a component — no #place(), so content stays in document flow.
 /// Respects the component's x coordinate as left padding and width for sizing,
 /// so moving x in the JSON shifts the element visually without touching page margins.
-/// Uses the same #align(top+left) outer wrapper as wrap_flow to ensure consistent
-/// left-indentation rendering in Typst's flow layout engine.
+///
+/// Uses #block(width:100%)[#pad(left:Xmm)[#block(width:Wmm)]] to create the left
+/// indent. This avoids #align() which triggers a Typst parser error ("# not valid
+/// in code") when the body contains #set rules nested inside deep content brackets.
 pub fn wrap_flow_block(base: &BaseComponent, body: &str, prefix: &str) -> String {
     let x = base.x.unwrap_or(0.0);
     let w = base.width.unwrap_or(190.0);
@@ -237,10 +239,10 @@ pub fn wrap_flow_block(base: &BaseComponent, body: &str, prefix: &str) -> String
     }
     if !body.is_empty() {
         if x > 0.0 {
-            // Mirror wrap_flow's pattern: #align(top+left) ensures the pad's
-            // left offset renders correctly regardless of surrounding alignment context.
+            // Outer full-width block keeps content in flow; inner pad creates the
+            // 15 mm left indent; innermost block constrains the content width.
             out.push_str(&format!(
-                "{}align(top + left)[#pad(left: {}mm)[#block(width: {}mm, clip: false)[{}]]]\n",
+                "{}block(width: 100%)[#pad(left: {}mm)[#block(width: {}mm, clip: false)[{}]]]\n",
                 prefix, x, w, body
             ));
         } else {

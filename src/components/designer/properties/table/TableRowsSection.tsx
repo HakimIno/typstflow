@@ -2,8 +2,10 @@ import { useDesignerStore } from '@/store/designer-store';
 import type { TableComponent, TableRow } from '@/types/schema';
 import { clsx } from 'clsx';
 import {
+  Bold,
   ChevronDown,
   ChevronRight,
+  Italic,
   Merge,
   Plus,
   Split,
@@ -90,15 +92,91 @@ export const TableRowsSection = ({ component, type }: Props) => {
                       <button className="p-1 hover:bg-white/10 rounded"><Split className="w-3 h-3" /></button>
                     </div>
                   </div>
-                  <MiniInput
-                    value={cell.content || ''}
-                    onChange={(v) => {
-                      const newRows = [...rows];
-                      newRows[rIdx].cells[cIdx].content = v;
-                      updateRows(newRows);
-                    }}
-                    placeholder="Cell content..."
-                  />
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <MiniInput 
+                          value={cell.content || ''}
+                          onChange={(v) => {
+                            const newRows = [...rows];
+                            newRows[rIdx].cells[cIdx].content = v;
+                            updateRows(newRows);
+                          }}
+                          placeholder="Cell content..."
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={() => {
+                            const newRows = [...rows];
+                            const current = newRows[rIdx].cells[cIdx].style || {};
+                            newRows[rIdx].cells[cIdx].style = {
+                              ...current,
+                              fontWeight: current.fontWeight === 'bold' ? 'regular' : 'bold'
+                            };
+                            updateRows(newRows);
+                          }}
+                          className={clsx(
+                            "p-1.5 rounded border transition-all",
+                            cell.style?.fontWeight === 'bold' 
+                              ? "bg-[var(--accent)] text-white border-[var(--accent)]" 
+                              : "bg-white/5 border-white/10 text-[var(--text-muted)] hover:bg-white/10"
+                          )}
+                        >
+                          <Bold className="w-3 h-3" />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const newRows = [...rows];
+                            const current = newRows[rIdx].cells[cIdx].style || {};
+                            newRows[rIdx].cells[cIdx].style = {
+                              ...current,
+                              italic: !current.italic
+                            };
+                            updateRows(newRows);
+                          }}
+                          className={clsx(
+                            "p-1.5 rounded border transition-all",
+                            cell.style?.italic 
+                              ? "bg-[var(--accent)] text-white border-[var(--accent)]" 
+                              : "bg-white/5 border-white/10 text-[var(--text-muted)] hover:bg-white/10"
+                          )}
+                        >
+                          <Italic className="w-3 h-3" />
+                        </button>
+                        <div className="w-12">
+                          <MiniInput 
+                            type="number"
+                            value={String(cell.style?.fontSize || 10)}
+                            onChange={(v) => {
+                              const newRows = [...rows];
+                              const current = newRows[rIdx].cells[cIdx].style || {};
+                              newRows[rIdx].cells[cIdx].style = {
+                                ...current,
+                                fontSize: Number.parseFloat(v) || 10
+                              };
+                              updateRows(newRows);
+                            }}
+                          />
+                        </div>
+                        <div className="w-12">
+                          <MiniInput 
+                            type="number"
+                            step="0.1"
+                            value={String(cell.style?.lineHeight || 1.2)}
+                            placeholder="LH"
+                            onChange={(v) => {
+                              const newRows = [...rows];
+                              const current = newRows[rIdx].cells[cIdx].style || {};
+                              newRows[rIdx].cells[cIdx].style = {
+                                ...current,
+                                lineHeight: Number.parseFloat(v) || 1.2
+                              };
+                              updateRows(newRows);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
                 </div>
               ))}
               <button

@@ -74,9 +74,12 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
         if let Some(fs) = s.font_size { t_args.push(format!("size: {}pt", fs)); }
         if let Some(fw) = &s.font_weight { t_args.push(format!("weight: \"{}\"", fw)); }
         if let Some(ff) = &s.font_family { t_args.push(format!("font: \"{}\"", ff)); }
-        if let Some(lh) = s.line_height { t_args.push(format!("leading: {}em", lh - 1.0)); }
         if !t_args.is_empty() {
-            prefix_text = format!("#set text({})\n", t_args.join(", "));
+            prefix_text.push_str(&format!("#set text({})\n", t_args.join(", ")));
+        }
+        
+        if let Some(lh) = s.line_height {
+            prefix_text.push_str(&format!("#set par(leading: {}em)\n", lh - 1.0));
         }
     }
     
@@ -303,10 +306,6 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                     }
                 }
 
-                let color = col_style.as_ref().and_then(|s| s.color.as_deref()).unwrap_or(body_color);
-                let size = col_style.as_ref().and_then(|s| s.font_size).unwrap_or(body_font_size);
-                let weight = col_style.as_ref().and_then(|s| s.font_weight.as_deref()).unwrap_or("regular");
-
                 let final_align = col_align.as_deref().unwrap_or_else(|| col.align.as_deref().unwrap_or("left"));
                 
                 let mut args = Vec::new();
@@ -315,9 +314,12 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                 if cs > 1 { args.push(format!("colspan: {}", cs)); }
                 if rs > 1 { args.push(format!("rowspan: {}", rs)); }
                 
-                let inner = format!(
-                    "#set text(size: {}pt, fill: {}, weight: \"{}\"); {}", 
-                    size, format_color(color), weight, inner_content
+                let inner = render_cell_text_with_style(
+                    &inner_content, 
+                    col_style.as_ref(), 
+                    body_font_size, 
+                    body_color, 
+                    "regular"
                 );
 
                 t_out.push_str(&format!("  table.cell({})[{}],\n", args.join(", "), inner));
@@ -419,33 +421,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
         }
     }
 
-    // ── 7. FOOTER ROWS ───────────────────────────────────────────────────────
-    if let Some(footer_rows) = &c.footer_rows {
-        let repeat = footer_rows.first().and_then(|r| r.repeat).unwrap_or(true);
-        t.push_str(&format!("  table.footer(repeat: {},\n", repeat));
-        for row in footer_rows {
-            for cell in &row.cells {
-                let val = resolve_binding_scoped(&cell.content, local, global);
-                let content = escape_typst(&val);
-                let cs = cell.colspan.unwrap_or(1);
-                let rs = cell.rowspan.unwrap_or(1);
-                let mut args = Vec::new();
-                if cs > 1 { args.push(format!("colspan: {}", cs)); }
-                if rs > 1 { args.push(format!("rowspan: {}", rs)); }
-                if let Some(f) = &cell.fill { args.push(format!("fill: {}", format_color(f))); }
-                if let Some(a) = &cell.align { args.push(format!("align: {}", a)); }
-                
-                if args.is_empty() {
-                    t.push_str(&format!("    [*{}*],\n", content));
-                } else {
-                    t.push_str(&format!("    table.cell({})[*{}*],\n", args.join(", "), content));
-                }
-            }
-        }
-        t.push_str("  ),\n");
-    }
-
-    // ── 8. LEGACY SUMMARY ROWS ───────────────────────────────────────────────
+    // ── 7. LEGACY SUMMARY ROWS (Moved before footer for Typst compliance) ──
     if let Some(summary_rows) = &c.summary_rows {
         for row in summary_rows {
             if row.separator.unwrap_or(false) {
@@ -463,6 +439,41 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
         }
     }
 
+    // ── 8. FOOTER ROWS ───────────────────────────────────────────────────────
+    if let Some(footer_rows) = &c.footer_rows {
+        let repeat = footer_rows.first().and_then(|r| r.repeat).unwrap_or(true);
+        t.push_str(&format!("  table.footer(repeat: {},\n", repeat));
+        for row in footer_rows {
+            for cell in &row.cells {
+                let val = resolve_binding_scoped(&cell.content, local, global);
+                let content = escape_typst(&val);
+                let cs = cell.colspan.unwrap_or(1);
+                let rs = cell.rowspan.unwrap_or(1);
+                let mut args = Vec::new();
+                if cs > 1 { args.push(format!("colspan: {}", cs)); }
+                if rs > 1 { args.push(format!("rowspan: {}", rs)); }
+                if let Some(f) = &cell.fill { args.push(format!("fill: {}", format_color(f))); }
+                if let Some(a) = &cell.align { args.push(format!("align: {}", a)); }
+                
+                let cell_style = cell.style.as_ref();
+                let inner = render_cell_text_with_style(
+                    &format!("*{}*", content),
+                    cell_style,
+                    body_font_size,
+                    body_color,
+                    "bold"
+                );
+
+                if args.is_empty() {
+                    t.push_str(&format!("    [{}],\n", inner));
+                } else {
+                    t.push_str(&format!("    table.cell({})[{}],\n", args.join(", "), inner));
+                }
+            }
+        }
+        t.push_str("  ),\n");
+    }
+
     t.push_str(")\n");
     wrap_flow(&c.base, &t, offset_x, offset_y, prefix)
 }
@@ -472,8 +483,12 @@ fn render_cell_text_with_style(content: &str, style: Option<&TextStyle>, default
     let size = style.and_then(|s| s.font_size).unwrap_or(default_size);
     let color = style.and_then(|s| s.color.as_deref()).unwrap_or(default_color);
     let weight = style.and_then(|s| s.font_weight.as_deref()).unwrap_or(default_weight);
+    let leading = style.and_then(|s| s.line_height).map(|v| v - 1.0).unwrap_or(0.2);
     
-    format!("#set text(size: {}pt, fill: {}, weight: \"{}\"); {}", size, format_color(color), weight, content)
+    format!(
+        "#set par(leading: {}em)\n#set text(size: {}pt, fill: {}, weight: \"{}\")\n{}", 
+        leading, size, format_color(color), weight, content
+    )
 }
 
 fn render_cell_container_v2(cell: &TableCell, inner: &str, fill_override: Option<String>, align_override: Option<String>) -> String {
