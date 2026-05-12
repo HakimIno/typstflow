@@ -48,11 +48,20 @@ pub fn resolve_path<'a>(path: &str, data: &'a Value) -> Option<&'a Value> {
 
 /// Resolve aggregate function: SUM, COUNT, AVG, MIN, MAX over a slice of items.
 pub fn resolve_aggregate(func: &str, path: &str, items: &[Value]) -> String {
+    // Robust path cleanup: handle "items.field" or "items, 'field'" or "'field'"
+    let clean_path = path.trim()
+        .replace("items.", "")
+        .replace("items,", "")
+        .replace('\'', "")
+        .replace('\"', "")
+        .trim()
+        .to_string();
+
     let values: Vec<f64> = items.iter()
-        .filter_map(|item| resolve_path(path, item))
+        .filter_map(|item| resolve_path(&clean_path, item))
         .filter_map(|v| match v {
             Value::Number(n) => n.as_f64(),
-            Value::String(s) => s.parse::<f64>().ok(),
+            Value::String(s) => s.replace(",", "").parse::<f64>().ok(),
             _ => None,
         })
         .collect();
@@ -60,7 +69,9 @@ pub fn resolve_aggregate(func: &str, path: &str, items: &[Value]) -> String {
     match func.to_uppercase().as_str() {
         "SUM" => {
             let sum: f64 = values.iter().sum();
-            format!("{:.2}", sum)
+            // Use .abs() to avoid -0.00 if sum is very close to zero
+            let display_sum = if sum.abs() < 0.00001 { 0.0 } else { sum };
+            format!("{:.2}", display_sum)
         }
         "COUNT" => items.len().to_string(),
         "AVG" => {

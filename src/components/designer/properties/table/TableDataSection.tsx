@@ -1,86 +1,110 @@
-import { getApplicableFormats } from '@/lib/utils/formatters';
-import { getValueType } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import type { TableComponent } from '@/types/schema';
 import { Minus, Plus } from 'lucide-react';
 import { PropertyRow, SectionHeader } from '../Shared';
 import { MiniInput } from './TableShared';
 import { DesignerToggle } from '@/components/shared/DesignerToggle';
+import { ColorPicker } from '@/components/shared/ColorPicker';
 
 interface Props {
   component: TableComponent;
 }
 
 export const TableDataSection = ({ component }: Props) => {
-  const sampleData = useDesignerStore((state) => state.sampleData);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
 
-  const updateColumn = (idx: number, updates: Record<string, any>) => {
-    const newCols = [...component.columns];
-    newCols[idx] = { ...newCols[idx], ...updates };
-    updateComponent(component.id, { columns: newCols } as any);
-  };
-
   return (
-    <div className="bg-[var(--bg-widget)]">
+    <div className="bg-[var(--bg-widget)] animate-in fade-in duration-200">
       <section>
-        <SectionHeader label="Batch Processing" />
-        <PropertyRow label="Repeat Header">
-          <DesignerToggle
-            value={component.repeatHeaderOnPage}
-            onChange={(v) => updateComponent(component.id, { repeatHeaderOnPage: v })}
-          />
-        </PropertyRow>
+        <SectionHeader label="Data Source & Behavior" />
+        <div className="space-y-1.5 px-2 pb-2">
+          <PropertyRow label="Data Source">
+            <MiniInput
+              value={component.dataSource || ''}
+              onChange={(v) => updateComponent(component.id, { dataSource: v } as any)}
+              placeholder="{{items}}"
+              mono
+              className="w-full h-7"
+            />
+          </PropertyRow>
+          <PropertyRow label="Repeat Header">
+            <DesignerToggle
+              value={component.repeatHeaderOnPage}
+              onChange={(v) => updateComponent(component.id, { repeatHeaderOnPage: v })}
+            />
+          </PropertyRow>
+        </div>
       </section>
 
       <section>
-        <SectionHeader label="Column Mapping" />
-        <div className="space-y-0">
-          {component.columns.map((col, idx) => (
-            <div key={col.id} className="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5 shadow-sm">
-              <span className="text-[9px] font-bold text-[var(--text-secondary)] w-16 truncate">{col.header || `Col ${idx + 1}`}</span>
-              <MiniInput
-                value={col.field || ''}
-                onChange={(v) => updateColumn(idx, { field: v })}
-                placeholder="path.to.field"
-                mono
-                className="flex-1 h-6"
-              />
-              <select
-                value={col.format || 'text'}
-                onChange={(e) => updateColumn(idx, { format: e.target.value })}
-                className="text-[9px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded px-1 h-6 outline-none text-[var(--text-primary)]"
-              >
-                {(() => {
-                  const dataType = col.field ? getValueType(sampleData, col.field) : 'string';
-                  const applicable = getApplicableFormats(dataType);
-                  const options = [
-                    { id: 'text', label: 'Text' },
-                    { id: 'number', label: 'Number' },
-                    { id: 'currency-thb', label: '฿ THB' },
-                    { id: 'currency-usd', label: '$ USD' },
-                    { id: 'percent', label: '%' },
-                    { id: 'date-th', label: 'Date TH' },
-                    { id: 'date-en', label: 'Date EN' },
-                    { id: 'boolean', label: 'Bool' },
-                  ];
-                  return options
-                    .filter((opt) => applicable.includes(opt.id as any))
-                    .map((opt) => (
-                      <option key={opt.id} value={opt.id}>
-                        {opt.label}
-                      </option>
-                    ));
-                })()}
-              </select>
+        <SectionHeader label="Data Grouping" />
+        <div className="space-y-1.5 px-2 pb-2 bg-[var(--bg-widget)] rounded">
+          <PropertyRow label="Group By Field">
+            <MiniInput
+              value={component.groupBy || ''}
+              onChange={(v) => updateComponent(component.id, { groupBy: v } as any)}
+              placeholder="e.g. department"
+              mono
+              className="w-full h-7"
+            />
+          </PropertyRow>
+          <PropertyRow label="Header Format">
+            <MiniInput
+              value={component.groupHeaderFormat || ''}
+              onChange={(v) => updateComponent(component.id, { groupHeaderFormat: v } as any)}
+              placeholder="แผนก: {{department}}"
+              className="w-full h-7"
+            />
+          </PropertyRow>
+
+          <div className="pt-2 mt-2 border-t border-[var(--border-default)]">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2 block">Group Header Styling</span>
+
+            <PropertyRow label="Background">
+              <div className="flex items-center gap-2 w-full">
+                <ColorPicker
+                  color={component.groupHeaderStyle?.background || '#f1f5f9'}
+                  onChange={(v) => {
+                    const s = component.groupHeaderStyle || {};
+                    updateComponent(component.id, { groupHeaderStyle: { ...s, background: v } } as any);
+                  }}
+                  className="!w-auto"
+                />
+              </div>
+            </PropertyRow>
+
+            <div className="grid grid-cols-1 gap-2 mt-2">
+              <PropertyRow label="Text Color">
+                <div className="flex items-center gap-1.5">
+                  <ColorPicker
+                    color={component.groupHeaderStyle?.color || '#000000'}
+                    onChange={(v) => {
+                      const s = component.groupHeaderStyle || {};
+                      updateComponent(component.id, { groupHeaderStyle: { ...s, color: v } } as any);
+                    }}
+                    className="!w-auto"
+                  />
+                </div>
+              </PropertyRow>
+              <PropertyRow label="Font Size">
+                <MiniInput
+                  type="number"
+                  value={component.groupHeaderStyle?.fontSize || 9}
+                  onChange={(v) => {
+                    const s = component.groupHeaderStyle || {};
+                    updateComponent(component.id, { groupHeaderStyle: { ...s, fontSize: Number.parseInt(v) || 9 } } as any);
+                  }}
+                  className="w-full h-7"
+                />
+              </PropertyRow>
             </div>
-          ))}
+          </div>
         </div>
       </section>
 
       <section>
         <SectionHeader label="Summary Totals" />
-        <div className="space-y-1">
+        <div className="space-y-1 px-2 pb-2">
           {(component.summaryRows || []).map((row, idx) => (
             <div key={idx} className="flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5 shadow-sm">
               <MiniInput

@@ -375,6 +375,10 @@ export function TablePreview({ component }: Props) {
 
         const isGroupHeader = cell.row_id === 'preview-group-header';
 
+        // --- Lookup Original Cell Data for Styles ---
+        const originalCell = rows[rowIdx]?.cells.find(c => c.id === cell.id);
+        const cellStyle = originalCell?.style || {};
+
         // --- Style Calculation ---
         const style = component.style || {};
         const ghStyle = component.groupHeaderStyle || {};
@@ -409,17 +413,19 @@ export function TablePreview({ component }: Props) {
           }
         }
 
-        const textColor = isGroupHeader
+        const textColor = cellStyle.color || (isGroupHeader
           ? ghStyle.color || '#000000'
           : isHeader
             ? headerColor
-            : bodyColor;
-        const fontSize = isGroupHeader
+            : bodyColor);
+
+        const fontSize = cellStyle.fontSize || (isGroupHeader
           ? ghStyle.fontSize || 9
           : isHeader
             ? headerFontSize
-            : bodyFontSize;
-        const fontWeight = isHeader ? headerFontWeight : 'normal';
+            : bodyFontSize);
+
+        const fontWeight = cellStyle.fontWeight || (isHeader ? headerFontWeight : 'normal');
 
         return (
           <div

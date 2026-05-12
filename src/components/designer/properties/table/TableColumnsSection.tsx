@@ -1,3 +1,5 @@
+import { getApplicableFormats } from '@/lib/utils/formatters';
+import { getValueType } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import type { TableComponent } from '@/types/schema';
 import { clsx } from 'clsx';
@@ -20,6 +22,7 @@ interface Props {
 
 export const TableColumnsSection = ({ component }: Props) => {
   const [expandedColIndex, setExpandedColIndex] = useState<number | null>(null);
+  const sampleData = useDesignerStore((state) => state.sampleData);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
 
   const updateColumn = (idx: number, updates: Record<string, any>) => {
@@ -146,6 +149,38 @@ export const TableColumnsSection = ({ component }: Props) => {
                     }
                     className="w-10 text-center"
                   />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Format
+                  </span>
+                  <select
+                    value={col.format || 'text'}
+                    onChange={(e) => updateColumn(idx, { format: e.target.value })}
+                    className="h-[22px] text-[9px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded px-1 outline-none text-[var(--text-primary)]"
+                  >
+                    {(() => {
+                      const dataType = col.field ? getValueType(sampleData, col.field) : 'string';
+                      const applicable = getApplicableFormats(dataType);
+                      const options = [
+                        { id: 'text', label: 'Text' },
+                        { id: 'number', label: 'Number' },
+                        { id: 'currency-thb', label: '฿ THB' },
+                        { id: 'currency-usd', label: '$ USD' },
+                        { id: 'percent', label: '%' },
+                        { id: 'date-th', label: 'Date TH' },
+                        { id: 'date-en', label: 'Date EN' },
+                        { id: 'boolean', label: 'Bool' },
+                      ];
+                      return options
+                        .filter((opt) => applicable.includes(opt.id as any))
+                        .map((opt) => (
+                          <option key={opt.id} value={opt.id}>
+                            {opt.label}
+                          </option>
+                        ));
+                    })()}
+                  </select>
                 </div>
                 <div className="flex flex-col gap-0.5">
                    <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Align</span>

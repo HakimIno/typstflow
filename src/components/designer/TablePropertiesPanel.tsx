@@ -1,33 +1,25 @@
-import { useDesignerStore } from '@/store/designer-store';
 import type { TableComponent } from '@/types/schema';
 import { clsx } from 'clsx';
 import {
-  BoxSelect,
   Columns3,
   Database,
-  Grid3X3,
   Paintbrush,
-  Rows3,
-  Layers
+  Settings2
 } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { TableColumnsSection } from './properties/table/TableColumnsSection';
 import { TableDataSection } from './properties/table/TableDataSection';
-import { TableGroupingSection } from './properties/table/TableGroupingSection';
-import { TableLinesSection } from './properties/table/TableLinesSection';
-import { TableRowsSection } from './properties/table/TableRowsSection';
 import { TableVisualSection } from './properties/table/TableVisualSection';
+import { TableAdvancedSection } from './properties/table/TableAdvancedSection';
 
-type TableTab = 'columns' | 'rows' | 'style' | 'lines' | 'data' | 'grouping';
+type TableTab = 'columns' | 'data' | 'style' | 'advanced';
 
 const TAB_CONFIG: { id: TableTab; label: string; icon: React.ElementType }[] = [
   { id: 'columns', label: 'Cols', icon: Columns3 },
-  { id: 'rows', label: 'Rows', icon: Rows3 },
-  { id: 'grouping', label: 'Group', icon: Layers },
-  { id: 'style', label: 'Style', icon: Paintbrush },
-  { id: 'lines', label: 'Lines', icon: Grid3X3 },
   { id: 'data', label: 'Data', icon: Database },
+  { id: 'style', label: 'Style', icon: Paintbrush },
+  { id: 'advanced', label: 'Adv.', icon: Settings2 },
 ];
 
 interface Props {
@@ -62,22 +54,9 @@ export const TablePropertiesPanel = ({ component }: Props) => {
       {/* Tab Content */}
       <div className="overflow-auto max-h-[500px]">
         {activeTab === 'columns' && <TableColumnsSection component={component} />}
-        {activeTab === 'rows' && (
-          <div className="space-y-4 p-2">
-            <div>
-              <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest px-2 mb-1 block">Header Rows</span>
-              <TableRowsSection component={component} type="header" />
-            </div>
-            <div className="border-t border-[var(--border-default)] pt-4">
-              <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest px-2 mb-1 block">Footer Rows</span>
-              <TableRowsSection component={component} type="footer" />
-            </div>
-          </div>
-        )}
-        {activeTab === 'grouping' && <TableGroupingSection component={component} />}
-        {activeTab === 'style' && <TableVisualSection component={component} />}
-        {activeTab === 'lines' && <TableLinesSection component={component} />}
         {activeTab === 'data' && <TableDataSection component={component} />}
+        {activeTab === 'style' && <TableVisualSection component={component} />}
+        {activeTab === 'advanced' && <TableAdvancedSection component={component} />}
       </div>
     </div>
   );

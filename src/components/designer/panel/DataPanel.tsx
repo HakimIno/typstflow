@@ -44,6 +44,7 @@ export const DataPanel = memo(function DataPanel() {
   } | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // Track whether the last sampleData change came from the user typing in this editor
   // vs an external source (AI set_sample_data, loadExample, handleFromSchema).
   // External changes should remount Monaco with fresh content; user edits should not.
@@ -54,6 +55,23 @@ export const DataPanel = memo(function DataPanel() {
     setJsonString(newJson);
     setEditorKey((k) => k + 1);
   }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      setSampleData(parsed);
+      remountEditor(JSON.stringify(parsed, null, 2));
+      setError(null);
+      // Reset input so the same file can be uploaded again
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err: any) {
+      setError(`Failed to parse JSON file: ${err.message}`);
+    }
+  };
 
   const handleFromSchema = useCallback(() => {
     let result: Record<string, unknown> = {};
@@ -234,6 +252,13 @@ export const DataPanel = memo(function DataPanel() {
       <PanelHeader
         actions={
           <div className="flex items-center gap-1.5">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept=".json"
+              className="hidden"
+            />
             {view === 'editor' && (
               <button
                 type="button"
@@ -250,7 +275,16 @@ export const DataPanel = memo(function DataPanel() {
             )}
             <button
               type="button"
+              onClick={() => fileInputRef.current?.click()}
+              title="Import JSON File"
+              className="text-[9px] p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold uppercase tracking-wider border border-[var(--border-subtle)] px-2 py-0.5 rounded-[4px] hover:bg-white/5 transition-colors"
+            >
+              <Icon icon="lucide:upload" className="w-2.5 h-2.5" />
+            </button>
+            <button
+              type="button"
               onClick={loadExample}
+              title="Load Example"
               className="text-[9px] p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold uppercase tracking-wider border border-[var(--border-subtle)] px-2 py-0.5 rounded-[4px] hover:bg-white/5 transition-colors"
             >
               <Icon icon="catppuccin:folder-examples" className="w-2.5 h-2.5" />
@@ -381,13 +415,23 @@ export const DataPanel = memo(function DataPanel() {
               <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] p-8 text-center gap-3">
                 <Icon icon="lucide:database" className="w-8 h-8 opacity-20" />
                 <p className="text-[10px]">ยังไม่มีข้อมูล</p>
-                <button
-                  type="button"
-                  onClick={() => setView('editor')}
-                  className="text-[9px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/20 transition-colors"
-                >
-                  วาง JSON ที่นี่
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setView('editor')}
+                    className="text-[9px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/20 transition-colors"
+                  >
+                    วาง JSON ที่นี่
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-[9px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-white/5 text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                  >
+                    <Icon icon="lucide:upload" className="w-3 h-3" />
+                    เลือกไฟล์ JSON
+                  </button>
+                </div>
               </div>
             ) : (
               <div

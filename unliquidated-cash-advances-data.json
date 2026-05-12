@@ -1,0 +1,10 @@
+{
+  "items": [
+    { "fund": "GENERAL FUND", "debtor": "Unnamed", "balance": 2267.26, "date": "undated", "purpose": "C.A./P.S", "past_3y": 2267.26 },
+    { "fund": "GENERAL FUND", "debtor": "Unnamed", "balance": 553.66, "date": "undated", "purpose": "C.A./MOOE", "past_3y": 553.66 },
+    { "fund": "GENERAL FUND", "debtor": "Mary Jill Momper", "balance": 999000.00, "date": "1/15/2019", "purpose": "C.A./MOOE", "current_90": 999000.00 },
+    { "fund": "GENERAL FUND", "debtor": "Mary Jill Momper", "balance": 79200.00, "date": "3/14/2019", "purpose": "C.A./MOOE", "current_30": 79200.00 },
+    { "fund": "MARKET", "debtor": "Aimee Marie Biboso", "balance": 552.81, "date": "undated", "purpose": "C.A./P.S", "past_3y": 552.81 },
+    { "fund": "MARKET", "debtor": "Ninfa Momblan", "balance": 126000.00, "date": "1/11/2019", "purpose": "Payroll Clothing Allow.", "current_90": 126000.00 }
+  ]
+}

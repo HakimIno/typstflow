@@ -64,7 +64,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
     // ── Text Defaults ──────────────────────────────────────────────────────────
     let header_font_size = style.and_then(|s| s.header_font_size).unwrap_or(10.0);
     let header_color = style.and_then(|s| s.header_color.as_deref().or(s.header_text_color.as_deref())).unwrap_or("#000000");
-    let header_font_weight = style.and_then(|s| s.header_font_weight.as_deref()).unwrap_or("bold");
+    let header_font_weight = style.and_then(|s| s.header_font_weight.as_deref()).unwrap_or("700");
     let body_font_size = style.and_then(|s| s.body_font_size).unwrap_or(10.0);
     let body_color = style.and_then(|s| s.body_color.as_deref()).unwrap_or("#334155");
 
@@ -72,7 +72,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
     if let Some(s) = style {
         let mut t_args = Vec::new();
         if let Some(fs) = s.font_size { t_args.push(format!("size: {}pt", fs)); }
-        if let Some(fw) = &s.font_weight { t_args.push(format!("weight: \"{}\"", fw)); }
+        if let Some(fw) = &s.font_weight { t_args.push(format!("weight: {}", format_weight(fw))); }
         if let Some(ff) = &s.font_family { t_args.push(format!("font: \"{}\"", ff)); }
         if !t_args.is_empty() {
             prefix_text.push_str(&format!("#set text({})\n", t_args.join(", ")));
@@ -105,6 +105,17 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
         t.push_str(&format!("  table.header(repeat: {},\n", repeat));
         for (y, row) in header_rows.iter().enumerate() {
             for (x, cell) in row.cells.iter().enumerate() {
+                // Resolve bindings in header (manual headers might contain variables)
+                let val = resolve_binding_scoped(&cell.content, local, global);
+                
+                // --- Formatting ---
+                let format_func = cell.format.as_deref().unwrap_or("text").to_lowercase();
+                let inner_content = if format_func != "text" {
+                    format!("#fmt_{}(\"{}\")", format_func.replace("-", "_"), escape_string_literal(&val))
+                } else {
+                    escape_typst(&val)
+                };
+
                 // Check cell_styles for header:row:col or header:col
                 let cell_key = format!("header:{}", x); // Simple column-based key
                 let specific_key = format!("header:{}:{}", y, x); // Row-specific key
@@ -127,7 +138,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                 }
 
                 let inner = render_cell_text_with_style(
-                    &cell.content,
+                    &inner_content,
                     cell_style.as_ref(),
                     header_font_size, 
                     header_color, 
@@ -259,7 +270,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                         cell_style.as_ref(), 
                         body_font_size, 
                         body_color, 
-                        "regular"
+                        "400"
                     );
                     t_out.push_str(&format!("  {},\n", render_cell_container_v2(cell, &inner, cell_fill, cell_align)));
                 }
@@ -319,7 +330,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                     col_style.as_ref(), 
                     body_font_size, 
                     body_color, 
-                    "regular"
+                    "400"
                 );
 
                 t_out.push_str(&format!("  table.cell({})[{}],\n", args.join(", "), inner));
@@ -377,7 +388,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                         let color = s.get("color").and_then(|v| v.as_str()).unwrap_or("#000000");
                         
                         text_args.push(format!("size: {}pt", fs));
-                        text_args.push(format!("weight: \"{}\"", fw));
+                        text_args.push(format!("weight: {}", format_weight(fw)));
                         text_args.push(format!("fill: {}", format_color(color)));
                         
                         inner_content = format!("#set text({}); {}", text_args.join(", "), inner_content);
@@ -390,7 +401,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                         }
                     } else {
                         cell_args.push_str(&format!(", fill: {}, align: left", format_color("#f1f5f9")));
-                        inner_content = format!("#set text(weight: \"bold\"); {}", inner_content);
+                        inner_content = format!("#set text(weight: 700); {}", inner_content);
                     }
                     
                     t.push_str(&format!("  table.cell({})[{}],\n", cell_args, inner_content));
@@ -398,10 +409,47 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                     for (item_idx, item) in group_items.iter().enumerate() {
                         render_item(item, &mut t, item_idx);
                     }
+
+                    // Render group summary rows (if any)
+                    if let Some(summary_rows) = &c.summary_rows {
+                        for row in summary_rows {
+                            if row.separator.unwrap_or(false) {
+                                t.push_str("  table.hline(stroke: 1pt + black),\n");
+                            }
+                            let val = resolve_binding_with_aggregates(&row.value, first_item, global, group_items);
+                            let escaped_label = escape_typst(&row.label);
+                            let escaped_val = escape_typst(&val);
+                            let weight = if row.style.as_deref() == Some("total") { "700" } else { "400" };
+                            let span = if cols.len() > 1 { cols.len() - 1 } else { 1 };
+                            t.push_str(&format!(
+                                "  table.cell(colspan: {}, align: right)[*{}*],\n  [#text(weight: {})[{}]],\n",
+                                span, escaped_label, weight, escaped_val
+                            ));
+                        }
+                    }
                 }
             } else {
                 for (item_idx, item) in arr.iter().enumerate() {
                     render_item(item, &mut t, item_idx);
+                }
+                
+                // Render table summary rows (if not grouped)
+                if let Some(summary_rows) = &c.summary_rows {
+                    for row in summary_rows {
+                        if row.separator.unwrap_or(false) {
+                            t.push_str("  table.hline(stroke: 1pt + black),\n");
+                        }
+                        // Use full array for aggregates if not grouped
+                        let val = resolve_binding_with_aggregates(&row.value, local, global, &arr);
+                        let escaped_label = escape_typst(&row.label);
+                        let escaped_val = escape_typst(&val);
+                        let weight = if row.style.as_deref() == Some("total") { "700" } else { "400" };
+                        let span = if cols.len() > 1 { cols.len() - 1 } else { 1 };
+                        t.push_str(&format!(
+                            "  table.cell(colspan: {}, align: right)[*{}*],\n  [#text(weight: {})[{}]],\n",
+                            span, escaped_label, weight, escaped_val
+                        ));
+                    }
                 }
             }
         }
@@ -421,54 +469,64 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
         }
     }
 
-    // ── 7. LEGACY SUMMARY ROWS (Moved before footer for Typst compliance) ──
-    if let Some(summary_rows) = &c.summary_rows {
-        for row in summary_rows {
-            if row.separator.unwrap_or(false) {
-                t.push_str("  table.hline(stroke: 1pt + black),\n");
-            }
-            let val = resolve_binding_scoped(&row.value, local, global);
-            let escaped_label = escape_typst(&row.label);
-            let escaped_val = escape_typst(&val);
-            let weight = if row.style.as_deref() == Some("total") { "bold" } else { "regular" };
-            let span = if cols.len() > 1 { cols.len() - 1 } else { 1 };
-            t.push_str(&format!(
-                "  table.cell(colspan: {}, align: right)[*{}*],\n  [#text(weight: \"{}\")[{}]],\n",
-                span, escaped_label, weight, escaped_val
-            ));
-        }
-    }
+    // ── 7. LEGACY SUMMARY ROWS (Removed because they are now handled inside group/data loops) ──
 
     // ── 8. FOOTER ROWS ───────────────────────────────────────────────────────
     if let Some(footer_rows) = &c.footer_rows {
         let repeat = footer_rows.first().and_then(|r| r.repeat).unwrap_or(true);
         t.push_str(&format!("  table.footer(repeat: {},\n", repeat));
         for row in footer_rows {
-            for cell in &row.cells {
-                let val = resolve_binding_scoped(&cell.content, local, global);
-                let content = escape_typst(&val);
-                let cs = cell.colspan.unwrap_or(1);
-                let rs = cell.rowspan.unwrap_or(1);
-                let mut args = Vec::new();
-                if cs > 1 { args.push(format!("colspan: {}", cs)); }
-                if rs > 1 { args.push(format!("rowspan: {}", rs)); }
-                if let Some(f) = &cell.fill { args.push(format!("fill: {}", format_color(f))); }
-                if let Some(a) = &cell.align { args.push(format!("align: {}", a)); }
+            for (x, cell) in row.cells.iter().enumerate() {
+                // Resolve bindings in footer with full array context
+                let arr_val = if let Some(Value::Array(a)) = resolve_path(&c.data_source.replace("{{", "").replace("}}", ""), local).or_else(|| resolve_path(&c.data_source.replace("{{", "").replace("}}", ""), global)) {
+                    a.clone()
+                } else {
+                    Vec::new()
+                };
+                let val = resolve_binding_with_aggregates(&cell.content, local, global, &arr_val);
                 
-                let cell_style = cell.style.as_ref();
+                // --- Formatting ---
+                let format_func = cell.format.as_deref().unwrap_or("text").to_lowercase();
+                let inner_content = if format_func != "text" {
+                    format!("#fmt_{}(\"{}\")", format_func.replace("-", "_"), escape_string_literal(&val))
+                } else {
+                    escape_typst(&val)
+                };
+
+                // --- Styling ---
+                let mut cell_style = cell.style.clone();
+                let mut cell_fill = cell.fill.clone();
+                let mut cell_align = cell.align.clone();
+
+                // Check global cell_styles override
+                if let Some(s) = style {
+                    if let Some(cs_map) = &s.cell_styles {
+                        let cell_key = format!("footer:{}", x);
+                        if let Some(cs) = cs_map.get(&cell_key) {
+                            let mut merged = cell_style.unwrap_or(TextStyle {
+                                font_size: None, font_family: None, font_weight: None, color: None,
+                                italic: None, underline: None, line_height: None, letter_spacing: None,
+                                justify: None, text_transform: None,
+                            });
+                            if let Some(sz) = cs.size { merged.font_size = Some(sz); }
+                            if let Some(wt) = &cs.weight { merged.font_weight = Some(wt.clone()); }
+                            if let Some(cl) = &cs.color { merged.color = Some(cl.clone()); }
+                            cell_style = Some(merged);
+                            if cs.fill.is_some() { cell_fill = cs.fill.clone(); }
+                            if cs.align.is_some() { cell_align = cs.align.clone(); }
+                        }
+                    }
+                }
+                
                 let inner = render_cell_text_with_style(
-                    &format!("*{}*", content),
-                    cell_style,
+                    &inner_content,
+                    cell_style.as_ref(),
                     body_font_size,
                     body_color,
-                    "bold"
+                    "700" // default for footer
                 );
 
-                if args.is_empty() {
-                    t.push_str(&format!("    [{}],\n", inner));
-                } else {
-                    t.push_str(&format!("    table.cell({})[{}],\n", args.join(", "), inner));
-                }
+                t.push_str(&format!("    {},\n", render_cell_container_v2(cell, &inner, cell_fill, cell_align)));
             }
         }
         t.push_str("  ),\n");
@@ -486,9 +544,17 @@ fn render_cell_text_with_style(content: &str, style: Option<&TextStyle>, default
     let leading = style.and_then(|s| s.line_height).map(|v| v - 1.0).unwrap_or(0.2);
     
     format!(
-        "#set par(leading: {}em)\n#set text(size: {}pt, fill: {}, weight: \"{}\")\n{}", 
-        leading, size, format_color(color), weight, content
+        "#set par(leading: {}em)\n#set text(size: {}pt, fill: {}, weight: {})\n{}", 
+        leading, size, format_color(color), format_weight(weight), content
     )
+}
+
+fn format_weight(w: &str) -> String {
+    if w.chars().all(char::is_numeric) {
+        w.to_string()
+    } else {
+        format!("\"{}\"", w)
+    }
 }
 
 fn render_cell_container_v2(cell: &TableCell, inner: &str, fill_override: Option<String>, align_override: Option<String>) -> String {

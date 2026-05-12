@@ -4,6 +4,7 @@ import { clsx } from 'clsx';
 import { ColorPicker } from '@/components/shared/ColorPicker';
 import { PropertyRow, SectionHeader } from '../Shared';
 import { MiniInput } from './TableShared';
+import { FontWeightSelect } from '../../ui/FontWeightSelect';
 
 const FILL_PATTERNS: { id: FillPattern; label: string; preview: string }[] = [
   { id: 'none', label: 'No Fill', preview: '⬜' },
@@ -38,7 +39,7 @@ export const TableVisualSection = ({ component }: Props) => {
     <div className="animate-in fade-in slide-in-from-right-1 duration-200">
       <SectionHeader label="Visual Styling" />
       <div className="p-2 space-y-3 bg-[var(--bg-widget)]">
-        
+
         {/* Global Table Borders */}
         <div className="space-y-1.5">
           <PropertyRow label="Border Color">
@@ -94,14 +95,10 @@ export const TableVisualSection = ({ component }: Props) => {
               />
             </CompactField>
             <CompactField label="Weight">
-              <select
-                value={component.style?.headerFontWeight || 'bold'}
-                onChange={(e) => handleStyleUpdate({ headerFontWeight: e.target.value })}
-                className="w-full h-6 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[10px] px-1 outline-none focus:border-[var(--accent)]"
-              >
-                <option value="normal">Normal</option>
-                <option value="bold">Bold</option>
-              </select>
+              <FontWeightSelect
+                value={component.style?.headerFontWeight}
+                onChange={(v: string) => handleStyleUpdate({ headerFontWeight: v })}
+              />
             </CompactField>
           </div>
         </div>

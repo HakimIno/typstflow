@@ -114,7 +114,7 @@ export interface TextComponent extends BaseComponent {
 export interface TextStyle {
   fontSize?: number;
   fontFamily?: string;
-  fontWeight?: 'regular' | 'medium' | 'bold';
+  fontWeight?: 'thin' | 'extralight' | 'light' | 'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold' | 'black' | number;
   color?: string; // hex
   italic?: boolean;
   underline?: boolean;
@@ -137,6 +137,7 @@ export interface StrokeConfig {
 export interface TableCell {
   id: string;
   content: string; // static text or {{binding}}
+  format?: FormatType; // Formatting for numbers, currency, dates, etc.
   colspan?: number;
   rowspan?: number;
   align?: 'left' | 'center' | 'right';

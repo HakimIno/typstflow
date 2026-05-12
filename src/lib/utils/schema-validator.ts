@@ -23,7 +23,23 @@ function deepCleanComponent(comp: any): any {
     result.dashArray = `${result.dashArray}pt`;
   }
 
-  // 2. Coerce style properties
+  // 1b. Coerce dimension properties
+  if (typeof result.width === 'string') {
+    result.width = parseFloat(result.width) || 0;
+  }
+  if (typeof result.height === 'string') {
+    result.height = parseFloat(result.height) || 0;
+  }
+
+  // 2. Coerce margin properties
+  if (typeof result.marginBottom === 'string') {
+    result.marginBottom = parseFloat(result.marginBottom) || 0;
+  }
+  if (typeof result.marginTop === 'string') {
+    result.marginTop = parseFloat(result.marginTop) || 0;
+  }
+
+  // 3. Coerce style properties
   if (result.style && typeof result.style === 'object') {
     result.style = { ...result.style };
     if (typeof result.style.borderWidth === 'number') {
@@ -34,6 +50,9 @@ function deepCleanComponent(comp: any): any {
     }
     if (typeof result.style.lineHeight === 'string') {
       result.style.lineHeight = parseFloat(result.style.lineHeight) || 1.2;
+    }
+    if (typeof result.style.fontSize === 'string') {
+      result.style.fontSize = parseFloat(result.style.fontSize) || 10;
     }
   }
 

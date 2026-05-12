@@ -2,17 +2,20 @@ import { useDesignerStore } from '@/store/designer-store';
 import type { TableComponent, TableRow } from '@/types/schema';
 import { clsx } from 'clsx';
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   Bold,
   ChevronDown,
   ChevronRight,
   Italic,
-  Merge,
   Plus,
-  Split,
   Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
 import { MiniInput } from './TableShared';
+import { ColorPicker } from '@/components/shared/ColorPicker';
+import { FontWeightSelect } from '../../ui/FontWeightSelect';
 
 interface Props {
   component: TableComponent;
@@ -61,142 +64,252 @@ export const TableRowsSection = ({ component, type }: Props) => {
 
   return (
     <div className="p-0 space-y-1 bg-[var(--bg-widget)]">
-      {rows.map((row, rIdx) => (
-        <div key={row.id} className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded overflow-hidden">
-          <div
-            className="flex items-center gap-2 p-1.5 cursor-pointer hover:bg-white/[0.02]"
-            onClick={() => setExpandedRowIndex(expandedRowIndex === rIdx ? null : rIdx)}
-          >
-            <span className="text-[9px] font-bold text-[var(--text-muted)] w-10 uppercase">Row {rIdx + 1}</span>
-            <div className="flex-1 flex gap-1 overflow-hidden">
-              {row.cells.map((cell, cIdx) => (
-                <div
-                  key={cell.id}
-                  className="h-4 flex-1 bg-white/[0.04] rounded border border-white/[0.05] text-[7px] flex items-center justify-center truncate px-0.5"
-                >
-                  {cell.content || '-'}
-                </div>
-              ))}
-            </div>
-            {expandedRowIndex === rIdx ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-          </div>
-
-          {expandedRowIndex === rIdx && (
-            <div className="p-2 space-y-3 border-t border-[var(--border-default)] bg-black/10">
-              {row.cells.map((cell, cIdx) => (
-                <div key={cell.id} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Cell {cIdx + 1}</span>
-                    <div className="flex gap-1">
-                      <button className="p-1 hover:bg-white/10 rounded"><Merge className="w-3 h-3" /></button>
-                      <button className="p-1 hover:bg-white/10 rounded"><Split className="w-3 h-3" /></button>
+      {rows.map((row, rIdx) => {
+        const isActiveRow = expandedRowIndex === rIdx;
+        return (
+          <div key={row.id} className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded overflow-hidden">
+            <div
+              className={clsx(
+                "flex items-center gap-2 p-1.5 cursor-pointer hover:bg-white/[0.02] transition-colors",
+                isActiveRow && "bg-white/[0.03] border-b border-[var(--border-default)]"
+              )}
+              onClick={() => setExpandedRowIndex(isActiveRow ? null : rIdx)}
+            >
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Row {rIdx + 1}</span>
+                <div className="flex-1 flex gap-0.5 overflow-hidden">
+                  {row.cells.map((cell) => (
+                    <div
+                      key={cell.id}
+                      className="h-3 flex-1 bg-white/[0.04] rounded-sm border border-white/5 text-[6px] flex items-center justify-center truncate px-0.5 text-[var(--text-muted)]"
+                    >
+                      {cell.content || '-'}
                     </div>
-                  </div>
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <MiniInput 
-                          value={cell.content || ''}
-                          onChange={(v) => {
-                            const newRows = [...rows];
-                            newRows[rIdx].cells[cIdx].content = v;
-                            updateRows(newRows);
-                          }}
-                          placeholder="Cell content..."
-                        />
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newRows = rows.filter((_, i) => i !== rIdx);
+                    updateRows(newRows);
+                  }}
+                  className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+                {isActiveRow ? <ChevronDown className="w-3 h-3 text-[var(--accent)]" /> : <ChevronRight className="w-3 h-3 text-[var(--text-muted)]" />}
+              </div>
+            </div>
+
+            {isActiveRow && (
+              <div className="p-2 space-y-4 bg-black/10">
+                {row.cells.map((cell, cIdx) => (
+                  <div key={cell.id} className="p-2 rounded border border-white/5 bg-white/[0.02] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-bold text-[var(--accent)]">Cell {cIdx + 1}</span>
+                        <span className="text-[8px] text-[var(--text-muted)] truncate max-w-[120px]">
+                          Col: {component.columns[cIdx]?.header || 'Unknown'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button 
-                          onClick={() => {
-                            const newRows = [...rows];
-                            const current = newRows[rIdx].cells[cIdx].style || {};
-                            newRows[rIdx].cells[cIdx].style = {
-                              ...current,
-                              fontWeight: current.fontWeight === 'bold' ? 'regular' : 'bold'
-                            };
-                            updateRows(newRows);
-                          }}
-                          className={clsx(
-                            "p-1.5 rounded border transition-all",
-                            cell.style?.fontWeight === 'bold' 
-                              ? "bg-[var(--accent)] text-white border-[var(--accent)]" 
-                              : "bg-white/5 border-white/10 text-[var(--text-muted)] hover:bg-white/10"
-                          )}
-                        >
-                          <Bold className="w-3 h-3" />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            const newRows = [...rows];
-                            const current = newRows[rIdx].cells[cIdx].style || {};
-                            newRows[rIdx].cells[cIdx].style = {
-                              ...current,
-                              italic: !current.italic
-                            };
-                            updateRows(newRows);
-                          }}
-                          className={clsx(
-                            "p-1.5 rounded border transition-all",
-                            cell.style?.italic 
-                              ? "bg-[var(--accent)] text-white border-[var(--accent)]" 
-                              : "bg-white/5 border-white/10 text-[var(--text-muted)] hover:bg-white/10"
-                          )}
-                        >
-                          <Italic className="w-3 h-3" />
-                        </button>
-                        <div className="w-12">
-                          <MiniInput 
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="col-span-2">
+                          <span className="text-[7px] uppercase text-[var(--text-muted)] mb-0.5 block">Content / Binding</span>
+                          <MiniInput
+                            value={cell.content || ''}
+                            onChange={(v) => {
+                              const newRows = [...rows];
+                              newRows[rIdx].cells[cIdx].content = v;
+                              updateRows(newRows);
+                            }}
+                            placeholder="e.g. Total or {{sum(items, 'val')}}"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 border-t border-white/5 pt-2">
+                        <div>
+                          <span className="text-[7px] uppercase text-[var(--text-muted)] mb-0.5 block">Data Format</span>
+                          <select
+                            value={cell.format || 'text'}
+                            onChange={(e) => {
+                              const newRows = [...rows];
+                              newRows[rIdx].cells[cIdx].format = e.target.value as any;
+                              updateRows(newRows);
+                            }}
+                            className="w-full h-7 text-[10px] px-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-white outline-none focus:border-[var(--accent)]"
+                          >
+                            <option value="text">Text</option>
+                            <option value="number">Number</option>
+                            <option value="currency-thb">Currency (฿)</option>
+                            <option value="currency-usd">Currency ($)</option>
+                            <option value="date-th">Date (TH)</option>
+                            <option value="date-en">Date (EN)</option>
+                            <option value="percent">Percent (%)</option>
+                            <option value="boolean">Boolean</option>
+                          </select>
+                        </div>
+                        <div>
+                          <span className="text-[7px] uppercase text-[var(--text-muted)] mb-0.5 block">Font Weight</span>
+                          <FontWeightSelect
+                            value={cell.style?.fontWeight}
+                            onChange={(v) => {
+                              const newRows = [...rows];
+                              const current = newRows[rIdx].cells[cIdx].style || {};
+                              newRows[rIdx].cells[cIdx].style = {
+                                ...current,
+                                fontWeight: v as any
+                              };
+                              updateRows(newRows);
+                            }}
+                            className="w-full h-7 text-[10px] px-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-white outline-none focus:border-[var(--accent)]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-[7px] uppercase text-[var(--text-muted)] mb-0.5 block">Colspan</span>
+                          <MiniInput
+                            type="number"
+                            value={String(cell.colspan || 1)}
+                            onChange={(v) => {
+                              const newRows = [...rows];
+                              newRows[rIdx].cells[cIdx].colspan = Number.parseInt(v) || 1;
+                              updateRows(newRows);
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[7px] uppercase text-[var(--text-muted)] mb-0.5 block">Rowspan</span>
+                          <MiniInput
+                            type="number"
+                            value={String(cell.rowspan || 1)}
+                            onChange={(v) => {
+                              const newRows = [...rows];
+                              newRows[rIdx].cells[cIdx].rowspan = Number.parseInt(v) || 1;
+                              updateRows(newRows);
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-[7px] uppercase text-[var(--text-muted)] mb-0.5 block">Font Size</span>
+                          <MiniInput
                             type="number"
                             value={String(cell.style?.fontSize || 10)}
                             onChange={(v) => {
                               const newRows = [...rows];
                               const current = newRows[rIdx].cells[cIdx].style || {};
-                              newRows[rIdx].cells[cIdx].style = {
-                                ...current,
-                                fontSize: Number.parseFloat(v) || 10
-                              };
+                              newRows[rIdx].cells[cIdx].style = { ...current, fontSize: Number.parseFloat(v) || 10 };
                               updateRows(newRows);
                             }}
                           />
                         </div>
-                        <div className="w-12">
-                          <MiniInput 
+                        <div>
+                          <span className="text-[7px] uppercase text-[var(--text-muted)] mb-0.5 block">Line Height</span>
+                          <MiniInput
                             type="number"
                             step="0.1"
                             value={String(cell.style?.lineHeight || 1.2)}
-                            placeholder="LH"
                             onChange={(v) => {
                               const newRows = [...rows];
                               const current = newRows[rIdx].cells[cIdx].style || {};
-                              newRows[rIdx].cells[cIdx].style = {
-                                ...current,
-                                lineHeight: Number.parseFloat(v) || 1.2
-                              };
+                              newRows[rIdx].cells[cIdx].style = { ...current, lineHeight: Number.parseFloat(v) || 1.2 };
                               updateRows(newRows);
                             }}
                           />
                         </div>
                       </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-[7px] uppercase text-[var(--text-muted)] mb-0.5 block">Text Color</span>
+                          <ColorPicker
+                            color={cell.style?.color || '#000000'}
+                            onChange={(c) => {
+                              const newRows = [...rows];
+                              const current = newRows[rIdx].cells[cIdx].style || {};
+                              newRows[rIdx].cells[cIdx].style = { ...current, color: c };
+                              updateRows(newRows);
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[7px] uppercase text-[var(--text-muted)] mb-0.5 block">Background</span>
+                          <ColorPicker
+                            color={cell.fill || 'transparent'}
+                            onChange={(c) => {
+                              const newRows = [...rows];
+                              newRows[rIdx].cells[cIdx].fill = c;
+                              updateRows(newRows);
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-white/5 mt-1">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              const newRows = [...rows];
+                              const current = newRows[rIdx].cells[cIdx].style || {};
+                              newRows[rIdx].cells[cIdx].style = { ...current, italic: !current.italic };
+                              updateRows(newRows);
+                            }}
+                            className={clsx(
+                              "p-1.5 rounded border transition-all",
+                              cell.style?.italic
+                                ? "bg-[var(--accent)] text-white border-[var(--accent)]"
+                                : "bg-white/5 border-white/10 text-[var(--text-muted)] hover:bg-white/10"
+                            )}
+                          >
+                            <Italic className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded border border-white/10">
+                          {([
+                            { id: 'left', icon: AlignLeft },
+                            { id: 'center', icon: AlignCenter },
+                            { id: 'right', icon: AlignRight }
+                          ] as const).map((a) => (
+                            <button
+                              key={a.id}
+                              onClick={() => {
+                                const newRows = [...rows];
+                                newRows[rIdx].cells[cIdx].align = a.id;
+                                updateRows(newRows);
+                              }}
+                              className={clsx(
+                                "p-1 rounded transition-all",
+                                (cell.align || 'left') === a.id ? "bg-[var(--accent)] text-white" : "text-[var(--text-muted)] hover:bg-white/10"
+                              )}
+                            >
+                              <a.icon className="w-3 h-3" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  const newRows = rows.filter((_, i) => i !== rIdx);
-                  updateRows(newRows);
-                }}
-                className="w-full mt-2 py-1 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white text-[9px] font-bold rounded border border-red-500/20 transition-all"
-              >
-                Remove Row {rIdx + 1}
-              </button>
-            </div>
-          )}
-        </div>
-      ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
       <button
         type="button"
         onClick={addRow}
-        className="w-full mt-2 flex items-center justify-center gap-1.5 p-1.5 bg-white/[0.02] border border-dashed border-[var(--border-default)] text-[var(--text-muted)] text-[9px] font-bold rounded"
+        className="w-full mt-2 flex items-center justify-center gap-1.5 p-1.5 bg-white/[0.02] border border-dashed border-[var(--border-default)] text-[var(--text-muted)] text-[9px] font-bold rounded hover:bg-white/[0.04] transition-all"
       >
         <Plus className="w-3 h-3" />
         Add Row

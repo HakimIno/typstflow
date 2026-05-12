@@ -17,7 +17,7 @@ pub struct TableComponentInput {
     #[serde(rename = "footerRows")]
     pub footer_rows: Option<Vec<TableRowInput>>,
     #[serde(rename = "repeatHeaderOnPage")]
-    pub repeat_header: Option<bool>,
+    pub repeat_header: Option<serde_json::Value>,
     pub style: Option<TableStyleInput>,
 }
 
