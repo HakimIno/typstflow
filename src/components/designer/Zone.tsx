@@ -5,7 +5,7 @@ import { useZoneResize } from '@/hooks/use-zone-resize';
 import { getZoneComponents } from '@/lib/utils/schema-mutators';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { Layers } from 'lucide-react';
+import { Layers, Workflow } from 'lucide-react';
 import { memo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ComponentWrapper } from './component-wrapper';
@@ -44,6 +44,14 @@ export const Zone = memo(function Zone({
     useShallow((s) => getZoneComponents(s.schema, zoneKey, pageId).map((c) => c.id))
   );
 
+  const isFlowZone = useDesignerStore((s) => {
+    if (zoneKey === 'body') {
+      const page = s.schema.pages.find((p) => p.id === pageId) ?? s.schema.pages[0];
+      return page?.body.layoutMode === 'flow';
+    }
+    return s.schema.zones[zoneKey as 'header' | 'footer']?.layoutMode === 'flow';
+  });
+
   const { isResizing, handleResizeStart } = useZoneResize(
     zoneKey,
     minHeight || '50',
@@ -68,7 +76,9 @@ export const Zone = memo(function Zone({
           ? { height: 0, overflow: 'hidden', border: 'none' }
           : resizeEdge === 'none'
             ? { flex: 1 }
-            : { height: minHeight || '50mm' }
+            : isFlowZone
+              ? { minHeight: minHeight || '50mm' }
+              : { height: minHeight || '50mm' }
       }
       className={clsx(
         'relative border-b last:border-b-0 border-dashed border-slate-200 group/zone bg-transparent overflow-visible',
@@ -117,6 +127,24 @@ export const Zone = memo(function Zone({
                   DRAG COMPONENTS HERE
                 </span>
               </p>
+            </div>
+          ) : isFlowZone ? (
+            <div className="relative w-full min-h-full p-2 flex flex-col gap-1 overflow-visible">
+              {/* Flow Mode Badge */}
+              <div className="absolute top-1 right-1 z-10 flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/40 rounded px-1.5 py-0.5 pointer-events-none select-none">
+                <Workflow className="w-2.5 h-2.5 text-emerald-400" />
+                <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest">Flow</span>
+              </div>
+              {componentIds.map((id) => (
+                <ComponentWrapper
+                  key={`${pageId ?? 'global'}-${id}`}
+                  componentId={id}
+                  zoneKey={zoneKey}
+                  pageId={pageId}
+                  pageIndex={pageIndex}
+                  flowMode
+                />
+              ))}
             </div>
           ) : (
             <div className="absolute inset-0 overflow-visible">

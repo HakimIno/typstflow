@@ -16,6 +16,8 @@ export interface RenderContext {
   readonly offsetX: number;
   /** Zone Y origin in mm from page corner (stacked: header → body → footer). */
   readonly offsetY: number;
+  /** When true, components render as block flow (no #place) so content pushes others down. */
+  readonly flowMode?: boolean;
   /** Full layout schema — available for plugins that need page/font config. */
   readonly schema: LayoutSchema;
   /**

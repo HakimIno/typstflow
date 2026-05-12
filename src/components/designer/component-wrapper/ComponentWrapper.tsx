@@ -11,6 +11,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useResizable } from '@/hooks/use-resizable';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { detectZoneAtPoint, isDifferentZone } from '@/lib/utils/zone-detector';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react';
 import { ComponentPreview } from '../component-preview';
 import { ActionBar } from './ActionBar';
 import { EditorOverlay } from './EditorOverlay';
@@ -22,6 +23,7 @@ interface Props {
   zoneKey: 'header' | 'body' | 'footer';
   pageId?: string;
   pageIndex?: number;
+  flowMode?: boolean;
 }
 
 export const ComponentWrapper = memo(function ComponentWrapper({
@@ -29,6 +31,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   zoneKey,
   pageId,
   pageIndex = 0,
+  flowMode = false,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -55,8 +58,89 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const toggleComponentSelection = useDesignerStore((s) => s.toggleComponentSelection);
   const updateComponent = useDesignerStore((s) => s.updateComponent);
   const addComponent = useDesignerStore((s) => s.addComponent);
+  const moveUp = useDesignerStore((s) => s.moveUp);
+  const moveDown = useDesignerStore((s) => s.moveDown);
+
+  const handleFlowIndentLeft = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateComponent(componentId, { x: Math.max(0, (component?.x ?? 0) - 5) });
+  }, [componentId, component?.x, updateComponent]);
+
+  const handleFlowIndentRight = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateComponent(componentId, { x: (component?.x ?? 0) + 5 });
+  }, [componentId, component?.x, updateComponent]);
 
   const [isEditing, setIsEditing] = useState(false);
+
+  // ── Flow-mode drag-to-reorder state (must be declared unconditionally) ──────
+  const flowDragRef = useRef<{
+    startY: number;
+    pointerId: number;
+    lastIndex: number;
+    myIndex: number;
+  } | null>(null);
+  const [flowDragging, setFlowDragging] = useState(false);
+  const [flowDeltaY, setFlowDeltaY] = useState(0);
+
+  const handleFlowPointerDown = useCallback((e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('[contenteditable="true"]') ||
+      target.closest('[data-variable-dropdown="true"]') ||
+      isEditing
+    ) return;
+
+    e.stopPropagation();
+    selectComponent(componentId);
+
+    const zoneContent = (e.currentTarget as HTMLElement).closest('[data-zone-key]');
+    if (!zoneContent) return;
+    const sibs = Array.from(zoneContent.querySelectorAll<HTMLElement>('[data-component-id]'));
+    const myIndex = sibs.findIndex((el) => el.dataset.componentId === componentId);
+
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    flowDragRef.current = { startY: e.clientY, pointerId: e.pointerId, lastIndex: myIndex, myIndex };
+    setFlowDragging(true);
+    setFlowDeltaY(0);
+  }, [componentId, isEditing, selectComponent]);
+
+  const handleFlowPointerMove = useCallback((e: React.PointerEvent) => {
+    const state = flowDragRef.current;
+    if (!state || e.pointerId !== state.pointerId) return;
+    setFlowDeltaY(e.clientY - state.startY);
+
+    const zoneContent = (e.currentTarget as HTMLElement).closest('[data-zone-key]');
+    if (!zoneContent) return;
+    const sibs = Array.from(zoneContent.querySelectorAll<HTMLElement>('[data-component-id]'));
+    for (let i = 0; i < sibs.length; i++) {
+      const r = sibs[i].getBoundingClientRect();
+      if (e.clientY >= r.top && e.clientY <= r.bottom) { state.lastIndex = i; break; }
+    }
+  }, []);
+
+  const handleFlowPointerUp = useCallback((e: React.PointerEvent) => {
+    const state = flowDragRef.current;
+    if (!state || e.pointerId !== state.pointerId) return;
+    flowDragRef.current = null;
+    setFlowDragging(false);
+    setFlowDeltaY(0);
+
+    const diff = state.lastIndex - state.myIndex;
+    if (diff === 0) return;
+    const steps = Math.abs(diff);
+    const store = useDesignerStore.getState();
+    // In flow zone: lower array index = higher on page.
+    // store.moveUp  = swap with [idx+1] = increases index = moves DOWN visually.
+    // store.moveDown = swap with [idx-1] = decreases index = moves UP visually.
+    // So dragged DOWN (diff>0 → higher lastIndex) → call moveUp to increase index.
+    //    dragged UP  (diff<0 → lower lastIndex)  → call moveDown to decrease index.
+    for (let i = 0; i < steps; i++) {
+      diff > 0 ? store.moveUp(componentId) : store.moveDown(componentId);
+    }
+  }, [componentId]);
+  // ── End flow-mode state ──────────────────────────────────────────────────────
 
   const dragStateRef = useRef<{
     isActive: boolean;
@@ -497,6 +581,108 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       ),
     [isSelected, isLocked, isMoving, isResizing, component.type]
   );
+
+  // Flow mode: render as block in document flow (no absolute positioning).
+  // Drag-to-reorder: dragging vertically swaps the component with its neighbours.
+  // x coordinate = left indent (via marginLeft in designer, #pad(left:xmm) in Typst output).
+  if (flowMode) {
+    const flowHeight = LayoutEngine.mmToPx(component.height || 20);
+    const flowWidth = component.width ? `${LayoutEngine.mmToPx(component.width)}px` : '100%';
+    const flowXPx = LayoutEngine.mmToPx(component.x || 0);
+    const componentX = Math.round(component.x || 0);
+
+    return (
+      <div
+        data-component-id={componentId}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        onKeyDown={handleKeyDown}
+        onPointerDown={handleFlowPointerDown}
+        onPointerMove={handleFlowPointerMove}
+        onPointerUp={handleFlowPointerUp}
+        onPointerCancel={handleFlowPointerUp}
+        data-designer-component
+        className={clsx(
+          'relative select-none group focus:outline-none rounded touch-none',
+          flowDragging ? 'cursor-grabbing z-50 opacity-80 ring-2 ring-[var(--accent)] shadow-xl' : 'cursor-grab',
+          isSelected
+            ? 'ring-2 ring-[var(--accent)] ring-inset shadow-md bg-white/10'
+            : 'ring-inset hover:ring-1 hover:ring-white/20 bg-white/5 hover:bg-white/10',
+          isHidden && 'opacity-40',
+          'transition-shadow'
+        )}
+        style={{
+          width: flowWidth,
+          minHeight: `${flowHeight}px`,
+          marginLeft: `${flowXPx}px`,
+          opacity: isHidden ? 0.4 : 1,
+          transform: flowDragging ? `translateY(${flowDeltaY}px)` : undefined,
+          transition: flowDragging ? 'none' : 'transform 0.15s ease',
+        }}
+      >
+        {/* Reorder arrows — left side */}
+        <div className="absolute -left-7 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-auto">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); moveDown(componentId); }}
+            title="Move up"
+            className="w-5 h-5 flex items-center justify-center rounded bg-[var(--surface-2)] hover:bg-[var(--accent)] text-[var(--text-muted)] hover:text-white border border-[var(--border-default)] transition-colors"
+          >
+            <ChevronUp className="w-3 h-3" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); moveUp(componentId); }}
+            title="Move down"
+            className="w-5 h-5 flex items-center justify-center rounded bg-[var(--surface-2)] hover:bg-[var(--accent)] text-[var(--text-muted)] hover:text-white border border-[var(--border-default)] transition-colors"
+          >
+            <ChevronDown className="w-3 h-3" />
+          </button>
+        </div>
+
+        {/* Indent controls — top-right corner (hover/select to reveal) */}
+        <div className={clsx(
+          'absolute top-1 right-1 flex items-center gap-0.5 z-20 pointer-events-auto',
+          'opacity-0 group-hover:opacity-100 transition-opacity',
+          isSelected && 'opacity-100'
+        )}>
+          <button
+            type="button"
+            onClick={handleFlowIndentLeft}
+            title="Indent left 5mm"
+            className="w-5 h-5 flex items-center justify-center rounded bg-black/50 hover:bg-[var(--accent)] text-white/70 hover:text-white transition-colors"
+          >
+            <ChevronLeft className="w-3 h-3" />
+          </button>
+          <span className="text-[9px] text-white/70 font-mono bg-black/50 rounded px-1 py-0.5 leading-none select-none whitespace-nowrap">
+            ←{componentX}mm
+          </span>
+          <button
+            type="button"
+            onClick={handleFlowIndentRight}
+            title="Indent right 5mm"
+            className="w-5 h-5 flex items-center justify-center rounded bg-black/50 hover:bg-[var(--accent)] text-white/70 hover:text-white transition-colors"
+          >
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        {isEditing && component.type === 'text' && (
+          <EditorOverlay
+            component={component as TextComponent}
+            sampleData={sampleData}
+            handleTextChange={handleTextChange}
+            handleExitEdit={handleExitEdit}
+            editorContainerRef={editorContainerRef}
+          />
+        )}
+
+        <div ref={previewRef} className="w-full h-full relative pointer-events-none" style={{ minHeight: `${flowHeight}px` }}>
+          <ComponentPreview component={component} pageIndex={pageIndex} totalPages={totalPages} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

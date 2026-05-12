@@ -24,6 +24,6 @@ export const imagePlugin: ComponentPlugin<ImageComponent> = {
       body = `#image("${src}", width: 100%, height: 100%, fit: "${comp.fit ?? 'contain'}")`;
     }
 
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode);
   },
 };

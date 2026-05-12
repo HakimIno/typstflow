@@ -1,0 +1,751 @@
+{
+  "schema": {
+    "id": "flow-purchase-order-pro-2026",
+    "name": "IT Purchase Order — Premium Pro Layout",
+    "version": "1.1.0",
+    "page": {
+      "size": "A4",
+      "orientation": "portrait",
+      "margin": {
+        "top": "0mm",
+        "bottom": "0mm",
+        "left": "0mm",
+        "right": "0mm"
+      }
+    },
+    "fonts": [
+      {
+        "family": "Sarabun",
+        "role": "body",
+        "size": 10,
+        "embedded": true
+      }
+    ],
+    "zones": {
+      "header": {
+        "id": "zone-header",
+        "minHeight": "90mm",
+        "layoutMode": "absolute",
+        "components": [
+          {
+            "id": "text-company-name",
+            "type": "text",
+            "x": 15,
+            "y": 15,
+            "width": 110,
+            "height": 10,
+            "content": "{{company.name}}",
+            "style": {
+              "fontSize": 16,
+              "fontWeight": "bold",
+              "color": "#1e3a8a"
+            }
+          },
+          {
+            "id": "text-company-address",
+            "type": "text",
+            "x": 15,
+            "y": 26,
+            "width": 110,
+            "height": 8,
+            "content": "{{company.address}}",
+            "style": {
+              "fontSize": 8.5,
+              "color": "#4b5563",
+              "lineHeight": 1.4
+            }
+          },
+          {
+            "id": "text-company-info",
+            "type": "text",
+            "x": 15,
+            "y": 35,
+            "width": 110,
+            "height": 5,
+            "content": "Tel: {{company.phone}}  •  Email: {{company.email}}",
+            "style": {
+              "fontSize": 8,
+              "color": "#6b7280"
+            }
+          },
+          {
+            "id": "text-company-taxid",
+            "type": "text",
+            "x": 15,
+            "y": 40,
+            "width": 110,
+            "height": 5,
+            "content": "Tax ID: {{company.taxId}}",
+            "style": {
+              "fontSize": 8,
+              "color": "#6b7280"
+            }
+          },
+          {
+            "id": "text-doc-title",
+            "type": "text",
+            "x": 135,
+            "y": 15,
+            "width": 60,
+            "height": 12,
+            "align": "right",
+            "content": "ใบสั่งซื้อสินค้า",
+            "style": {
+              "fontSize": 24,
+              "fontWeight": "bold",
+              "color": "#1e3a8a"
+            }
+          },
+          {
+            "id": "text-doc-subtitle",
+            "type": "text",
+            "x": 135,
+            "y": 25,
+            "width": 60,
+            "height": 6,
+            "align": "right",
+            "content": "PURCHASE ORDER",
+            "style": {
+              "fontSize": 10,
+              "fontWeight": "bold",
+              "color": "#93c5fd",
+              "letterSpacing": "2pt"
+            }
+          },
+          {
+            "id": "text-po-number",
+            "type": "text",
+            "x": 135,
+            "y": 35,
+            "width": 60,
+            "height": 5,
+            "align": "right",
+            "content": "No: {{po.number}}",
+            "style": {
+              "fontSize": 9,
+              "fontWeight": "bold",
+              "color": "#111827"
+            }
+          },
+          {
+            "id": "text-po-date",
+            "type": "text",
+            "x": 135,
+            "y": 40,
+            "width": 60,
+            "height": 5,
+            "align": "right",
+            "content": "Date: {{po.date}}",
+            "style": {
+              "fontSize": 9,
+              "color": "#374151"
+            }
+          },
+          {
+            "id": "text-po-delivery",
+            "type": "text",
+            "x": 135,
+            "y": 45,
+            "width": 60,
+            "height": 5,
+            "align": "right",
+            "content": "Delivery: {{po.deliveryDate}}",
+            "style": {
+              "fontSize": 9,
+              "fontWeight": "bold",
+              "color": "#dc2626"
+            }
+          },
+          {
+            "id": "line-header",
+            "type": "line",
+            "x": 15,
+            "y": 55,
+            "width": 180,
+            "height": 1,
+            "color": "#1e3a8a",
+            "thickness": "1.5pt"
+          },
+          {
+            "id": "text-vendor-label",
+            "type": "text",
+            "x": 15,
+            "y": 63,
+            "width": 110,
+            "height": 22,
+            "content": " ",
+            "style": {
+              "background": "#f8fafc"
+            }
+          },
+          {
+            "id": "text-vendor-title",
+            "type": "text",
+            "x": 18,
+            "y": 65,
+            "width": 100,
+            "height": 4,
+            "content": "V E N D O R",
+            "style": {
+              "fontSize": 7,
+              "fontWeight": "bold",
+              "color": "#64748b",
+              "letterSpacing": "1pt"
+            }
+          },
+          {
+            "id": "text-vendor-name",
+            "type": "text",
+            "x": 18,
+            "y": 70,
+            "width": 104,
+            "height": 6,
+            "content": "{{vendor.name}}",
+            "style": {
+              "fontSize": 11,
+              "fontWeight": "bold",
+              "color": "#1e3a8a"
+            }
+          },
+          {
+            "id": "text-vendor-address",
+            "type": "text",
+            "x": 18,
+            "y": 76,
+            "width": 104,
+            "height": 6,
+            "content": "{{vendor.address}}",
+            "style": {
+              "fontSize": 8.5,
+              "color": "#475569"
+            }
+          },
+          {
+            "id": "text-dept-label",
+            "type": "text",
+            "x": 135,
+            "y": 63,
+            "width": 60,
+            "height": 5,
+            "align": "right",
+            "content": "Dept: {{po.department}}",
+            "style": {
+              "fontSize": 8.5,
+              "color": "#4b5563"
+            }
+          },
+          {
+            "id": "text-requester-label",
+            "type": "text",
+            "x": 135,
+            "y": 69,
+            "width": 60,
+            "height": 5,
+            "align": "right",
+            "content": "Requested by: {{po.requester}}",
+            "style": {
+              "fontSize": 8.5,
+              "color": "#4b5563"
+            }
+          },
+          {
+            "id": "text-approver-label",
+            "type": "text",
+            "x": 135,
+            "y": 75,
+            "width": 60,
+            "height": 5,
+            "align": "right",
+            "content": "Approved by: {{po.approver}}",
+            "style": {
+              "fontSize": 8.5,
+              "fontWeight": "bold",
+              "color": "#111827"
+            }
+          }
+        ]
+      },
+      "footer": {
+        "id": "zone-footer",
+        "minHeight": "40mm",
+        "layoutMode": "absolute",
+        "components": [
+          {
+            "id": "line-footer",
+            "type": "line",
+            "x": 15,
+            "y": 0,
+            "width": 180,
+            "height": 1,
+            "color": "#e2e8f0",
+            "thickness": "1pt"
+          },
+          {
+            "id": "text-footer-note",
+            "type": "text",
+            "x": 15,
+            "y": 5,
+            "width": 140,
+            "height": 10,
+            "content": "Generated by TypstFlow Pro Engine • Secure Document ID: {{schema.id}}\nPlease acknowledge this PO within 3 business days.",
+            "style": {
+              "fontSize": 7.5,
+              "color": "#94a3b8",
+              "italic": true,
+              "lineHeight": 1.4
+            }
+          },
+          {
+            "id": "page-number-footer",
+            "type": "page-number",
+            "format": "Page {{page}} of {{pageTotal}}",
+            "x": 165,
+            "y": 5,
+            "width": 30,
+            "height": 6,
+            "align": "right",
+            "style": {
+              "fontSize": 8.5,
+              "fontWeight": "bold",
+              "color": "#64748b"
+            }
+          },
+          {
+            "id": "text-footer-po-ref",
+            "type": "text",
+            "x": 15,
+            "y": 16,
+            "width": 180,
+            "height": 4,
+            "content": "Ref: {{po.number}}  |  Date: {{po.date}}  |  Company Reg: {{company.taxId}}",
+            "style": {
+              "fontSize": 7.5,
+              "color": "#cbd5e1",
+              "align": "center"
+            }
+          }
+        ]
+      }
+    },
+    "pages": [
+      {
+        "id": "page-1",
+        "name": "Main Page",
+        "body": {
+          "id": "zone-body",
+          "layoutMode": "flow",
+          "flowGap": "6mm",
+          "minHeight": "170mm",
+          "components": [
+            {
+              "id": "table-items",
+              "type": "table",
+              "x": 15,
+              "y": 0,
+              "width": 180,
+              "height": 80,
+              "dataSource": "{{items}}",
+              "showHeader": true,
+              "repeatHeaderOnPage": true,
+              "style": {
+                "headerBackground": "#1e3a8a",
+                "headerColor": "#ffffff",
+                "headerFontSize": 9.5,
+                "headerFontWeight": "bold",
+                "bodyFontSize": 9,
+                "bodyColor": "#1f2937",
+                "borderColor": "#e2e8f0",
+                "borderWidth": "0.4pt",
+                "inset": "8pt",
+                "fillPattern": "striped-rows",
+                "stripedColor1": "#ffffff",
+                "stripedColor2": "#f8fafc"
+              },
+              "columns": [
+                {
+                  "id": "col-no",
+                  "header": "Item",
+                  "field": "no",
+                  "width": "12mm",
+                  "align": "center"
+                },
+                {
+                  "id": "col-name",
+                  "header": "Product / Service Details",
+                  "field": "name",
+                  "width": "1fr",
+                  "align": "left"
+                },
+                {
+                  "id": "col-spec",
+                  "header": "Specification",
+                  "field": "spec",
+                  "width": "35mm",
+                  "align": "left"
+                },
+                {
+                  "id": "col-unit",
+                  "header": "Unit",
+                  "field": "unit",
+                  "width": "15mm",
+                  "align": "center"
+                },
+                {
+                  "id": "col-qty",
+                  "header": "Qty",
+                  "field": "qty",
+                  "width": "15mm",
+                  "align": "center"
+                },
+                {
+                  "id": "col-price",
+                  "header": "Unit Price",
+                  "field": "unitPrice",
+                  "width": "25mm",
+                  "align": "right"
+                },
+                {
+                  "id": "col-total",
+                  "header": "Amount",
+                  "field": "amount",
+                  "width": "28mm",
+                  "align": "right"
+                }
+              ]
+            },
+            {
+              "id": "summary-box-totals",
+              "type": "summary-box",
+              "x": 15,
+              "y": 0,
+              "width": 180,
+              "height": 45,
+              "rows": [
+                {
+                  "label": "Subtotal",
+                  "value": "{{summary.subtotal}} THB",
+                  "style": "normal"
+                },
+                {
+                  "label": "Discount ({{summary.discountPct}}%)",
+                  "value": "- {{summary.discount}} THB",
+                  "style": "subtotal"
+                },
+                {
+                  "label": "VAT (7%)",
+                  "value": "{{summary.vat}} THB",
+                  "style": "subtotal"
+                },
+                {
+                  "label": "Grand Total",
+                  "value": "{{summary.grandTotal}} THB",
+                  "style": "total"
+                }
+              ]
+            },
+            {
+              "id": "text-amount-words",
+              "type": "text",
+              "x": 15,
+              "y": 0,
+              "width": 180,
+              "height": 10,
+              "content": "Amount in words: {{summary.grandTotalText}}",
+              "style": {
+                "fontSize": 9,
+                "fontWeight": "bold",
+                "color": "#1e3a8a",
+                "background": "#f1f5f9"
+              }
+            },
+            {
+              "id": "text-payment-terms",
+              "type": "text",
+              "x": 15,
+              "y": 0,
+              "width": 180,
+              "height": 18,
+              "content": "Payment Terms: {{po.paymentTerms}}\nDelivery: {{po.deliveryTerms}}\nWarranty: {{po.warrantyTerms}}",
+              "style": {
+                "fontSize": 8.5,
+                "color": "#475569",
+                "lineHeight": 1.8
+              }
+            },
+            {
+              "id": "text-remark",
+              "type": "text",
+              "x": 15,
+              "y": 0,
+              "width": 180,
+              "height": 10,
+              "content": "Remarks: {{po.remark}}",
+              "style": {
+                "fontSize": 8,
+                "color": "#64748b",
+                "italic": true
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "groups": [],
+    "variables": [],
+    "dataSchema": [
+      {
+        "path": "company.name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "company.address",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "company.phone",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "company.email",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "company.taxId",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "vendor.name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "vendor.address",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "po.number",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "po.date",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "po.deliveryDate",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "po.department",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "po.requester",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "po.approver",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "po.paymentTerms",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "po.deliveryTerms",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "po.warrantyTerms",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "po.remark",
+        "type": "string",
+        "required": false
+      },
+      {
+        "path": "items",
+        "type": "array",
+        "required": true
+      },
+      {
+        "path": "summary.subtotal",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "summary.discountPct",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "summary.discount",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "summary.vat",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "summary.grandTotal",
+        "type": "string",
+        "required": true
+      },
+      {
+        "path": "summary.grandTotalText",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "metadata": {
+      "title": "IT Purchase Order — Premium Pro Layout",
+      "createdAt": "2026-05-11T00:00:00.000Z",
+      "updatedAt": "2026-05-11T00:00:00.000Z",
+      "author": "TypstFlow Hybrid Engine"
+    }
+  },
+  "data": {
+    "company": {
+      "name": "บริษัท เทคโนโลยี พลัส จำกัด",
+      "address": "99/9 อาคารซันทาวเวอร์ส ชั้น 12 ถ.วิภาวดีรังสิต แขวงจตุจักร กรุงเทพฯ 10900",
+      "phone": "02-123-4567",
+      "email": "procurement@techplus.co.th",
+      "taxId": "0105565012345"
+    },
+    "vendor": {
+      "name": "บริษัท ไอทีซัพพลาย เซ็นเตอร์ จำกัด",
+      "address": "456/12 ถ.พระราม 9 แขวงห้วยขวาง กรุงเทพฯ 10310  โทร: 02-987-6543"
+    },
+    "po": {
+      "number": "PO-2026-05-0089",
+      "date": "11 พฤษภาคม 2569",
+      "deliveryDate": "25 พฤษภาคม 2569",
+      "department": "ฝ่ายเทคโนโลยีสารสนเทศ (IT Department)",
+      "requester": "นายสมชาย ใจดี",
+      "approver": "นางสาวพิมพ์ใจ วงศ์สวรรค์ (IT Manager)",
+      "paymentTerms": "ชำระภายใน 30 วันนับจากวันที่ได้รับสินค้าและใบแจ้งหนี้ครบถ้วน",
+      "deliveryTerms": "ส่งมอบ ณ สำนักงานบริษัท พร้อมติดตั้งและทดสอบระบบ",
+      "warrantyTerms": "รับประกันสินค้าอย่างน้อย 1 ปี หรือตามที่ระบุในรายการ",
+      "remark": "กรุณาแนบ Delivery Note และ Tax Invoice มาพร้อมกับสินค้าทุกครั้ง หากไม่มีเอกสารครบถ้วนจะไม่รับสินค้า"
+    },
+    "items": [
+      {
+        "no": "1",
+        "name": "Laptop Dell Latitude 5540",
+        "spec": "Core i7-1365U, RAM 16GB, SSD 512GB, 15.6\" FHD",
+        "unit": "เครื่อง",
+        "qty": "5",
+        "unitPrice": "42,000",
+        "amount": "210,000"
+      },
+      {
+        "no": "2",
+        "name": "จอมอนิเตอร์ LG 27\" 4K IPS",
+        "spec": "27UK850-W, 4K UHD 3840x2160, USB-C 60W",
+        "unit": "จอ",
+        "qty": "5",
+        "unitPrice": "18,500",
+        "amount": "92,500"
+      },
+      {
+        "no": "3",
+        "name": "Docking Station Dell WD19S",
+        "spec": "180W, Thunderbolt 3, Dual Display",
+        "unit": "ตัว",
+        "qty": "5",
+        "unitPrice": "7,200",
+        "amount": "36,000"
+      },
+      {
+        "no": "4",
+        "name": "คีย์บอร์ดไร้สาย Logitech MX Keys",
+        "spec": "Bluetooth/USB Unifying, Thai-EN Layout",
+        "unit": "ชุด",
+        "qty": "10",
+        "unitPrice": "3,890",
+        "amount": "38,900"
+      },
+      {
+        "no": "5",
+        "name": "เมาส์ Logitech MX Master 3",
+        "spec": "Bluetooth/USB, Ergonomic, 4000 DPI",
+        "unit": "ตัว",
+        "qty": "10",
+        "unitPrice": "2,690",
+        "amount": "26,900"
+      },
+      {
+        "no": "6",
+        "name": "Webcam Logitech C930e 1080p",
+        "spec": "Full HD 1080p, 90° FOV, Built-in mic",
+        "unit": "ตัว",
+        "qty": "8",
+        "unitPrice": "4,500",
+        "amount": "36,000"
+      },
+      {
+        "no": "7",
+        "name": "หูฟัง Jabra Evolve2 55",
+        "spec": "ANC, Bluetooth 5.0, UC Certified",
+        "unit": "ชุด",
+        "qty": "6",
+        "unitPrice": "9,800",
+        "amount": "58,800"
+      },
+      {
+        "no": "8",
+        "name": "UPS APC BR1500MS2",
+        "spec": "1500VA/900W, 10 Outlet, LCD Display",
+        "unit": "เครื่อง",
+        "qty": "3",
+        "unitPrice": "8,900",
+        "amount": "26,700"
+      },
+      {
+        "no": "9",
+        "name": "Switch TP-Link TL-SG1024DE",
+        "spec": "24-Port Gigabit, Smart Switch, VLAN",
+        "unit": "ตัว",
+        "qty": "2",
+        "unitPrice": "5,500",
+        "amount": "11,000"
+      },
+      {
+        "no": "10",
+        "name": "สาย Patch Cat6 ยาว 3m (แพ็ค 10 เส้น)",
+        "spec": "UTP Cat6, RJ45, 3 เมตร, หลากสี",
+        "unit": "แพ็ค",
+        "qty": "5",
+        "unitPrice": "450",
+        "amount": "2,250"
+      }
+    ],
+    "summary": {
+      "subtotal": "539,050",
+      "discountPct": "3",
+      "discount": "16,172",
+      "vat": "36,601",
+      "grandTotal": "559,479",
+      "grandTotalText": "ห้าแสนห้าหมื่นเก้าพันสี่ร้อยเจ็ดสิบเก้าบาทถ้วน"
+    }
+  },
+  "exportedAt": "2026-05-11T00:00:00.000Z",
+  "version": "1.0.0"
+}

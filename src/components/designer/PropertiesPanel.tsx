@@ -24,7 +24,9 @@ import {
   Database,
   Type,
   Maximize,
-  Lock
+  Lock,
+  Workflow,
+  Move,
 } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { DesignerInput } from '../shared/DesignerInput';
@@ -210,6 +212,77 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                     placeholder="e.g. {{invoices}}"
                     mono
                   />
+                </div>
+              </section>
+            )}
+
+            {selectedZoneKey && (
+              <section className="border-b border-[var(--border-default)]">
+                <SectionHeader label={`Zone: ${selectedZoneKey.toUpperCase()}`} />
+                <div className="p-2 space-y-2">
+                  {/* Layout Mode Toggle */}
+                  <div>
+                    <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Layout Mode</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {([
+                        { mode: 'absolute', label: 'Absolute', icon: Move, desc: 'Drag & drop positioning' },
+                        { mode: 'flow', label: 'Flow', icon: Workflow, desc: 'Stack vertically, auto-push' },
+                      ] as const).map(({ mode, label, icon: Icon, desc }) => {
+                        const currentZone = selectedZoneKey === 'body'
+                          ? activePage?.body
+                          : zones[selectedZoneKey as 'header' | 'footer'];
+                        const currentMode = currentZone?.layoutMode ?? 'absolute';
+                        const isActive = currentMode === mode;
+                        return (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => {
+                              updateZone(selectedZoneKey, { layoutMode: mode }, activePageId ?? undefined);
+                            }}
+                            title={desc}
+                            className={clsx(
+                              'flex flex-col items-center gap-1 px-2 py-2 rounded border text-center transition-all',
+                              isActive
+                                ? mode === 'flow'
+                                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                                  : 'bg-[var(--accent)]/20 border-[var(--accent)]/50 text-[var(--accent)]'
+                                : 'bg-[var(--bg-widget)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-[var(--accent)]/30'
+                            )}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[8px] text-[var(--text-muted)] mt-1 opacity-70 leading-relaxed">
+                      {(selectedZoneKey === 'body'
+                        ? activePage?.body.layoutMode
+                        : zones[selectedZoneKey as 'header' | 'footer']?.layoutMode) === 'flow'
+                        ? 'Components stack top-to-bottom. Growing tables automatically push content below them down.'
+                        : 'Components positioned at exact coordinates. Drag & drop to place anywhere.'}
+                    </p>
+                  </div>
+
+                  {/* Flow Gap (only in flow mode) */}
+                  {(selectedZoneKey === 'body'
+                    ? activePage?.body.layoutMode
+                    : zones[selectedZoneKey as 'header' | 'footer']?.layoutMode) === 'flow' && (
+                    <PropertyRow label="Gap">
+                      <DesignerInput
+                        type="text"
+                        value={
+                          (selectedZoneKey === 'body'
+                            ? activePage?.body.flowGap
+                            : zones[selectedZoneKey as 'header' | 'footer']?.flowGap) ?? '2mm'
+                        }
+                        onChange={(v) => updateZone(selectedZoneKey, { flowGap: v }, activePageId ?? undefined)}
+                        placeholder="2mm"
+                        mono
+                      />
+                    </PropertyRow>
+                  )}
                 </div>
               </section>
             )}

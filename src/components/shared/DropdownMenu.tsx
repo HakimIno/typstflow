@@ -65,7 +65,7 @@ export const DropdownMenu = memo(function DropdownMenu({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        menuRef.current && 
+        menuRef.current &&
         !menuRef.current.contains(event.target as Node) &&
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
@@ -101,7 +101,7 @@ export const DropdownMenu = memo(function DropdownMenu({
               zIndex: 9999
             }}
             className={clsx(
-              'min-w-[180px] max-h-[70vh] overflow-y-auto scrollbar-thin pro-panel z-[9999] flex flex-col p-1 shadow-2xl'
+              'min-w-[180px] pro-panel z-[9999] flex flex-col p-1 '
             )}
           >
             {children}
@@ -137,7 +137,7 @@ export const DropdownMenuItem = memo(function DropdownMenuItem({
     <button
       type="button"
       className={clsx(
-        'w-full text-left px-2 py-1.5 text-[11px] flex items-center justify-between gap-2 rounded-md transition-colors',
+        'w-full text-left px-2 py-1.5 text-[11px] flex items-center justify-between gap-2 rounded transition-colors',
         variant === 'danger'
           ? 'text-red-500 hover:bg-red-500/10 active:bg-red-500/20'
           : 'text-[var(--text-primary)] hover:bg-[var(--bg-hover)] active:bg-[var(--bg-widget)]',
@@ -199,7 +199,7 @@ export const DropdownMenuSub = memo(function DropdownMenuSub({
       <button
         type="button"
         className={clsx(
-          'w-full text-left px-2 py-1.5 text-[11px] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] flex items-center justify-between gap-2 rounded-md transition-colors',
+          'w-full text-left px-2 py-1.5 text-[11px] text-[var(--text-primary)] hover:bg-[var(--bg-hover)] flex items-center justify-between gap-2 rounded transition-colors',
           isSubOpen && 'bg-[var(--bg-hover)]'
         )}
       >

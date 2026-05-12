@@ -131,21 +131,28 @@ export const TableVisualSection = ({ component }: Props) => {
         {/* Fill Pattern */}
         <div className="pt-2 border-t border-[var(--border-default)]">
           <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2 block">Fill Pattern</span>
-          <div className="grid grid-cols-5 gap-1">
+          <div className="grid grid-cols-2 gap-1.5">
             {FILL_PATTERNS.map((p) => (
               <button
                 key={p.id}
                 title={p.label}
                 onClick={() => handleStyleUpdate({ fillPattern: p.id })}
                 className={clsx(
-                  'flex flex-col items-center justify-center gap-1 aspect-square rounded border transition-all',
+                  'flex flex-row items-center gap-2 p-1.5 rounded border transition-all text-left group',
                   component.style?.fillPattern === p.id
                     ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
-                    : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-default)] hover:bg-[var(--bg-hover)]'
+                    : 'bg-black/5 text-[var(--text-secondary)] border-[var(--border-default)] hover:bg-black/10'
                 )}
               >
-                <span className="text-[14px] leading-none">{p.preview}</span>
-                <span className="text-[6px] uppercase font-bold text-center leading-tight truncate px-0.5">{p.id.replace('-', ' ')}</span>
+                <div className={clsx(
+                  "w-6 h-6 rounded flex items-center justify-center shrink-0 text-[14px]",
+                  component.style?.fillPattern === p.id ? "bg-white/20" : "bg-[var(--bg-surface)] border border-[var(--border-default)]"
+                )}>
+                  {p.preview}
+                </div>
+                <span className="text-[8px] font-bold uppercase tracking-tight leading-tight">
+                  {p.label}
+                </span>
               </button>
             ))}
           </div>

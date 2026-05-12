@@ -2,7 +2,7 @@ use crate::schema::*;
 use serde_json::Value;
 use super::utils::*;
 
-pub fn render_text(c: &TextComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_text(c: &TextComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
 
     let raw_content = resolve_binding_scoped(&c.content, local, global);
@@ -44,10 +44,10 @@ pub fn render_text(c: &TextComponent, local: &Value, global: &Value, offset_x: &
         body.push_str(&content_block);
     }
 
-    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
-pub fn render_line(c: &LineComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_line(c: &LineComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
 
     let orientation = c.orientation.as_deref().unwrap_or("horizontal");
@@ -60,7 +60,7 @@ pub fn render_line(c: &LineComponent, local: &Value, global: &Value, offset_x: &
     // Advanced manual override
     if let Some(stroke_override) = &c.stroke {
         let body = format!("#line(start: {}, end: {}, stroke: {})", start, end, stroke_override);
-        return wrap_placement(&c.base, &body, offset_x, offset_y, prefix);
+        return if flow_mode { wrap_flow_block(&c.base, &body, prefix) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) };
     }
 
     let thickness = c.thickness.as_deref().unwrap_or("1pt");
@@ -89,12 +89,12 @@ pub fn render_line(c: &LineComponent, local: &Value, global: &Value, offset_x: &
 
     let stroke = format!("({})", stroke_parts.join(", "));
     let body = format!("#line(start: {}, end: {}, stroke: {})", start, end, stroke);
-    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
 
 
-pub fn render_image(c: &ImageComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_image(c: &ImageComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
 
     let src = c.src.trim();
@@ -111,15 +111,20 @@ pub fn render_image(c: &ImageComponent, local: &Value, global: &Value, offset_x:
     } else {
         "#rect(width: 100%, height: 100%, fill: gray.lighten(80%))[#set align(center + horizon); No Image]".to_string()
     };
-    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
-pub fn render_spacer(c: &SpacerComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_spacer(c: &SpacerComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
+    if flow_mode {
+        let h = c.base.height.unwrap_or(0.0);
+        if h > 0.0 { return format!("#v({}mm)\n", h); }
+        return String::new();
+    }
     wrap_placement(&c.base, "", offset_x, offset_y, prefix)
 }
 
-pub fn render_barcode(c: &BarcodeComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_barcode(c: &BarcodeComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
 
     let sym = &c.format;
@@ -134,19 +139,19 @@ pub fn render_barcode(c: &BarcodeComponent, local: &Value, global: &Value, offse
             sym
         ),
     };
-    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
-pub fn render_qr(c: &QRComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_qr(c: &QRComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
 
     let w = c.base.width.unwrap_or(20.0);
     let val = resolve_binding_scoped(&c.value, local, global);
     let body = format!("#qrcode(\"{}\", width: {}mm)", escape_string_literal(&val), w);
-    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
-pub fn render_summary_box(c: &SummaryBoxComponent, local: &Value, global: &Value, items: &[Value], offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_summary_box(c: &SummaryBoxComponent, local: &Value, global: &Value, items: &[Value], offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
 
     let mut rows_typst = String::new();
@@ -179,10 +184,10 @@ pub fn render_summary_box(c: &SummaryBoxComponent, local: &Value, global: &Value
         "#rect(width: 100%, inset: 10pt, fill: white, stroke: 0.5pt + gray.lighten(50%))[\n  #grid(columns: (1fr, 1fr), gutter: 8pt,\n{})\n]",
         rows_typst
     );
-    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
-pub fn render_page_break_indicator(c: &PageBreakIndicatorComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_page_break_indicator(c: &PageBreakIndicatorComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
 
     let label = c.label.as_deref().unwrap_or("Continued on next page...");
@@ -190,10 +195,10 @@ pub fn render_page_break_indicator(c: &PageBreakIndicatorComponent, local: &Valu
         "#align(center)[#line(length: 40%, stroke: gray + 0.5pt)\n#text(size: 8pt, fill: gray)[{}]\n#line(length: 40%, stroke: gray + 0.5pt)]",
         escape_typst(label)
     );
-    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
-pub fn render_page_number(c: &PageNumberComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_page_number(c: &PageNumberComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
 
     let display = c.format
@@ -227,7 +232,7 @@ pub fn render_page_number(c: &PageNumberComponent, local: &Value, global: &Value
     };
 
     body.push_str(&format!("#context [{}]", content));
-    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
 /// Render a Repeater: iterate over data source items, render children for each.
@@ -238,7 +243,8 @@ pub fn render_repeater(
     offset_x: &str,
     offset_y: &str,
     prefix: &str,
-    render_fn: &dyn Fn(&ComponentNode, &Value, &Value, &str, &str, &str) -> String,
+    _flow_mode: bool,
+    render_fn: &dyn Fn(&ComponentNode, &Value, &Value, &str, &str, &str, bool) -> String,
 ) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
 
@@ -257,7 +263,7 @@ pub fn render_repeater(
     let mut out = String::new();
     for item in &items {
         for child in &c.children {
-            out.push_str(&render_fn(child, item, global, offset_x, offset_y, prefix));
+            out.push_str(&render_fn(child, item, global, offset_x, offset_y, prefix, false));
         }
     }
     out
@@ -271,7 +277,8 @@ pub fn render_columns(
     offset_x: &str,
     offset_y: &str,
     prefix: &str,
-    render_fn: &dyn Fn(&ComponentNode, &Value, &Value, &str, &str, &str) -> String,
+    flow_mode: bool,
+    render_fn: &dyn Fn(&ComponentNode, &Value, &Value, &str, &str, &str, bool) -> String,
 ) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }
 
@@ -283,7 +290,7 @@ pub fn render_columns(
     let col_contents: Vec<String> = c.columns.iter()
         .map(|col| {
             let children: Vec<String> = col.components.iter()
-                .map(|child| render_fn(child, local, global, "0mm", "0mm", ""))
+                .map(|child| render_fn(child, local, global, "0mm", "0mm", "", false))
                 .collect();
             format!("[{}]", children.join(""))
         })
@@ -295,5 +302,5 @@ pub fn render_columns(
         gutter,
         col_contents.join(", ")
     );
-    wrap_placement(&c.base, &body, offset_x, offset_y, prefix)
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }

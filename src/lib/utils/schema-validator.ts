@@ -93,7 +93,9 @@ export const ZoneSchema = z.object({
   showOnFirstPageOnly: z.boolean().optional(),
   showOnLastPageOnly: z.boolean().optional(),
   repeatOnEveryPage: z.boolean().optional(),
-});
+  layoutMode: z.enum(['absolute', 'flow']).optional(),
+  flowGap: z.string().optional(),
+}).passthrough();
 
 const DEFAULT_PAGE_FOOTER = { id: 'footer', minHeight: '20mm', components: [] };
 

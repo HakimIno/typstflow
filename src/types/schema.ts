@@ -70,6 +70,8 @@ export interface Zone {
   showOnFirstPageOnly?: boolean; // for header
   showOnLastPageOnly?: boolean; // for footer
   repeatOnEveryPage?: boolean; // New: Repeat this zone on every page (Global)
+  layoutMode?: 'absolute' | 'flow'; // 'flow' = components stack vertically, pushing content down
+  flowGap?: string; // Gap between flow items, e.g. "2mm" (default: "2mm")
 }
 
 export type ComponentNode =
@@ -241,7 +243,6 @@ export interface TableStyle {
   fillPattern?: FillPattern; // fill pattern preset
   stripedColor1?: string; // even row/col color for patterns
   stripedColor2?: string; // odd row/col color for patterns
-  headerBackground?: string;
   headerColor?: string;
   headerFontSize?: number;
   headerFontWeight?: string;

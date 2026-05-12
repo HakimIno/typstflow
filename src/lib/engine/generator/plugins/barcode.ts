@@ -23,6 +23,6 @@ export const barcodePlugin: ComponentPlugin<BarcodeComponent> = {
       body = `#rect(width: 100%, height: 100%, fill: red.lighten(90%), stroke: 0.5pt + red)[#set align(center + horizon); #text(size: 7pt, fill: red.darken(30%), weight: "bold")[Unsupported: ${fmt}]]`;
     }
 
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode);
   },
 };

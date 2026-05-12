@@ -58,59 +58,59 @@ export const TableRowsSection = ({ component, type }: Props) => {
   }
 
   return (
-    <div className="p-2 space-y-1 bg-[var(--bg-widget)]">
+    <div className="p-0 space-y-1 bg-[var(--bg-widget)]">
       {rows.map((row, rIdx) => (
         <div key={row.id} className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded overflow-hidden">
-          <div 
+          <div
             className="flex items-center gap-2 p-1.5 cursor-pointer hover:bg-white/[0.02]"
             onClick={() => setExpandedRowIndex(expandedRowIndex === rIdx ? null : rIdx)}
           >
-             <span className="text-[9px] font-bold text-[var(--text-muted)] w-10 uppercase">Row {rIdx + 1}</span>
-             <div className="flex-1 flex gap-1 overflow-hidden">
-                {row.cells.map((cell, cIdx) => (
-                  <div 
-                    key={cell.id} 
-                    className="h-4 flex-1 bg-white/[0.04] rounded border border-white/[0.05] text-[7px] flex items-center justify-center truncate px-0.5"
-                  >
-                    {cell.content || '-'}
-                  </div>
-                ))}
-             </div>
-             {expandedRowIndex === rIdx ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            <span className="text-[9px] font-bold text-[var(--text-muted)] w-10 uppercase">Row {rIdx + 1}</span>
+            <div className="flex-1 flex gap-1 overflow-hidden">
+              {row.cells.map((cell, cIdx) => (
+                <div
+                  key={cell.id}
+                  className="h-4 flex-1 bg-white/[0.04] rounded border border-white/[0.05] text-[7px] flex items-center justify-center truncate px-0.5"
+                >
+                  {cell.content || '-'}
+                </div>
+              ))}
+            </div>
+            {expandedRowIndex === rIdx ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
           </div>
 
           {expandedRowIndex === rIdx && (
             <div className="p-2 space-y-3 border-t border-[var(--border-default)] bg-black/10">
-               {row.cells.map((cell, cIdx) => (
-                 <div key={cell.id} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                       <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Cell {cIdx + 1}</span>
-                       <div className="flex gap-1">
-                          <button className="p-1 hover:bg-white/10 rounded"><Merge className="w-3 h-3" /></button>
-                          <button className="p-1 hover:bg-white/10 rounded"><Split className="w-3 h-3" /></button>
-                       </div>
+              {row.cells.map((cell, cIdx) => (
+                <div key={cell.id} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Cell {cIdx + 1}</span>
+                    <div className="flex gap-1">
+                      <button className="p-1 hover:bg-white/10 rounded"><Merge className="w-3 h-3" /></button>
+                      <button className="p-1 hover:bg-white/10 rounded"><Split className="w-3 h-3" /></button>
                     </div>
-                    <MiniInput 
-                      value={cell.content || ''}
-                      onChange={(v) => {
-                        const newRows = [...rows];
-                        newRows[rIdx].cells[cIdx].content = v;
-                        updateRows(newRows);
-                      }}
-                      placeholder="Cell content..."
-                    />
-                 </div>
-               ))}
-               <button
-                 type="button"
-                 onClick={() => {
-                   const newRows = rows.filter((_, i) => i !== rIdx);
-                   updateRows(newRows);
-                 }}
-                 className="w-full mt-2 py-1 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white text-[9px] font-bold rounded border border-red-500/20 transition-all"
-               >
-                 Remove Row {rIdx + 1}
-               </button>
+                  </div>
+                  <MiniInput
+                    value={cell.content || ''}
+                    onChange={(v) => {
+                      const newRows = [...rows];
+                      newRows[rIdx].cells[cIdx].content = v;
+                      updateRows(newRows);
+                    }}
+                    placeholder="Cell content..."
+                  />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  const newRows = rows.filter((_, i) => i !== rIdx);
+                  updateRows(newRows);
+                }}
+                className="w-full mt-2 py-1 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white text-[9px] font-bold rounded border border-red-500/20 transition-all"
+              >
+                Remove Row {rIdx + 1}
+              </button>
             </div>
           )}
         </div>

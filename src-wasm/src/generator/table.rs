@@ -3,7 +3,7 @@ use serde_json::Value;
 use super::utils::*;
 use std::collections::HashSet;
 
-pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str) -> String {
+pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, _flow_mode: bool) -> String {
     let mut t = String::new();
     let cols = &c.columns;
     let style = c.style.as_ref();

@@ -70,85 +70,91 @@ export class TypstGenerator {
       FORMAT_HELPERS,
     ];
 
-    // --- Global Repeating Zones (Typst Native) ---
-    // If a zone is set to repeat on every page, we use Typst's native #set page(header: ..., footer: ...)
-    // which works correctly even during page breaks in groups or long tables.
     const pageH = paperHeightMm(schema.page.size, schema.page.orientation === 'landscape');
-    const margin = schema.page.margin;
-    const topM = Number.parseFloat(margin.top ?? '0');
-    const bottomM = Number.parseFloat(margin.bottom ?? '0');
+    const headerH = Number.parseFloat(schema.zones.header.minHeight ?? '0');
+    const footerH = Number.parseFloat(schema.zones.footer.minHeight ?? '0');
 
-    if (schema.zones.header.repeatOnEveryPage) {
-      const headerContent = this.renderZoneComponents(
-        schema.zones.header,
-        data,
-        data,
-        [],
-        0,
-        topM,
-        schema
-      );
-      parts.push(`\n#set page(header: [${headerContent}])\n`);
-    }
+    // Detect if any page body is in flow mode.
+    // Flow bodies need Typst-native page bands so that dynamic content (e.g. expanding
+    // tables) paginate correctly without overflowing into fixed-position zones.
+    const hasFlowBody = schema.pages.some((p) => p.body.layoutMode === 'flow');
 
-    if (schema.zones.footer.repeatOnEveryPage) {
-      const footerH = Number.parseFloat(schema.zones.footer.minHeight ?? '0');
-      const footerY = pageH - bottomM - footerH;
-      const footerContent = this.renderZoneComponents(
-        schema.zones.footer,
-        data,
-        data,
-        [],
-        0,
-        footerY,
-        schema
-      );
-      parts.push(`\n#set page(footer: [${footerContent}])\n`);
+    if (hasFlowBody) {
+      // Override margins to allocate space for the header/footer bands.
+      // The content area becomes: pageH - headerH - footerH per page.
+      if (headerH > 0 || footerH > 0) {
+        parts.push(
+          `#set page(margin: (top: ${headerH}mm, bottom: ${footerH}mm, left: 0mm, right: 0mm))\n`
+        );
+      }
+      // Render header and footer as native Typst page bands (repeat on every page).
+      // offsetY = 0: component positions are relative to the band's own top-left.
+      if (!schema.zones.header.repeatOnEveryPage && headerH > 0) {
+        const hContent = this.renderZoneComponents(schema.zones.header, data, data, [], 0, 0, schema);
+        parts.push(`#set page(header: [${hContent}])\n`);
+      }
+      if (!schema.zones.footer.repeatOnEveryPage && footerH > 0) {
+        const fContent = this.renderZoneComponents(schema.zones.footer, data, data, [], 0, 0, schema);
+        parts.push(`#set page(footer: [${fContent}])\n`);
+      }
+    } else {
+      // --- Legacy: Global Repeating Zones (explicit repeatOnEveryPage flag) ---
+      const margin = schema.page.margin;
+      const topM = Number.parseFloat(margin.top ?? '0');
+      const bottomM = Number.parseFloat(margin.bottom ?? '0');
+
+      if (schema.zones.header.repeatOnEveryPage) {
+        const headerContent = this.renderZoneComponents(
+          schema.zones.header, data, data, [], 0, topM, schema
+        );
+        parts.push(`\n#set page(header: [${headerContent}])\n`);
+      }
+
+      if (schema.zones.footer.repeatOnEveryPage) {
+        const footerY = pageH - bottomM - footerH;
+        const footerContent = this.renderZoneComponents(
+          schema.zones.footer, data, data, [], 0, footerY, schema
+        );
+        parts.push(`\n#set page(footer: [${footerContent}])\n`);
+      }
     }
 
     parts.push('\n// --- Report ---\n');
 
-    // Zone Y origins for MANUAL rendering (used for non-repeating zones)
-    const headerH = Number.parseFloat(schema.zones.header.minHeight ?? '0');
-    const bodyY = headerH;
-    const footerH = Number.parseFloat(schema.zones.footer.minHeight ?? '0');
+    // bodyY: offset passed to body zone renderer.
+    // - Flow body: 0 — Typst margin (top: headerH) already shifts content below the header band.
+    // - Absolute body: headerH — manual #place() components need the offset baked in.
+    const bodyY = hasFlowBody ? 0 : headerH;
     const footerY = pageH - footerH;
     const headerY = 0;
 
     if (schema.batchDataSource) {
-      // Document-Level Batch Mode
       const resolvedItems = resolvePath(schema.batchDataSource, data);
       const batchItems = Array.isArray(resolvedItems) ? resolvedItems : [data];
 
       for (let i = 0; i < batchItems.length; i++) {
         const item = batchItems[i] as Record<string, unknown>;
-        if (i > 0) {
-          parts.push('\n#pagebreak(weak: true)\n#box()\n');
-        }
-        parts.push(this.renderDocument(schema, item, data, 0, bodyY, headerY, footerY));
+        if (i > 0) parts.push('\n#pagebreak(weak: true)\n#box()\n');
+        parts.push(this.renderDocument(schema, item, data, 0, bodyY, headerY, footerY, hasFlowBody));
       }
     } else if (schema.groups && schema.groups.length > 0) {
-      // Grouped rendering
       const sourcePath = schema.groupDataSource || 'items';
       const resolvedItems = resolvePath(sourcePath, data);
       const items = Array.isArray(resolvedItems) ? (resolvedItems as Record<string, unknown>[]) : [];
 
-      // Non-repeating Header (Report Header)
       if (
+        !hasFlowBody &&
         !schema.zones.header.repeatOnEveryPage &&
         shouldRenderZone(schema.zones.header, 0, 1, 'header')
       ) {
         parts.push('// --- REPORT HEADER ---\n');
-        parts.push(
-          this.renderZoneComponents(schema.zones.header, data, data, [], 0, headerY, schema)
-        );
+        parts.push(this.renderZoneComponents(schema.zones.header, data, data, [], 0, headerY, schema));
       }
 
-      // Render Groups
       parts.push(this.renderGroupLevel(schema, schema.groups, 0, items, data, bodyY));
 
-      // Non-repeating Footer (Report Footer)
       if (
+        !hasFlowBody &&
         !schema.zones.footer.repeatOnEveryPage &&
         shouldRenderZone(schema.zones.footer, 0, 1, 'footer')
       ) {
@@ -156,8 +162,7 @@ export class TypstGenerator {
         parts.push(this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema));
       }
     } else {
-      // Standard single document
-      parts.push(this.renderDocument(schema, data, data, 0, bodyY, headerY, footerY));
+      parts.push(this.renderDocument(schema, data, data, 0, bodyY, headerY, footerY, hasFlowBody));
     }
 
     return parts.join('');
@@ -170,20 +175,19 @@ export class TypstGenerator {
     offsetX: number,
     bodyOffsetY: number,
     headerOffsetY: number,
-    footerOffsetY: number
+    footerOffsetY: number,
+    nativeBands = false
   ): string {
     let t = '';
     const totalPages = schema.pages.length;
 
     for (let i = 0; i < totalPages; i++) {
       const pageDef = schema.pages[i];
-      if (i > 0) {
-        t += '\n#pagebreak(weak: true)\n#box()\n';
-      }
+      if (i > 0) t += '\n#pagebreak(weak: true)\n#box()\n';
 
-      // Header
+      // Header — skip if using native bands (#set page(header: ...) handles it)
       const h = schema.zones.header;
-      if (!h.repeatOnEveryPage && shouldRenderZone(h, i, totalPages, 'header')) {
+      if (!nativeBands && !h.repeatOnEveryPage && shouldRenderZone(h, i, totalPages, 'header')) {
         t += `// --- PAGE ${i + 1} HEADER ---\n`;
         t += this.renderZoneComponents(h, localData, globalData, [], offsetX, headerOffsetY, schema);
       }
@@ -192,9 +196,9 @@ export class TypstGenerator {
       t += `// --- PAGE ${i + 1} BODY ---\n`;
       t += this.renderZoneComponents(pageDef.body, localData, globalData, [], offsetX, bodyOffsetY, schema);
 
-      // Footer
+      // Footer — skip if using native bands
       const f = schema.zones.footer;
-      if (!f.repeatOnEveryPage && shouldRenderZone(f, i, totalPages, 'footer')) {
+      if (!nativeBands && !f.repeatOnEveryPage && shouldRenderZone(f, i, totalPages, 'footer')) {
         t += `// --- PAGE ${i + 1} FOOTER ---\n`;
         t += this.renderZoneComponents(f, localData, globalData, [], offsetX, footerOffsetY, schema);
       }
@@ -215,6 +219,9 @@ export class TypstGenerator {
     schema: LayoutSchema
   ): string {
     const registry = this.registry;
+    const isFlowZone = zone.layoutMode === 'flow';
+    const flowGap = zone.flowGap ?? '2mm';
+
     const renderChild = (
       comp: ComponentNode,
       overrides: Partial<Omit<RenderContext, 'render'>> = {}
@@ -226,11 +233,23 @@ export class TypstGenerator {
         offsetX,
         offsetY,
         schema,
+        flowMode: isFlowZone,
         render: renderChild,
         ...overrides,
       };
       return registry.render(comp, ctx);
     };
+
+    if (isFlowZone) {
+      // Push flow content below any preceding absolute zones (e.g. header rendered with #place())
+      // Without this, flow blocks start at y=0 and overlap the header area.
+      const leadingSpace = offsetY > 0 ? `#v(${offsetY}mm)\n` : '';
+      const content = zone.components
+        .map((comp) => renderChild(comp))
+        .filter(Boolean)
+        .join(`#v(${flowGap})\n`);
+      return leadingSpace + content;
+    }
 
     return zone.components.map((comp) => renderChild(comp)).join('');
   }

@@ -67,7 +67,7 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     if is_global_h {
         let mut header_content = String::new();
         for comp in &schema.zones.header.components {
-            header_content.push_str(&render_component(comp, data, data, "0mm", "0mm", "#"));
+            header_content.push_str(&render_component(comp, data, data, "0mm", "0mm", "#", false));
         }
         t.push_str(&format!("  header: [{}],\n", header_content));
     }
@@ -76,7 +76,7 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
     if is_global_f {
         let mut footer_content = String::new();
         for comp in &schema.zones.footer.components {
-            footer_content.push_str(&render_component(comp, data, data, "0mm", "0mm", "#"));
+            footer_content.push_str(&render_component(comp, data, data, "0mm", "0mm", "#", false));
         }
         t.push_str(&format!("  footer: [{}],\n", footer_content));
     }
@@ -147,7 +147,7 @@ fn render_document(
             // Ensure manual header is pulled out of flow so it doesn't push the body down
             t.push_str("#place(dx: 0mm, dy: 0mm)[\n");
             for comp in &schema.zones.header.components {
-                t.push_str(&render_component(comp, local_data, global_data, offset_x, header_offset_y, "  #"));
+                t.push_str(&render_component(comp, local_data, global_data, offset_x, header_offset_y, "  #", false));
             }
             t.push_str("]\n");
         }
@@ -163,15 +163,26 @@ fn render_document(
             t.push_str(&format!("// --- PAGE {} FOOTER ---\n", i + 1));
             t.push_str("#place(dx: 0mm, dy: 0mm)[\n");
             for comp in &schema.zones.footer.components {
-                t.push_str(&render_component(comp, local_data, global_data, offset_x, footer_offset_y, "  #"));
+                t.push_str(&render_component(comp, local_data, global_data, offset_x, footer_offset_y, "  #", false));
             }
             t.push_str("]\n");
         }
 
         // Body
         t.push_str(&format!("// --- PAGE {} BODY ---\n", i + 1));
-        for comp in &page_def.body.components {
-            t.push_str(&render_component(comp, local_data, global_data, offset_x, body_offset_y, "#"));
+        let is_flow_body = page_def.body.layout_mode.as_deref() == Some("flow");
+        if is_flow_body {
+            let flow_gap = page_def.body.flow_gap.as_deref().unwrap_or("2mm");
+            let parts: Vec<String> = page_def.body.components.iter()
+                .map(|comp| render_component(comp, local_data, global_data, offset_x, body_offset_y, "#", true))
+                .filter(|s| !s.is_empty())
+                .collect();
+            t.push_str(&parts.join(&format!("#v({})\n", flow_gap)));
+            if !parts.is_empty() { t.push('\n'); }
+        } else {
+            for comp in &page_def.body.components {
+                t.push_str(&render_component(comp, local_data, global_data, offset_x, body_offset_y, "#", false));
+            }
         }
     }
     t
@@ -198,7 +209,7 @@ fn render_groups(
             let mut out = String::new();
             for item in items {
                 for comp in &schema.pages[0].body.components {
-                    out.push_str(&render_component(comp, item, global_data, offset_x, body_offset_y, "#"));
+                    out.push_str(&render_component(comp, item, global_data, offset_x, body_offset_y, "#", false));
                 }
             }
             return out;
@@ -253,7 +264,7 @@ fn render_groups(
             for comp in &header.components {
                 out.push_str(&render_component_with_items(
                     comp, first_item, global_data, group_items,
-                    offset_x, &header_offset, "#"
+                    offset_x, &header_offset, "#",
                 ));
             }
             let h_height = parse_mm_value(header.min_height.as_deref().unwrap_or("0mm"));
@@ -268,6 +279,7 @@ fn render_groups(
             offset_x, &nested_body_offset, header_offset_y, footer_offset_y,
         ));
 
+
         // Note: For simplicity in this engine, we add the innermost body's height 
         // to push the group footer down. We'll use the schema's body minHeight.
         let body_h = parse_mm_value(schema.pages[0].body.min_height.as_deref().unwrap_or("0mm"));
@@ -280,7 +292,7 @@ fn render_groups(
             for comp in &footer.components {
                 out.push_str(&render_component_with_items(
                     comp, first_item, global_data, group_items,
-                    offset_x, &footer_offset, "#"
+                    offset_x, &footer_offset, "#",
                 ));
             }
         }
@@ -302,22 +314,19 @@ fn render_component_with_items(
     match node {
         ComponentNode::Text(c) => {
             if !is_visible(&c.base, local, global) { return String::new(); }
-            // Resolve binding with aggregate support
             let raw = resolve_binding_with_aggregates(&c.content, local, global, items);
-            // Re-use render_text but with already-resolved content
             let mut c2 = TextComponent {
                 base: BaseComponent { ..c.base.clone() },
                 content: raw,
                 style: c.style.clone(),
             };
-            // Disable further binding resolution in render_text by clearing binding markers
             c2.content = c2.content.clone();
-            render_text(&c2, local, global, offset_x, offset_y, prefix)
+            render_text(&c2, local, global, offset_x, offset_y, prefix, false)
         }
         ComponentNode::SummaryBox(c) => {
-            render_summary_box(c, local, global, items, offset_x, offset_y, prefix)
+            render_summary_box(c, local, global, items, offset_x, offset_y, prefix, false)
         }
-        _ => render_component(node, local, global, offset_x, offset_y, prefix),
+        _ => render_component(node, local, global, offset_x, offset_y, prefix, false),
     }
 }
 
@@ -328,23 +337,24 @@ fn render_component(
     offset_x: &str,
     offset_y: &str,
     prefix: &str,
+    flow_mode: bool,
 ) -> String {
     match node {
-        ComponentNode::Text(c) => render_text(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Line(c) => render_line(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Image(c) => render_image(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Table(c) => render_table(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Spacer(c) => render_spacer(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Barcode(c) => render_barcode(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::Qr(c) => render_qr(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::PageNumber(c) => render_page_number(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::PageBreakIndicator(c) => render_page_break_indicator(c, local, global, offset_x, offset_y, prefix),
-        ComponentNode::SummaryBox(c) => render_summary_box(c, local, global, &[], offset_x, offset_y, prefix),
-        ComponentNode::Repeater(c) => render_repeater(c, local, global, offset_x, offset_y, prefix,
-            &|child, l, g, ox, oy, px| render_component(child, l, g, ox, oy, px)
+        ComponentNode::Text(c) => render_text(c, local, global, offset_x, offset_y, prefix, flow_mode),
+        ComponentNode::Line(c) => render_line(c, local, global, offset_x, offset_y, prefix, flow_mode),
+        ComponentNode::Image(c) => render_image(c, local, global, offset_x, offset_y, prefix, flow_mode),
+        ComponentNode::Table(c) => render_table(c, local, global, offset_x, offset_y, prefix, flow_mode),
+        ComponentNode::Spacer(c) => render_spacer(c, local, global, offset_x, offset_y, prefix, flow_mode),
+        ComponentNode::Barcode(c) => render_barcode(c, local, global, offset_x, offset_y, prefix, flow_mode),
+        ComponentNode::Qr(c) => render_qr(c, local, global, offset_x, offset_y, prefix, flow_mode),
+        ComponentNode::PageNumber(c) => render_page_number(c, local, global, offset_x, offset_y, prefix, flow_mode),
+        ComponentNode::PageBreakIndicator(c) => render_page_break_indicator(c, local, global, offset_x, offset_y, prefix, flow_mode),
+        ComponentNode::SummaryBox(c) => render_summary_box(c, local, global, &[], offset_x, offset_y, prefix, flow_mode),
+        ComponentNode::Repeater(c) => render_repeater(c, local, global, offset_x, offset_y, prefix, flow_mode,
+            &|child, l, g, ox, oy, px, fm| render_component(child, l, g, ox, oy, px, fm)
         ),
-        ComponentNode::Columns(c) => render_columns(c, local, global, offset_x, offset_y, prefix,
-            &|child, l, g, ox, oy, px| render_component(child, l, g, ox, oy, px)
+        ComponentNode::Columns(c) => render_columns(c, local, global, offset_x, offset_y, prefix, flow_mode,
+            &|child, l, g, ox, oy, px, fm| render_component(child, l, g, ox, oy, px, fm)
         ),
     }
 }

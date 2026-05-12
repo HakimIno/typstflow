@@ -223,6 +223,33 @@ pub fn wrap_placement(base: &BaseComponent, body: &str, offset_x: &str, offset_y
     out
 }
 
+/// Emit a flow wrapper for a component — no #place(), so content stays in document flow.
+/// Respects the component's x coordinate as left padding and width for sizing,
+/// so moving x in the JSON shifts the element visually without touching page margins.
+/// Uses the same #align(top+left) outer wrapper as wrap_flow to ensure consistent
+/// left-indentation rendering in Typst's flow layout engine.
+pub fn wrap_flow_block(base: &BaseComponent, body: &str, prefix: &str) -> String {
+    let x = base.x.unwrap_or(0.0);
+    let w = base.width.unwrap_or(190.0);
+    let mut out = String::new();
+    if base.page_break_before.unwrap_or(false) {
+        out.push_str("#pagebreak(weak: true)\n");
+    }
+    if !body.is_empty() {
+        if x > 0.0 {
+            // Mirror wrap_flow's pattern: #align(top+left) ensures the pad's
+            // left offset renders correctly regardless of surrounding alignment context.
+            out.push_str(&format!(
+                "{}align(top + left)[#pad(left: {}mm)[#block(width: {}mm, clip: false)[{}]]]\n",
+                prefix, x, w, body
+            ));
+        } else {
+            out.push_str(&format!("{}block(width: {}mm, clip: false)[{}]\n", prefix, w, body));
+        }
+    }
+    out
+}
+
 /// Emit a #pad() + #block() wrapper for a component to keep it in the normal flow.
 /// This allows long components (like Tables) to natively break across pages.
 pub fn wrap_flow(base: &BaseComponent, body: &str, offset_x: &str, offset_y: &str, prefix: &str) -> String {

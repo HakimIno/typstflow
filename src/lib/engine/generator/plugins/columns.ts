@@ -14,14 +14,14 @@ export const columnsPlugin: ComponentPlugin<ColumnLayoutComponent> = {
     const colContents = comp.columns
       .map((col) => {
         const children = col.components
-          // Children in a column are positioned relative to 0,0 (no zone offset)
-          .map((child) => ctx.render(child, { offsetX: 0, offsetY: 0 }))
+          // Children in a column are positioned relative to 0,0; don't inherit flow mode
+          .map((child) => ctx.render(child, { offsetX: 0, offsetY: 0, flowMode: false }))
           .join('');
         return `[${children}]`;
       })
       .join(', ');
 
     const body = `#grid(columns: (${widths}), gutter: ${gap}, ${colContents})`;
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode);
   },
 };

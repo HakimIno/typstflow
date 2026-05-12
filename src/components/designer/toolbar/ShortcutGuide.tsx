@@ -19,9 +19,14 @@ const SHORTCUTS = [
 interface Props {
   forcedOpen?: boolean;
   onClose?: () => void;
+  minimal?: boolean;
 }
 
-export const ShortcutGuide = memo(function ShortcutGuide({ forcedOpen, onClose }: Props) {
+export const ShortcutGuide = memo(function ShortcutGuide({
+  forcedOpen,
+  onClose,
+  minimal,
+}: Props) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = forcedOpen ?? internalOpen;
 
@@ -34,7 +39,7 @@ export const ShortcutGuide = memo(function ShortcutGuide({ forcedOpen, onClose }
   };
 
   return (
-    <div className="relative">
+    <div className={clsx(!minimal && 'relative')}>
       {!forcedOpen && (
         <button
           type="button"
@@ -64,15 +69,20 @@ export const ShortcutGuide = memo(function ShortcutGuide({ forcedOpen, onClose }
           )}
           <div
             className={clsx(
-              'w-56 pro-panel z-[101] overflow-hidden animate-in fade-in zoom-in-95 duration-200',
-              forcedOpen ? 'relative shadow-2xl' : 'absolute right-0 mt-2'
+              'w-56 overflow-hidden animate-in fade-in zoom-in-95 duration-200',
+              !minimal && 'pro-panel z-[101]',
+              forcedOpen
+                ? minimal
+                  ? 'relative'
+                  : 'relative shadow-2xl'
+                : 'absolute right-0 mt-2 shadow-2xl'
             )}
           >
             <div className="px-3 py-2 border-b border-[var(--border-default)] flex items-center justify-between bg-white/5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                 Keyboard Shortcuts
               </span>
-              {!forcedOpen && (
+              {!forcedOpen && !minimal && (
                 <button
                   type="button"
                   onClick={handleClose}

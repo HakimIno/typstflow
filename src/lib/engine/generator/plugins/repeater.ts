@@ -19,14 +19,16 @@ export const repeaterPlugin: ComponentPlugin<RepeaterComponent> = {
           ctx.render(child, {
             local: item as Record<string, unknown>,
             groupItems: items,
+            // Children use absolute positioning within the repeater block
+            offsetX: 0,
+            offsetY: 0,
+            flowMode: false,
           })
         );
       }
     }
 
-    // Repeater itself is just a transparent container — no #place wrapper needed;
-    // children are rendered with their own placement, offset by the repeater's position.
     const body = parts.join('');
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode);
   },
 };

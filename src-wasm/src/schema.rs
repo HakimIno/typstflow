@@ -92,6 +92,8 @@ pub struct Zone {
     pub show_on_first_page_only: Option<bool>,
     pub show_on_last_page_only: Option<bool>,
     pub repeat_on_every_page: Option<bool>,
+    pub layout_mode: Option<String>,
+    pub flow_gap: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -7,14 +7,24 @@ export interface DesignerInputProps
   onChange: (value: string) => void;
   variant?: 'default' | 'mini' | 'ghost';
   mono?: boolean;
+  suffix?: string;
 }
 
 export const DesignerInput = React.forwardRef<HTMLInputElement, DesignerInputProps>(
   (
-    { value, onChange, type = 'text', variant = 'default', mono = false, className, ...props },
+    {
+      value,
+      onChange,
+      type = 'text',
+      variant = 'default',
+      mono = false,
+      suffix,
+      className,
+      ...props
+    },
     ref
   ) => {
-    return (
+    const input = (
       <input
         ref={ref}
         type={type}
@@ -38,10 +48,22 @@ export const DesignerInput = React.forwardRef<HTMLInputElement, DesignerInputPro
               variant === 'ghost',
           },
 
+          suffix && 'pr-6',
           className
         )}
         {...props}
       />
+    );
+
+    if (!suffix) return input;
+
+    return (
+      <div className="relative w-full flex items-center">
+        {input}
+        <span className="absolute right-1.5 text-[8px] font-bold text-[var(--text-muted)] uppercase pointer-events-none select-none">
+          {suffix}
+        </span>
+      </div>
     );
   }
 );

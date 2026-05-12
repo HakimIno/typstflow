@@ -1,16 +1,29 @@
 import type { BaseComponent } from '@/types/schema';
 
 /**
- * Emit a `#place(dx, dy)[#block(...)[body]]` wrapper.
- * Absolute position = zone origin (offsetX/Y) + component coords (x/y).
- * Page margin is NOT added here — margin is visual-only in the designer.
+ * Emit a placement wrapper for a component.
+ *
+ * Absolute mode (default): `#place(dx, dy)[#block(...)[body]]`
+ * Flow mode: `#block(width: Wmm, clip: false)[body]` — no fixed position,
+ * so Typst flows content naturally and expanding components push siblings down.
  */
 export function wrapPlacement(
   base: BaseComponent,
   body: string,
   offsetX: number,
-  offsetY: number
+  offsetY: number,
+  flowMode?: boolean
 ): string {
+  const parts: string[] = [];
+  if (base.pageBreakBefore) parts.push('#pagebreak()\n');
+
+  if (flowMode) {
+    // Use 100% width so the block fills the available flow width naturally.
+    // A fixed mm width would cause the component to not align with zone boundaries.
+    parts.push(`#block(width: 100%, clip: false)[${body}]\n`);
+    return parts.join('');
+  }
+
   const x = base.x ?? 0;
   const y = base.y ?? 0;
   const w = base.width ?? 100;
@@ -18,10 +31,10 @@ export function wrapPlacement(
   const absX = offsetX + x;
   const absY = offsetY + y;
 
-  const parts: string[] = [];
-  if (base.pageBreakBefore) parts.push('#pagebreak()\n');
+  // top + left ensures placement is always absolute from page top-left,
+  // not relative to the current flow cursor (critical when body zone is in flow mode).
   parts.push(
-    `#place(dx: ${absX}mm, dy: ${absY}mm)[#block(width: ${w}mm, height: ${h}mm, clip: false)[${body}]]\n`
+    `#place(top + left, dx: ${absX}mm, dy: ${absY}mm)[#block(width: ${w}mm, height: ${h}mm, clip: false)[${body}]]\n`
   );
   return parts.join('');
 }

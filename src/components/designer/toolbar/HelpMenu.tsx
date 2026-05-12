@@ -16,7 +16,7 @@ export const HelpMenu = memo(function HelpMenu() {
       <DropdownMenuHeader>Resources</DropdownMenuHeader>
 
       <DropdownMenuSub icon={Keyboard} label="Keyboard Shortcuts">
-        <ShortcutGuide forcedOpen />
+        <ShortcutGuide forcedOpen minimal />
       </DropdownMenuSub>
 
       <DropdownMenuItem icon={BookOpen} label="Documentation" />

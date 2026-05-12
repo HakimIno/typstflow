@@ -92,7 +92,7 @@ describe('TypstGenerator — text component', () => {
   it('renders text inside a #place directive', () => {
     const output = generate(schema);
     // body offsetY = headerMinHeight = 0, so text at y=10 → dy: 10mm
-    expect(output).toContain('#place(dx: 10mm, dy: 10mm)');
+    expect(output).toContain('#place(top + left, dx: 10mm, dy: 10mm)');
     expect(output).toContain('Hello World');
   });
 
@@ -319,5 +319,127 @@ describe('TypstGenerator — plugin override', () => {
     const output = customGen.generate(schema, {});
     expect(output).toContain('// custom-text-render');
     expect(output).not.toContain('Hello');
+  });
+});
+
+// ── Flow Zone Mode ─────────────────────────────────────────────────────────────────
+
+describe('TypstGenerator — flow zone mode', () => {
+  it('uses #block() without #place() in flow mode', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [{
+        id: 'page-1',
+        name: 'Page 1',
+        body: {
+          id: 'body',
+          layoutMode: 'flow',
+          components: [
+            {
+              id: 'text-1',
+              type: 'text',
+              content: 'Hello',
+              x: 10,
+              y: 10,
+              width: 80,
+              height: 10,
+              style: {},
+            },
+          ],
+        },
+      }],
+    };
+    const output = new TypstGenerator().generate(schema, {});
+    expect(output).toContain('#block(width: 100%, clip: false)');
+    expect(output).not.toContain('#place(');
+  });
+
+  it('adds gap (#v) between flow components', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [{
+        id: 'page-1',
+        name: 'Page 1',
+        body: {
+          id: 'body',
+          layoutMode: 'flow',
+          flowGap: '3mm',
+          components: [
+            { id: 'text-1', type: 'text', content: 'A', x: 0, y: 0, width: 80, height: 10, style: {} },
+            { id: 'text-2', type: 'text', content: 'B', x: 0, y: 20, width: 80, height: 10, style: {} },
+          ],
+        },
+      }],
+    };
+    const output = new TypstGenerator().generate(schema, {});
+    expect(output).toContain('#v(3mm)');
+  });
+
+  it('uses default 2mm gap when flowGap not set', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [{
+        id: 'page-1',
+        name: 'Page 1',
+        body: {
+          id: 'body',
+          layoutMode: 'flow',
+          components: [
+            { id: 'text-1', type: 'text', content: 'A', x: 0, y: 0, width: 80, height: 10, style: {} },
+            { id: 'text-2', type: 'text', content: 'B', x: 0, y: 20, width: 80, height: 10, style: {} },
+          ],
+        },
+      }],
+    };
+    const output = new TypstGenerator().generate(schema, {});
+    expect(output).toContain('#v(2mm)');
+  });
+
+  it('injects native page margins and header/footer bands when header has height', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      zones: {
+        header: { id: 'header', minHeight: '30mm', components: [] },
+        footer: { id: 'footer', minHeight: '15mm', components: [] },
+      },
+      pages: [{
+        id: 'page-1',
+        name: 'Page 1',
+        body: {
+          id: 'body',
+          layoutMode: 'flow',
+          components: [
+            { id: 'text-1', type: 'text', content: 'Hello', x: 0, y: 0, width: 80, height: 10, style: {} },
+          ],
+        },
+      }],
+    };
+    const output = new TypstGenerator().generate(schema, {});
+    expect(output).toContain('margin: (top: 30mm, bottom: 15mm');
+    expect(output).toContain('#set page(header:');
+    expect(output).toContain('#set page(footer:');
+    // Body flow must NOT have a leading #v() offset — native margin handles it
+    const bodyIdx = output.indexOf('// --- PAGE 1 BODY ---');
+    const bodySection = output.slice(bodyIdx);
+    expect(bodySection.startsWith('// --- PAGE 1 BODY ---\n#block(')).toBe(true);
+  });
+
+  it('absolute mode (default) still uses #place()', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [{
+        id: 'page-1',
+        name: 'Page 1',
+        body: {
+          id: 'body',
+          components: [
+            { id: 'text-1', type: 'text', content: 'Hello', x: 10, y: 10, width: 80, height: 10, style: {} },
+          ],
+        },
+      }],
+    };
+    const output = new TypstGenerator().generate(schema, {});
+    expect(output).toContain('#place(');
+    expect(output).not.toContain('#block(width: 100%, clip: false)');
   });
 });
