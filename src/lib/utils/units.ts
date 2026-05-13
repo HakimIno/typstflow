@@ -1,6 +1,6 @@
 /**
  * Parses Typst numeric units (e.g., "15mm", "10pt", "1cm") into a number in millimeters.
- * Returns 0 if invalid or 10 if undefined.
+ * Returns 0 if invalid or undefined.
  */
 export function parseTypstUnit(value: string | undefined): number {
   if (!value) return 0;

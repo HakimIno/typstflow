@@ -43,6 +43,10 @@ export const SelectionToolbar = memo(function SelectionToolbar({
   const moveUpMany = useDesignerStore((state) => state.moveUpMany);
   const moveDownMany = useDesignerStore((state) => state.moveDownMany);
   const duplicateSelected = useDesignerStore((state) => state.duplicateSelected);
+  const alignSelected = useDesignerStore((state) => state.alignSelected);
+  const distributeSelected = useDesignerStore((state) => state.distributeSelected);
+  const stackSelected = useDesignerStore((state) => state.stackSelected);
+  const alignToPage = useDesignerStore((state) => state.alignToPage);
   const [stackGap, setStackGap] = useState(5);
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
 
@@ -104,8 +108,11 @@ export const SelectionToolbar = memo(function SelectionToolbar({
   const selectionWidth = maxX - minX;
   const selectionHeight = maxY - minY;
 
-  // Base position (schema-derived, no drag offset)
-  const baseTop = LayoutEngine.mmToPx(minY) - 40;
+  const isNearTop = minY < 20; // Flip if within 20mm of the top
+  const baseTop = isNearTop
+    ? LayoutEngine.mmToPx(maxY) + 12 // Below selection
+    : LayoutEngine.mmToPx(minY) - 56; // Above selection
+
   const baseLeft = LayoutEngine.mmToPx(minX + selectionWidth / 2);
 
   // Ref needed to set data-toolbar attribute; CSS vars set directly by ComponentWrapper in same rAF
@@ -114,118 +121,6 @@ export const SelectionToolbar = memo(function SelectionToolbar({
   if (selectedComponents.length <= 1) return null;
 
   const isMulti = selectedComponents.length > 1;
-
-  // --- Alignment Handlers ---
-
-  const handleAlignToPage = (type: string) => {
-    const updatesMap: Record<string, Partial<ComponentNode>> = {};
-    for (const comp of selectedComponents) {
-      const updates: any = {};
-      const cw = comp.width || 0;
-      const ch = comp.height || 0;
-
-      switch (type) {
-        case 'page-left':
-          updates.x = 0;
-          break;
-        case 'page-center-h':
-          updates.x = (pageBounds.pageWidth - cw) / 2;
-          break;
-        case 'page-right':
-          updates.x = pageBounds.pageWidth - cw;
-          break;
-        case 'page-top':
-          updates.y = 0;
-          break;
-        case 'page-center-v':
-          updates.y = (pageBounds.height - ch) / 2;
-          break;
-        case 'page-bottom':
-          updates.y = pageBounds.height - ch;
-          break;
-        case 'page-center-both':
-          updates.x = (pageBounds.pageWidth - cw) / 2;
-          updates.y = (pageBounds.height - ch) / 2;
-          break;
-      }
-      if (Object.keys(updates).length > 0) updatesMap[comp.id] = updates;
-    }
-    if (Object.keys(updatesMap).length > 0) updateComponents(updatesMap);
-  };
-
-  const handleAlignToSelection = (type: string) => {
-    const updatesMap: Record<string, Partial<ComponentNode>> = {};
-
-    // Helper to get consistent dimensions
-    const getDim = (c: any) => ({
-      w: c.width ?? (c.type === 'text' ? 40 : 30),
-      h: c.height ?? (c.type === 'text' ? 10 : 15)
-    });
-
-    if (type === 'dist-h') {
-      const sorted = [...selectedComponents].sort((a, b) => (a.x ?? 0) - (b.x ?? 0));
-      const totalCompsWidth = sorted.reduce((sum, c) => sum + getDim(c).w, 0);
-      const gap = (selectionWidth - totalCompsWidth) / (sorted.length - 1);
-      let currentX = minX;
-      for (const comp of sorted) {
-        updatesMap[comp.id] = { x: currentX };
-        currentX += getDim(comp).w + gap;
-      }
-    } else if (type === 'dist-v') {
-      const sorted = [...selectedComponents].sort((a, b) => (a.absY ?? 0) - (b.absY ?? 0));
-      const totalCompsHeight = sorted.reduce((sum, c) => sum + getDim(c).h, 0);
-      const gap = (selectionHeight - totalCompsHeight) / (sorted.length - 1);
-      let currentAbsY = minY;
-      for (const comp of sorted) {
-        const diff = currentAbsY - comp.absY;
-        updatesMap[comp.id] = { y: (comp.y ?? 0) + diff };
-        currentAbsY += getDim(comp).h + gap;
-      }
-    } else if (type === 'stack-v') {
-      const sorted = [...selectedComponents].sort((a, b) => (a.absY ?? 0) - (b.absY ?? 0));
-      let currentAbsY = minY;
-      for (const comp of sorted) {
-        const diff = currentAbsY - comp.absY;
-        updatesMap[comp.id] = { y: (comp.y ?? 0) + diff };
-        currentAbsY += getDim(comp).h + stackGap;
-      }
-    } else if (type === 'stack-h') {
-      const sorted = [...selectedComponents].sort((a, b) => (a.x ?? 0) - (b.x ?? 0));
-      let currentX = minX;
-      for (const comp of sorted) {
-        updatesMap[comp.id] = { x: currentX };
-        currentX += getDim(comp).w + stackGap;
-      }
-    } else {
-      for (const comp of selectedComponents) {
-        const updates: any = {};
-        const { w, h } = getDim(comp);
-        switch (type) {
-          case 'left':
-            updates.x = minX;
-            break;
-          case 'center':
-            updates.x = minX + selectionWidth / 2 - w / 2;
-            break;
-          case 'right':
-            updates.x = maxX - w;
-            break;
-          case 'top':
-            updates.y = (comp.y ?? 0) - (comp.absY - minY);
-            break;
-          case 'middle':
-            updates.y = (comp.y ?? 0) + (minY + selectionHeight / 2 - (comp.absY + h / 2));
-            break;
-          case 'bottom':
-            updates.y = (comp.y ?? 0) + (maxY - (comp.absY + h));
-            break;
-        }
-        if (Object.keys(updates).length > 0) updatesMap[comp.id] = updates;
-      }
-    }
-
-    if (Object.keys(updatesMap).length > 0) updateComponents(updatesMap);
-  };
 
   return (
     <div
@@ -236,7 +131,7 @@ export const SelectionToolbar = memo(function SelectionToolbar({
         top: `${baseTop}px`,
         left: `${baseLeft}px`,
         transform: `translateX(calc(-50% + var(--toolbar-drag-dx, 0px))) translateY(var(--toolbar-drag-dy, 0px)) scale(${Math.min(1.2, 1 / zoom)})`,
-        transformOrigin: 'bottom center',
+        transformOrigin: isNearTop ? 'top center' : 'bottom center',
         borderRadius: '12px',
       }}
     >
@@ -251,33 +146,33 @@ export const SelectionToolbar = memo(function SelectionToolbar({
           <ActionButton
             icon={AlignLeft}
             title={isMulti ? "Align Left" : "Align Left to Page"}
-            onClick={() => isMulti ? handleAlignToSelection('left') : handleAlignToPage('page-left')}
+            onClick={() => isMulti ? alignSelected('left', pageId) : alignToPage('page-left', pageId)}
           />
           <ActionButton
             icon={AlignCenter}
             title={isMulti ? "Center Horizontally" : "Center H on Page"}
-            onClick={() => isMulti ? handleAlignToSelection('center') : handleAlignToPage('page-center-h')}
+            onClick={() => isMulti ? alignSelected('center', pageId) : alignToPage('page-center-h', pageId)}
           />
           <ActionButton
             icon={AlignRight}
             title={isMulti ? "Align Right" : "Align Right to Page"}
-            onClick={() => isMulti ? handleAlignToSelection('right') : handleAlignToPage('page-right')}
+            onClick={() => isMulti ? alignSelected('right', pageId) : alignToPage('page-right', pageId)}
           />
           <div className="w-[1px] h-3 bg-white/10 mx-1" />
           <ActionButton
             icon={AlignStartVertical}
             title={isMulti ? "Align Top" : "Align Top to Page"}
-            onClick={() => isMulti ? handleAlignToSelection('top') : handleAlignToPage('page-top')}
+            onClick={() => isMulti ? alignSelected('top', pageId) : alignToPage('page-top', pageId)}
           />
           <ActionButton
             icon={AlignCenterVertical}
             title={isMulti ? "Center Vertically" : "Center V on Page"}
-            onClick={() => isMulti ? handleAlignToSelection('middle') : handleAlignToPage('page-center-v')}
+            onClick={() => isMulti ? alignSelected('middle', pageId) : alignToPage('page-center-v', pageId)}
           />
           <ActionButton
             icon={AlignEndVertical}
             title={isMulti ? "Align Bottom" : "Align Bottom to Page"}
-            onClick={() => isMulti ? handleAlignToSelection('bottom') : handleAlignToPage('page-bottom')}
+            onClick={() => isMulti ? alignSelected('bottom', pageId) : alignToPage('page-bottom', pageId)}
           />
         </div>
       </ToolbarGroup>
@@ -329,23 +224,23 @@ export const SelectionToolbar = memo(function SelectionToolbar({
                 <ActionButton
                   icon={Rows2}
                   title="Stack V"
-                  onClick={() => handleAlignToSelection('stack-v')}
+                  onClick={() => stackSelected('stack-v', stackGap, pageId)}
                 />
                 <ActionButton
                   icon={Columns2}
                   title="Stack H"
-                  onClick={() => handleAlignToSelection('stack-h')}
+                  onClick={() => stackSelected('stack-h', stackGap, pageId)}
                 />
                 <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
                 <ActionButton
                   icon={AlignVerticalDistributeCenter}
                   title="Dist V"
-                  onClick={() => handleAlignToSelection('dist-v')}
+                  onClick={() => distributeSelected('dist-v', pageId)}
                 />
                 <ActionButton
                   icon={AlignHorizontalDistributeCenter}
                   title="Dist H"
-                  onClick={() => handleAlignToSelection('dist-h')}
+                  onClick={() => distributeSelected('dist-h', pageId)}
                 />
               </div>
             </div>

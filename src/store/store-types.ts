@@ -1,6 +1,14 @@
 import type { ComponentNode, GroupDefinition, LayoutSchema, Zone, ZoneKey } from '@/types/schema';
 import type { FontSlice } from './slices/font-slice';
 
+export interface SpacingIndicator {
+  side: 'left' | 'right' | 'top' | 'bottom';
+  distance: number;
+  lineStart: number;
+  lineEnd: number;
+  crossPos: number;
+}
+
 export interface DialogOptions {
   title: string;
   message: string;
@@ -83,6 +91,7 @@ export interface DesignerState extends FontSlice {
       vertical: number[]; // x positions in mm
       horizontal: number[]; // y positions in mm
     };
+    spacingIndicators: SpacingIndicator[];
     activePageId: string | null;
   };
 
@@ -111,6 +120,41 @@ export interface DesignerState extends FontSlice {
     toGroupId?: string,
     fromGroupType?: 'header' | 'footer',
     toGroupType?: 'header' | 'footer'
+  ) => void;
+  moveComponents: (
+    moves: Array<{
+      id: string;
+      fromZone: ZoneKey;
+      toZone: ZoneKey;
+      newIndex: number;
+      x?: number;
+      y?: number;
+      fromPageId?: string | null;
+      toPageId?: string | null;
+      fromGroupId?: string;
+      toGroupId?: string;
+      fromGroupType?: 'header' | 'footer';
+      toGroupType?: 'header' | 'footer';
+    }>,
+    skipHistory?: boolean
+  ) => void;
+  batchApplyDrag: (
+    updatesMap: Record<string, Partial<ComponentNode>>,
+    moves: Array<{
+      id: string;
+      fromZone: ZoneKey;
+      toZone: ZoneKey;
+      newIndex: number;
+      x?: number;
+      y?: number;
+      fromPageId?: string | null;
+      toPageId?: string | null;
+      fromGroupId?: string;
+      toGroupId?: string;
+      fromGroupType?: 'header' | 'footer';
+      toGroupType?: 'header' | 'footer';
+    }>,
+    skipHistory?: boolean
   ) => void;
   selectComponent: (id: string | null, multi?: boolean) => void;
   toggleComponentSelection: (id: string) => void;
@@ -180,6 +224,10 @@ export interface DesignerState extends FontSlice {
   moveDownMany: (ids: string[]) => void;
   updateLastSnapped: (x: number, y: number, pageId: string | null) => void;
   updateComponents: (updatesMap: Record<string, Partial<ComponentNode>>, skipHistory?: boolean) => void;
+  alignSelected: (type: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom', pageId?: string) => void;
+  distributeSelected: (type: 'dist-h' | 'dist-v', pageId?: string) => void;
+  stackSelected: (type: 'stack-h' | 'stack-v', gap: number, pageId?: string) => void;
+  alignToPage: (type: 'page-left' | 'page-center-h' | 'page-right' | 'page-top' | 'page-center-v' | 'page-bottom' | 'page-center-both', pageId?: string) => void;
 
   // Keyboard/Clipboard Actions
   copySelected: () => void;

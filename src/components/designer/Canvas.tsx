@@ -18,7 +18,7 @@ import { useCanvasZoom } from '@/hooks/use-canvas-zoom';
 
 // Constants for virtualization
 const VISIBLE_PAGE_BUFFER = 4; // Increased for smoothness
-const PADDING_TOP_PX = 48; // pt-12 = 48px
+const PADDING_TOP_PX = 96; // pt-24 = 96px
 const GAP_VERTICAL_LIST = 32; // gap-8 = 32px
 const GAP_VERTICAL_GRID = 48; // gap-12 = 48px
 
@@ -53,7 +53,7 @@ export const Canvas = memo(function Canvas() {
       const { scrollLeft, scrollTop } = scrollRef.current;
       setScrollPos({
         x: scrollLeft - 64,
-        y: scrollTop - 48,
+        y: scrollTop - PADDING_TOP_PX,
       });
     }
   }, []);
@@ -266,7 +266,7 @@ export const Canvas = memo(function Canvas() {
 
             <div
               className={clsx(
-                'min-h-max pl-16 pr-16 pb-24 pt-12 relative',
+                'min-h-max pl-16 pr-16 pb-24 pt-24 relative',
                 canvasLayout === 'grid' ? 'grid' : 'flex flex-col items-start'
               )}
               style={{

@@ -7,6 +7,9 @@ import {
   removeComponentsFromSchema,
   reorderComponentInSchema,
 } from '@/lib/utils/schema-mutators';
+import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { getPaperDimensions } from '@/lib/utils/paper-sizes';
+import { parseTypstUnit } from '@/lib/utils/units';
 import type { ComponentNode, GroupDefinition, LayoutSchema, Zone, ZoneKey } from '@/types/schema';
 import type { StateCreator } from 'zustand';
 import type { DesignerState } from '../store-types';
@@ -23,6 +26,8 @@ export type SchemaSlice = Pick<
   | 'removeComponent'
   | 'removeComponents'
   | 'moveComponent'
+  | 'moveComponents'
+  | 'batchApplyDrag'
   | 'updateZone'
   | 'updateSchema'
   | 'updateGroup'
@@ -37,7 +42,7 @@ export type SchemaSlice = Pick<
   | 'updateComponents'
 >;
 
-export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice> = (set, _get) => ({
+export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice> = (set, get) => ({
   schema: {} as LayoutSchema, // initialized in designer-store.ts
   history: [],
   historyIndex: 0,
@@ -161,6 +166,198 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
       return pushHistory(state, currentSchema);
     }),
 
+  alignSelected: (type: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom', pageId?: string) =>
+    set((state) => {
+      if (state.selectedComponentIds.length <= 1) return state;
+      const targetPageId = pageId || state.activePageId || state.schema.pages[0]?.id;
+
+      const selectedComps = state.selectedComponentIds
+        .map((id) => {
+          const comp = findComponentInSchema(state.schema, id);
+          if (!comp) return null;
+          const zoneInfo = findComponentZone(state.schema, id);
+          const zoneOffset = LayoutEngine.calculateZoneOffset(
+            zoneInfo?.zoneKey || 'body',
+            state.schema,
+            targetPageId
+          );
+          return { ...comp, absY: (comp.y || 0) + zoneOffset };
+        })
+        .filter((c): c is any => c !== null);
+
+      if (selectedComps.length <= 1) return state;
+
+      const minX = Math.min(...selectedComps.map((c) => c.x || 0));
+      const maxX = Math.max(...selectedComps.map((c) => (c.x || 0) + (c.width || 40)));
+      const minY = Math.min(...selectedComps.map((c) => c.absY || 0));
+      const maxY = Math.max(...selectedComps.map((c) => (c.absY || 0) + (c.height || 10)));
+      const selW = maxX - minX;
+      const selH = maxY - minY;
+
+      const updates: Record<string, Partial<ComponentNode>> = {};
+      for (const comp of selectedComps) {
+        const cw = comp.width || 40;
+        const ch = comp.height || 10;
+        switch (type) {
+          case 'left': updates[comp.id] = { x: minX }; break;
+          case 'center': updates[comp.id] = { x: minX + selW / 2 - cw / 2 }; break;
+          case 'right': updates[comp.id] = { x: maxX - cw }; break;
+          case 'top': updates[comp.id] = { y: (comp.y || 0) - (comp.absY - minY) }; break;
+          case 'middle': updates[comp.id] = { y: (comp.y || 0) + (minY + selH / 2 - (comp.absY + ch / 2)) }; break;
+          case 'bottom': updates[comp.id] = { y: (comp.y || 0) + (maxY - (comp.absY + ch)) }; break;
+        }
+      }
+
+      // Re-use updateComponents logic but as a direct mutation for history atomicity
+      let currentSchema = state.schema;
+      for (const [id, u] of Object.entries(updates)) {
+        const { schema } = mapComponentInSchema(currentSchema, id, (c) => ({ ...c, ...u }) as ComponentNode);
+        currentSchema = schema;
+      }
+      return pushHistory(state, currentSchema);
+    }),
+
+  distributeSelected: (type: 'dist-h' | 'dist-v', pageId?: string) =>
+    set((state) => {
+      if (state.selectedComponentIds.length <= 2) return state;
+      const targetPageId = pageId || state.activePageId || state.schema.pages[0]?.id;
+
+      const selectedComps = state.selectedComponentIds
+        .map((id) => {
+          const comp = findComponentInSchema(state.schema, id);
+          if (!comp) return null;
+          const zoneInfo = findComponentZone(state.schema, id);
+          const zoneOffset = LayoutEngine.calculateZoneOffset(
+            zoneInfo?.zoneKey || 'body',
+            state.schema,
+            targetPageId
+          );
+          return { ...comp, absY: (comp.y || 0) + zoneOffset };
+        })
+        .filter((c): c is any => c !== null);
+
+      const minX = Math.min(...selectedComps.map((c) => c.x || 0));
+      const maxX = Math.max(...selectedComps.map((c) => (c.x || 0) + (c.width || 40)));
+      const minY = Math.min(...selectedComps.map((c) => c.absY || 0));
+      const maxY = Math.max(...selectedComps.map((c) => (c.absY || 0) + (c.height || 10)));
+      const selW = maxX - minX;
+      const selH = maxY - minY;
+
+      const updates: Record<string, Partial<ComponentNode>> = {};
+      if (type === 'dist-h') {
+        const sorted = [...selectedComps].sort((a, b) => (a.x || 0) - (b.x || 0));
+        const totalW = sorted.reduce((sum, c) => sum + (c.width || 40), 0);
+        const gap = (selW - totalW) / (sorted.length - 1);
+        let curX = minX;
+        for (const c of sorted) {
+          updates[c.id] = { x: curX };
+          curX += (c.width || 40) + gap;
+        }
+      } else {
+        const sorted = [...selectedComps].sort((a, b) => (a.absY || 0) - (b.absY || 0));
+        const totalH = sorted.reduce((sum, c) => sum + (c.height || 10), 0);
+        const gap = (selH - totalH) / (sorted.length - 1);
+        let curAbsY = minY;
+        for (const c of sorted) {
+          const diff = curAbsY - c.absY;
+          updates[c.id] = { y: (c.y || 0) + diff };
+          curAbsY += (c.height || 10) + gap;
+        }
+      }
+
+      let currentSchema = state.schema;
+      for (const [id, u] of Object.entries(updates)) {
+        const { schema } = mapComponentInSchema(currentSchema, id, (c) => ({ ...c, ...u }) as ComponentNode);
+        currentSchema = schema;
+      }
+      return pushHistory(state, currentSchema);
+    }),
+
+  stackSelected: (type: 'stack-h' | 'stack-v', gap: number, pageId?: string) =>
+    set((state) => {
+      if (state.selectedComponentIds.length <= 1) return state;
+      const targetPageId = pageId || state.activePageId || state.schema.pages[0]?.id;
+
+      const selectedComps = state.selectedComponentIds
+        .map((id) => {
+          const comp = findComponentInSchema(state.schema, id);
+          if (!comp) return null;
+          const zoneInfo = findComponentZone(state.schema, id);
+          const zoneOffset = LayoutEngine.calculateZoneOffset(
+            zoneInfo?.zoneKey || 'body',
+            state.schema,
+            targetPageId
+          );
+          return { ...comp, absY: (comp.y || 0) + zoneOffset };
+        })
+        .filter((c): c is any => c !== null);
+
+      const minX = Math.min(...selectedComps.map((c) => c.x || 0));
+      const minY = Math.min(...selectedComps.map((c) => c.absY || 0));
+
+      const updates: Record<string, Partial<ComponentNode>> = {};
+      if (type === 'stack-h') {
+        const sorted = [...selectedComps].sort((a, b) => (a.x || 0) - (b.x || 0));
+        let curX = minX;
+        for (const c of sorted) {
+          updates[c.id] = { x: curX };
+          curX += (c.width || 40) + gap;
+        }
+      } else {
+        const sorted = [...selectedComps].sort((a, b) => (a.absY || 0) - (b.absY || 0));
+        let curAbsY = minY;
+        for (const c of sorted) {
+          const diff = curAbsY - c.absY;
+          updates[c.id] = { y: (c.y || 0) + diff };
+          curAbsY += (c.height || 10) + gap;
+        }
+      }
+
+      let currentSchema = state.schema;
+      for (const [id, u] of Object.entries(updates)) {
+        const { schema } = mapComponentInSchema(currentSchema, id, (c) => ({ ...c, ...u }) as ComponentNode);
+        currentSchema = schema;
+      }
+      return pushHistory(state, currentSchema);
+    }),
+
+  alignToPage: (type: 'page-left' | 'page-center-h' | 'page-right' | 'page-top' | 'page-center-v' | 'page-bottom' | 'page-center-both', pageId?: string) =>
+    set((state) => {
+      if (state.selectedComponentIds.length === 0) return state;
+      const targetPageId = pageId || state.activePageId || state.schema.pages[0]?.id;
+      const { width: pageW, height: pageH } = getPaperDimensions(state.schema.page.size, state.schema.page.orientation);
+      const mTop = parseTypstUnit(state.schema.page.margin.top);
+      const mBottom = parseTypstUnit(state.schema.page.margin.bottom);
+      const contentH = pageH - mTop - mBottom;
+
+      const updates: Record<string, Partial<ComponentNode>> = {};
+      for (const id of state.selectedComponentIds) {
+        const comp = state.componentRegistry[id];
+        if (!comp) continue;
+        const cw = comp.width || 40;
+        const ch = comp.height || 10;
+        
+        switch (type) {
+          case 'page-left': updates[id] = { x: 0 }; break;
+          case 'page-center-h': updates[id] = { x: (pageW - cw) / 2 }; break;
+          case 'page-right': updates[id] = { x: pageW - cw }; break;
+          case 'page-top': updates[id] = { y: 0 }; break;
+          case 'page-center-v': updates[id] = { y: (contentH - ch) / 2 }; break;
+          case 'page-bottom': updates[id] = { y: contentH - ch }; break;
+          case 'page-center-both': 
+            updates[id] = { x: (pageW - cw) / 2, y: (contentH - ch) / 2 }; 
+            break;
+        }
+      }
+
+      let currentSchema = state.schema;
+      for (const [id, u] of Object.entries(updates)) {
+        const { schema } = mapComponentInSchema(currentSchema, id, (c) => ({ ...c, ...u }) as ComponentNode);
+        currentSchema = schema;
+      }
+      return pushHistory(state, currentSchema);
+    }),
+
   setSelectedZone: (zone: ZoneKey | null) => set({ selectedZone: zone }),
 
   removeComponent: (id) =>
@@ -177,80 +374,74 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
       return { ...pushHistory(state, schema), selectedComponentIds: [] };
     }),
 
-  moveComponent: (
-    id,
-    _fromZone,
-    toZone,
-    newIndex,
-    x,
-    y,
-    _fromPageId,
-    toPageId,
-    skipHistory = false,
-    _fromGroupId = undefined,
-    toGroupId = undefined,
-    _fromGroupType = undefined,
-    toGroupType = undefined
-  ) =>
+  moveComponent: (id, fromZone, toZone, newIndex, x, y, fromPageId, toPageId, skipHistory, fromGroupId, toGroupId, fromGroupType, toGroupType) =>
+    get().moveComponents([{
+      id, fromZone, toZone, newIndex, x, y, fromPageId, toPageId, fromGroupId, toGroupId, fromGroupType, toGroupType
+    }], skipHistory),
+
+  moveComponents: (moves, skipHistory = false) =>
+    get().batchApplyDrag({}, moves, skipHistory),
+
+  batchApplyDrag: (updatesMap, moves, skipHistory = false) =>
     set((state) => {
-      // 1. Remove from source (handled by helper)
-      const { schema: schemaWithoutComp } = removeComponentFromSchema(state.schema, id);
+      let currentSchema = state.schema;
 
-      // 2. Find component to get its data
-      const component = findComponentInSchema(state.schema, id);
-      if (!component) return state;
+      // 1. Handle zone moves first
+      for (const move of moves) {
+        const { id, toZone, newIndex, x, y, toPageId, toGroupId, toGroupType } = move;
+        const { schema: schemaWithoutComp } = removeComponentFromSchema(currentSchema, id);
+        const component = state.componentRegistry[id];
+        if (!component) continue;
 
-      const updatedComp: ComponentNode = {
-        ...component,
-        ...(x !== undefined ? { x } : {}),
-        ...(y !== undefined ? { y } : {}),
-      };
-
-      // 3. Insert into destination
-      const newSchema = { ...schemaWithoutComp };
-
-      if (toGroupId && toGroupType) {
-        newSchema.groups = schemaWithoutComp.groups.map((g) => {
-          if (g.id !== toGroupId) return g;
-          const zone = toGroupType === 'header' ? g.header : g.footer;
-          const nextComps = [...zone.components];
-          const insertAt =
-            newIndex === -1
-              ? nextComps.length
-              : Math.max(0, Math.min(newIndex, nextComps.length));
-          nextComps.splice(insertAt, 0, updatedComp);
-          return {
-            ...g,
-            [toGroupType]: { ...zone, components: nextComps },
-          };
-        });
-      } else if (toZone === 'body') {
-        const targetPageId = toPageId || state.activePageId || state.schema.pages[0]?.id;
-        newSchema.pages = schemaWithoutComp.pages.map((p) => {
-          if (p.id !== targetPageId) return p;
-          const nextComps = [...p.body.components];
-          const insertAt =
-            newIndex === -1
-              ? nextComps.length
-              : Math.max(0, Math.min(newIndex, nextComps.length));
-          nextComps.splice(insertAt, 0, updatedComp);
-          return { ...p, body: { ...p.body, components: nextComps } };
-        });
-      } else {
-        const nextComps = [...schemaWithoutComp.zones[toZone].components];
-        const insertAt =
-          newIndex === -1
-            ? nextComps.length
-            : Math.max(0, Math.min(newIndex, nextComps.length));
-        nextComps.splice(insertAt, 0, updatedComp);
-        newSchema.zones = {
-          ...schemaWithoutComp.zones,
-          [toZone]: { ...schemaWithoutComp.zones[toZone], components: nextComps },
+        const updatedComp: ComponentNode = {
+          ...component,
+          ...(x !== undefined ? { x } : {}),
+          ...(y !== undefined ? { y } : {}),
         };
+
+        const nextSchema = { ...schemaWithoutComp };
+
+        if (toGroupId && toGroupType) {
+          nextSchema.groups = schemaWithoutComp.groups.map((g) => {
+            if (g.id !== toGroupId) return g;
+            const zone = toGroupType === 'header' ? g.header : g.footer;
+            const nextComps = [...zone.components];
+            const insertAt = newIndex === -1 ? nextComps.length : Math.max(0, Math.min(newIndex, nextComps.length));
+            nextComps.splice(insertAt, 0, updatedComp);
+            return { ...g, [toGroupType]: { ...zone, components: nextComps } };
+          });
+        } else if (toZone === 'body') {
+          const targetPageId = toPageId || state.activePageId || state.schema.pages[0]?.id;
+          nextSchema.pages = schemaWithoutComp.pages.map((p) => {
+            if (p.id !== targetPageId) return p;
+            const nextComps = [...p.body.components];
+            const insertAt = newIndex === -1 ? nextComps.length : Math.max(0, Math.min(newIndex, nextComps.length));
+            nextComps.splice(insertAt, 0, updatedComp);
+            return { ...p, body: { ...p.body, components: nextComps } };
+          });
+        } else {
+          const nextComps = [...schemaWithoutComp.zones[toZone as 'header' | 'footer'].components];
+          const insertAt = newIndex === -1 ? nextComps.length : Math.max(0, Math.min(newIndex, nextComps.length));
+          nextComps.splice(insertAt, 0, updatedComp);
+          nextSchema.zones = {
+            ...schemaWithoutComp.zones,
+            [toZone as 'header' | 'footer']: { ...schemaWithoutComp.zones[toZone as 'header' | 'footer'], components: nextComps },
+          };
+        }
+        currentSchema = nextSchema;
       }
 
-      if (skipHistory) return { schema: newSchema };
-      return pushHistory(state, newSchema);
+      // 2. Handle property updates for remaining components
+      if (Object.keys(updatesMap).length > 0) {
+        currentSchema = mapSchemaComponents(currentSchema, (c) => {
+          const updates = updatesMap[c.id];
+          if (updates) return { ...c, ...updates } as ComponentNode;
+          return c;
+        });
+      }
+
+      if (skipHistory) return { schema: currentSchema, componentRegistry: buildComponentRegistry(currentSchema) };
+      return pushHistory(state, currentSchema);
     }),
 
   updateZone: (
@@ -400,3 +591,53 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
       return pushHistory(state, newSchema);
     }),
 });
+
+/**
+ * Maps over all components in the schema across all zones, pages, and groups.
+ */
+function mapSchemaComponents(
+  schema: LayoutSchema,
+  mapFn: (c: ComponentNode) => ComponentNode
+): LayoutSchema {
+  const nextSchema = { ...schema };
+
+  // 1. Zones
+  nextSchema.zones = {
+    header: {
+      ...schema.zones.header,
+      components: schema.zones.header.components.map(mapFn),
+    },
+    footer: {
+      ...schema.zones.footer,
+      components: schema.zones.footer.components.map(mapFn),
+    },
+  };
+
+  // 2. Pages
+  nextSchema.pages = schema.pages.map((p) => ({
+    ...p,
+    body: {
+      ...p.body,
+      components: p.body.components.map(mapFn),
+    },
+  }));
+
+  // 3. Groups
+  if (schema.groups) {
+    nextSchema.groups = schema.groups.map((g) => ({
+      ...g,
+      header: {
+        ...g.header,
+        components: g.header.components.map(mapFn),
+      },
+      footer: {
+        ...g.footer,
+        components: g.footer.components.map(mapFn),
+      },
+    }));
+  }
+
+  return nextSchema;
+}
+
+

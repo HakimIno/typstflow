@@ -1,7 +1,7 @@
 'use client';
 
 import { useDesignerStore } from '@/store/designer-store';
-import type { TextComponent } from '@/types/schema';
+import type { ComponentNode, TextComponent, ZoneKey } from '@/types/schema';
 import { clsx } from 'clsx';
 import { Lock } from 'lucide-react';
 import type React from 'react';
@@ -10,8 +10,10 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { useResizable } from '@/hooks/use-resizable';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { getPaperDimensions } from '@/lib/utils/paper-sizes';
+import { parseTypstUnit } from '@/lib/utils/units';
 import { detectZoneAtPoint, isDifferentZone } from '@/lib/utils/zone-detector';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react';
+import { SnapEngine } from '@/lib/engine/snap-engine';
 import { ComponentPreview } from '../component-preview';
 import { ActionBar } from './ActionBar';
 import { EditorOverlay } from './EditorOverlay';
@@ -151,7 +153,26 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     grabOffsetXmm: number;
     grabOffsetYmm: number;
     hasStartedDrag: boolean;
-    initialPositions: Map<string, { x: number; y: number; element: HTMLElement }>;
+    initialPositions: Map<string, { x: number; y: number; absY: number; element: HTMLElement }>;
+    snapTargets: { x: number; y: number; width: number; height: number }[];
+    primaryCompWidth: number;
+    primaryCompHeight: number;
+    lastSnappedX: number;
+    lastSnappedY: number;
+    activePageId: string | null;
+    // Cached at drag-start to avoid per-frame DOM queries
+    paperContainerEl: HTMLElement | null;
+    scrollParentEl: HTMLElement | null;
+    dragOffsetXpx: number;
+    dragOffsetYpx: number;
+    // Snap throttling — only recalculate when mouse moves > SNAP_THRESHOLD_PX
+    lastSnapClientX: number;
+    lastSnapClientY: number;
+    lastSnap: { x: number; y: number; guides: { vertical: number[]; horizontal: number[] } } | null;
+    lastSpacingIndicators: any[] | null;
+    cachedSnapPoints?: { x: any[]; y: any[] };
+    // Absolute page y at drag start = zone-local y + zone offset (avoids coordinate mismatch with snap.y)
+    initialAbsoluteY: number;
   } | null>(null);
 
   const handlePointerDown = useCallback(
@@ -186,15 +207,22 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         idsToDrag = [componentId];
       }
 
-      const initialPositions = new Map<string, { x: number; y: number; element: HTMLElement }>();
+      const initialPositions = new Map<string, { x: number; y: number; absY: number; element: HTMLElement }>();
 
       for (const dragId of idsToDrag) {
         const dragEl = document.querySelector<HTMLDivElement>(`[data-component-id="${dragId}"]`);
         if (!dragEl) continue;
 
         const pos = getComponentPosition(dragId, store.schema);
-        if (pos) {
-          initialPositions.set(dragId, { x: pos.x, y: pos.y, element: dragEl });
+        const zoneInfo = getComponentById(dragId, store.schema);
+        if (pos && zoneInfo) {
+          const zoneOffset = LayoutEngine.calculateZoneOffset(zoneInfo.zoneKey as any, store.schema, zoneInfo.pageId);
+          initialPositions.set(dragId, {
+            x: pos.x,
+            y: pos.y,
+            absY: pos.y + zoneOffset,
+            element: dragEl
+          });
         }
       }
 
@@ -202,16 +230,86 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       const grabXpx = (e.clientX - rect.left) / currentZoom;
       const grabYpx = (e.clientY - rect.top) / currentZoom;
 
+      const snapTargets: { x: number; y: number; width: number; height: number }[] = [];
+      const targetPageId = pageId || store.schema.pages[0]?.id;
+      const page = store.schema.pages.find((p) => p.id === targetPageId);
+      if (page) {
+        const bodyOffset = LayoutEngine.calculateZoneOffset('body', store.schema, targetPageId);
+        for (const c of page.body.components) {
+          if (!idsToDrag.includes(c.id)) {
+            snapTargets.push({
+              x: c.x || 0,
+              y: (c.y || 0) + bodyOffset,
+              width: c.width || 40,
+              height: c.height || 10,
+            });
+          }
+        }
+        const hOffset = LayoutEngine.calculateZoneOffset('header', store.schema, targetPageId);
+        for (const c of store.schema.zones.header.components) {
+          if (!idsToDrag.includes(c.id)) {
+            snapTargets.push({ x: c.x || 0, y: (c.y || 0) + hOffset, width: c.width || 40, height: c.height || 10 });
+          }
+        }
+        const fOffset = LayoutEngine.calculateZoneOffset('footer', store.schema, targetPageId);
+        for (const c of store.schema.zones.footer.components) {
+          if (!idsToDrag.includes(c.id)) {
+            snapTargets.push({ x: c.x || 0, y: (c.y || 0) + fOffset, width: c.width || 40, height: c.height || 10 });
+          }
+        }
+
+        const { width: pW, height: pH } = getPaperDimensions(store.schema.page.size, store.schema.page.orientation);
+        const mT = parseTypstUnit(store.schema.page.margin.top);
+        const mB = parseTypstUnit(store.schema.page.margin.bottom);
+        const mL = parseTypstUnit(store.schema.page.margin.left);
+        const mR = parseTypstUnit(store.schema.page.margin.right);
+
+        // Margin target
+        snapTargets.push({ x: mL, y: mT, width: pW - mL - mR, height: pH - mT - mB });
+        // Page edges
+        snapTargets.push({ x: 0, y: 0, width: pW, height: pH });
+      }
+
+      const grabOffsetXmm = LayoutEngine.pxToMm(grabXpx);
+      const grabOffsetYmm = LayoutEngine.pxToMm(grabYpx);
+      const cachedDragOffsetXpx = LayoutEngine.mmToPx(grabOffsetXmm) * currentZoom;
+      const cachedDragOffsetYpx = LayoutEngine.mmToPx(grabOffsetYmm) * currentZoom;
+
+      // targetPageId is already declared above (used for snap targets)
+      const paperContainerEl = document.querySelector<HTMLElement>(
+        targetPageId
+          ? `[data-paper-container][data-page-id="${targetPageId}"]`
+          : '[data-paper-container]'
+      );
+      const scrollParentEl = paperContainerEl?.closest<HTMLElement>('.overflow-auto') ?? null;
+
+      const zoneOffset = LayoutEngine.calculateZoneOffset(zoneKey, store.schema, pageId);
       dragStateRef.current = {
         isActive: true,
         startX: e.clientX,
         startY: e.clientY,
         pointerId: e.pointerId,
         primaryId: componentId,
-        grabOffsetXmm: LayoutEngine.pxToMm(grabXpx),
-        grabOffsetYmm: LayoutEngine.pxToMm(grabYpx),
+        grabOffsetXmm,
+        grabOffsetYmm,
         hasStartedDrag: false,
         initialPositions,
+        snapTargets,
+        primaryCompWidth: component.width || 40,
+        primaryCompHeight: component.height || 10,
+        lastSnappedX: component.x || 0,
+        lastSnappedY: (component.y || 0) + zoneOffset,
+        activePageId: pageId || null,
+        paperContainerEl: paperContainerEl ?? null,
+        scrollParentEl,
+        dragOffsetXpx: cachedDragOffsetXpx,
+        dragOffsetYpx: cachedDragOffsetYpx,
+        lastSnapClientX: e.clientX,
+        lastSnapClientY: e.clientY,
+        lastSnap: null,
+        lastSpacingIndicators: null,
+        cachedSnapPoints: SnapEngine.generateSnapPoints(store.schema, store.selectedComponentIds, pageId || undefined),
+        initialAbsoluteY: (component.y || 0) + zoneOffset,
       };
 
       const pageWrapper = element.closest('[data-page-wrapper]');
@@ -227,6 +325,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       }
 
       let rafId: number | null = null;
+
+      // Minimum mouse movement (px) before recalculating snap — avoids O(n) work on micro-movements
+      const SNAP_THRESHOLD_PX = 2;
 
       const onPointerMove = (event: PointerEvent) => {
         const dragState = dragStateRef.current;
@@ -247,25 +348,127 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             }
           }
 
-          const tx = dx / currentZoom;
-          const ty = dy / currentZoom;
+          // --- Dynamic Page & Snap Point Management ---
+          const viewportX = event.clientX;
+          const viewportY = event.clientY;
+
+          // Check if we crossed into a new page
+          let detectedPageId = dragState.activePageId;
+          const paperAtPoint = document.elementFromPoint(viewportX, viewportY)?.closest<HTMLElement>('[data-paper-container]');
+          if (paperAtPoint) {
+            const newPageId = paperAtPoint.getAttribute('data-page-id');
+            if (newPageId && newPageId !== dragState.activePageId) {
+              detectedPageId = newPageId;
+              dragState.activePageId = newPageId;
+              dragState.paperContainerEl = paperAtPoint;
+              dragState.scrollParentEl = paperAtPoint.closest<HTMLElement>('.overflow-auto');
+              // Refresh snap points for the new page context
+              dragState.cachedSnapPoints = SnapEngine.generateSnapPoints(store.schema, componentId, newPageId);
+            }
+          }
+
+          if (!dragState.cachedSnapPoints) {
+            dragState.cachedSnapPoints = SnapEngine.generateSnapPoints(store.schema, componentId, dragState.activePageId || undefined);
+          }
+
+          // Use cached element refs — avoids document.querySelector on every frame
+          const currentPos = dragState.paperContainerEl
+            ? LayoutEngine.calculateAbsolutePositionWithElement(
+              viewportX,
+              viewportY,
+              dragState.dragOffsetXpx,
+              dragState.dragOffsetYpx,
+              dragState.paperContainerEl,
+              dragState.scrollParentEl
+            )
+            : LayoutEngine.calculateAbsolutePosition(
+              viewportX,
+              viewportY,
+              dragState.dragOffsetXpx,
+              dragState.dragOffsetYpx,
+              dragState.activePageId || undefined
+            );
+
+          const paperRect = dragState.paperContainerEl?.getBoundingClientRect();
+          const pageIndex = dragState.activePageId ? store.schema.pages.findIndex(p => p.id === dragState.activePageId) : 0;
+          const { height: pageHeight } = getPaperDimensions(store.schema.page.size, store.schema.page.orientation);
+          const pageAbsOffsetMM = pageIndex * pageHeight;
+
+          // Standardized to absolute document-space (mm)
+          const absRawX = currentPos.rawX;
+          const absRawY = currentPos.rawY + pageAbsOffsetMM;
+
+          // Only recalculate snap when mouse moved enough — avoids O(n) work on micro-movements
+          const movedForSnap =
+            Math.abs(viewportX - dragState.lastSnapClientX) > SNAP_THRESHOLD_PX ||
+            Math.abs(viewportY - dragState.lastSnapClientY) > SNAP_THRESHOLD_PX;
+
+          let snap = dragState.lastSnap;
+          if (movedForSnap || !snap) {
+            const selectedIds = store.selectedComponentIds;
+            const snapResult = SnapEngine.calculateSnap(
+              absRawX,
+              absRawY,
+              dragState.primaryCompWidth,
+              dragState.primaryCompHeight,
+              selectedIds,
+              store.schema,
+              event.altKey,
+              dragState.activePageId || undefined,
+              dragState.cachedSnapPoints
+            );
+
+            // Map SnapEngine.SnapResult to our expected format
+            snap = {
+              x: snapResult.snappedX,
+              y: snapResult.snappedY,
+              guides: {
+                vertical: snapResult.activeGuidesX,
+                horizontal: snapResult.activeGuidesY
+              }
+            };
+
+            dragState.lastSnap = snap;
+            dragState.lastSpacingIndicators = snapResult.spacingIndicators;
+            dragState.lastSnapClientX = viewportX;
+            dragState.lastSnapClientY = viewportY;
+          }
+
+          dragState.lastSnappedX = snap.x;
+          dragState.lastSnappedY = snap.y;
+
+          const primaryInitial = dragState.initialPositions.get(componentId);
+          if (!primaryInitial) return;
+
+          // dx, dy in mm (absolute document space)
+          const dxMM = snap.x - primaryInitial.x;
+          const dyMM = snap.y - primaryInitial.absY;
+
+          // Convert MM delta to screen PX delta for DOM transform
+          const tx = LayoutEngine.mmToPx(dxMM) / currentZoom;
+          const ty = LayoutEngine.mmToPx(dyMM) / currentZoom;
 
           for (const [, pos] of dragState.initialPositions) {
             pos.element.style.transform = `translate(${tx}px, ${ty}px)`;
           }
 
-          // Sync SelectionToolbar in the same rAF frame — no store round-trip needed
+          // Sync SelectionToolbar via CSS variable — also needs zoom compensation for the vars
           const toolbar = document.querySelector<HTMLElement>('[data-toolbar="true"]');
           if (toolbar) {
-            toolbar.style.setProperty('--toolbar-drag-dx', `${tx}px`);
-            toolbar.style.setProperty('--toolbar-drag-dy', `${ty}px`);
+            toolbar.style.setProperty('--toolbar-drag-dx', `${tx * currentZoom}px`);
+            toolbar.style.setProperty('--toolbar-drag-dy', `${ty * currentZoom}px`);
           }
 
-          // Update store for other UI elements (like SelectionToolbar) to follow
+          // Single store update per frame (Standardized to absolute mm!)
           store.setDragState({
             isDragging: true,
-            currentX: tx,
-            currentY: ty
+            currentX: snap.x,
+            currentY: snap.y,
+            lastSnappedX: snap.x,
+            lastSnappedY: snap.y,
+            activeGuides: snap.guides,
+            spacingIndicators: dragState.lastSpacingIndicators || [],
+            activePageId: dragState.activePageId
           });
         });
       };
@@ -279,103 +482,112 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           rafId = null;
         }
 
-        const { startX, startY, initialPositions } = dragState;
-        let targetZone = detectZoneAtPoint(event.clientX, event.clientY);
+        const { startX, startY, initialPositions, hasStartedDrag } = dragState;
+        
+        if (hasStartedDrag) {
+          const store = useDesignerStore.getState();
+          let targetZone = detectZoneAtPoint(event.clientX, event.clientY);
 
-        if (!targetZone) {
-          const elementsUnderPoint = document.elementsFromPoint(event.clientX, event.clientY);
-          const paperContainer = elementsUnderPoint.find((el) =>
-            el.hasAttribute('data-paper-container')
-          );
-          if (paperContainer) {
-            targetZone = {
-              zoneKey: 'body',
-              pageId: paperContainer.getAttribute('data-page-id') || undefined,
-              element: paperContainer as HTMLElement,
-              rect: paperContainer.getBoundingClientRect(),
-            };
+          if (!targetZone) {
+            const elementsUnderPoint = document.elementsFromPoint(event.clientX, event.clientY);
+            const paperContainer = elementsUnderPoint.find((el) =>
+              el.hasAttribute('data-paper-container')
+            );
+            if (paperContainer) {
+              targetZone = {
+                zoneKey: 'body',
+                pageId: paperContainer.getAttribute('data-page-id') || undefined,
+                element: paperContainer as HTMLElement,
+                rect: paperContainer.getBoundingClientRect(),
+              };
+            }
           }
-        }
 
-        const isCrossZone = targetZone && isDifferentZone(originalZone, targetZone);
+          const isCrossZone = targetZone && isDifferentZone(originalZone, targetZone);
+          if (targetZone) {
+            const { lastSnappedX, lastSnappedY } = dragState;
 
-        if (targetZone) {
-          const { grabOffsetXmm, grabOffsetYmm, initialPositions, primaryId } = dragState;
-          const target = targetZone;
+            const dstZoneOffset = LayoutEngine.calculateZoneOffset(
+              targetZone.zoneKey,
+              store.schema,
+              targetZone.pageId
+            );
 
-          const dragOffsetXpx = LayoutEngine.mmToPx(grabOffsetXmm) * currentZoom;
-          const dragOffsetYpx = LayoutEngine.mmToPx(grabOffsetYmm) * currentZoom;
+            // Calculate the document-absolute delta (mm)
+            const dxMM = lastSnappedX - (initialPositions.get(componentId)?.x || 0);
+            const dyMM = lastSnappedY - (initialPositions.get(componentId)?.absY || 0);
 
-          const primaryPos = LayoutEngine.calculateAbsolutePosition(
-            event.clientX,
-            event.clientY,
-            dragOffsetXpx,
-            dragOffsetYpx,
-            target.pageId
-          );
+            const updatesMap: Record<string, Partial<ComponentNode>> = {};
+            const moves: any[] = [];
 
-          const dstZoneOffset = LayoutEngine.calculateZoneOffset(
-            target.zoneKey,
-            store.schema,
-            target.pageId
-          );
+            for (const [dragId, pos] of initialPositions) {
+              const compData = getComponentById(dragId, store.schema);
+              if (!compData) continue;
 
-          const finalPrimaryX = primaryPos.x;
-          const finalPrimaryY = Math.max(0, primaryPos.rawY - dstZoneOffset);
-          const primaryInitial = initialPositions.get(primaryId);
+              // Calculate new absolute document-space coordinates
+              const newAbsX = pos.x + dxMM;
+              const newAbsY = pos.absY + dyMM;
 
-          for (const [dragId, pos] of initialPositions) {
-            const compData = getComponentById(dragId, store.schema);
-            if (!compData) continue;
+              // Convert back to zone-local for store
+              const newX = newAbsX;
+              const newY = Math.max(0, newAbsY - dstZoneOffset);
 
-            const relX = primaryInitial ? pos.x - primaryInitial.x : 0;
-            const relY = primaryInitial ? pos.y - primaryInitial.y : 0;
+              const compIsCrossZone = targetZone && isDifferentZone({
+                zoneKey: compData.zoneKey as ZoneKey,
+                pageId: compData.pageId,
+                groupId: compData.groupId,
+                groupType: compData.groupType as any
+              }, targetZone);
 
-            const newX = finalPrimaryX + relX;
-            const newY = finalPrimaryY + relY;
-
-            if (isCrossZone) {
-              let targetZoneLength = 0;
-              if (target.zoneKey === 'body' && target.pageId) {
-                targetZoneLength =
-                  store.schema.pages.find((p) => p.id === target.pageId)?.body.components.length ||
-                  0;
-              } else if (target.zoneKey !== 'body') {
-                targetZoneLength =
-                  (store.schema.zones as any)[target.zoneKey]?.components?.length || 0;
+              if (compIsCrossZone) {
+                moves.push({
+                  id: dragId,
+                  fromZone: compData.zoneKey as any,
+                  toZone: targetZone.zoneKey as any,
+                  newIndex: -1, // Append to end of zone
+                  x: newX,
+                  y: newY,
+                  fromPageId: compData.pageId || null,
+                  toPageId: targetZone.pageId || null,
+                  fromGroupId: compData.groupId,
+                  toGroupId: targetZone.groupId,
+                  fromGroupType: compData.groupType as any,
+                  toGroupType: targetZone.groupType
+                });
+              } else {
+                updatesMap[dragId] = { x: newX, y: newY };
               }
 
-              store.moveComponent(
-                dragId,
-                compData.zoneKey as 'header' | 'body' | 'footer',
-                target.zoneKey as 'header' | 'body' | 'footer',
-                targetZoneLength,
-                newX,
-                newY,
-                compData.pageId || null,
-                target.pageId || null,
-                false,
-                undefined,
-                target.groupId
-              );
-            } else {
-              store.updateComponent(dragId, { x: newX, y: newY });
+              // Cleanup visuals
+              pos.element.style.transform = '';
+              pos.element.style.willChange = '';
+              pos.element.style.transition = '';
             }
 
-            pos.element.style.transform = '';
-            pos.element.style.willChange = '';
-            pos.element.style.transition = '';
+            // Apply atomic updates
+            store.batchApplyDrag(updatesMap, moves);
+          } else {
+            // Fallback if no target zone detected
+            const visualDeltaX = event.clientX - startX;
+            const visualDeltaY = event.clientY - startY;
+            const deltaXmm = LayoutEngine.pxToMm(visualDeltaX / currentZoom);
+            const deltaYmm = LayoutEngine.pxToMm(visualDeltaY / currentZoom);
+
+            const updatesMap: Record<string, Partial<ComponentNode>> = {};
+            for (const [dragId, pos] of initialPositions) {
+              updatesMap[dragId] = {
+                x: pos.x + deltaXmm,
+                y: pos.y + deltaYmm
+              };
+              pos.element.style.transform = '';
+              pos.element.style.willChange = '';
+              pos.element.style.transition = '';
+            }
+            store.batchApplyDrag(updatesMap, []);
           }
         } else {
-          const visualDeltaX = event.clientX - startX;
-          const visualDeltaY = event.clientY - startY;
-          const deltaXmm = LayoutEngine.pxToMm(visualDeltaX / currentZoom);
-          const deltaYmm = LayoutEngine.pxToMm(visualDeltaY / currentZoom);
-
-          for (const [dragId, pos] of initialPositions) {
-            const newX = pos.x + deltaXmm;
-            const newY = pos.y + deltaYmm;
-            store.updateComponent(dragId, { x: newX, y: newY });
+          // Cleanup visuals even if no drag happened
+          for (const [, pos] of initialPositions) {
             pos.element.style.transform = '';
             pos.element.style.willChange = '';
             pos.element.style.transition = '';
@@ -389,7 +601,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
         dragStateRef.current = null;
         document.body.classList.remove('is-dragging-components');
-        store.setDragState({ isDragging: false, draggedComponentId: null, currentX: 0, currentY: 0 });
+        store.setDragState({
+          isDragging: false,
+          draggedComponentId: null,
+          currentX: 0,
+          currentY: 0,
+          activeGuides: { vertical: [], horizontal: [] },
+          spacingIndicators: [],
+        });
 
         const toolbar = document.querySelector<HTMLElement>('[data-toolbar="true"]');
         if (toolbar) {

@@ -146,36 +146,53 @@ describe('LayoutEngine.findNearestSnapPoint', () => {
 });
 
 describe('LayoutEngine.calculateZoneOffset', () => {
-  const mockSchema = {
+  // A4 portrait: 210 × 297 mm
+  const schema = {
+    page: { size: 'A4', orientation: 'portrait' },
     zones: {
-      header: { minHeight: '25mm' },
-      footer: { minHeight: '20mm' },
+      header: { minHeight: '25mm', repeatOnEveryPage: false },
+      footer: { minHeight: '20mm', repeatOnEveryPage: false, showOnLastPageOnly: false },
     },
     pages: [
-      { id: 'page-1', body: { minHeight: '237mm' } },
-      { id: 'page-2', body: { minHeight: '237mm' } },
+      { id: 'page-1' },
+      { id: 'page-2' },
     ],
+    groups: [],
   };
 
   it('header zone offset is always 0', () => {
-    expect(LayoutEngine.calculateZoneOffset('header', mockSchema)).toBe(0);
+    expect(LayoutEngine.calculateZoneOffset('header', schema)).toBe(0);
+    expect(LayoutEngine.calculateZoneOffset('header', schema, 'page-2')).toBe(0);
   });
 
-  it('body zone offset equals header height', () => {
-    expect(LayoutEngine.calculateZoneOffset('body', mockSchema)).toBe(25);
+  it('body zone offset equals header height on first page', () => {
+    expect(LayoutEngine.calculateZoneOffset('body', schema, 'page-1')).toBe(25);
   });
 
-  it('footer zone offset equals header + page body height', () => {
-    // header: 25mm + body: 237mm = 262mm
-    const offset = LayoutEngine.calculateZoneOffset('footer', mockSchema, 'page-1');
-    expect(offset).toBe(25 + 237);
+  it('body zone offset is 0 when header does not repeat and we are on page 2', () => {
+    // header.repeatOnEveryPage = false → no header on page 2 → body starts at 0
+    expect(LayoutEngine.calculateZoneOffset('body', schema, 'page-2')).toBe(0);
   });
 
-  it('returns header height offset for unknown zone key', () => {
-    // unknown zone falls through header/body/footer checks
-    // offset starts at 0, then header height (25mm) is added before the body check,
-    // so the function returns 25 (header height) for unknown zones
-    expect(LayoutEngine.calculateZoneOffset('unknown', mockSchema)).toBe(25);
+  it('body zone offset equals header height on page 2 when header repeats', () => {
+    const repeatingHeader = {
+      ...schema,
+      zones: { ...schema.zones, header: { minHeight: '25mm', repeatOnEveryPage: true } },
+    };
+    expect(LayoutEngine.calculateZoneOffset('body', repeatingHeader, 'page-2')).toBe(25);
+  });
+
+  it('footer zone offset = pageHeight - footerHeight (A4 portrait)', () => {
+    // A4 height = 297mm, footer = 20mm → offset = 277mm
+    const offset = LayoutEngine.calculateZoneOffset('footer', schema, 'page-1');
+    expect(offset).toBe(297 - 20);
+  });
+
+  it('footer is not visible on page 2 when not repeated (returns 0)', () => {
+    // showOnLastPageOnly=false, repeatOnEveryPage=false, page-2 is not page index 0
+    // → isFooterVisible = false → offset = 0
+    const offset = LayoutEngine.calculateZoneOffset('footer', schema, 'page-2');
+    expect(offset).toBe(0);
   });
 });
 

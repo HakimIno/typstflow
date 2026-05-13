@@ -220,29 +220,37 @@ export const LayoutEngine = {
     dragOffsetY = 0,
     pageId?: string
   ): PositionResult {
-    // 1. Find the specific paper container or default to the first one
     const selector = pageId
       ? `[data-paper-container][data-page-id="${pageId}"]`
       : '[data-paper-container]';
     const container = document.querySelector(selector) as HTMLElement;
     if (!container) return { x: 0, y: 0, rawX: 0, rawY: 0 };
-
-    // 2. Find the scrollable parent
     const scrollParent = container.closest('.overflow-auto') as HTMLElement;
+    return this.calculateAbsolutePositionWithElement(
+      clientX,
+      clientY,
+      dragOffsetX,
+      dragOffsetY,
+      container,
+      scrollParent ?? null
+    );
+  },
 
-    // 3. Read zoom scale explicitly from data attribute (set by Canvas.tsx)
+  /** Hot-path variant — accepts cached element refs to avoid per-frame DOM queries. */
+  calculateAbsolutePositionWithElement(
+    clientX: number,
+    clientY: number,
+    dragOffsetX: number,
+    dragOffsetY: number,
+    container: HTMLElement,
+    scrollParent: HTMLElement | null
+  ): PositionResult {
     const explicitZoom = Number.parseFloat(container.dataset.zoom || '1');
-
-    // 4. Create context with explicit scale
     const context = this.createContextFromElement(container, explicitZoom);
-
-    // Add scroll info from parent if needed (createContextFromElement uses element's own scroll)
     if (scrollParent) {
       context.scrollLeft = scrollParent.scrollLeft;
       context.scrollTop = scrollParent.scrollTop;
     }
-
-    // 5. Use base drop calculation
     return this.calculateDropPosition(clientX, clientY, context, dragOffsetX, dragOffsetY);
   },
 
@@ -469,5 +477,83 @@ export const LayoutEngine = {
       pxPerMm: mmToPxAtCurrentDpi(1),
       mmPerPx: pxToMmAtCurrentDpi(1),
     };
+  },
+
+  /**
+   * Calculates magnetic snap positions relative to other components and page boundaries.
+   * Supports snapping to edges (Left, Right, Top, Bottom) and Centers.
+   *
+   * @param rect - The bounding box of the dragging component(s)
+   * @param targets - Bounding boxes of other potential snap targets
+   * @param threshold - Snap distance threshold in mm (default: 2mm)
+   * @returns Snapped coordinates and active guide positions
+   */
+  calculateMagneticSnap(
+    rect: { x: number; y: number; width: number; height: number },
+    targets: { x: number; y: number; width: number; height: number }[],
+    threshold: number = 2
+  ) {
+    const guides = { vertical: [] as number[], horizontal: [] as number[] };
+    let snappedX = rect.x;
+    let snappedY = rect.y;
+
+    // My snap points: [Left, CenterH, Right]
+    const myX = [rect.x, rect.x + rect.width / 2, rect.x + rect.width];
+    // My snap points: [Top, CenterV, Bottom]
+    const myY = [rect.y, rect.y + rect.height / 2, rect.y + rect.height];
+
+    let minDX = threshold;
+    let minDY = threshold;
+    let xSnapped = false;
+    let ySnapped = false;
+
+    for (const t of targets) {
+      // Target points: [Left, CenterH, Right]
+      const tX = [t.x, t.x + t.width / 2, t.x + t.width];
+      // Target points: [Top, CenterV, Bottom]
+      const tY = [t.y, t.y + t.height / 2, t.y + t.height];
+
+      // Check vertical guides (X alignment)
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          const dx = Math.abs(myX[i] - tX[j]);
+          if (dx <= minDX) {
+            if (dx < minDX || !xSnapped) {
+              minDX = dx;
+              xSnapped = true;
+              // Adjust snappedX so that our point 'i' aligns with target point 'j'
+              snappedX = tX[j] - (i === 1 ? rect.width / 2 : i === 2 ? rect.width : 0);
+              guides.vertical = [tX[j]];
+            } else if (dx === minDX) {
+              if (!guides.vertical.includes(tX[j])) {
+                guides.vertical.push(tX[j]);
+              }
+            }
+          }
+        }
+      }
+
+      // Check horizontal guides (Y alignment)
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          const dy = Math.abs(myY[i] - tY[j]);
+          if (dy <= minDY) {
+            if (dy < minDY || !ySnapped) {
+              minDY = dy;
+              ySnapped = true;
+              // Adjust snappedY so that our point 'i' aligns with target point 'j'
+              snappedY = tY[j] - (i === 1 ? rect.height / 2 : i === 2 ? rect.height : 0);
+              guides.horizontal = [tY[j]];
+            } else if (dy === minDY) {
+              if (!guides.horizontal.includes(tY[j])) {
+                guides.horizontal.push(tY[j]);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return { x: snappedX, y: snappedY, guides };
   },
 };

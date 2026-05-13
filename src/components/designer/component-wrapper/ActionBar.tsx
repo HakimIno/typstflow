@@ -81,14 +81,17 @@ export const ActionBar = memo(function ActionBar({
 
   if (!isVisible) return null;
 
+  const isNearTop = (component.y || 0) < 20;
+
   return (
     <div
       className={clsx(
-        'absolute -top-10 -right-2 flex items-center gap-0.5 bg-black backdrop-blur-md p-1 z-[1000] border border-white/10 shadow-2xl transition-transform duration-200',
+        'absolute -right-2 flex items-center gap-0.5 bg-black backdrop-blur-md p-1 z-[1000] border border-white/10 shadow-2xl transition-all duration-200',
+        isNearTop ? 'top-full mt-2' : '-top-14'
       )}
       style={{
         transform: `scale(${Math.min(1.2, 1 / zoom)})`,
-        transformOrigin: 'bottom right',
+        transformOrigin: isNearTop ? 'top right' : 'bottom right',
         borderRadius: '12px',
       }}
       onClick={(e) => e.stopPropagation()}

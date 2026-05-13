@@ -9,6 +9,8 @@ import { Trash2 } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { SelectionMarquee } from './SelectionMarquee';
 import { SelectionToolbar } from './SelectionToolbar';
+import { SelectionOverlay } from './SelectionOverlay';
+import { SnapGuides } from './SnapGuides';
 import { Zone } from './Zone';
 
 interface DesignerPageProps {
@@ -86,6 +88,8 @@ export const DesignerPage = memo(function DesignerPage({ pageId, pIdx }: Designe
         />
 
         <SelectionMarquee pageId={pageId} />
+        <SelectionOverlay pageId={pageId} />
+        <SnapGuides pageId={pageId} />
         <SelectionToolbar pageId={pageId} />
 
         <div className="flex flex-col gap-0 absolute inset-0 z-20">

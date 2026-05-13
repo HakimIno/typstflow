@@ -14,6 +14,9 @@ export function useKeyboardShortcuts() {
     removeComponents,
     selectedComponentIds,
     clearSelection,
+    alignSelected,
+    distributeSelected,
+    alignToPage,
   } = useDesignerStore();
 
   useEffect(() => {
@@ -129,16 +132,20 @@ export function useKeyboardShortcuts() {
       if (isMod && isShift && (e.key === 'V' || e.key === 'v') && selectedComponentIds.length > 0) {
         // Skip if it conflicts with Paste (Cmd+V without shift)
         e.preventDefault();
-        const store = useDesignerStore.getState();
-        const { height: pageH } = getPaperDimensions(store.schema.page.size, store.schema.page.orientation);
-        const mTop = parseTypstUnit(store.schema.page.margin.top);
-        const mBottom = parseTypstUnit(store.schema.page.margin.bottom);
-        const contentH = pageH - mTop - mBottom;
-        for (const id of selectedComponentIds) {
-          const comp = store.componentRegistry[id];
-          if (comp) {
-            store.updateComponent(id, { y: (contentH - (comp.height || 0)) / 2 });
-          }
+        alignToPage('page-center-v');
+      }
+      
+      // Alignment Shortcuts: Alt + Key
+      if (e.altKey && selectedComponentIds.length > 1) {
+        switch (e.key.toLowerCase()) {
+          case 'l': e.preventDefault(); alignSelected('left'); break;
+          case 'c': e.preventDefault(); alignSelected('center'); break;
+          case 'r': e.preventDefault(); alignSelected('right'); break;
+          case 't': e.preventDefault(); alignSelected('top'); break;
+          case 'm': e.preventDefault(); alignSelected('middle'); break;
+          case 'b': e.preventDefault(); alignSelected('bottom'); break;
+          case 'h': e.preventDefault(); distributeSelected('dist-h'); break;
+          case 'v': e.preventDefault(); distributeSelected('dist-v'); break;
         }
       }
 

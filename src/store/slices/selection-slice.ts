@@ -53,6 +53,7 @@ export const createSelectionSlice: StateCreator<DesignerState, [], [], Selection
       vertical: [],
       horizontal: [],
     },
+    spacingIndicators: [],
     activePageId: null,
   },
 

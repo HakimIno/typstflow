@@ -1,5 +1,7 @@
-import { getPaperDimensions } from '@/lib/utils/paper-sizes';
-import type { ComponentNode, LayoutSchema } from '@/types/schema';
+import { LayoutEngine } from './layout-engine';
+import { getPaperDimensions } from '../utils/paper-sizes';
+import { parseTypstUnit } from '../utils/units';
+import type { ComponentNode, LayoutSchema } from '../../types/schema';
 
 export interface SnapPoint {
   value: number; // mm
@@ -12,6 +14,7 @@ export interface SnapResult {
   snappedY: number;
   activeGuidesX: number[];
   activeGuidesY: number[];
+  spacingIndicators: SpacingIndicator[];
 }
 
 /** Distance indicator between the dragged element and its nearest neighbor on each axis */
@@ -44,11 +47,12 @@ export const SnapEngine = {
    */
   generateSnapPoints(
     schema: LayoutSchema,
-    draggedId: string,
+    draggedIds: string | string[],
     pageId?: string
   ): { x: SnapPoint[]; y: SnapPoint[] } {
     const pointsX: SnapPoint[] = [];
     const pointsY: SnapPoint[] = [];
+    const excludedIds = Array.isArray(draggedIds) ? draggedIds : [draggedIds];
 
     // 1. Page Points
     const { width: pageWidth, height: pageHeight } = getPaperDimensions(
@@ -56,20 +60,24 @@ export const SnapEngine = {
       schema.page.orientation
     );
 
+    // Current page vertical offset
+    const pageIndex = pageId ? schema.pages.findIndex(p => p.id === pageId) : 0;
+    const pageAbsY = pageIndex * pageHeight;
+
+    // Page boundaries & center
     pointsX.push({ value: 0, type: 'edge', originId: 'page' });
     pointsX.push({ value: pageWidth, type: 'edge', originId: 'page' });
     pointsX.push({ value: pageWidth / 2, type: 'center', originId: 'page' });
 
-    pointsY.push({ value: 0, type: 'edge', originId: 'page' });
-    pointsY.push({ value: pageHeight, type: 'edge', originId: 'page' });
-    pointsY.push({ value: pageHeight / 2, type: 'center', originId: 'page' });
+    pointsY.push({ value: pageAbsY, type: 'edge', originId: 'page' });
+    pointsY.push({ value: pageAbsY + pageHeight, type: 'edge', originId: 'page' });
+    pointsY.push({ value: pageAbsY + pageHeight / 2, type: 'center', originId: 'page' });
 
-    // 2. Component Points
-    const addComponentPoints = (c: ComponentNode) => {
-      if (c.id === draggedId) return;
+    const addComponentPoints = (c: ComponentNode, zoneOffset: number) => {
+      if (excludedIds.includes(c.id)) return;
 
       const cx = c.x || 0;
-      const cy = c.y || 0;
+      const cy = (c.y || 0) + zoneOffset;
       const cw = c.width || 0;
       const ch = c.height || 0;
 
@@ -83,17 +91,38 @@ export const SnapEngine = {
     };
 
     // a) Global Zones (Header, Footer)
-    for (const zone of Object.values(schema.zones)) {
-      for (const c of zone.components) {
-        addComponentPoints(c);
+    // Header is always at absolute 0 for the whole document
+    for (const c of schema.zones.header.components) {
+      addComponentPoints(c, 0);
+    }
+    
+    // Footer is physically at bottom of each page
+    const footerHeight = parseTypstUnit(schema.zones.footer.minHeight) || 20;
+    const fOffset = pageAbsY + pageHeight - footerHeight;
+    for (const c of schema.zones.footer.components) {
+      addComponentPoints(c, fOffset);
+    }
+
+    // b) Pages (Optimized: only current page)
+    const pagesToProcess = pageId ? schema.pages.filter(p => p.id === pageId) : schema.pages;
+    for (const page of pagesToProcess) {
+      const bOffset = LayoutEngine.calculateZoneOffset('body', schema, page.id);
+      for (const c of page.body.components) {
+        addComponentPoints(c, bOffset);
       }
     }
 
-    // b) Pages
-    const targetPages = pageId ? schema.pages.filter((p) => p.id === pageId) : schema.pages;
-    for (const page of targetPages) {
-      for (const c of page.body.components) {
-        addComponentPoints(c);
+    // c) Groups
+    if (schema.groups) {
+      for (const group of schema.groups) {
+        // Groups usually follow the body flow context
+        const bOffset = LayoutEngine.calculateZoneOffset('body', schema, pageId);
+        for (const c of group.header.components) {
+          addComponentPoints(c, bOffset); 
+        }
+        for (const c of group.footer.components) {
+          addComponentPoints(c, bOffset);
+        }
       }
     }
 
@@ -108,34 +137,44 @@ export const SnapEngine = {
     y: number,
     width: number,
     height: number,
-    draggedId: string,
+    draggedIds: string | string[],
     schema: LayoutSchema,
     pageId?: string
   ): SpacingIndicator[] {
     const indicators: SpacingIndicator[] = [];
+    const excludedIds = Array.isArray(draggedIds) ? draggedIds : [draggedIds];
 
-    // Collect all sibling component bounding boxes
+    // Collect all sibling component bounding boxes with absolute document coordinates
     const siblings: { id: string; x: number; y: number; w: number; h: number }[] = [];
 
-    const collectComponents = (components: ComponentNode[]) => {
+    const collectComponents = (components: ComponentNode[], offset: number) => {
       for (const c of components) {
-        if (c.id === draggedId) continue;
+        if (excludedIds.includes(c.id)) continue;
         siblings.push({
           id: c.id,
           x: c.x || 0,
-          y: c.y || 0,
+          y: (c.y || 0) + offset,
           w: c.width || 0,
           h: c.height || 0,
         });
       }
     };
 
-    // Collect from active page body
-    const page = schema.pages.find((p) => p.id === pageId);
-    if (page) collectComponents(page.body.components);
-    // Also from global zones
-    collectComponents(schema.zones.header.components);
-    collectComponents(schema.zones.footer.components);
+    // a) Global Zones
+    collectComponents(schema.zones.header.components, 0);
+    
+    const { height: pageHeight } = getPaperDimensions(schema.page.size, schema.page.orientation);
+    const pageIndex = pageId ? schema.pages.findIndex(p => p.id === pageId) : 0;
+    const pageAbsY = pageIndex * pageHeight;
+    const footerHeight = parseTypstUnit(schema.zones.footer.minHeight) || 20;
+    collectComponents(schema.zones.footer.components, pageAbsY + pageHeight - footerHeight);
+
+    // b) Pages (Optimized: only current page)
+    const pagesToProcess = pageId ? schema.pages.filter(p => p.id === pageId) : schema.pages;
+    for (const page of pagesToProcess) {
+      const bOffset = LayoutEngine.calculateZoneOffset('body', schema, page.id);
+      collectComponents(page.body.components, bOffset);
+    }
 
     const dragRight = x + width;
     const dragBottom = y + height;
@@ -259,56 +298,68 @@ export const SnapEngine = {
     y: number,
     width: number,
     height: number,
-    draggedId: string,
+    draggedIds: string | string[],
     schema: LayoutSchema,
     pageId?: string
   ): EqualSpacingSnap[] {
     const snaps: EqualSpacingSnap[] = [];
     const siblings: { x: number; y: number; w: number; h: number }[] = [];
+    
+    const draggedIdArray = Array.isArray(draggedIds) ? draggedIds : [draggedIds];
 
     const collectComponents = (components: ComponentNode[]) => {
       for (const c of components) {
-        if (c.id === draggedId) continue;
+        if (draggedIdArray.includes(c.id)) continue;
         siblings.push({ x: c.x || 0, y: c.y || 0, w: c.width || 0, h: c.height || 0 });
       }
     };
 
     const page = schema.pages.find((p) => p.id === pageId);
     if (page) collectComponents(page.body.components);
+    collectComponents(schema.zones.header.components);
+    collectComponents(schema.zones.footer.components);
 
-    if (siblings.length < 2) return snaps;
+    if (siblings.length < 1) return snaps;
 
-    // Sort by X for horizontal equal spacing
-    const sortedX = [...siblings].sort((a, b) => a.x - b.x);
-    for (let i = 0; i < sortedX.length - 1; i++) {
-      const gapBetween = sortedX[i + 1].x - (sortedX[i].x + sortedX[i].w);
-      if (gapBetween <= 0) continue;
+    // 1. Collect gaps between ADJACENT siblings (O(N log N) optimization)
+    const existingGapsX = new Set<number>();
+    const existingGapsY = new Set<number>();
 
-      // Check: can we place the dragged element with the same gap after the last?
-      const candidateX = sortedX[sortedX.length - 1].x + sortedX[sortedX.length - 1].w + gapBetween;
-      if (Math.abs(x - candidateX) < EQUAL_SPACING_THRESHOLD) {
-        snaps.push({ axis: 'x', snappedValue: candidateX, referenceGap: gapBetween });
+    if (siblings.length >= 2) {
+      const sortedX = [...siblings].sort((a, b) => a.x - b.x);
+      for (let i = 0; i < sortedX.length - 1; i++) {
+        const gap = sortedX[i + 1].x - (sortedX[i].x + sortedX[i].w);
+        if (gap > 0.5 && gap < 150) existingGapsX.add(Number(gap.toFixed(2)));
       }
-      // Check: same gap before the first
-      const candidateXBefore = sortedX[0].x - width - gapBetween;
-      if (Math.abs(x - candidateXBefore) < EQUAL_SPACING_THRESHOLD) {
-        snaps.push({ axis: 'x', snappedValue: candidateXBefore, referenceGap: gapBetween });
+
+      const sortedY = [...siblings].sort((a, b) => a.y - b.y);
+      for (let i = 0; i < sortedY.length - 1; i++) {
+        const gap = sortedY[i + 1].y - (sortedY[i].y + sortedY[i].h);
+        if (gap > 0.5 && gap < 150) existingGapsY.add(Number(gap.toFixed(2)));
       }
     }
 
-    // Sort by Y for vertical equal spacing
-    const sortedY = [...siblings].sort((a, b) => a.y - b.y);
-    for (let i = 0; i < sortedY.length - 1; i++) {
-      const gapBetween = sortedY[i + 1].y - (sortedY[i].y + sortedY[i].h);
-      if (gapBetween <= 0) continue;
-
-      const candidateY = sortedY[sortedY.length - 1].y + sortedY[sortedY.length - 1].h + gapBetween;
-      if (Math.abs(y - candidateY) < EQUAL_SPACING_THRESHOLD) {
-        snaps.push({ axis: 'y', snappedValue: candidateY, referenceGap: gapBetween });
+    for (const s of siblings) {
+      for (const gap of existingGapsX) {
+        const candAfter = s.x + s.w + gap;
+        if (Math.abs(x - candAfter) < EQUAL_SPACING_THRESHOLD) {
+          snaps.push({ axis: 'x', snappedValue: candAfter, referenceGap: gap });
+        }
+        const candBefore = s.x - width - gap;
+        if (Math.abs(x - candBefore) < EQUAL_SPACING_THRESHOLD) {
+          snaps.push({ axis: 'x', snappedValue: candBefore, referenceGap: gap });
+        }
       }
-      const candidateYBefore = sortedY[0].y - height - gapBetween;
-      if (Math.abs(y - candidateYBefore) < EQUAL_SPACING_THRESHOLD) {
-        snaps.push({ axis: 'y', snappedValue: candidateYBefore, referenceGap: gapBetween });
+
+      for (const gap of existingGapsY) {
+        const candBelow = s.y + s.h + gap;
+        if (Math.abs(y - candBelow) < EQUAL_SPACING_THRESHOLD) {
+          snaps.push({ axis: 'y', snappedValue: candBelow, referenceGap: gap });
+        }
+        const candAbove = s.y - height - gap;
+        if (Math.abs(y - candAbove) < EQUAL_SPACING_THRESHOLD) {
+          snaps.push({ axis: 'y', snappedValue: candAbove, referenceGap: gap });
+        }
       }
     }
 
@@ -320,27 +371,27 @@ export const SnapEngine = {
     y: number, // current candidate y (mm)
     width: number,
     height: number,
-    draggedId: string,
+    draggedIds: string | string[],
     schema: LayoutSchema,
     isAltKeyPressed: boolean,
     pageId?: string,
     cachedPoints?: { x: SnapPoint[]; y: SnapPoint[] }
   ): SnapResult {
     if (isAltKeyPressed) {
-      return { snappedX: x, snappedY: y, activeGuidesX: [], activeGuidesY: [] };
+      return { snappedX: x, snappedY: y, activeGuidesX: [], activeGuidesY: [], spacingIndicators: [] };
     }
 
-    const points = cachedPoints || this.generateSnapPoints(schema, draggedId, pageId);
+    const points = cachedPoints || this.generateSnapPoints(schema, draggedIds, pageId);
 
     let snappedX = x;
     let snappedY = y;
     const activeGuidesX: number[] = [];
     const activeGuidesY: number[] = [];
 
-    const GRID_SIZE = 0.1;
+    const GRID_SIZE = 1.0; // 1mm for crisp fallback
 
     // --- Equal Spacing Snap (higher priority) ---
-    const equalSnaps = this.findEqualSpacingSnap(x, y, width, height, draggedId, schema, pageId);
+    const equalSnaps = this.findEqualSpacingSnap(x, y, width, height, draggedIds, schema, pageId);
     let equalSnapAppliedX = false;
     let equalSnapAppliedY = false;
     for (const es of equalSnaps) {
@@ -355,7 +406,7 @@ export const SnapEngine = {
     }
 
     // --- Edge/Center Snap ---
-    // Snap X (only if not already equal-spaced)
+    // Snap X
     if (!equalSnapAppliedX) {
       const draggedPointsX = [
         { val: x, name: 'left' },
@@ -363,28 +414,43 @@ export const SnapEngine = {
         { val: x + width / 2, name: 'center' },
       ];
 
+      let bestDist = SNAP_THRESHOLD;
+      let bestSnapValue = x;
       let foundX = false;
+
       for (const dp of draggedPointsX) {
         for (const sp of points.x) {
-          if (Math.abs(dp.val - sp.value) < SNAP_THRESHOLD) {
-            if (dp.name === 'left') snappedX = sp.value;
-            if (dp.name === 'right') snappedX = sp.value - width;
-            if (dp.name === 'center') snappedX = sp.value - width / 2;
-            activeGuidesX.push(sp.value);
+          const dist = Math.abs(dp.val - sp.value);
+          if (dist < bestDist) {
+            bestDist = dist;
+            if (dp.name === 'left') bestSnapValue = sp.value;
+            if (dp.name === 'right') bestSnapValue = sp.value - width;
+            if (dp.name === 'center') bestSnapValue = sp.value - width / 2;
             foundX = true;
-            break;
           }
         }
-        if (foundX) break;
       }
 
-      // Grid Snap X fallback
-      if (!foundX) {
+      if (foundX) {
+        snappedX = bestSnapValue;
+        const finalLeft = snappedX;
+        const finalRight = snappedX + width;
+        const finalCenter = snappedX + width / 2;
+        for (const sp of points.x) {
+          if (
+            Math.abs(sp.value - finalLeft) < 0.01 ||
+            Math.abs(sp.value - finalRight) < 0.01 ||
+            Math.abs(sp.value - finalCenter) < 0.01
+          ) {
+            if (!activeGuidesX.includes(sp.value)) activeGuidesX.push(sp.value);
+          }
+        }
+      } else {
         snappedX = Math.round(x / GRID_SIZE) * GRID_SIZE;
       }
     }
 
-    // Snap Y (only if not already equal-spaced)
+    // Snap Y
     if (!equalSnapAppliedY) {
       const draggedPointsY = [
         { val: y, name: 'top' },
@@ -392,27 +458,51 @@ export const SnapEngine = {
         { val: y + height / 2, name: 'center' },
       ];
 
+      let bestDist = SNAP_THRESHOLD;
+      let bestSnapValue = y;
       let foundY = false;
+
       for (const dp of draggedPointsY) {
         for (const sp of points.y) {
-          if (Math.abs(dp.val - sp.value) < SNAP_THRESHOLD) {
-            if (dp.name === 'top') snappedY = sp.value;
-            if (dp.name === 'bottom') snappedY = sp.value - height;
-            if (dp.name === 'center') snappedY = sp.value - height / 2;
-            activeGuidesY.push(sp.value);
+          const dist = Math.abs(dp.val - sp.value);
+          if (dist < bestDist) {
+            bestDist = dist;
+            if (dp.name === 'top') bestSnapValue = sp.value;
+            if (dp.name === 'bottom') bestSnapValue = sp.value - height;
+            if (dp.name === 'center') bestSnapValue = sp.value - height / 2;
             foundY = true;
-            break;
           }
         }
-        if (foundY) break;
       }
 
-      // Grid Snap Y fallback
-      if (!foundY) {
+      if (foundY) {
+        snappedY = bestSnapValue;
+        const finalTop = snappedY;
+        const finalBottom = snappedY + height;
+        const finalCenter = snappedY + height / 2;
+        for (const sp of points.y) {
+          if (
+            Math.abs(sp.value - finalTop) < 0.01 ||
+            Math.abs(sp.value - finalBottom) < 0.01 ||
+            Math.abs(sp.value - finalCenter) < 0.01
+          ) {
+            if (!activeGuidesY.includes(sp.value)) activeGuidesY.push(sp.value);
+          }
+        }
+      } else {
         snappedY = Math.round(y / GRID_SIZE) * GRID_SIZE;
       }
     }
 
-    return { snappedX, snappedY, activeGuidesX, activeGuidesY };
+    const spacingIndicators = this.calculateSpacingIndicators(snappedX, snappedY, width, height, draggedIds, schema, pageId);
+
+    return { 
+      snappedX, 
+      snappedY, 
+      activeGuidesX, 
+      activeGuidesY,
+      spacingIndicators 
+    };
   },
 };
+
