@@ -37,6 +37,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { BasePanel } from './BasePanel';
 import { PanelHeader } from './PanelHeader';
+import { Icon } from '@iconify/react';
 
 // --- Types ---
 
@@ -189,7 +190,7 @@ const LayerItem = memo(
       <div
         ref={ref}
         className={clsx(
-          'w-full group relative flex items-center gap-3 px-4 py-0 cursor-pointer select-none h-[32px]',
+          'w-full group relative flex items-center gap-3 px-3 py-0 cursor-pointer select-none h-8',
           isSelected && 'bg-white/5',
           isDragging && 'opacity-40 grayscale',
           isHidden && 'opacity-50'
@@ -563,27 +564,17 @@ export const LayersPanel = memo(function LayersPanel() {
       />
 
       {/* Search Bar */}
-      <div className="px-3 pt-1 pb-2">
+      <div className="p-2 border-b border-[var(--border-default)] shrink-0">
         <div className="relative group">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
-          <input
+          <DesignerInput
             type="text"
-            placeholder="Search components..."
+            placeholder="Search tools..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-black/20 border border-white/5 rounded-md py-1.5 pl-8 pr-3 text-[12px] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]/50 focus:bg-black/40 transition-all placeholder:text-[var(--text-muted)]/50"
+            onChange={(v: string) => setSearchQuery(v)}
+            className="pr-8"
           />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-white/10 rounded-full"
-            >
-              <X className="w-3 h-3 text-[var(--text-muted)]" />
-            </button>
-          )}
+          <Icon icon="lucide:search" className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
         </div>
-
-
       </div>
 
       <hr className="border-white/5" />
@@ -627,7 +618,7 @@ export const LayersPanel = memo(function LayersPanel() {
                 >
                   {item.type === 'page-separator' && (
                     <div
-                      className="px-4 h-[36px] flex items-center justify-between border-b border-white/5 bg-white/[0.02] cursor-pointer hover:bg-white/[0.05] transition-colors group/page"
+                      className="px-2 h-8 flex items-center justify-between border-b border-white/5 bg-white/[0.02] cursor-pointer hover:bg-white/[0.05] transition-colors group/page"
                       onClick={() => {
                         useDesignerStore.getState().setActivePage(item.pageId);
                         useDesignerStore.getState().setScrollToPageId(item.pageId);
@@ -640,7 +631,7 @@ export const LayersPanel = memo(function LayersPanel() {
                   )}
 
                   {item.type === 'global-separator' && (
-                    <div className="px-3.5 py-1.5 flex items-center gap-2 mt-4">
+                    <div className="px-2 py-1 flex items-center gap-2 mt-4">
                       <div className="flex items-center gap-2 shrink-0">
                         <Globe className="w-3 h-3 text-[var(--accent)]" />
                         <span className="text-[11px] font-bold text-[var(--accent)]">

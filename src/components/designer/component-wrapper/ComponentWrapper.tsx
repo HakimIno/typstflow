@@ -614,58 +614,26 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         style={{
           width: flowWidth,
           minHeight: `${flowHeight}px`,
+          height: component.type === 'image' && component.height ? `${LayoutEngine.mmToPx(component.height)}px` : undefined,
           marginLeft: `${flowXPx}px`,
+          marginTop: `${LayoutEngine.mmToPx(component.y || 0)}px`,
           opacity: isHidden ? 0.4 : 1,
           transform: flowDragging ? `translateY(${flowDeltaY}px)` : undefined,
           transition: flowDragging ? 'none' : 'transform 0.15s ease',
         }}
       >
-        {/* Reorder arrows — left side */}
-        <div className="absolute -left-7 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-auto">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); moveDown(componentId); }}
-            title="Move up"
-            className="w-5 h-5 flex items-center justify-center rounded bg-[var(--surface-2)] hover:bg-[var(--accent)] text-[var(--text-muted)] hover:text-white border border-[var(--border-default)] transition-colors"
-          >
-            <ChevronUp className="w-3 h-3" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); moveUp(componentId); }}
-            title="Move down"
-            className="w-5 h-5 flex items-center justify-center rounded bg-[var(--surface-2)] hover:bg-[var(--accent)] text-[var(--text-muted)] hover:text-white border border-[var(--border-default)] transition-colors"
-          >
-            <ChevronDown className="w-3 h-3" />
-          </button>
-        </div>
-
-        {/* Indent controls — top-right corner (hover/select to reveal) */}
-        <div className={clsx(
-          'absolute top-1 right-1 flex items-center gap-0.5 z-20 pointer-events-auto',
-          'opacity-0 group-hover:opacity-100 transition-opacity',
-          isSelected && 'opacity-100'
-        )}>
-          <button
-            type="button"
-            onClick={handleFlowIndentLeft}
-            title="Indent left 5mm"
-            className="w-5 h-5 flex items-center justify-center rounded bg-black/50 hover:bg-[var(--accent)] text-white/70 hover:text-white transition-colors"
-          >
-            <ChevronLeft className="w-3 h-3" />
-          </button>
-          <span className="text-[9px] text-white/70 font-mono bg-black/50 rounded px-1 py-0.5 leading-none select-none whitespace-nowrap">
-            ←{componentX}mm
-          </span>
-          <button
-            type="button"
-            onClick={handleFlowIndentRight}
-            title="Indent right 5mm"
-            className="w-5 h-5 flex items-center justify-center rounded bg-black/50 hover:bg-[var(--accent)] text-white/70 hover:text-white transition-colors"
-          >
-            <ChevronRight className="w-3 h-3" />
-          </button>
-        </div>
+        {!isLocked && (
+          <ActionBar
+            component={component}
+            isSelected={isSelected}
+            selectedIds={selectedIds}
+            isDragging={flowDragging}
+            flowMode={true}
+            handleDuplicate={handleDuplicate}
+            handleFlowIndentLeft={handleFlowIndentLeft}
+            handleFlowIndentRight={handleFlowIndentRight}
+          />
+        )}
 
         {isEditing && component.type === 'text' && (
           <EditorOverlay

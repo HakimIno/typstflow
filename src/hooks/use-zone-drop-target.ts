@@ -12,7 +12,8 @@ export function useZoneDropTarget(
   contentRef: React.RefObject<HTMLDivElement | null>,
   pageId?: string,
   groupId?: string,
-  groupType?: 'header' | 'footer'
+  groupType?: 'header' | 'footer',
+  isFlowMode = false
 ) {
   const [isDraggedOver, setIsDraggedOver] = useState(false);
   const addComponent = useDesignerStore((state) => state.addComponent);
@@ -57,7 +58,7 @@ export function useZoneDropTarget(
               ...data.component,
               id: Math.random().toString(36).substring(7),
               x: finalX,
-              y: finalY - zoneOffsetMm,
+              y: isFlowMode ? 0 : finalY - zoneOffsetMm,
             },
             pageId,
             groupId,
@@ -68,7 +69,7 @@ export function useZoneDropTarget(
           if (data.group && data.group.length > 1) {
             for (const item of data.group as any[]) {
               const targetAbsY = finalY + item.offsetY;
-              const localY = targetAbsY - zoneOffsetMm;
+              const localY = isFlowMode ? 0 : targetAbsY - zoneOffsetMm;
               moveComponent(
                 item.id,
                 data.zoneKey as any,
@@ -92,7 +93,7 @@ export function useZoneDropTarget(
               zoneKey,
               -1,
               finalX,
-              finalY - zoneOffsetMm,
+              isFlowMode ? 0 : finalY - zoneOffsetMm,
               data.pageId,
               pageId,
               false,

@@ -5,8 +5,8 @@ import { useZoneResize } from '@/hooks/use-zone-resize';
 import { getZoneComponents } from '@/lib/utils/schema-mutators';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { Layers, Workflow } from 'lucide-react';
-import { memo, useRef } from 'react';
+import { Layers, Workflow, Move } from 'lucide-react';
+import { memo, useRef, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ComponentWrapper } from './component-wrapper';
 
@@ -52,6 +52,13 @@ export const Zone = memo(function Zone({
     return s.schema.zones[zoneKey as 'header' | 'footer']?.layoutMode === 'flow';
   });
 
+  const updateZone = useDesignerStore((s) => s.updateZone);
+
+  const toggleLayoutMode = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateZone(zoneKey, { layoutMode: isFlowZone ? 'absolute' : 'flow' }, pageId);
+  }, [zoneKey, pageId, isFlowZone, updateZone]);
+
   const { isResizing, handleResizeStart } = useZoneResize(
     zoneKey,
     minHeight || '50',
@@ -63,7 +70,7 @@ export const Zone = memo(function Zone({
     groupId,
     groupType
   );
-  const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef, pageId, groupId, groupType);
+  const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef, pageId, groupId, groupType, isFlowZone);
 
   return (
     <div
@@ -117,48 +124,66 @@ export const Zone = memo(function Zone({
         className="relative w-full h-full bg-transparent overflow-visible min-h-[inherit]"
       >
         {!hidden && (
-          componentIds.length === 0 && !isDraggedOver ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 opacity-40 select-none pointer-events-none">
-              <Layers className="w-6 h-6 mb-1" />
-              <p className="text-[9px] font-bold uppercase tracking-widest text-center px-4">
-                {label} EMPTY
-                <br />
-                <span className="text-[7px] font-medium tracking-normal opacity-60">
-                  DRAG COMPONENTS HERE
-                </span>
-              </p>
+          <>
+            {/* Layout Mode Toggle (Always visible on hover, or visible if flow) */}
+            <div className={clsx(
+              "absolute top-1 right-1 z-10 flex items-center gap-1 transition-opacity",
+              isFlowZone ? "opacity-100" : "opacity-0 group-hover/zone:opacity-100"
+            )}>
+              <button
+                type="button"
+                onClick={toggleLayoutMode}
+                className={clsx(
+                  "flex items-center gap-1 rounded px-1.5 py-0.5 border text-[8px] font-bold uppercase tracking-widest transition-colors",
+                  isFlowZone 
+                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30"
+                    : "bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+                )}
+                title={isFlowZone ? "Switch to Absolute Layout" : "Switch to Flow Layout"}
+              >
+                {isFlowZone ? <Workflow className="w-2.5 h-2.5" /> : <Move className="w-2.5 h-2.5" />}
+                <span>{isFlowZone ? 'Flow' : 'Absolute'}</span>
+              </button>
             </div>
-          ) : isFlowZone ? (
-            <div className="relative w-full min-h-full p-2 flex flex-col gap-1 overflow-visible">
-              {/* Flow Mode Badge */}
-              <div className="absolute top-1 right-1 z-10 flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/40 rounded px-1.5 py-0.5 pointer-events-none select-none">
-                <Workflow className="w-2.5 h-2.5 text-emerald-400" />
-                <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest">Flow</span>
+
+            {componentIds.length === 0 && !isDraggedOver ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 opacity-40 select-none pointer-events-none">
+                <Layers className="w-6 h-6 mb-1" />
+                <p className="text-[9px] font-bold uppercase tracking-widest text-center px-4">
+                  {label} EMPTY
+                  <br />
+                  <span className="text-[7px] font-medium tracking-normal opacity-60">
+                    DRAG COMPONENTS HERE
+                  </span>
+                </p>
               </div>
-              {componentIds.map((id) => (
-                <ComponentWrapper
-                  key={`${pageId ?? 'global'}-${id}`}
-                  componentId={id}
-                  zoneKey={zoneKey}
-                  pageId={pageId}
-                  pageIndex={pageIndex}
-                  flowMode
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="absolute inset-0 overflow-visible">
-              {componentIds.map((id) => (
-                <ComponentWrapper
-                  key={`${pageId ?? 'global'}-${id}`}
-                  componentId={id}
-                  zoneKey={zoneKey}
-                  pageId={pageId}
-                  pageIndex={pageIndex}
-                />
-              ))}
-            </div>
-          )
+            ) : isFlowZone ? (
+              <div className="relative w-full min-h-full p-2 flex flex-col gap-1 overflow-visible">
+                {componentIds.map((id) => (
+                  <ComponentWrapper
+                    key={`${pageId ?? 'global'}-${id}`}
+                    componentId={id}
+                    zoneKey={zoneKey}
+                    pageId={pageId}
+                    pageIndex={pageIndex}
+                    flowMode
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="absolute inset-0 overflow-visible">
+                {componentIds.map((id) => (
+                  <ComponentWrapper
+                    key={`${pageId ?? 'global'}-${id}`}
+                    componentId={id}
+                    zoneKey={zoneKey}
+                    pageId={pageId}
+                    pageIndex={pageIndex}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 

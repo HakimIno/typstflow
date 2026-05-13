@@ -243,18 +243,19 @@ pub fn wrap_placement(base: &BaseComponent, body: &str, offset_x: &str, offset_y
 /// in code") when the body contains #set rules nested inside deep content brackets.
 pub fn wrap_flow_block(base: &BaseComponent, body: &str, prefix: &str) -> String {
     let x = base.x.unwrap_or(0.0);
+    let y = base.y.unwrap_or(0.0);
     let w = base.width.unwrap_or(190.0);
     let mut out = String::new();
     if base.page_break_before.unwrap_or(false) {
         out.push_str("#pagebreak(weak: true)\n");
     }
     if !body.is_empty() {
-        if x > 0.0 {
+        if x > 0.0 || y > 0.0 {
             // Outer full-width block keeps content in flow; inner pad creates the
-            // 15 mm left indent; innermost block constrains the content width.
+            // left indent and top margin; innermost block constrains the content width.
             out.push_str(&format!(
-                "{}block(width: 100%)[#pad(left: {}mm)[#block(width: {}mm, clip: false)[{}]]]\n",
-                prefix, x, w, body
+                "{}block(width: 100%)[#pad(top: {}mm, left: {}mm)[#block(width: {}mm, clip: false)[{}]]]\n",
+                prefix, y, x, w, body
             ));
         } else {
             out.push_str(&format!("{}block(width: {}mm, clip: false)[{}]\n", prefix, w, body));

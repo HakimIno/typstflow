@@ -99,17 +99,22 @@ pub fn render_image(c: &ImageComponent, local: &Value, global: &Value, offset_x:
 
     let src = c.src.trim();
     let is_valid = src.starts_with("asset-") || src.starts_with("data:");
+    
+    // In flow mode, if height is 100% inside an auto-height block, it breaks pagination.
+    // Use the exact mm height or auto.
+    let h_str = c.base.height.map(|h| format!("{}mm", h)).unwrap_or_else(|| "auto".to_string());
 
     let body = if !src.is_empty() && is_valid {
         format!(
-            "#image(\"{}\", width: 100%, height: 100%, fit: \"{}\")",
+            "#image(\"{}\", width: 100%, height: {}, fit: \"{}\")",
             src,
+            h_str,
             c.fit.as_deref().unwrap_or("contain")
         )
     } else if !src.is_empty() {
-        "#rect(width: 100%, height: 100%, fill: gray.lighten(95%), stroke: 0.5pt + gray)[#set align(center + horizon); #text(size: 6pt, fill: gray.darken(30%))[FILE NOT FOUND]]".to_string()
+        format!("#rect(width: 100%, height: {}, fill: gray.lighten(95%), stroke: 0.5pt + gray)[#set align(center + horizon); #text(size: 6pt, fill: gray.darken(30%))[FILE NOT FOUND]]", h_str)
     } else {
-        "#rect(width: 100%, height: 100%, fill: gray.lighten(80%))[#set align(center + horizon); No Image]".to_string()
+        format!("#rect(width: 100%, height: {}, fill: gray.lighten(80%))[#set align(center + horizon); No Image]", h_str)
     };
     if flow_mode { wrap_flow_block(&c.base, &body, prefix) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
