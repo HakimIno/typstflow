@@ -1,4 +1,10 @@
-import React from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
 
 interface FontWeightSelectProps {
   value: string | number | undefined;
@@ -26,23 +32,22 @@ export function FontWeightSelect({ value, onChange, className }: FontWeightSelec
     normalizedValue = legacyMap[normalizedValue.toLowerCase()];
   }
 
-  const defaultClassName = "w-full h-6 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[10px] px-1 outline-none focus:border-[var(--accent)]";
-
   return (
-    <select
-      value={normalizedValue}
-      onChange={(e) => onChange(e.target.value)}
-      className={className || defaultClassName}
-    >
-      <option value="100">Thin (100)</option>
-      <option value="200">Extra Light (200)</option>
-      <option value="300">Light (300)</option>
-      <option value="400">Regular (400)</option>
-      <option value="500">Medium (500)</option>
-      <option value="600">Semi Bold (600)</option>
-      <option value="700">Bold (700)</option>
-      <option value="800">Extra Bold (800)</option>
-      <option value="900">Black (900)</option>
-    </select>
+    <Select value={normalizedValue} onValueChange={onChange}>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder="Weight" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="100">Thin (100)</SelectItem>
+        <SelectItem value="200">Extra Light (200)</SelectItem>
+        <SelectItem value="300">Light (300)</SelectItem>
+        <SelectItem value="400">Regular (400)</SelectItem>
+        <SelectItem value="500">Medium (500)</SelectItem>
+        <SelectItem value="600">Semi Bold (600)</SelectItem>
+        <SelectItem value="700">Bold (700)</SelectItem>
+        <SelectItem value="800">Extra Bold (800)</SelectItem>
+        <SelectItem value="900">Black (900)</SelectItem>
+      </SelectContent>
+    </Select>
   );
 }

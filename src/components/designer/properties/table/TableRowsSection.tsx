@@ -62,8 +62,30 @@ export const TableRowsSection = ({ component, type }: Props) => {
     );
   }
 
+  const isRepeatEnabled = rows[0]?.repeat !== false;
+
   return (
     <div className="p-0 space-y-1 bg-[var(--bg-widget)]">
+      {type === 'footer' && rows.length > 0 && (
+        <div className="flex items-center justify-between p-2 mb-2 bg-[var(--bg-surface)] border-b border-[var(--border-default)]">
+          <span className="text-[10px] font-medium text-[var(--text-primary)]">Repeat on every page</span>
+          <button
+            onClick={() => {
+              const newRows = rows.map(r => ({ ...r, repeat: !isRepeatEnabled }));
+              updateRows(newRows);
+            }}
+            className={clsx(
+              "w-7 h-4 rounded-full transition-colors relative",
+              isRepeatEnabled ? "bg-[var(--accent)]" : "bg-[var(--bg-hover)]"
+            )}
+          >
+            <div className={clsx(
+              "w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform",
+              isRepeatEnabled ? "translate-x-3.5" : "translate-x-0.5"
+            )} />
+          </button>
+        </div>
+      )}
       {rows.map((row, rIdx) => {
         const isActiveRow = expandedRowIndex === rIdx;
         return (

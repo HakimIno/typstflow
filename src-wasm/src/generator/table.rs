@@ -391,7 +391,15 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                         text_args.push(format!("weight: {}", format_weight(fw)));
                         text_args.push(format!("fill: {}", format_color(color)));
                         
+                        if s.get("italic").and_then(|v| v.as_bool()).unwrap_or(false) {
+                            text_args.push("style: \"italic\"".to_string());
+                        }
+
                         inner_content = format!("#set text({}); {}", text_args.join(", "), inner_content);
+                        
+                        if s.get("underline").and_then(|v| v.as_bool()).unwrap_or(false) {
+                            inner_content = format!("#underline[{}]", inner_content);
+                        }
                         
                         if let Some(Value::String(bg)) = s.get("background") {
                             cell_args.push_str(&format!(", fill: {}", format_color(bg)));
