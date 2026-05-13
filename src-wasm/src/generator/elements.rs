@@ -1,6 +1,9 @@
 use crate::schema::*;
 use serde_json::Value;
-use super::utils::*;
+
+use super::bindings::{is_visible, resolve_binding_scoped, resolve_binding_with_aggregates, resolve_path};
+use super::formatting::{apply_text_transform, escape_string_literal, escape_typst, format_color};
+use super::placement::{wrap_flow_block, wrap_placement};
 
 pub fn render_text(c: &TextComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool) -> String {
     if !is_visible(&c.base, local, global) { return String::new(); }

@@ -174,8 +174,6 @@ export class TypstBridge {
         return this;
     }
     /**
-     * Parse CSV string into JSON array of objects.
-     * High-performance parsing using Rust's csv crate with smart type inference.
      * @param {string} csv_data
      * @returns {string}
      */
@@ -200,7 +198,6 @@ export class TypstBridge {
         }
     }
     /**
-     * Parse CSV bytes into JSON array of objects.
      * @param {Uint8Array} data
      * @returns {string}
      */
@@ -225,8 +222,6 @@ export class TypstBridge {
         }
     }
     /**
-     * Parse Excel bytes (XLSX, XLS, ODS, XLSB) into JSON array of objects from the first sheet.
-     * Uses high-performance calamine reader.
      * @param {Uint8Array} data
      * @returns {string}
      */
@@ -253,7 +248,6 @@ export class TypstBridge {
     /**
      * Register a font at runtime. Accepts raw TTF/OTF bytes.
      * Returns true if at least one font face was loaded successfully.
-     * Requires &mut self — safe in single-threaded WASM context.
      * @param {Uint8Array} data
      * @returns {boolean}
      */
@@ -359,8 +353,8 @@ export class TypstBridge {
         }
     }
     /**
-     * Set the current date so datetime.today() returns the correct value.
-     * Call this from JS before each render: bridge.set_today(year, month, day).
+     * Set the current date so `datetime.today()` returns the correct value.
+     * Call from JS before each render: `bridge.set_today(year, month, day)`.
      * @param {number} year
      * @param {number} month
      * @param {number} day

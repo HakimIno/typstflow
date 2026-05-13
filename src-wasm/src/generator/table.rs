@@ -1,7 +1,10 @@
 use crate::schema::*;
 use serde_json::Value;
-use super::utils::*;
 use std::collections::HashSet;
+
+use super::bindings::{resolve_binding_scoped, resolve_binding_with_aggregates, resolve_path};
+use super::formatting::{escape_string_literal, escape_typst, format_color};
+use super::placement::wrap_flow;
 
 pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, _flow_mode: bool) -> String {
     let mut t = String::new();
