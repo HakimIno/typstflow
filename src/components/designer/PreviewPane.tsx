@@ -1,20 +1,19 @@
 'use client';
 
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { CanvasRevealEffect } from '@/components/ui/canvas-reveal-effect';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { renderReportToSvgStream } from '@/lib/typst-wasm';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { useDesignerStore } from '@/store/designer-store';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { AlertTriangle } from 'lucide-react';
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { CanvasRevealEffect } from '@/components/ui/canvas-reveal-effect';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Loading } from '../shared/Loading';
 import { CanvasToolbar } from './CanvasToolbar';
-import { useMemo } from 'react';
 
 const ROW_GAP_LIST = 32; // gap-8 = 32px
 const ROW_GAP_GRID = 48; // gap-12 = 48px
-const COL_GAP = 32;     // 32px horizontal gap
+const COL_GAP = 32; // 32px horizontal gap
 const PADDING_TOP = 48; // pt-12 = 48px
 const PADDING_SIDE = 64; // px-16 = 64px
 const OVERSCAN = 2;
@@ -73,66 +72,93 @@ export const PreviewPane = memo(function PreviewPane() {
   const pageIds = useMemo(() => schema.pages.map((p) => p.id), [schema.pages]);
 
   const [svgContent, setSvgContent] = useState<string[] | null>(null);
+  const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [shouldShowLoading, setShouldShowLoading] = useState(false);
   const [activePreviewPageIdx, setActivePreviewPageIdx] = useState(1);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!svgContent && !error) {
-      const timer = setTimeout(() => setShouldShowLoading(true), 1000);
-      return () => clearTimeout(timer);
-    }
-    setShouldShowLoading(false);
-  }, [svgContent, error]);
+  // Scale debounce with document size: larger docs need a longer quiet period
+  // so we don't pile up cancellations while the user is actively editing.
+  const debounceMs = useMemo(() => {
+    const n = schema.pages.length;
+    if (n <= 10) return 150;
+    if (n <= 100) return 300;
+    if (n <= 500) return 500;
+    return 800;
+  }, [schema.pages.length]);
 
+  // fontLoadedAt triggers a re-render when a font loads but isn't referenced inside the body.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fontLoadedAt is an intentional trigger
   useEffect(() => {
     if (isDragging) return;
     let active = true;
+    let rafHandle: number | null = null;
 
     const performRender = async () => {
       try {
         setError(null);
-        // Accumulate pages here so each chunk can extend the array correctly
-        // even if React batches the setState calls.
+        setIsRendering(true);
+
+        // Accumulate pages here so each RAF flush sees a consistent snapshot.
         const accumulated: string[] = [];
+
+        // Batch React state updates via requestAnimationFrame — multiple chunks
+        // (each arriving ~1ms apart via setTimeout(0) in the worker) get coalesced
+        // into a single state update per animation frame, cutting virtualizer
+        // re-layouts from ~40 to ~10 for a 1000-page document.
+        const scheduleFlush = () => {
+          if (rafHandle !== null) return;
+          rafHandle = requestAnimationFrame(() => {
+            rafHandle = null;
+            if (active) setSvgContent([...accumulated]);
+          });
+        };
 
         await renderReportToSvgStream(schema, sampleData, (chunkPages, startIdx) => {
           if (!active) return;
           for (let i = 0; i < chunkPages.length; i++) {
             accumulated[startIdx + i] = chunkPages[i];
           }
-          // Snapshot so React sees a new array reference and schedules a render.
-          setSvgContent([...accumulated]);
+          scheduleFlush();
         });
 
         if (!active) return;
-        // Final authoritative set — trims any sparse holes from old renders.
+
+        // Cancel any pending RAF and do a final authoritative flush.
+        if (rafHandle !== null) {
+          cancelAnimationFrame(rafHandle);
+          rafHandle = null;
+        }
         setSvgContent(accumulated.filter(Boolean));
+        setIsRendering(false);
       } catch (err: any) {
         if (!active) return;
+        // 'CANCELLED' is thrown by typst-wasm.ts when a newer render supersedes
+        // this one — not a user-visible error.
+        if ((err as Error).message === 'CANCELLED') return;
         console.error('Render error:', err);
         setError(err.message || 'Failed to render Typst');
+        setIsRendering(false);
       }
     };
 
-    const timeoutId = setTimeout(performRender, 200);
+    const timeoutId = setTimeout(performRender, debounceMs);
     return () => {
       active = false;
+      if (rafHandle !== null) cancelAnimationFrame(rafHandle);
       clearTimeout(timeoutId);
     };
-  }, [schema, sampleData, isDragging, fontLoadedAt]);
+  }, [schema, sampleData, isDragging, fontLoadedAt, debounceMs]);
 
-
-  const { width: pageWidthMm, height: pageHeightMm } = getPaperDimensions(
-    schema.page.size,
-    schema.page.orientation
+  const { width: pageWidthMm, height: pageHeightMm } = useMemo(
+    () => getPaperDimensions(schema.page.size, schema.page.orientation),
+    [schema.page.size, schema.page.orientation]
   );
 
   // Natural (unzoomed) page size in px — used as the base for scaling.
-  const naturalWidthPx = LayoutEngine.mmToPx(pageWidthMm);
-  const naturalHeightPx = LayoutEngine.mmToPx(pageHeightMm);
+  const naturalWidthPx = useMemo(() => LayoutEngine.mmToPx(pageWidthMm), [pageWidthMm]);
+  const naturalHeightPx = useMemo(() => LayoutEngine.mmToPx(pageHeightMm), [pageHeightMm]);
 
   // Actual rendered size after zoom — used for outer container and virtualizer.
   const scaledWidthPx = naturalWidthPx * zoom;
@@ -184,13 +210,12 @@ export const PreviewPane = memo(function PreviewPane() {
 
   // When zoom or layout changes, reset TanStack Virtual's size cache so
   // row heights are re-estimated from the new scaledHeightPx value.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: virtualizer ref is stable; zoom/canvasLayout are the real triggers
   useLayoutEffect(() => {
     virtualizer.measure();
-    // virtualizer reference is stable; zoom/canvasLayout are the real triggers.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
   }, [zoom, canvasLayout]);
 
-  const accentRgb = hexToRgb(primaryColor);
+  const accentRgb = useMemo(() => hexToRgb(primaryColor), [primaryColor]);
   const contentWidth = cols === 2 ? scaledWidthPx * 2 + currentGapX : scaledWidthPx;
 
   return (
@@ -216,6 +241,19 @@ export const PreviewPane = memo(function PreviewPane() {
                 position: 'relative',
               }}
             >
+              {/* Subtle spinner overlay while a re-compile is in progress.
+                  Previous pages remain visible — no blank flash. */}
+              {isRendering && (
+                <div
+                  className="sticky top-2 z-50 flex justify-end pointer-events-none"
+                  style={{ width: `${contentWidth}px` }}
+                >
+                  <div className="mr-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1.5 text-[10px] text-white/60">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+                    Compiling…
+                  </div>
+                </div>
+              )}
               {virtualizer.getVirtualItems().map((vRow) => {
                 const startIdx = vRow.index * cols;
                 const rowPages = pages.slice(startIdx, startIdx + cols);
@@ -255,10 +293,7 @@ export const PreviewPane = memo(function PreviewPane() {
                 <CanvasRevealEffect
                   animationSpeed={2.5}
                   containerClassName="bg-[#0a0a0f]"
-                  colors={[
-                    accentRgb,
-                    [accentRgb[0] * 0.6, accentRgb[1] * 0.8, accentRgb[2] * 1.2],
-                  ]}
+                  colors={[accentRgb, [accentRgb[0] * 0.6, accentRgb[1] * 0.8, accentRgb[2] * 1.2]]}
                   dotSize={2}
                   showGradient={false}
                   isStatic={true}

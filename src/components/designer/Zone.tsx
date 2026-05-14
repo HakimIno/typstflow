@@ -126,15 +126,15 @@ export const Zone = memo(function Zone({
             type="button"
             onClick={toggleLayoutMode}
             className={cn(
-              "group/toggle flex flex-col items-center gap-1.5 px-2 py-3 rounded-r-xl border border-l-0 transition-all hover:pl-3 bg-white dark:bg-slate-900",
+              "group/toggle flex flex-col items-center gap-1.5 px-2 py-3 rounded-r-xl border border-l-0  hover:pl-3 bg-white dark:bg-slate-900",
               isFlowZone
-                ? "border-emerald-500/50 text-emerald-600 dark:text-emerald-400"
+                ? "border-green-500/50 text-green-500 dark:text-green-500"
                 : "border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             )}
             title={isFlowZone ? "Switch to Absolute Layout" : "Switch to Flow Layout"}
           >
             {isFlowZone ? (
-              <Workflow className="w-4 h-4 animate-pulse text-emerald-500" />
+              <Workflow className="w-4 h-4 text-green-500" />
             ) : (
               <Move className="w-4 h-4 group-hover/toggle:rotate-12 transition-transform" />
             )}

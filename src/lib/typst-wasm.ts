@@ -1,6 +1,11 @@
 export type PdfExportStage = 'compressing' | 'compiling';
 
 let worker: Worker | null = null;
+// ID of the most-recent RENDER_REPORT_SVG_STREAM request.
+// When a new stream starts, the previous one is cancelled (its pending entry is
+// rejected immediately so the PreviewPane effect's await unblocks cleanly).
+let activeStreamId: string | null = null;
+
 const pendingRequests = new Map<
   string,
   {
@@ -86,24 +91,6 @@ async function callWorker(type: string, payload: any, transfer?: Transferable[])
   });
 }
 
-async function callWorkerStream(
-  type: string,
-  payload: any,
-  onProgress: (pages: string[], startIdx: number) => void,
-): Promise<void> {
-  const id = generateId();
-  const w = getWorker();
-
-  if (!isWorkerReady && workerReadyPromise) {
-    await workerReadyPromise;
-  }
-
-  return new Promise((resolve, reject) => {
-    pendingRequests.set(id, { resolve, reject, onProgress });
-    w.postMessage({ type, id, payload });
-  });
-}
-
 /**
  * Initializes the Typst WASM engine (triggers worker startup).
  */
@@ -128,14 +115,50 @@ export async function renderToPdf(mainContent: string): Promise<Uint8Array> {
 
 /**
  * Streams rendered SVG pages back in chunks as they are ready.
+ * Automatically cancels the previous in-flight stream so the worker can start
+ * the new compile sooner (skips remaining chunk-posting of the old request).
  * onChunk is called repeatedly with each batch; resolves when all pages are sent.
  */
 export async function renderReportToSvgStream(
   schema: any,
   data: any,
-  onChunk: (pages: string[], startIdx: number) => void,
+  onChunk: (pages: string[], startIdx: number) => void
 ): Promise<void> {
-  return callWorkerStream('RENDER_REPORT_SVG_STREAM', { schema, data }, onChunk);
+  const w = getWorker();
+
+  // Cancel the previous stream: reject its Promise so the caller's await unblocks,
+  // and tell the worker to stop posting chunks for that id.
+  if (activeStreamId) {
+    const prev = pendingRequests.get(activeStreamId);
+    if (prev) {
+      prev.reject(new Error('CANCELLED'));
+      pendingRequests.delete(activeStreamId);
+    }
+    w.postMessage({ type: 'CANCEL', id: 'cancel-cmd', payload: { id: activeStreamId } });
+    activeStreamId = null;
+  }
+
+  const id = generateId();
+  activeStreamId = id;
+
+  if (!isWorkerReady && workerReadyPromise) {
+    await workerReadyPromise;
+  }
+
+  return new Promise((resolve, reject) => {
+    pendingRequests.set(id, {
+      resolve: (v) => {
+        if (activeStreamId === id) activeStreamId = null;
+        resolve(v);
+      },
+      reject: (reason) => {
+        if (activeStreamId === id) activeStreamId = null;
+        reject(reason);
+      },
+      onProgress: onChunk,
+    });
+    w.postMessage({ type: 'RENDER_REPORT_SVG_STREAM', id, payload: { schema, data } });
+  });
 }
 
 /**
@@ -150,7 +173,7 @@ export async function renderReportToSvgStream(
 export async function renderReportToPdf(
   schema: any,
   data: any,
-  onStage?: (stage: PdfExportStage) => void,
+  onStage?: (stage: PdfExportStage) => void
 ): Promise<Uint8Array> {
   const id = generateId();
   const w = getWorker();

@@ -5,6 +5,10 @@ let bridge: TypstBridge | null = null;
 const imageCache = new Map<string, string>();
 let lastImagesHash = '';
 
+// IDs of in-flight SVG streams that have been cancelled by the main thread.
+// Checked before each chunk yield so the worker can bail early.
+const cancelledIds = new Set<string>();
+
 async function initialize() {
   if (bridge) return;
   try {
@@ -85,13 +89,13 @@ function detectAlpha(ctx: OffscreenCanvasRenderingContext2D, w: number, h: numbe
   const cx = Math.floor((w - sw) / 2);
   const cy = Math.floor((h - sh) / 2);
   const regions: [number, number, number, number][] = [
-    [0,      0,      sw, sh], // top-left
-    [w - sw, 0,      sw, sh], // top-right
-    [0,      h - sh, sw, sh], // bottom-left
+    [0, 0, sw, sh], // top-left
+    [w - sw, 0, sw, sh], // top-right
+    [0, h - sh, sw, sh], // bottom-left
     [w - sw, h - sh, sw, sh], // bottom-right
-    [cx,     0,      sw, sh], // top-center
-    [0,      cy,     sw, sh], // left-center
-    [cx,     cy,     sw, sh], // center
+    [cx, 0, sw, sh], // top-center
+    [0, cy, sw, sh], // left-center
+    [cx, cy, sw, sh], // center
   ];
   for (const [rx, ry, rw, rh] of regions) {
     const data = ctx.getImageData(rx, ry, rw, rh).data;
@@ -173,7 +177,7 @@ async function compressSchemaImages(schema: any): Promise<void> {
         tasks.push(
           compressImageForPdf(comp.srcData).then((compressed) => {
             comp.srcData = compressed;
-          }),
+          })
         );
       }
       if (comp.type === 'repeater') collect(comp.children ?? []);
@@ -354,6 +358,12 @@ self.onmessage = async (e: MessageEvent) => {
         self.postMessage({ id, type: 'success', payload: svg });
         break;
       }
+      case 'CANCEL': {
+        // Fire-and-forget: mark the given stream id as cancelled.
+        // The chunk loop in RENDER_REPORT_SVG_STREAM checks this before each yield.
+        if (payload?.id) cancelledIds.add(payload.id as string);
+        break;
+      }
       case 'RENDER_REPORT_SVG_STREAM': {
         const { schema, data } = payload;
         const now = new Date();
@@ -361,14 +371,22 @@ self.onmessage = async (e: MessageEvent) => {
         const preparedSchema = injectImagesIntoSchema(schema);
         const svgString = bridge.render_report_svg(
           JSON.stringify(preparedSchema),
-          JSON.stringify(data),
+          JSON.stringify(data)
         );
         const pages = svgString
           .split('<!-- PAGE_BREAK -->')
           .filter((s: string) => s.trim().length > 0);
 
-        const CHUNK_SIZE = 10;
+        // 25 pages per chunk (was 10) — fewer postMessage round-trips and React
+        // re-renders while still giving progressive visual feedback.
+        const CHUNK_SIZE = 25;
         for (let i = 0; i < pages.length; i += CHUNK_SIZE) {
+          // Check cancellation at each yield point (after WASM has already run —
+          // we cannot interrupt synchronous WASM, only the chunk-posting phase).
+          if (cancelledIds.has(id)) {
+            cancelledIds.delete(id);
+            return; // Don't send 'success'; main thread has already moved on.
+          }
           self.postMessage({
             id,
             type: 'progress',
@@ -376,7 +394,12 @@ self.onmessage = async (e: MessageEvent) => {
           });
           await new Promise((r) => setTimeout(r, 0));
         }
-        self.postMessage({ id, type: 'success', payload: null });
+        // Final check: if cancelled between the last chunk and now, skip success.
+        if (cancelledIds.has(id)) {
+          cancelledIds.delete(id);
+        } else {
+          self.postMessage({ id, type: 'success', payload: null });
+        }
         break;
       }
       case 'RENDER_REPORT_PDF': {
