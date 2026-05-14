@@ -4,6 +4,7 @@ import { useZoneDropTarget } from '@/hooks/use-zone-drop-target';
 import { useZoneResize } from '@/hooks/use-zone-resize';
 import { getZoneComponents } from '@/lib/utils/schema-mutators';
 import { useDesignerStore } from '@/store/designer-store';
+import { cn } from '@/lib/utils/cn';
 import { clsx } from 'clsx';
 import { Layers, Workflow, Move } from 'lucide-react';
 import { memo, useRef, useCallback } from 'react';
@@ -92,7 +93,7 @@ export const Zone = memo(function Zone({
         isGroupBand && (groupType === 'header' ? 'bg-indigo-500/[0.03]' : 'bg-fuchsia-500/[0.03]'),
         isDraggedOver && 'bg-[var(--accent-glow)]/50',
         isResizing &&
-          'ring-1 ring-[var(--accent)] z-50 shadow-lg !transition-none will-change-[height] [contain:size_layout]',
+        'ring-1 ring-[var(--accent)] z-50 shadow-lg !transition-none will-change-[height] [contain:size_layout]',
         hidden && 'pointer-events-none'
       )}
     >
@@ -104,14 +105,46 @@ export const Zone = memo(function Zone({
             className={clsx(
               'text-[8px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] whitespace-nowrap px-1 py-4 rounded-l-md',
               isGroupBand &&
-                (groupType === 'header'
-                  ? 'text-indigo-400 bg-indigo-500/10'
-                  : 'text-fuchsia-400 bg-fuchsia-500/10')
+              (groupType === 'header'
+                ? 'text-indigo-400 bg-indigo-500/10'
+                : 'text-fuchsia-400 bg-fuchsia-500/10')
             )}
             style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
           >
             {label}
           </span>
+        </div>
+      )}
+
+      {/* Layout Mode Toggle (External to Paper - Right Side) */}
+      {!hidden && (
+        <div className={cn(
+          "absolute left-full top-16 -translate-y-1/2 z-20 flex items-center transition-opacity",
+          isFlowZone ? "opacity-100" : "opacity-0 group-hover/zone:opacity-100"
+        )}>
+          <button
+            type="button"
+            onClick={toggleLayoutMode}
+            className={cn(
+              "group/toggle flex flex-col items-center gap-1.5 px-2 py-3 rounded-r-xl border border-l-0 transition-all hover:pl-3 bg-white dark:bg-slate-900",
+              isFlowZone
+                ? "border-emerald-500/50 text-emerald-600 dark:text-emerald-400"
+                : "border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            )}
+            title={isFlowZone ? "Switch to Absolute Layout" : "Switch to Flow Layout"}
+          >
+            {isFlowZone ? (
+              <Workflow className="w-4 h-4 animate-pulse text-emerald-500" />
+            ) : (
+              <Move className="w-4 h-4 group-hover/toggle:rotate-12 transition-transform" />
+            )}
+            <span
+              className="text-[7px] font-black uppercase tracking-[0.2em] leading-none"
+              style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+            >
+              {isFlowZone ? 'Flow' : 'Fixed'}
+            </span>
+          </button>
         </div>
       )}
 
@@ -125,26 +158,7 @@ export const Zone = memo(function Zone({
       >
         {!hidden && (
           <>
-            {/* Layout Mode Toggle (Always visible on hover, or visible if flow) */}
-            <div className={clsx(
-              "absolute top-1 right-1 z-10 flex items-center gap-1 transition-opacity",
-              isFlowZone ? "opacity-100" : "opacity-0 group-hover/zone:opacity-100"
-            )}>
-              <button
-                type="button"
-                onClick={toggleLayoutMode}
-                className={clsx(
-                  "flex items-center gap-1 rounded px-1.5 py-0.5 border text-[8px] font-bold uppercase tracking-widest transition-colors",
-                  isFlowZone 
-                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30"
-                    : "bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-                )}
-                title={isFlowZone ? "Switch to Absolute Layout" : "Switch to Flow Layout"}
-              >
-                {isFlowZone ? <Workflow className="w-2.5 h-2.5" /> : <Move className="w-2.5 h-2.5" />}
-                <span>{isFlowZone ? 'Flow' : 'Absolute'}</span>
-              </button>
-            </div>
+            {/* Layout content starts here */}
 
             {componentIds.length === 0 && !isDraggedOver ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 opacity-40 select-none pointer-events-none">
