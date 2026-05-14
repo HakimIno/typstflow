@@ -160,31 +160,79 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         const ghBg = formatColor(gh?.background || '#f1f5f9');
         const ghColor = formatColor(gh?.color || '#000000');
         const ghSize = gh?.fontSize || 10;
-        const ghText = resolveBinding(comp.groupHeaderFormat || '{{group}}', { group: groupKey, ...items[0] }, ctx.global);
+        const ghText = resolveBinding(
+          comp.groupHeaderFormat || '{{group}}', 
+          { group: groupKey, ...items[0] }, 
+          ctx.global,
+          items // Pass the group items for aggregates like {{SUM(...)}}
+        );
 
+        const ghAlign = gh?.align || 'left';
         parts.push(
           `  table.cell(colspan: ${cols.length}, fill: ${ghBg})` +
-            `[#set text(size: ${ghSize}pt, fill: ${ghColor}, weight: "bold"); ${escapeTypst(ghText)}],\n`
+            `[\n    #set text(size: ${ghSize}pt, fill: ${ghColor}, weight: "bold")\n    #set align(${ghAlign})\n    ${escapeTypst(ghText)}\n  ],\n`
         );
 
         for (const item of items) renderRow(item);
+
+        // --- Auto Group Footer (New: Auto-aligned subtotal row) ---
+        if (comp.autoGroupFooter) {
+          for (let x = 0; x < cols.length; x++) {
+            const col = cols[x];
+            let cellContent = '';
+            
+            if (x === 0) {
+              cellContent = 'Subtotal';
+            } else if (col.field) {
+              cellContent = `{{SUM(${col.field})}}`;
+            }
+
+            const val = resolveBinding(cellContent, items[0], ctx.global, items);
+            const align = col.align || 'left';
+            const fmt = col.format || 'text';
+            const isSum = cellContent.includes('SUM');
+            const displayVal = (fmt !== 'text' && isSum) 
+              ? `#fmt_${fmt.replace(/-/g, '_')}("${val}")`
+              : escapeTypst(val);
+
+            // Render subtotal cell with a distinct style (bold and subtle fill)
+            parts.push(
+              `  table.cell(fill: white.darken(3%))[\n    #set text(size: ${bodyFontSize}pt, weight: "bold")\n    #set align(${align})\n    ${displayVal}\n  ],\n`
+            );
+          }
+        }
+
+        // --- Group Summary Notes (Legacy) ---
+        if (comp.repeatSummaryOnGroup && comp.summaryRows && comp.summaryRows.length > 0) {
+          renderSummaryRows(comp.summaryRows, items);
+        }
       }
     } else {
       for (const item of dataItems) renderRow(item);
     }
 
-    // ── Summary rows (legacy) (Moved before footer for Typst compliance) ────
-    if (comp.summaryRows && comp.summaryRows.length > 0) {
+    // ── Summary rows (Legacy / Table End) ────
+    function renderSummaryRows(rows: any[], groupItems?: any[]) {
       const span = cols.length > 1 ? cols.length - 1 : 1;
-      for (const row of comp.summaryRows) {
+      for (const row of rows) {
         if (row.separator) parts.push('  table.hline(stroke: 1pt + black),\n');
-        const val = resolveBinding(row.value, ctx.local, ctx.global);
+        // If we have groupItems, use them for aggregates, otherwise use global context
+        const val = resolveBinding(
+          row.value, 
+          ctx.local, 
+          ctx.global, 
+          groupItems || dataItems // Use group specific items if available
+        );
         const weight = row.style?.fontWeight === 'bold' ? 'bold' : 'regular';
         parts.push(
           `  table.cell(colspan: ${span}, align: right)[*${escapeTypst(row.label)}*],\n` +
             `  [\n    #set text(weight: "${weight}")\n    ${escapeTypst(val)}\n  ],\n`
         );
       }
+    }
+
+    if (comp.summaryRows && comp.summaryRows.length > 0 && !comp.repeatSummaryOnGroup) {
+      renderSummaryRows(comp.summaryRows);
     }
 
     // ── Footer rows ───────────────────────────────────────────────────────────

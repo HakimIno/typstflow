@@ -38,6 +38,10 @@ pub fn resolve_aggregate(func: &str, path: &str, items: &[Value]) -> String {
         })
         .collect();
 
+    if values.is_empty() && func.to_uppercase() != "COUNT" {
+        return "".to_string();
+    }
+
     match func.to_uppercase().as_str() {
         "SUM" => {
             let sum: f64 = values.iter().sum();
@@ -46,14 +50,11 @@ pub fn resolve_aggregate(func: &str, path: &str, items: &[Value]) -> String {
         }
         "COUNT" => items.len().to_string(),
         "AVG" => {
-            if values.is_empty() {
-                return "0".to_string();
-            }
             format!("{:.2}", values.iter().sum::<f64>() / values.len() as f64)
         }
         "MIN" => values.iter().cloned().fold(f64::INFINITY, f64::min).to_string(),
         "MAX" => values.iter().cloned().fold(f64::NEG_INFINITY, f64::max).to_string(),
-        _ => "0".to_string(),
+        _ => "".to_string(),
     }
 }
 

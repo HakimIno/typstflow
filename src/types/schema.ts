@@ -122,6 +122,7 @@ export interface TextStyle {
   lineHeight?: number; // scale: 1.2
   letterSpacing?: string; // e.g. "0.05em"
   justify?: boolean;
+  align?: 'left' | 'center' | 'right' | 'justify'; // New: Text alignment within container
   background?: string; // hex
 }
 
@@ -197,6 +198,9 @@ export interface TableComponent extends BaseComponent {
   groupHeaderFormat?: string; // e.g. "แผนก {{department}}"
   groupHeaderStyle?: TextStyle;
   summaryRows?: SummaryRow[];
+  repeatSummaryOnGroup?: boolean; // If true, summary rows render after each group
+  autoGroupFooter?: boolean; // New: Automatically render a subtotal row matching columns
+  autoGroupFooterLabel?: string; // New: Label for the subtotal row (defaults to "Subtotal")
   // --- New: Structured rows for multi-row header/footer ---
   headerRows?: TableRow[]; // structured header rows
   detailRows?: TableRow[]; // structured data rows for loops (replaces strict column looping)
@@ -219,6 +223,7 @@ export interface TableColumn {
   background?: string;
   colspan?: number;
   rowspan?: number;
+  footerExpr?: string; // New: Custom expression for the auto-group-footer cell
 }
 
 export interface TableStyle {

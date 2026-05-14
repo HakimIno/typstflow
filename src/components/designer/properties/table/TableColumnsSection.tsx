@@ -228,6 +228,19 @@ export const TableColumnsSection = ({ component }: Props) => {
                   />
                 </div>
               </div>
+              {component.autoGroupFooter && (
+                <div className="pt-1 border-t border-[var(--border-default)]">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Footer Expr (Auto Group)</span>
+                    <MiniInput
+                      value={col.footerExpr || ''}
+                      onChange={(v) => updateColumn(idx, { footerExpr: v })}
+                      placeholder="{{SUM(...)}} or static text"
+                      mono
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

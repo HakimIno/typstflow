@@ -40,7 +40,7 @@ import { GeometryProperties } from './properties/GeometryProperties';
 import { GroupProperties } from './properties/GroupProperties';
 import { ImageProperties } from './properties/ImageProperties';
 import { LineProperties } from './properties/LineProperties';
-import { PropertyRow, SectionHeader } from './properties/Shared';
+import { ControlField, PropertyGrid, PropertyRow, SectionHeader } from './properties/Shared';
 import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
 import { TypographyProperties } from './properties/TypographyProperties';
 
@@ -132,11 +132,11 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         </div>
 
         <div className="flex-1 overflow-auto">
-          <div className="space-y-0">
-            <section className="border-b border-[var(--border-default)]">
+          <div className="space-y-px bg-[var(--border-default)]">
+            <section className="bg-[var(--bg-surface)]">
               <SectionHeader label="Page Layout" />
-              <div className="space-y-0">
-                <PropertyRow label="Paper Size">
+              <PropertyGrid cols={2}>
+                <ControlField label="Paper Size">
                   <select
                     value={pageConfig.size}
                     onChange={(e) =>
@@ -149,8 +149,8 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                     <option value="Letter">Letter</option>
                     <option value="Legal">Legal</option>
                   </select>
-                </PropertyRow>
-                <PropertyRow label="Orientation">
+                </ControlField>
+                <ControlField label="Orientation">
                   <select
                     value={pageConfig.orientation}
                     onChange={(e) =>
@@ -163,10 +163,11 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                     <option value="portrait">Portrait</option>
                     <option value="landscape">Landscape</option>
                   </select>
-                </PropertyRow>
-                <PropertyRow label="Page Count">
+                </ControlField>
+                <ControlField label="Page Count" className="col-span-2">
                   <DesignerInput
                     type="number"
+                    variant="mini"
                     min={1}
                     value={pages.length}
                     onChange={(v) =>
@@ -174,17 +175,18 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                     }
                     mono
                   />
-                </PropertyRow>
-              </div>
+                </ControlField>
+              </PropertyGrid>
             </section>
 
-            <section className="border-b border-[var(--border-default)]">
+            <section className="bg-[var(--bg-surface)]">
               <SectionHeader label="Page Margins" />
-              <div className="grid grid-cols-2">
+              <PropertyGrid cols={2}>
                 {(['top', 'bottom', 'left', 'right'] as const).map((side) => (
-                  <PropertyRow key={side} label={side.charAt(0).toUpperCase()}>
+                  <ControlField key={side} label={side.charAt(0).toUpperCase()}>
                     <DesignerInput
                       type="text"
+                      variant="mini"
                       value={pageConfig.margin[side]}
                       onChange={(v) =>
                         updateSchema({
@@ -197,13 +199,13 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                       mono
                       placeholder="15mm"
                     />
-                  </PropertyRow>
+                  </ControlField>
                 ))}
-              </div>
+              </PropertyGrid>
             </section>
 
             {activePage && (
-              <section className="border-b border-[var(--border-default)]">
+              <section className="bg-[var(--bg-surface)]">
                 <SectionHeader label="Batch Data Source" />
                 <div className="p-2 space-y-2">
                   <DesignerInput
@@ -217,13 +219,13 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
             )}
 
             {selectedZoneKey && (
-              <section className="border-b border-[var(--border-default)]">
+              <section className="bg-[var(--bg-surface)]">
                 <SectionHeader label={`Zone: ${selectedZoneKey.toUpperCase()}`} />
                 <div className="p-2 space-y-2">
                   {/* Layout Mode Toggle */}
                   <div>
-                    <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Layout Mode</p>
-                    <div className="grid grid-cols-2 gap-1">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5 opacity-60">Layout Mode</p>
+                    <div className="grid grid-cols-2 gap-px bg-[var(--border-default)] border border-[var(--border-default)] rounded overflow-hidden">
                       {([
                         { mode: 'absolute', label: 'Absolute', icon: Move, desc: 'Drag & drop positioning' },
                         { mode: 'flow', label: 'Flow', icon: Workflow, desc: 'Stack vertically, auto-push' },
@@ -242,21 +244,21 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                             }}
                             title={desc}
                             className={clsx(
-                              'flex flex-col items-center gap-1 px-2 py-2 rounded border text-center transition-all',
+                              'flex flex-col items-center gap-1 px-2 py-2 transition-all',
                               isActive
                                 ? mode === 'flow'
-                                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
-                                  : 'bg-[var(--accent)]/20 border-[var(--accent)]/50 text-[var(--accent)]'
-                                : 'bg-[var(--bg-widget)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-[var(--accent)]/30'
+                                  ? 'bg-emerald-500/10 text-emerald-400'
+                                  : 'bg-[var(--accent)]/10 text-[var(--accent)]'
+                                : 'bg-[var(--bg-surface)] text-[var(--text-muted)] hover:bg-white/[0.02]'
                             )}
                           >
                             <Icon className="w-3.5 h-3.5" />
-                            <span className="text-[9px] font-bold uppercase tracking-wider">{label}</span>
+                            <span className="text-[8px] font-bold uppercase tracking-wider">{label}</span>
                           </button>
                         );
                       })}
                     </div>
-                    <p className="text-[8px] text-[var(--text-muted)] mt-1 opacity-70 leading-relaxed">
+                    <p className="text-[8px] text-[var(--text-muted)] mt-1.5 opacity-60 leading-relaxed italic">
                       {(selectedZoneKey === 'body'
                         ? activePage?.body.layoutMode
                         : zones[selectedZoneKey as 'header' | 'footer']?.layoutMode) === 'flow'
@@ -272,6 +274,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                     <PropertyRow label="Gap">
                       <DesignerInput
                         type="text"
+                        variant="mini"
                         value={
                           (selectedZoneKey === 'body'
                             ? activePage?.body.flowGap

@@ -156,6 +156,7 @@ pub struct TextStyle {
     pub letter_spacing: Option<String>,
     pub justify: Option<bool>,
     pub text_transform: Option<String>,
+    pub align: Option<String>,
 }
 
 // --- Individual table cell ---
@@ -231,6 +232,9 @@ pub struct TableComponent {
     #[serde(rename = "groupHeaderStyle")]
     pub group_header_style: Option<Value>,
     pub summary_rows: Option<Vec<SummaryRow>>,
+    pub repeat_summary_on_group: Option<bool>,
+    pub auto_group_footer: Option<bool>,
+    pub auto_group_footer_label: Option<String>,
     pub header_rows: Option<Vec<TableRow>>,
     pub detail_rows: Option<Vec<TableRow>>,
     pub footer_rows: Option<Vec<TableRow>>,
@@ -257,6 +261,7 @@ pub struct TableColumn {
     pub rowspan: Option<u32>,
     pub format: Option<String>,
     pub style: Option<TextStyle>,
+    pub footer_expr: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

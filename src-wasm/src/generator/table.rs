@@ -130,7 +130,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                             let mut merged = cell_style.unwrap_or(TextStyle {
                                 font_size: None, font_family: None, font_weight: None, color: None,
                                 italic: None, underline: None, line_height: None, letter_spacing: None,
-                                justify: None, text_transform: None,
+                                justify: None, text_transform: None, align: None,
                             });
                             if let Some(sz) = cs.size { merged.font_size = Some(sz); }
                             if let Some(wt) = &cs.weight { merged.font_weight = Some(wt.clone()); }
@@ -184,7 +184,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                         let mut merged = col_style.unwrap_or(TextStyle {
                             font_size: None, font_family: None, font_weight: None, color: None,
                             italic: None, underline: None, line_height: None, letter_spacing: None,
-                            justify: None, text_transform: None,
+                            justify: None, text_transform: None, align: None,
                         });
                         if let Some(sz) = cs.size { merged.font_size = Some(sz); }
                         if let Some(wt) = &cs.weight { merged.font_weight = Some(wt.clone()); }
@@ -256,7 +256,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                                 let mut merged = cell_style.unwrap_or(TextStyle {
                                     font_size: None, font_family: None, font_weight: None, color: None,
                                     italic: None, underline: None, line_height: None, letter_spacing: None,
-                                    justify: None, text_transform: None,
+                                    justify: None, text_transform: None, align: None,
                                 });
                                 if let Some(sz) = cs.size { merged.font_size = Some(sz); }
                                 if let Some(wt) = &cs.weight { merged.font_weight = Some(wt.clone()); }
@@ -308,7 +308,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                             let mut merged = col_style.unwrap_or(TextStyle {
                                 font_size: None, font_family: None, font_weight: None, color: None,
                                 italic: None, underline: None, line_height: None, letter_spacing: None,
-                                justify: None, text_transform: None,
+                                justify: None, text_transform: None, align: None,
                             });
                             if let Some(sz) = cs.size { merged.font_size = Some(sz); }
                             if let Some(wt) = &cs.weight { merged.font_weight = Some(wt.clone()); }
@@ -421,21 +421,59 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                         render_item(item, &mut t, item_idx);
                     }
 
-                    // Render group summary rows (if any)
-                    if let Some(summary_rows) = &c.summary_rows {
-                        for row in summary_rows {
-                            if row.separator.unwrap_or(false) {
-                                t.push_str("  table.hline(stroke: 1pt + black),\n");
+                    // --- Auto Group Footer (Rust Implementation) ---
+                    if c.auto_group_footer.unwrap_or(false) {
+                        for (x, col) in cols.iter().enumerate() {
+                            let mut cell_content = String::new();
+                            
+                            if let Some(expr) = &col.footer_expr {
+                                cell_content = expr.clone();
+                            } else if x == 0 {
+                                cell_content = c.auto_group_footer_label.clone().unwrap_or_else(|| "Subtotal".to_string());
+                            } else if !col.field.is_empty() {
+                                cell_content = format!("{{{{SUM({})}}}}", col.field);
                             }
-                            let val = resolve_binding_with_aggregates(&row.value, first_item, global, group_items);
-                            let escaped_label = escape_typst(&row.label);
-                            let escaped_val = escape_typst(&val);
-                            let weight = if row.style.as_deref() == Some("total") { "700" } else { "400" };
-                            let span = if cols.len() > 1 { cols.len() - 1 } else { 1 };
+
+                            if cell_content.is_empty() {
+                                t.push_str("  table.cell(fill: white.darken(3%))[],\n");
+                                continue;
+                            }
+
+                            let val = resolve_binding_with_aggregates(&cell_content, first_item, global, group_items);
+                            let align = col.align.as_deref().unwrap_or("left");
+                            let fmt = col.format.as_deref().unwrap_or("text").to_lowercase();
+                            let is_sum = cell_content.contains("SUM");
+                            
+                            let display_val = if fmt != "text" && is_sum {
+                                format!("#fmt_{}(\"{}\")", fmt.replace("-", "_"), escape_string_literal(&val))
+                            } else {
+                                escape_typst(&val)
+                            };
+
                             t.push_str(&format!(
-                                "  table.cell(colspan: {}, align: right)[*{}*],\n  [#text(weight: {})[{}]],\n",
-                                span, escaped_label, weight, escaped_val
+                                "  table.cell(fill: white.darken(3%), align: {})[#text(size: {}pt, weight: 700)[{}]],\n",
+                                align, body_font_size, display_val
                             ));
+                        }
+                    }
+
+                    // Render group summary rows (if any and repeat is on)
+                    if c.repeat_summary_on_group.unwrap_or(false) {
+                        if let Some(summary_rows) = &c.summary_rows {
+                            for row in summary_rows {
+                                if row.separator.unwrap_or(false) {
+                                    t.push_str("  table.hline(stroke: 1pt + black),\n");
+                                }
+                                let val = resolve_binding_with_aggregates(&row.value, first_item, global, group_items);
+                                let escaped_label = escape_typst(&row.label);
+                                let escaped_val = escape_typst(&val);
+                                let weight = if row.style.as_deref() == Some("total") { "700" } else { "400" };
+                                let span = if cols.len() > 1 { cols.len() - 1 } else { 1 };
+                                t.push_str(&format!(
+                                    "  table.cell(colspan: {}, align: right)[*{}*],\n  [#text(weight: {})[{}]],\n",
+                                    span, escaped_label, weight, escaped_val
+                                ));
+                            }
                         }
                     }
                 }
@@ -517,7 +555,7 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                             let mut merged = cell_style.unwrap_or(TextStyle {
                                 font_size: None, font_family: None, font_weight: None, color: None,
                                 italic: None, underline: None, line_height: None, letter_spacing: None,
-                                justify: None, text_transform: None,
+                                justify: None, text_transform: None, align: None,
                             });
                             if let Some(sz) = cs.size { merged.font_size = Some(sz); }
                             if let Some(wt) = &cs.weight { merged.font_weight = Some(wt.clone()); }
