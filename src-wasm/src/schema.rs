@@ -199,6 +199,7 @@ pub struct HLineConfig {
     pub start: Option<u32>,
     pub end: Option<u32>,
     pub stroke: Option<String>,
+    pub dash: Option<String>,
     pub position: Option<String>,
 }
 
@@ -211,6 +212,7 @@ pub struct VLineConfig {
     pub start: Option<u32>,
     pub end: Option<u32>,
     pub stroke: Option<String>,
+    pub dash: Option<String>,
     pub position: Option<String>,
 }
 
@@ -231,6 +233,8 @@ pub struct TableComponent {
     pub group_header_format: Option<String>,
     #[serde(rename = "groupHeaderStyle")]
     pub group_header_style: Option<Value>,
+    #[serde(rename = "groupFooterStyle")]
+    pub group_footer_style: Option<Value>,
     pub summary_rows: Option<Vec<SummaryRow>>,
     pub repeat_summary_on_group: Option<bool>,
     pub auto_group_footer: Option<bool>,
@@ -296,6 +300,28 @@ pub struct TableStyle {
     pub header_font_weight: Option<String>,
     pub body_font_size: Option<f64>,
     pub body_color: Option<String>,
+    pub border_sides: Option<BorderSides>,
+    pub horizontal_dash: Option<String>,
+    pub vertical_dash: Option<String>,
+    pub header_border_width: Option<String>,
+    pub header_border_color: Option<String>,
+    pub inner_h_border_width: Option<String>,
+    pub inner_h_border_color: Option<String>,
+    pub inner_v_border_width: Option<String>,
+    pub inner_v_border_color: Option<String>,
+    pub header_horizontal_dash: Option<String>,
+    pub header_vertical_dash: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BorderSides {
+    pub top: bool,
+    pub bottom: bool,
+    pub left: bool,
+    pub right: bool,
+    pub inner_h: bool,
+    pub inner_v: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -12,12 +12,12 @@ export const TableLinesSection = ({ component }: Props) => {
   const updateComponent = useDesignerStore((state) => state.updateComponent);
 
   const addHLine = () => {
-    const lines = [...(component.hlines || []), { y: 0, stroke: '0.2pt' }];
+    const lines = [...(component.hlines || []), { id: crypto.randomUUID(), y: 0, stroke: '0.2pt' }];
     updateComponent(component.id, { hlines: lines } as any);
   };
 
   const addVLine = () => {
-    const lines = [...(component.vlines || []), { x: 0, stroke: '0.2pt' }];
+    const lines = [...(component.vlines || []), { id: crypto.randomUUID(), x: 0, stroke: '0.2pt' }];
     updateComponent(component.id, { vlines: lines } as any);
   };
 
@@ -46,9 +46,22 @@ export const TableLinesSection = ({ component }: Props) => {
                     lines[idx].stroke = v;
                     updateComponent(component.id, { hlines: lines } as any);
                  }}
-                 placeholder="0.2pt"
+                 placeholder="Color or Width"
                  className="flex-1 h-6"
                />
+               <select
+                 value={(line as any).dash || 'solid'}
+                 onChange={(e) => {
+                    const lines = [...(component.hlines || [])];
+                    (lines[idx] as any).dash = e.target.value;
+                    updateComponent(component.id, { hlines: lines } as any);
+                 }}
+                 className="h-6 text-[8px] bg-[var(--bg-widget)] border border-[var(--border-default)] rounded px-0.5 outline-none"
+               >
+                 <option value="solid">─</option>
+                 <option value="dashed">╍</option>
+                 <option value="dotted">⋯</option>
+               </select>
                <button 
                  onClick={() => {
                     const lines = (component.hlines || []).filter((_, i) => i !== idx);
@@ -89,9 +102,22 @@ export const TableLinesSection = ({ component }: Props) => {
                     lines[idx].stroke = v;
                     updateComponent(component.id, { vlines: lines } as any);
                  }}
-                 placeholder="0.2pt"
+                 placeholder="Color or Width"
                  className="flex-1 h-6"
                />
+               <select
+                 value={(line as any).dash || 'solid'}
+                 onChange={(e) => {
+                    const lines = [...(component.vlines || [])];
+                    (lines[idx] as any).dash = e.target.value;
+                    updateComponent(component.id, { vlines: lines } as any);
+                 }}
+                 className="h-6 text-[8px] bg-[var(--bg-widget)] border border-[var(--border-default)] rounded px-0.5 outline-none"
+               >
+                 <option value="solid">│</option>
+                 <option value="dashed">┆</option>
+                 <option value="dotted">┊</option>
+               </select>
                <button 
                  onClick={() => {
                     const lines = (component.vlines || []).filter((_, i) => i !== idx);

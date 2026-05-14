@@ -5,6 +5,7 @@ export interface ResolvedCell {
   id: string;
   section: string; // 'header', 'data', 'footer'
   row_id: string;
+  row_idx: number;
   col_idx: number;
   x: number;
   y: number;

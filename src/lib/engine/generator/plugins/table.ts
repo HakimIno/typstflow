@@ -12,6 +12,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     const cols = comp.columns;
     const style = comp.style;
     const parts: string[] = [];
+    const headerRowCount = comp.headerRows?.length ?? (comp.showHeader !== false ? 1 : 0);
 
     // ── Column widths ─────────────────────────────────────────────────────────
     const colWidths = cols.map((c) => c.width.replace('*', 'fr')).join(', ');
@@ -19,22 +20,48 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     // ── Stroke ────────────────────────────────────────────────────────────────
     const borderWidth = style?.borderWidth ?? '0.5pt';
     const borderColor = formatColor(style?.borderColor ?? '#cbd5e1');
-    let strokeStr = `${borderWidth} + ${borderColor}`;
-    if (style?.stroke) {
-      const sv = style.stroke as Record<string, string>;
-      const sides = (['top', 'bottom', 'left', 'right'] as const)
-        .filter((k) => sv[k])
-        .map((k) => `${k}: ${formatColor(sv[k])}`)
-        .join(', ');
-      if (sides) strokeStr = `(${sides})`;
-    }
+    
+    // Header specific
+    const hBorderWidth = style?.headerBorderWidth ?? borderWidth;
+    const hBorderColor = formatColor(style?.headerBorderColor ?? borderColor);
+    
+    // Inner Body specific
+    const innerHWidth = style?.innerHBorderWidth ?? borderWidth;
+    const innerHColor = formatColor(style?.innerHBorderColor ?? borderColor);
+    const innerVWidth = style?.innerVBorderWidth ?? borderWidth;
+    const innerVColor = formatColor(style?.innerVBorderColor ?? borderColor);
+
+    const hDash = style?.horizontalDash && style.horizontalDash !== 'solid' ? `, dash: "${style.horizontalDash}"` : '';
+    const vDash = style?.verticalDash && style.verticalDash !== 'solid' ? `, dash: "${style.verticalDash}"` : '';
+    
+    const hHeaderDash = style?.headerHorizontalDash && style.headerHorizontalDash !== 'solid' ? `, dash: "${style.headerHorizontalDash}"` : '';
+    const vHeaderDash = style?.headerVerticalDash && style.headerVerticalDash !== 'solid' ? `, dash: "${style.headerVerticalDash}"` : '';
+    
+    const sides = style?.borderSides ?? { top: true, bottom: true, left: true, right: true, innerH: true, innerV: true };
+    
+    // We'll use a stroke function to handle granular control
+    const strokeStr = `(x, y) => (
+    top: if y == 0 { if ${sides.top} { (paint: ${borderColor}, thickness: ${borderWidth}) } else { none } } 
+         else if y == ${headerRowCount} { (paint: ${hBorderColor}, thickness: ${hBorderWidth}) }
+         else if y < ${headerRowCount} { (paint: ${borderColor}, thickness: ${borderWidth}${hHeaderDash}) }
+         else { if ${sides.innerH} { (paint: ${innerHColor}, thickness: ${innerHWidth}${hDash}) } else { none } },
+    left: if x == 0 { if ${sides.left} { (paint: ${borderColor}, thickness: ${borderWidth}) } else { none } } 
+          else if y < ${headerRowCount} { (paint: ${innerVColor}, thickness: ${innerVWidth}${vHeaderDash}) }
+          else { if ${sides.innerV} { (paint: ${innerVColor}, thickness: ${innerVWidth}${vDash}) } else { none } },
+    bottom: none, // handled by hline for better reliability
+    right: none,  // handled by vline for better reliability
+  )`;
+
+    // Note: Typst table stroke function doesn't easily know if it's the last row/col 
+    // unless we pass the counts. We'll use hline/vline for the outermost bottom/right borders 
+    // if the stroke function approach is too complex for them.
+    // Actually, we can just set bottom/right to none in the function and add them via hline/vline.
 
     // ── Fill pattern ─────────────────────────────────────────────────────────
     const fillPattern = style?.fillPattern ?? 'header-only';
     const headerBg = formatColor(style?.headerBackground ?? '#f1f5f9');
     const color1 = formatColor(style?.stripedColor1 ?? style?.alternateRowBackground ?? '#ffffff');
     const color2 = formatColor(style?.stripedColor2 ?? '#f8fafc');
-    const headerRowCount = comp.headerRows?.length ?? (comp.showHeader !== false ? 1 : 0);
 
     const fillFn = buildFillFn(fillPattern, headerRowCount, headerBg, color1, color2);
 
@@ -102,6 +129,21 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           const raw = resolvePath(path, ctx.local) ?? resolvePath(path, ctx.global);
           return Array.isArray(raw) ? raw : [];
         })();
+
+    // Calculate total rows for stroke function and hlines
+    let totalRows = headerRowCount + (comp.footerRows?.length ?? 0);
+    if (comp.groupBy && !isStatic) {
+      const groups: Record<string, any[]> = {};
+      for (const item of dataItems) {
+        const key = String(resolvePath(comp.groupBy, item) || 'Other');
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+      }
+      totalRows += dataItems.length + Object.keys(groups).length; // items + group headers
+      if (comp.autoGroupFooter) totalRows += Object.keys(groups).length; // + group footers
+    } else {
+      totalRows += dataItems.length;
+    }
 
     const renderRow = (item: any) => {
       if (comp.detailRows && comp.detailRows.length > 0) {
@@ -249,13 +291,26 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
       parts.push('  ),\n');
     }
 
-    // ── hlines / vlines ───────────────────────────────────────────────────────
+    // ── Outermost Bottom/Right Borders ────────────────────────────────────────
+    if (style?.borderSides?.bottom !== false) {
+       parts.push(`  table.hline(y: ${totalRows}, stroke: (paint: ${borderColor}, thickness: ${borderWidth})),\n`);
+    }
+    if (style?.borderSides?.right !== false) {
+       parts.push(`  table.vline(x: ${cols.length}, stroke: (paint: ${borderColor}, thickness: ${borderWidth})),\n`);
+    }
+
+    // ── hlines / vlines (Manual overrides) ────────────────────────────────────
     if (comp.hlines) {
       for (const hl of comp.hlines) {
         const args = [`y: ${hl.y}`];
         if (hl.start && hl.start > 0) args.push(`start: ${hl.start}`);
         if (hl.end) args.push(`end: ${hl.end}`);
-        if (hl.stroke) args.push(`stroke: ${formatColor(hl.stroke)}`);
+        
+        let s = hl.stroke ? formatColor(hl.stroke) : `${borderWidth} + ${borderColor}`;
+        if (hl.dash && hl.dash !== 'solid') {
+           s = `(paint: ${hl.stroke ? formatColor(hl.stroke) : borderColor}, thickness: ${borderWidth}, dash: "${hl.dash}")`;
+        }
+        args.push(`stroke: ${s}`);
         if (hl.position) args.push(`position: ${hl.position}`);
         parts.push(`  table.hline(${args.join(', ')}),\n`);
       }
@@ -265,7 +320,11 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         const args = [`x: ${vl.x}`];
         if (vl.start && vl.start > 0) args.push(`start: ${vl.start}`);
         if (vl.end) args.push(`end: ${vl.end}`);
-        if (vl.stroke) args.push(`stroke: ${formatColor(vl.stroke)}`);
+        let s = vl.stroke ? formatColor(vl.stroke) : `${borderWidth} + ${borderColor}`;
+        if (vl.dash && vl.dash !== 'solid') {
+           s = `(paint: ${vl.stroke ? formatColor(vl.stroke) : borderColor}, thickness: ${borderWidth}, dash: "${vl.dash}")`;
+        }
+        args.push(`stroke: ${s}`);
         if (vl.position) args.push(`position: ${vl.position}`);
         parts.push(`  table.vline(${args.join(', ')}),\n`);
       }

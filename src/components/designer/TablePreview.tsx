@@ -54,6 +54,7 @@ export function TablePreview({ component }: Props) {
   const selectedCells = useDesignerStore((state) => state.selectedCells);
   const setSelectedCell = useDesignerStore((state) => state.setSelectedCell);
   const setSelectedCells = useDesignerStore((state) => state.setSelectedCells);
+  const zoom = useDesignerStore((state) => state.zoom);
 
   const [resizingColIndex, setResizingColIndex] = useState<number | null>(null);
   const [resizingRowInfo, setResizingRowInfo] = useState<{ section: string; index: number } | null>(
@@ -100,12 +101,14 @@ export function TablePreview({ component }: Props) {
         };
       }
 
-      // ── Grouping Simulation ────────────────────────────────────────────────
-      // If groupBy is enabled, inject a sample group header row for real-time style preview
+      // ── Grouping & Subtotal Simulation ────────────────────────────────────
       if (engineInput.groupBy) {
-        const groupHeaderRow: TableRow = {
+        const simulatedRows: TableRow[] = [];
+
+        // 1. Simulated Group Header
+        simulatedRows.push({
           id: 'preview-group-header',
-          type: 'data', // WASM engine expects 'data', 'header', or 'footer'
+          type: 'data',
           cells: [
             {
               id: 'gh-cell',
@@ -114,11 +117,31 @@ export function TablePreview({ component }: Props) {
               align: 'left',
             },
           ],
-          height: '10mm',
-        };
+          height: '8mm',
+        });
+
+        // 2. Original Detail Rows (Sample)
+        if (engineInput.detailRows && engineInput.detailRows.length > 0) {
+          simulatedRows.push(...engineInput.detailRows.slice(0, 2));
+        }
+
+        // 3. Simulated Group Footer (Subtotal)
+        if (engineInput.autoGroupFooter) {
+          simulatedRows.push({
+            id: 'preview-group-footer',
+            type: 'footer', // WASM engine handles footer rows with special styling
+            cells: engineInput.columns.map((col, idx) => ({
+              id: `gf-cell-${idx}`,
+              content: idx === 0 ? (engineInput.autoGroupFooterLabel || 'Subtotal') : (col.footerExpr || ''),
+              align: col.align || 'left',
+            })),
+            height: '8mm',
+          });
+        }
+
         engineInput = {
           ...engineInput,
-          detailRows: [groupHeaderRow, ...(engineInput.detailRows || [])],
+          detailRows: simulatedRows,
         };
       }
 
@@ -374,6 +397,7 @@ export function TablePreview({ component }: Props) {
           resizingRowInfo?.section === sectionKey && resizingRowInfo?.index === rowIdx;
 
         const isGroupHeader = cell.row_id === 'preview-group-header';
+        const isGroupFooter = cell.section === 'footer' || cell.row_id === 'preview-group-footer';
 
         // --- Lookup Original Cell Data for Styles ---
         const originalCell = rows[rowIdx]?.cells.find(c => c.id === cell.id);
@@ -382,22 +406,21 @@ export function TablePreview({ component }: Props) {
         // --- Style Calculation ---
         const style = component.style || {};
         const ghStyle = component.groupHeaderStyle || {};
+        const gfStyle = component.groupFooterStyle || {}; // Assuming this exists or using fallback
+
         const pattern = style.fillPattern || 'header-only';
         const c1 = style.stripedColor1 || '#ffffff';
         const c2 = style.stripedColor2 || '#f8fafc';
         const headerBg = style.headerBackground || '#f1f5f9';
         const headerColor = style.headerColor || '#000000';
         const bodyColor = style.bodyColor || '#334155';
-        const headerFontSize = style.headerFontSize || 10;
-        const bodyFontSize = style.bodyFontSize || 10;
-        const headerFontWeight = style.headerFontWeight || 'bold';
-        const cellPadding = parseTypstUnit(style.inset || '2mm');
-        const borderWidth = parseTypstUnit(style.borderWidth || '0.2mm');
 
         let cellFill = cell.fill || 'transparent';
         if (!cell.fill) {
           if (isGroupHeader) {
             cellFill = ghStyle.background || '#f1f5f9';
+          } else if (isGroupFooter) {
+            cellFill = gfStyle.background || '#f8fafc';
           } else if (isHeader) {
             cellFill = headerBg;
           } else {
@@ -413,19 +436,92 @@ export function TablePreview({ component }: Props) {
           }
         }
 
+        const headerFontSize = style.headerFontSize || 10;
+        const bodyFontSize = style.bodyFontSize || 10;
+        const headerFontWeight = style.headerFontWeight || 'bold';
+        const cellPadding = parseTypstUnit(style.inset || '2mm');
+        const borderWidth = parseTypstUnit(style.borderWidth || '0.2mm');
+
         const textColor = cellStyle.color || (isGroupHeader
           ? ghStyle.color || '#000000'
-          : isHeader
-            ? headerColor
-            : bodyColor);
+          : isGroupFooter
+            ? gfStyle.color || '#000000'
+            : isHeader
+              ? headerColor
+              : bodyColor);
 
         const fontSize = cellStyle.fontSize || (isGroupHeader
           ? ghStyle.fontSize || 9
-          : isHeader
-            ? headerFontSize
-            : bodyFontSize);
+          : isGroupFooter
+            ? gfStyle.fontSize || 9
+            : isHeader
+              ? headerFontSize
+              : bodyFontSize);
 
-        const fontWeight = cellStyle.fontWeight || (isHeader ? headerFontWeight : 'normal');
+        const fontWeight = cellStyle.fontWeight || (isHeader ? headerFontWeight : isGroupHeader || isGroupFooter ? 'bold' : 'normal');
+
+        // --- Granular Border Calculation ---
+        const sides = style.borderSides ?? { top: true, bottom: true, left: true, right: true, innerH: true, innerV: true };
+        const hDashStyle = style.horizontalDash === 'dashed' ? 'dashed' : style.horizontalDash === 'dotted' ? 'dotted' : 'solid';
+        const vDashStyle = style.verticalDash === 'dashed' ? 'dashed' : style.verticalDash === 'dotted' ? 'dotted' : 'solid';
+
+        const bWidth = LayoutEngine.mmToPx(parseTypstUnit(style.borderWidth || '0.5pt'));
+        const bColor = style.borderColor || '#cbd5e1';
+
+        const hbWidth = LayoutEngine.mmToPx(parseTypstUnit(style.headerBorderWidth || style.borderWidth || '0.5pt'));
+        const hbColor = style.headerBorderColor || bColor;
+
+        const ihWidth = LayoutEngine.mmToPx(parseTypstUnit(style.innerHBorderWidth || style.borderWidth || '0.5pt'));
+        const ihColor = style.innerHBorderColor || bColor;
+
+        const ivWidth = LayoutEngine.mmToPx(parseTypstUnit(style.innerVBorderWidth || style.borderWidth || '0.5pt'));
+        const ivColor = style.innerVBorderColor || bColor;
+
+        const hHeaderDash = style.headerHorizontalDash === 'dashed' ? 'dashed' : style.headerHorizontalDash === 'dotted' ? 'dotted' : 'solid';
+        const vHeaderDash = style.headerVerticalDash === 'dashed' ? 'dashed' : style.headerVerticalDash === 'dotted' ? 'dotted' : 'solid';
+
+        const headerRowCount = component.headerRows?.length ?? (component.showHeader !== false ? 1 : 0);
+
+        // Find total rows and cols to detect edges
+        const totalRows = Math.max(...resolvedLayout.cells.map(c => (c.row_idx + c.rowspan)));
+        const totalCols = Math.max(...resolvedLayout.cells.map(c => (c.col_idx + c.colspan)));
+
+        const isLastRow = (cell.row_idx + cell.rowspan) === totalRows;
+        const isLastCol = (cell.col_idx + cell.colspan) === totalCols;
+
+        let bTop = 'none';
+        if (cell.y === 0 && sides.top) bTop = `${bWidth}px solid ${bColor}`;
+
+        let bLeft = 'none';
+        if (cell.x === (component.x || 0) && sides.left) bLeft = `${bWidth}px solid ${bColor}`;
+
+        let bBottom = 'none';
+        if (isLastRow) {
+          if (sides.bottom) bBottom = `${bWidth}px solid ${bColor}`;
+        } else if (isHeader) {
+          const isLastHeaderRow = rowIdx === headerRowCount - 1;
+          if (isLastHeaderRow) {
+            bBottom = `${hbWidth}px solid ${hbColor}`;
+          } else if (sides.innerH) {
+            bBottom = `${bWidth}px ${hHeaderDash} ${bColor}`;
+          }
+        } else if (sides.innerH) {
+          bBottom = `${ihWidth}px ${hDashStyle} ${ihColor}`;
+        }
+
+        let bRight = 'none';
+        if (isLastCol) {
+          if (sides.right) bRight = `${bWidth}px solid ${bColor}`;
+        } else if (sides.innerV) {
+          const vStyle = isHeader ? vHeaderDash : vDashStyle;
+          bRight = `${ivWidth}px ${vStyle} ${ivColor}`;
+        }
+
+        // --- Rounding to Grid (Seamless Borders) ---
+        const x1 = LayoutEngine.mmToPx(cell.x);
+        const y1 = LayoutEngine.mmToPx(cell.y);
+        const x2 = LayoutEngine.mmToPx(cell.x + cell.width);
+        const y2 = LayoutEngine.mmToPx(cell.y + cell.height);
 
         return (
           <div
@@ -433,19 +529,21 @@ export function TablePreview({ component }: Props) {
             onMouseDown={(e) => handleCellMouseDown(cell.section, cell.row_id, cell.col_idx, e)}
             onMouseEnter={() => handleCellMouseEnter(cell.section, cell.row_id, cell.col_idx)}
             className={clsx(
-              'absolute flex items-center overflow-hidden group/cell transition-colors cursor-cell border-b border-r',
+              'absolute flex items-center overflow-hidden group/cell transition-colors cursor-cell',
               isSelected
                 ? 'ring-2 ring-[var(--accent)] ring-inset bg-blue-50/50 z-10'
                 : 'hover:bg-slate-50/50'
             )}
             style={{
-              left: `${LayoutEngine.mmToPx(cell.x - (component.x || 0))}px`,
-              top: `${LayoutEngine.mmToPx(cell.y)}px`,
-              width: `${LayoutEngine.mmToPx(cell.width)}px`,
-              height: `${LayoutEngine.mmToPx(cell.height)}px`,
+              left: `${Math.round(x1)}px`,
+              top: `${Math.round(y1)}px`,
+              width: `${Math.round(x2) - Math.round(x1)}px`,
+              height: `${Math.round(y2) - Math.round(y1)}px`,
               backgroundColor: cellFill,
-              borderColor: borderColor,
-              borderWidth: `${LayoutEngine.mmToPx(borderWidth)}px`,
+              borderTop: bTop,
+              borderLeft: bLeft,
+              borderBottom: bBottom,
+              borderRight: bRight,
               padding: `${LayoutEngine.mmToPx(cellPadding)}px`,
               justifyContent:
                 cell.align === 'center'

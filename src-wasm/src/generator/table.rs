@@ -22,29 +22,9 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
     // Stroke
     let border_width = style.and_then(|s| s.border_width.as_deref()).unwrap_or("0.5pt");
     let border_color = style.and_then(|s| s.border_color.as_deref()).unwrap_or("#cbd5e1");
-    let stroke_val = style.and_then(|s| s.stroke.as_ref());
-    
-    let mut stroke_str = format!("{} + {}", border_width, format_color(border_color));
-    if let Some(sv) = stroke_val {
-        if let Value::String(s) = sv {
-            if s.starts_with('#') { stroke_str = format_color(s); }
-            else { stroke_str = s.clone(); }
-        } else if let Value::Object(map) = sv {
-            let mut parts = Vec::new();
-            if let Some(v) = map.get("top").and_then(|v| v.as_str()) { parts.push(format!("top: {}", format_color(v))); }
-            if let Some(v) = map.get("bottom").and_then(|v| v.as_str()) { parts.push(format!("bottom: {}", format_color(v))); }
-            if let Some(v) = map.get("left").and_then(|v| v.as_str()) { parts.push(format!("left: {}", format_color(v))); }
-            if let Some(v) = map.get("right").and_then(|v| v.as_str()) { parts.push(format!("right: {}", format_color(v))); }
-            if !parts.is_empty() { stroke_str = format!("({})", parts.join(", ")); }
-        }
-    }
-    table_args.push(format!("stroke: {}", stroke_str));
-
-    // Fill
-    let fill_pattern = style.and_then(|s| s.fill_pattern.as_deref()).unwrap_or("header-only");
-    let header_bg = style.and_then(|s| s.header_background.as_deref()).unwrap_or("#f1f5f9");
     let color1 = style.and_then(|s| s.striped_color1.as_deref().or(s.alternate_row_background.as_deref())).unwrap_or("#ffffff");
     let color2 = style.and_then(|s| s.striped_color2.as_deref()).unwrap_or("#f8fafc");
+    
     let header_rows_count = if let Some(h_rows) = &c.header_rows {
         h_rows.len() as u32
     } else if c.show_header.unwrap_or(true) {
@@ -52,6 +32,56 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
     } else {
         0u32
     };
+
+    // Header specific
+    let h_border_width = style.and_then(|s| s.header_border_width.as_deref()).unwrap_or(border_width);
+    let h_border_color = style.and_then(|s| s.header_border_color.as_deref()).unwrap_or(border_color);
+    
+    // Inner Body specific
+    let inner_h_width = style.and_then(|s| s.inner_h_border_width.as_deref()).unwrap_or(border_width);
+    let inner_h_color = style.and_then(|s| s.inner_h_border_color.as_deref()).unwrap_or(border_color);
+    let inner_v_width = style.and_then(|s| s.inner_v_border_width.as_deref()).unwrap_or(border_width);
+    let inner_v_color = style.and_then(|s| s.inner_v_border_color.as_deref()).unwrap_or(border_color);
+
+    let h_dash = style.and_then(|s| s.horizontal_dash.as_deref()).filter(|&d| d != "solid").map(|d| format!(", dash: \"{}\"", d)).unwrap_or_default();
+    let v_dash = style.and_then(|s| s.vertical_dash.as_deref()).filter(|&d| d != "solid").map(|d| format!(", dash: \"{}\"", d)).unwrap_or_default();
+    
+    let hh_dash = style.and_then(|s| s.header_horizontal_dash.as_deref()).filter(|&d| d != "solid").map(|d| format!(", dash: \"{}\"", d)).unwrap_or_default();
+    let vh_dash = style.and_then(|s| s.header_vertical_dash.as_deref()).filter(|&d| d != "solid").map(|d| format!(", dash: \"{}\"", d)).unwrap_or_default();
+    
+    let sides = style.and_then(|s| s.border_sides.as_ref());
+    let s_top = sides.map(|s| s.top).unwrap_or(true);
+    let s_bottom = sides.map(|s| s.bottom).unwrap_or(true);
+    let s_left = sides.map(|s| s.left).unwrap_or(true);
+    let s_right = sides.map(|s| s.right).unwrap_or(true);
+    let s_inner_h = sides.map(|s| s.inner_h).unwrap_or(true);
+    let s_inner_v = sides.map(|s| s.inner_v).unwrap_or(true);
+
+    let stroke_str = format!(
+        "(x, y) => (\n    \
+          top: if y == 0 {{ if {} {{ (paint: {}, thickness: {}) }} else {{ none }} }} \n         \
+               else if y == {} {{ (paint: {}, thickness: {}) }} \n \
+               else if y < {} {{ (paint: {}, thickness: {}{}) }} \n \
+               else {{ if {} {{ (paint: {}, thickness: {}{}) }} else {{ none }} }},\n    \
+          left: if x == 0 {{ if {} {{ (paint: {}, thickness: {}) }} else {{ none }} }} \n          \
+                else if y < {} {{ (paint: {}, thickness: {}{}) }} \n \
+                else {{ if {} {{ (paint: {}, thickness: {}{}) }} else {{ none }} }},\n    \
+          bottom: none,\n    \
+          right: none,\n  \
+        )",
+        s_top, format_color(border_color), border_width,
+        header_rows_count, format_color(h_border_color), h_border_width,
+        header_rows_count, format_color(border_color), border_width, hh_dash,
+        s_inner_h, format_color(inner_h_color), inner_h_width, h_dash,
+        s_left, format_color(border_color), border_width,
+        header_rows_count, format_color(inner_v_color), inner_v_width, vh_dash,
+        s_inner_v, format_color(inner_v_color), inner_v_width, v_dash
+    );
+    table_args.push(format!("stroke: {}", stroke_str));
+
+    // Fill
+    let fill_pattern = style.and_then(|s| s.fill_pattern.as_deref()).unwrap_or("header-only");
+    let header_bg = style.and_then(|s| s.header_background.as_deref()).unwrap_or("#f1f5f9");
 
     if fill_pattern != "none" {
         let fill_fn = match fill_pattern {
@@ -435,7 +465,13 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                             }
 
                             if cell_content.is_empty() {
-                                t.push_str("  table.cell(fill: white.darken(3%))[],\n");
+                                let mut cell_fill = "white.darken(3%)".to_string();
+                                if let Some(Value::Object(s)) = &c.group_footer_style {
+                                    if let Some(bg) = s.get("background").and_then(|v| v.as_str()) {
+                                        cell_fill = format_color(bg);
+                                    }
+                                }
+                                t.push_str(&format!("  table.cell(fill: {})[],\n", cell_fill));
                                 continue;
                             }
 
@@ -450,9 +486,25 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                                 escape_typst(&val)
                             };
 
+                            let mut cell_fill = "white.darken(3%)".to_string();
+                            let mut text_size = body_font_size;
+                            let mut text_weight = "bold";
+                            let mut text_color = "#000000".to_string();
+
+                            if let Some(Value::Object(s)) = &c.group_footer_style {
+                                if let Some(bg) = s.get("background").and_then(|v| v.as_str()) {
+                                    cell_fill = format_color(bg);
+                                }
+                                text_size = s.get("fontSize").and_then(|v| v.as_f64()).unwrap_or(body_font_size);
+                                text_weight = s.get("fontWeight").and_then(|v| v.as_str()).unwrap_or("bold");
+                                if let Some(c) = s.get("color").and_then(|v| v.as_str()) {
+                                    text_color = c.to_string();
+                                }
+                            }
+
                             t.push_str(&format!(
-                                "  table.cell(fill: white.darken(3%), align: {})[#text(size: {}pt, weight: 700)[{}]],\n",
-                                align, body_font_size, display_val
+                                "  table.cell(fill: {}, align: {})[#text(size: {}pt, weight: {}, fill: {})[{}]],\n",
+                                cell_fill, align, text_size, format_weight(text_weight), format_color(&text_color), display_val
                             ));
                         }
                     }
@@ -581,6 +633,34 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
         t.push_str("  ),\n");
     }
 
+    // ── Outermost Bottom/Right Borders ────────────────────────────────────────
+    if s_bottom {
+        // Need to calculate total rows for hline
+        let mut total_rows = header_rows_count + c.footer_rows.as_ref().map(|f| f.len() as u32).unwrap_or(0);
+        let path = c.data_source.replace("{{", "").replace("}}", "").trim().to_string();
+        if let Some(Value::Array(arr)) = resolve_path(&path, local).or_else(|| resolve_path(&path, global)) {
+            if let Some(group_field) = &c.group_by {
+                let mut groups = HashSet::new();
+                for item in arr {
+                    let key = resolve_path(group_field, item).map(|v| v.to_string()).unwrap_or_default();
+                    groups.insert(key);
+                }
+                total_rows += (arr.len() as u32) + (groups.len() as u32);
+                if c.auto_group_footer.unwrap_or(false) {
+                    total_rows += groups.len() as u32;
+                }
+            } else {
+                total_rows += arr.len() as u32;
+            }
+        } else if is_static {
+            total_rows += 1;
+        }
+        t.push_str(&format!("  table.hline(y: {}, stroke: {} + {}),\n", total_rows, border_width, format_color(border_color)));
+    }
+    if s_right {
+        t.push_str(&format!("  table.vline(x: {}, stroke: {} + {}),\n", cols.len(), border_width, format_color(border_color)));
+    }
+
     t.push_str(")\n");
     wrap_flow(&c.base, &t, offset_x, offset_y, prefix)
 }
@@ -630,7 +710,18 @@ fn render_hline(hl: &HLineConfig) -> String {
     let mut args = vec![format!("y: {}", hl.y)];
     if let Some(start) = hl.start { if start > 0 { args.push(format!("start: {}", start)); } }
     if let Some(end) = hl.end { args.push(format!("end: {}", end)); }
-    if let Some(stroke) = &hl.stroke { args.push(format!("stroke: {}", format_color(stroke))); }
+    
+    let stroke = if let Some(dash) = &hl.dash {
+        if dash != "solid" {
+            format!("(paint: {}, thickness: 0.5pt, dash: \"{}\")", hl.stroke.as_ref().map(|s| format_color(s)).unwrap_or_else(|| "#000000".to_string()), dash)
+        } else {
+            hl.stroke.as_ref().map(|s| format_color(s)).unwrap_or_else(|| "0.5pt + black".to_string())
+        }
+    } else {
+        hl.stroke.as_ref().map(|s| format_color(s)).unwrap_or_else(|| "0.5pt + black".to_string())
+    };
+    args.push(format!("stroke: {}", stroke));
+
     if let Some(pos) = &hl.position { args.push(format!("position: {}", pos)); }
     format!("  table.hline({}),\n", args.join(", "))
 }
@@ -639,7 +730,18 @@ fn render_vline(vl: &VLineConfig) -> String {
     let mut args = vec![format!("x: {}", vl.x)];
     if let Some(start) = vl.start { if start > 0 { args.push(format!("start: {}", start)); } }
     if let Some(end) = vl.end { args.push(format!("end: {}", end)); }
-    if let Some(stroke) = &vl.stroke { args.push(format!("stroke: {}", format_color(stroke))); }
+    
+    let stroke = if let Some(dash) = &vl.dash {
+        if dash != "solid" {
+            format!("(paint: {}, thickness: 0.5pt, dash: \"{}\")", vl.stroke.as_ref().map(|s| format_color(s)).unwrap_or_else(|| "#000000".to_string()), dash)
+        } else {
+            vl.stroke.as_ref().map(|s| format_color(s)).unwrap_or_else(|| "0.5pt + black".to_string())
+        }
+    } else {
+        vl.stroke.as_ref().map(|s| format_color(s)).unwrap_or_else(|| "0.5pt + black".to_string())
+    };
+    args.push(format!("stroke: {}", stroke));
+
     if let Some(pos) = &vl.position { args.push(format!("position: {}", pos)); }
     format!("  table.vline({}),\n", args.join(", "))
 }

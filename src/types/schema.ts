@@ -132,6 +132,7 @@ export interface StrokeConfig {
   bottom?: string;
   left?: string;
   right?: string;
+  dash?: 'solid' | 'dashed' | 'dotted';
 }
 
 // --- Table Cell (maps to Typst table.cell) ---
@@ -164,6 +165,7 @@ export interface HLineConfig {
   start?: number; // start column (zero-indexed, inclusive)
   end?: number; // end column (zero-indexed, exclusive)
   stroke?: string; // e.g. "1pt + red"
+  dash?: 'solid' | 'dashed' | 'dotted';
   position?: 'top' | 'bottom';
 }
 
@@ -173,6 +175,7 @@ export interface VLineConfig {
   start?: number; // start row (zero-indexed, inclusive)
   end?: number; // end row (zero-indexed, exclusive)
   stroke?: string; // e.g. "1pt + blue"
+  dash?: 'solid' | 'dashed' | 'dotted';
   position?: 'start' | 'end';
 }
 
@@ -197,6 +200,7 @@ export interface TableComponent extends BaseComponent {
   groupBy?: string; // e.g. "department"
   groupHeaderFormat?: string; // e.g. "แผนก {{department}}"
   groupHeaderStyle?: TextStyle;
+  groupFooterStyle?: TextStyle;
   summaryRows?: SummaryRow[];
   repeatSummaryOnGroup?: boolean; // If true, summary rows render after each group
   autoGroupFooter?: boolean; // New: Automatically render a subtotal row matching columns
@@ -257,6 +261,26 @@ export interface TableStyle {
   stroke?: string | StrokeConfig; // global stroke config
   columnGutter?: string; // space between columns
   rowGutter?: string; // space between rows
+  // --- New: Granular border controls ---
+  borderSides?: {
+    top: boolean;
+    bottom: boolean;
+    left: boolean;
+    right: boolean;
+    innerH: boolean;
+    innerV: boolean;
+  };
+  horizontalDash?: 'solid' | 'dashed' | 'dotted';
+  verticalDash?: 'solid' | 'dashed' | 'dotted';
+  // --- New: Separated Header/Body border controls ---
+  headerBorderWidth?: string;
+  headerBorderColor?: string;
+  innerHBorderWidth?: string;
+  innerHBorderColor?: string;
+  innerVBorderWidth?: string;
+  innerVBorderColor?: string;
+  headerHorizontalDash?: 'solid' | 'dashed' | 'dotted';
+  headerVerticalDash?: 'solid' | 'dashed' | 'dotted';
 }
 
 export interface CellStyle {
