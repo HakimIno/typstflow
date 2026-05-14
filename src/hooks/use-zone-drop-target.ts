@@ -67,25 +67,28 @@ export function useZoneDropTarget(
         } else if (data.id) {
           // Commit to history
           if (data.group && data.group.length > 1) {
-            for (const item of data.group as any[]) {
-              const targetAbsY = finalY + item.offsetY;
-              const localY = isFlowMode ? 0 : targetAbsY - zoneOffsetMm;
-              moveComponent(
-                item.id,
-                data.zoneKey as any,
-                zoneKey,
-                -1,
-                finalX + item.offsetX,
-                localY,
-                data.pageId,
-                pageId,
-                false,
-                data.groupId,
-                groupId,
-                data.groupType,
-                groupType
-              );
-            }
+            // ✅ Single batchApplyDrag call for all components — avoids N × O(pages) traversals
+            const moves = (data.group as Array<{
+              id: string;
+              sourceZoneKey: string;
+              sourcePageId: string | undefined;
+              offsetX: number;
+              offsetY: number;
+            }>).map((item) => ({
+              id: item.id,
+              fromZone: (item.sourceZoneKey ?? data.zoneKey) as any,
+              toZone: zoneKey,
+              newIndex: -1 as const,
+              x: finalX + item.offsetX,
+              y: isFlowMode ? 0 : finalY + item.offsetY - zoneOffsetMm,
+              fromPageId: item.sourcePageId ?? data.pageId,
+              toPageId: pageId,
+              fromGroupId: data.groupId,
+              toGroupId: groupId,
+              fromGroupType: data.groupType,
+              toGroupType: groupType,
+            }));
+            state.moveComponents(moves, false);
           } else {
             moveComponent(
               data.id,

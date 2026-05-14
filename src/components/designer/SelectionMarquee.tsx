@@ -16,12 +16,17 @@ export const SelectionMarquee = memo(function SelectionMarquee({
   const clearSelection = useDesignerStore((state) => state.clearSelection);
   const schema = useDesignerStore((state) => state.schema);
 
-  const [isSelecting, setIsSelecting] = useState(false);
-  const startPosRef = useRef<{ x: number; y: number } | null>(null);
-  const currentPosRef = useRef<{ x: number; y: number } | null>(null);
-  const paperRectRef = useRef<DOMRect | null>(null);
+  // Refs for mutable values accessed inside event handlers
+  const zoomRef = useRef(zoom);
+  const schemaRef = useRef(schema);
+  const selectRef = useRef(selectComponentsInRange);
+  const clearRef = useRef(clearSelection);
 
-  // 1. Handle Start of Selection (Stable Listener)
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { schemaRef.current = schema; }, [schema]);
+  useEffect(() => { selectRef.current = selectComponentsInRange; }, [selectComponentsInRange]);
+  useEffect(() => { clearRef.current = clearSelection; }, [clearSelection]);
+
   useEffect(() => {
     const selector = pageId
       ? `[data-paper-container][data-page-id="${pageId}"]`
@@ -39,49 +44,38 @@ export const SelectionMarquee = memo(function SelectionMarquee({
 
       if (!isInsidePaper || isComponent || isToolbar || e.button !== 0) return;
 
+      const currentZoom = zoomRef.current;
       const rect = paper.getBoundingClientRect();
-      paperRectRef.current = rect;
 
-      const x = (e.clientX - rect.left) / zoom;
-      const y = (e.clientY - rect.top) / zoom;
+      const startX = (e.clientX - rect.left) / currentZoom;
+      const startY = (e.clientY - rect.top) / currentZoom;
 
-      startPosRef.current = { x, y };
-      currentPosRef.current = { x, y };
-      setStartPos({ x, y });
-      setCurrentPos({ x, y });
-      setIsSelecting(true);
+      setStartPos({ x: startX, y: startY });
+      setCurrentPos({ x: startX, y: startY });
 
-      if (!e.shiftKey) clearSelection();
-    };
+      if (!e.shiftKey) clearRef.current();
 
-    window.addEventListener('mousedown', handleMouseDown);
-    return () => window.removeEventListener('mousedown', handleMouseDown);
-  }, [pageId, zoom, clearSelection]);
+      // ✅ Add handlers immediately (not in useEffect) to avoid missing events
+      // between React re-render and next paint.
+      let curX = startX;
+      let curY = startY;
 
-  // 2. Handle Active Selection (Dynamic Listeners)
-  useEffect(() => {
-    if (!isSelecting) return;
+      const handleMouseMove = (me: MouseEvent) => {
+        const z = zoomRef.current;
+        const r = paper.getBoundingClientRect();
+        curX = (me.clientX - r.left) / z;
+        curY = (me.clientY - r.top) / z;
+        setCurrentPos({ x: curX, y: curY });
+      };
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = paperRectRef.current;
-      if (!rect) return;
+      const handleMouseUp = () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
 
-      const x = (e.clientX - rect.left) / zoom;
-      const y = (e.clientY - rect.top) / zoom;
-
-      currentPosRef.current = { x, y };
-      setCurrentPos({ x, y });
-    };
-
-    const handleMouseUp = () => {
-      const start = startPosRef.current;
-      const current = currentPosRef.current;
-
-      if (start && current) {
-        const x = Math.min(start.x, current.x);
-        const y = Math.min(start.y, current.y);
-        const width = Math.abs(start.x - current.x);
-        const height = Math.abs(start.y - current.y);
+        const x = Math.min(startX, curX);
+        const y = Math.min(startY, curY);
+        const width = Math.abs(startX - curX);
+        const height = Math.abs(startY - curY);
 
         const rectMm = {
           x: LayoutEngine.pxToMm(x),
@@ -90,44 +84,29 @@ export const SelectionMarquee = memo(function SelectionMarquee({
           height: LayoutEngine.pxToMm(height),
         };
 
-        let zoneOffsetPx = 0;
+        // ✅ Use calculateZoneOffset so header/footer visibility per page is
+        // respected (hidden header on page 2+ has offset 0, not header minHeight).
+        const currentSchema = schemaRef.current;
         for (const zoneKey of ['header', 'body', 'footer'] as const) {
-          let zoneHeightMm = 0;
-          if (zoneKey === 'body') {
-            const page = schema.pages.find((p) => p.id === pageId);
-            zoneHeightMm = Number.parseFloat(page?.body.minHeight || '0');
-          } else {
-            zoneHeightMm = Number.parseFloat(schema.zones[zoneKey].minHeight || '0');
-          }
-
-          selectComponentsInRange(
-            {
-              ...rectMm,
-              y: rectMm.y - LayoutEngine.pxToMm(zoneOffsetPx),
-            },
+          const zoneOffset = LayoutEngine.calculateZoneOffset(zoneKey, currentSchema, pageId);
+          selectRef.current(
+            { ...rectMm, y: rectMm.y - zoneOffset },
             zoneKey,
             pageId
           );
-
-          zoneOffsetPx += LayoutEngine.mmToPx(zoneHeightMm);
         }
-      }
 
-      setIsSelecting(false);
-      setStartPos(null);
-      setCurrentPos(null);
-      startPosRef.current = null;
-      currentPosRef.current = null;
+        setStartPos(null);
+        setCurrentPos(null);
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isSelecting, zoom, pageId, schema, selectComponentsInRange]);
+    window.addEventListener('mousedown', handleMouseDown);
+    return () => window.removeEventListener('mousedown', handleMouseDown);
+  }, [pageId]);
 
   if (!startPos || !currentPos) return null;
 
@@ -145,13 +124,11 @@ export const SelectionMarquee = memo(function SelectionMarquee({
         width: `${width}px`,
         height: `${height}px`,
         boxShadow: '0 0 15px var(--accent-glow)',
-        backgroundColor: 'rgba(0, 111, 238, 0.12)', // Slightly stronger than default glow
+        backgroundColor: 'rgba(0, 111, 238, 0.12)',
         borderStyle: 'solid',
         borderWidth: '1.5px',
-        backdropFilter: 'blur(1px)', // Subtle blur for premium feel
+        backdropFilter: 'blur(1px)',
       }}
-    >
-
-    </div>
+    />
   );
 });

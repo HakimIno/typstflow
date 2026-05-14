@@ -207,6 +207,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         idsToDrag = [componentId];
       }
 
+      const { width: pW, height: pH } = getPaperDimensions(store.schema.page.size, store.schema.page.orientation);
+
       const initialPositions = new Map<string, { x: number; y: number; absY: number; element: HTMLElement }>();
 
       for (const dragId of idsToDrag) {
@@ -217,10 +219,16 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         const zoneInfo = getComponentById(dragId, store.schema);
         if (pos && zoneInfo) {
           const zoneOffset = LayoutEngine.calculateZoneOffset(zoneInfo.zoneKey as any, store.schema, zoneInfo.pageId);
+          // Include the page's absolute offset so absY matches the document-absolute
+          // coordinate space used by onPointerMove (rawY + pageIndex * pageHeight).
+          const srcPageIdx = zoneInfo.pageId
+            ? store.schema.pages.findIndex(p => p.id === zoneInfo.pageId)
+            : 0;
+          const srcPageAbsOffset = Math.max(0, srcPageIdx) * pH;
           initialPositions.set(dragId, {
             x: pos.x,
             y: pos.y,
-            absY: pos.y + zoneOffset,
+            absY: pos.y + zoneOffset + srcPageAbsOffset,
             element: dragEl
           });
         }
@@ -258,7 +266,6 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           }
         }
 
-        const { width: pW, height: pH } = getPaperDimensions(store.schema.page.size, store.schema.page.orientation);
         const mT = parseTypstUnit(store.schema.page.margin.top);
         const mB = parseTypstUnit(store.schema.page.margin.bottom);
         const mL = parseTypstUnit(store.schema.page.margin.left);
@@ -284,6 +291,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       const scrollParentEl = paperContainerEl?.closest<HTMLElement>('.overflow-auto') ?? null;
 
       const zoneOffset = LayoutEngine.calculateZoneOffset(zoneKey, store.schema, pageId);
+      // Match the document-absolute coordinate space: rawY + pageIndex * pageHeight
+      const primaryPageIdx = pageId ? store.schema.pages.findIndex(p => p.id === pageId) : 0;
+      const primaryPageAbsOffset = Math.max(0, primaryPageIdx) * pH;
       dragStateRef.current = {
         isActive: true,
         startX: e.clientX,
@@ -298,7 +308,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         primaryCompWidth: component.width || 40,
         primaryCompHeight: component.height || 10,
         lastSnappedX: component.x || 0,
-        lastSnappedY: (component.y || 0) + zoneOffset,
+        lastSnappedY: (component.y || 0) + zoneOffset + primaryPageAbsOffset,
         activePageId: pageId || null,
         paperContainerEl: paperContainerEl ?? null,
         scrollParentEl,
@@ -309,7 +319,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         lastSnap: null,
         lastSpacingIndicators: null,
         cachedSnapPoints: SnapEngine.generateSnapPoints(store.schema, store.selectedComponentIds, pageId || undefined),
-        initialAbsoluteY: (component.y || 0) + zoneOffset,
+        initialAbsoluteY: (component.y || 0) + zoneOffset + primaryPageAbsOffset,
       };
 
       const pageWrapper = element.closest('[data-page-wrapper]');
@@ -512,6 +522,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               store.schema,
               targetZone.pageId
             );
+            // Subtract destination page's absolute offset to get zone-local y
+            const dstPageIdx = targetZone.pageId
+              ? store.schema.pages.findIndex(p => p.id === targetZone.pageId)
+              : 0;
+            const dstPageAbsOffset = Math.max(0, dstPageIdx) * pH;
 
             // Calculate the document-absolute delta (mm)
             const dxMM = lastSnappedX - (initialPositions.get(componentId)?.x || 0);
@@ -528,9 +543,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               const newAbsX = pos.x + dxMM;
               const newAbsY = pos.absY + dyMM;
 
-              // Convert back to zone-local for store
+              // Convert back to zone-local for store (strip zone offset and page offset)
               const newX = newAbsX;
-              const newY = Math.max(0, newAbsY - dstZoneOffset);
+              const newY = Math.max(0, newAbsY - dstZoneOffset - dstPageAbsOffset);
 
               const compIsCrossZone = targetZone && isDifferentZone({
                 zoneKey: compData.zoneKey as ZoneKey,

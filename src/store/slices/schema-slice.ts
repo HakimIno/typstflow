@@ -336,7 +336,7 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
         if (!comp) continue;
         const cw = comp.width || 40;
         const ch = comp.height || 10;
-        
+
         switch (type) {
           case 'page-left': updates[id] = { x: 0 }; break;
           case 'page-center-h': updates[id] = { x: (pageW - cw) / 2 }; break;
@@ -344,8 +344,8 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
           case 'page-top': updates[id] = { y: 0 }; break;
           case 'page-center-v': updates[id] = { y: (contentH - ch) / 2 }; break;
           case 'page-bottom': updates[id] = { y: contentH - ch }; break;
-          case 'page-center-both': 
-            updates[id] = { x: (pageW - cw) / 2, y: (contentH - ch) / 2 }; 
+          case 'page-center-both':
+            updates[id] = { x: (pageW - cw) / 2, y: (contentH - ch) / 2 };
             break;
         }
       }
@@ -412,13 +412,19 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
           });
         } else if (toZone === 'body') {
           const targetPageId = toPageId || state.activePageId || state.schema.pages[0]?.id;
-          nextSchema.pages = schemaWithoutComp.pages.map((p) => {
-            if (p.id !== targetPageId) return p;
-            const nextComps = [...p.body.components];
+
+          const targetIdx = schemaWithoutComp.pages.findIndex((p) => p.id === targetPageId);
+          if (targetIdx !== -1) {
+            const targetPage = schemaWithoutComp.pages[targetIdx];
+            const nextComps = [...targetPage.body.components];
             const insertAt = newIndex === -1 ? nextComps.length : Math.max(0, Math.min(newIndex, nextComps.length));
             nextComps.splice(insertAt, 0, updatedComp);
-            return { ...p, body: { ...p.body, components: nextComps } };
-          });
+            const newPages = [...schemaWithoutComp.pages];
+            newPages[targetIdx] = { ...targetPage, body: { ...targetPage.body, components: nextComps } };
+            nextSchema.pages = newPages;
+          } else {
+            nextSchema.pages = schemaWithoutComp.pages;
+          }
         } else {
           const nextComps = [...schemaWithoutComp.zones[toZone as 'header' | 'footer'].components];
           const insertAt = newIndex === -1 ? nextComps.length : Math.max(0, Math.min(newIndex, nextComps.length));

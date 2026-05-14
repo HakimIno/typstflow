@@ -128,41 +128,40 @@ export function mapComponentInSchema(
     }
   }
 
-  // 2. Page bodies and per-page footers
-  let changed = false;
-  const newPages = schema.pages.map((page) => {
+  // 2. Page bodies — early exit on first match; avoids allocating 1000 page objects
+  for (let i = 0; i < schema.pages.length; i++) {
+    const page = schema.pages[i];
     const bodyIdx = page.body.components.findIndex((c) => c.id === id);
     if (bodyIdx !== -1) {
       const next = [...page.body.components];
       next[bodyIdx] = transform(page.body.components[bodyIdx]);
-      changed = true;
-      return { ...page, body: { ...page.body, components: next } };
+      const newPages = [...schema.pages];
+      newPages[i] = { ...page, body: { ...page.body, components: next } };
+      return { schema: { ...schema, pages: newPages }, changed: true };
     }
-    return page;
-  });
-
-  if (changed) return { schema: { ...schema, pages: newPages }, changed: true };
+  }
 
   // 3. Group bands
+  let groupChanged = false;
   const newGroups = (schema.groups || []).map((group) => {
     const hIdx = group.header.components.findIndex((c) => c.id === id);
     if (hIdx !== -1) {
       const next = [...group.header.components];
       next[hIdx] = transform(group.header.components[hIdx]);
-      changed = true;
+      groupChanged = true;
       return { ...group, header: { ...group.header, components: next } };
     }
     const fIdx = group.footer.components.findIndex((c) => c.id === id);
     if (fIdx !== -1) {
       const next = [...group.footer.components];
       next[fIdx] = transform(group.footer.components[fIdx]);
-      changed = true;
+      groupChanged = true;
       return { ...group, footer: { ...group.footer, components: next } };
     }
     return group;
   });
 
-  if (!changed) return { schema, changed: false };
+  if (!groupChanged) return { schema, changed: false };
   return { schema: { ...schema, groups: newGroups }, changed: true };
 }
 
@@ -190,32 +189,31 @@ export function removeComponentFromSchema(schema: LayoutSchema, id: string): Mut
     }
   }
 
-  // 2. Page bodies and per-page footers
-  let changed = false;
-  const newPages = schema.pages.map((page) => {
+  // 2. Page bodies — early exit on first match; avoids allocating 1000 page objects
+  for (let i = 0; i < schema.pages.length; i++) {
+    const page = schema.pages[i];
     if (page.body.components.some((c) => c.id === id)) {
-      changed = true;
-      return {
+      const newPages = [...schema.pages];
+      newPages[i] = {
         ...page,
         body: { ...page.body, components: page.body.components.filter((c) => c.id !== id) },
       };
+      return { schema: { ...schema, pages: newPages }, changed: true };
     }
-    return page;
-  });
-
-  if (changed) return { schema: { ...schema, pages: newPages }, changed: true };
+  }
 
   // 3. Group bands
+  let groupChanged = false;
   const newGroups = (schema.groups || []).map((group) => {
     if (group.header.components.some((c) => c.id === id)) {
-      changed = true;
+      groupChanged = true;
       return {
         ...group,
         header: { ...group.header, components: group.header.components.filter((c) => c.id !== id) },
       };
     }
     if (group.footer.components.some((c) => c.id === id)) {
-      changed = true;
+      groupChanged = true;
       return {
         ...group,
         footer: { ...group.footer, components: group.footer.components.filter((c) => c.id !== id) },
@@ -224,7 +222,7 @@ export function removeComponentFromSchema(schema: LayoutSchema, id: string): Mut
     return group;
   });
 
-  if (!changed) return { schema, changed: false };
+  if (!groupChanged) return { schema, changed: false };
   return { schema: { ...schema, groups: newGroups }, changed: true };
 }
 

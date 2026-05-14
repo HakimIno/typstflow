@@ -95,12 +95,14 @@ export const Canvas = memo(function Canvas() {
         return prev;
       });
 
-      // ✅ Update active page ID based on scroll (middle of viewport)
-      const viewportMiddle = scrollTop + clientHeight / 2;
-      const middleRowIdx = Math.floor((viewportMiddle - PADDING_TOP_PX) / totalPageHeight);
-      const middlePageIdx = Math.max(0, Math.min(pageIds.length - 1, middleRowIdx * pagesPerRow));
-      if (pageIds[middlePageIdx] !== activePageId) {
-        setActivePage(pageIds[middlePageIdx]);
+      // ✅ Update active page ID based on scroll — skip during drag to avoid re-renders
+      if (!isDraggingGlobal) {
+        const viewportMiddle = scrollTop + clientHeight / 2;
+        const middleRowIdx = Math.floor((viewportMiddle - PADDING_TOP_PX) / totalPageHeight);
+        const middlePageIdx = Math.max(0, Math.min(pageIds.length - 1, middleRowIdx * pagesPerRow));
+        if (pageIds[middlePageIdx] !== activePageId) {
+          setActivePage(pageIds[middlePageIdx]);
+        }
       }
     }
   }, [
@@ -112,6 +114,7 @@ export const Canvas = memo(function Canvas() {
     setActivePage,
     zoom,
     canvasLayout,
+    isDraggingGlobal,
   ]);
 
   useEffect(() => {
