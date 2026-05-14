@@ -33,7 +33,7 @@ export const DesignerInput = React.forwardRef<HTMLInputElement, DesignerInputPro
         onClick={(e) => e.stopPropagation()}
         className={clsx(
           // Base styles
-          'w-full outline-none transition-colors text-[var(--text-primary)] placeholder:text-[var(--text-muted)]',
+          'w-full outline-none transition-colors text-[var(--text-primary)] placeholder:text-[var(--text-muted)] h-6',
 
           // Typography
           mono ? 'font-mono' : 'font-sans',

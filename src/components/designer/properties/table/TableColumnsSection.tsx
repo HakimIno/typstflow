@@ -15,6 +15,13 @@ import {
 import { useState } from 'react';
 import { ColorPicker } from '../../../shared/ColorPicker';
 import { MiniInput } from './TableShared';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
 
 interface Props {
   component: TableComponent;
@@ -154,33 +161,37 @@ export const TableColumnsSection = ({ component }: Props) => {
                   <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
                     Format
                   </span>
-                  <select
+                  <Select
                     value={col.format || 'text'}
-                    onChange={(e) => updateColumn(idx, { format: e.target.value })}
-                    className="h-[22px] text-[9px] bg-[var(--bg-surface)] border border-[var(--border-default)] rounded px-1 outline-none text-[var(--text-primary)]"
+                    onValueChange={(val) => updateColumn(idx, { format: val })}
                   >
-                    {(() => {
-                      const dataType = col.field ? getValueType(sampleData, col.field) : 'string';
-                      const applicable = getApplicableFormats(dataType);
-                      const options = [
-                        { id: 'text', label: 'Text' },
-                        { id: 'number', label: 'Number' },
-                        { id: 'currency-thb', label: '฿ THB' },
-                        { id: 'currency-usd', label: '$ USD' },
-                        { id: 'percent', label: '%' },
-                        { id: 'date-th', label: 'Date TH' },
-                        { id: 'date-en', label: 'Date EN' },
-                        { id: 'boolean', label: 'Bool' },
-                      ];
-                      return options
-                        .filter((opt) => applicable.includes(opt.id as any))
-                        .map((opt) => (
-                          <option key={opt.id} value={opt.id}>
-                            {opt.label}
-                          </option>
-                        ));
-                    })()}
-                  </select>
+                    <SelectTrigger className="h-[22px] text-[9px] bg-[var(--bg-surface)] border-[var(--border-default)] px-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(() => {
+                        const dataType = col.field ? getValueType(sampleData, col.field) : 'string';
+                        const applicable = getApplicableFormats(dataType);
+                        const options = [
+                          { id: 'text', label: 'Text' },
+                          { id: 'number', label: 'Number' },
+                          { id: 'currency-thb', label: '฿ THB' },
+                          { id: 'currency-usd', label: '$ USD' },
+                          { id: 'percent', label: '%' },
+                          { id: 'date-th', label: 'Date TH' },
+                          { id: 'date-en', label: 'Date EN' },
+                          { id: 'boolean', label: 'Bool' },
+                        ];
+                        return options
+                          .filter((opt) => applicable.includes(opt.id as any))
+                          .map((opt) => (
+                            <SelectItem key={opt.id} value={opt.id} className="text-[9px]">
+                              {opt.label}
+                            </SelectItem>
+                          ));
+                      })()}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex flex-col gap-0.5">
                    <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Align</span>

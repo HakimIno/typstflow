@@ -43,6 +43,13 @@ import { LineProperties } from './properties/LineProperties';
 import { ControlField, PropertyGrid, PropertyRow, SectionHeader } from './properties/Shared';
 import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
 import { TypographyProperties } from './properties/TypographyProperties';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
 
 // Type guards for safe component access
 const isText = (c: ComponentNode): c is TextComponent => c.type === 'text';
@@ -137,32 +144,40 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               <SectionHeader label="Page Layout" />
               <PropertyGrid cols={2}>
                 <ControlField label="Paper Size">
-                  <select
+                  <Select
                     value={pageConfig.size}
-                    onChange={(e) =>
-                      updateSchema({ page: { ...pageConfig, size: e.target.value as any } })
+                    onValueChange={(val) =>
+                      updateSchema({ page: { ...pageConfig, size: val as any } })
                     }
-                    className="pro-input h-6 px-1 w-full text-[10px] outline-none rounded-[4px] bg-[var(--bg-widget)] border-[var(--border-default)]"
                   >
-                    <option value="A4">A4</option>
-                    <option value="A5">A5</option>
-                    <option value="Letter">Letter</option>
-                    <option value="Legal">Legal</option>
-                  </select>
+                    <SelectTrigger className="h-6 text-[10px] bg-[var(--bg-widget)] border-[var(--border-default)]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="A4">A4</SelectItem>
+                      <SelectItem value="A5">A5</SelectItem>
+                      <SelectItem value="Letter">Letter</SelectItem>
+                      <SelectItem value="Legal">Legal</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </ControlField>
                 <ControlField label="Orientation">
-                  <select
+                  <Select
                     value={pageConfig.orientation}
-                    onChange={(e) =>
+                    onValueChange={(val) =>
                       updateSchema({
-                        page: { ...pageConfig, orientation: e.target.value as any },
+                        page: { ...pageConfig, orientation: val as any },
                       })
                     }
-                    className="pro-input h-6 px-1 w-full text-[10px] outline-none rounded-[4px] bg-[var(--bg-widget)] border-[var(--border-default)]"
                   >
-                    <option value="portrait">Portrait</option>
-                    <option value="landscape">Landscape</option>
-                  </select>
+                    <SelectTrigger className="h-6 text-[10px] bg-[var(--bg-widget)] border-[var(--border-default)]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="portrait">Portrait</SelectItem>
+                      <SelectItem value="landscape">Landscape</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </ControlField>
                 <ControlField label="Page Count" className="col-span-2">
                   <DesignerInput

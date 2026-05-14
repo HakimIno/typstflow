@@ -1,6 +1,13 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { SectionHeader } from './Shared';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
 
 interface SummaryBoxPropertiesProps {
   component: any;
@@ -73,16 +80,20 @@ export function SummaryBoxProperties({ component, onUpdate }: SummaryBoxProperti
 
             <div className="flex items-center gap-2">
               <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">Style</span>
-              <select
+              <Select
                 value={row.style || 'normal'}
-                onChange={(e) => updateRow(idx, { style: e.target.value })}
-                className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-[10px] px-1 py-0.5 outline-none"
+                onValueChange={(val) => updateRow(idx, { style: val })}
               >
-                <option value="normal">Normal</option>
-                <option value="subtotal">Subtotal</option>
-                <option value="total">Grand Total</option>
-                <option value="highlight">Highlight</option>
-              </select>
+                <SelectTrigger className="flex-1 h-6 text-[10px] bg-[var(--bg-surface)] border-[var(--border-default)] px-1 py-0.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="subtotal">Subtotal</SelectItem>
+                  <SelectItem value="total">Grand Total</SelectItem>
+                  <SelectItem value="highlight">Highlight</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         ))}

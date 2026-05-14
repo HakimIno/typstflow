@@ -16,6 +16,13 @@ import { useState } from 'react';
 import { MiniInput } from './TableShared';
 import { ColorPicker } from '@/components/shared/ColorPicker';
 import { FontWeightSelect } from '../../ui/FontWeightSelect';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
 
 interface Props {
   component: TableComponent;
@@ -157,24 +164,28 @@ export const TableRowsSection = ({ component, type }: Props) => {
                       <div className="grid grid-cols-2 gap-2 border-t border-white/5 pt-2">
                         <div>
                           <span className="text-[7px] uppercase text-[var(--text-muted)] mb-0.5 block">Data Format</span>
-                          <select
+                          <Select
                             value={cell.format || 'text'}
-                            onChange={(e) => {
+                            onValueChange={(val) => {
                               const newRows = [...rows];
-                              newRows[rIdx].cells[cIdx].format = e.target.value as any;
+                              newRows[rIdx].cells[cIdx].format = val as any;
                               updateRows(newRows);
                             }}
-                            className="w-full h-7 text-[10px] px-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-white outline-none focus:border-[var(--accent)]"
                           >
-                            <option value="text">Text</option>
-                            <option value="number">Number</option>
-                            <option value="currency-thb">Currency (฿)</option>
-                            <option value="currency-usd">Currency ($)</option>
-                            <option value="date-th">Date (TH)</option>
-                            <option value="date-en">Date (EN)</option>
-                            <option value="percent">Percent (%)</option>
-                            <option value="boolean">Boolean</option>
-                          </select>
+                            <SelectTrigger className="w-full h-7 text-[10px] bg-[var(--bg-surface)] border-[var(--border-default)]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="text">Text</SelectItem>
+                              <SelectItem value="number">Number</SelectItem>
+                              <SelectItem value="currency-thb">Currency (฿)</SelectItem>
+                              <SelectItem value="currency-usd">Currency ($)</SelectItem>
+                              <SelectItem value="date-th">Date (TH)</SelectItem>
+                              <SelectItem value="date-en">Date (EN)</SelectItem>
+                              <SelectItem value="percent">Percent (%)</SelectItem>
+                              <SelectItem value="boolean">Boolean</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <span className="text-[7px] uppercase text-[var(--text-muted)] mb-0.5 block">Font Weight</span>

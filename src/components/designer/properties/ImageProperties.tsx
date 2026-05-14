@@ -5,6 +5,13 @@ import { ImageIcon, Link, Loader2, Upload, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { PropertyRow, SectionHeader } from './Shared';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
 
 interface ImagePropertiesProps {
   component: ImageComponent;
@@ -19,21 +26,19 @@ export function ImageProperties({ component, onUpdate }: ImagePropertiesProps) {
 
       <SectionHeader label="Image Settings" />
       <PropertyRow label="Fit Mode">
-        <select
+        <Select
           value={component.fit || 'contain'}
-          onChange={(e) => onUpdate({ fit: e.target.value as any })}
-          className="pro-input h-6 px-1 w-full text-[11px] outline-none"
+          onValueChange={(val) => onUpdate({ fit: val as any })}
         >
-          <option value="contain" className="bg-[var(--bg-surface)]">
-            Contain
-          </option>
-          <option value="cover" className="bg-[var(--bg-surface)]">
-            Cover
-          </option>
-          <option value="stretch" className="bg-[var(--bg-surface)]">
-            Stretch
-          </option>
-        </select>
+          <SelectTrigger className="h-6 text-[11px] bg-[var(--bg-widget)] border-[var(--border-default)]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="contain">Contain</SelectItem>
+            <SelectItem value="cover">Cover</SelectItem>
+            <SelectItem value="stretch">Stretch</SelectItem>
+          </SelectContent>
+        </Select>
       </PropertyRow>
     </>
   );

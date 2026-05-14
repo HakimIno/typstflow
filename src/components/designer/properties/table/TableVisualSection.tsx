@@ -6,8 +6,16 @@ import { ControlField, PropertyGrid, SectionHeader } from '../Shared';
 import { MiniInput } from './TableShared';
 import { FontWeightSelect } from '../../ui/FontWeightSelect';
 import {
-  Check
+  Check,
+  ChevronDown
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
 
 const FILL_PATTERNS: { id: FillPattern; label: string; preview: string }[] = [
   { id: 'none', label: 'No Fill', preview: '⬜' },
@@ -96,26 +104,34 @@ export const TableVisualSection = ({ component }: Props) => {
             />
           </ControlField>
           <ControlField label="Horiz. Dash">
-            <select
+            <Select
               value={component.style?.headerHorizontalDash || 'solid'}
-              onChange={(e) => handleStyleUpdate({ headerHorizontalDash: e.target.value as any })}
-              className="h-7 text-[9px] bg-[var(--bg-widget)] border border-[var(--border-default)] rounded px-1 w-full outline-none text-[var(--text-primary)]"
+              onValueChange={(val) => handleStyleUpdate({ headerHorizontalDash: val as any })}
             >
-              <option value="solid">Solid ──</option>
-              <option value="dashed">Dashed ╍╍</option>
-              <option value="dotted">Dotted ⋯⋯</option>
-            </select>
+              <SelectTrigger className="h-7 text-[9px] bg-[var(--bg-widget)] border-[var(--border-default)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="solid">Solid ──</SelectItem>
+                <SelectItem value="dashed">Dashed ╍╍</SelectItem>
+                <SelectItem value="dotted">Dotted ⋯⋯</SelectItem>
+              </SelectContent>
+            </Select>
           </ControlField>
           <ControlField label="Vert. Dash">
-            <select
+            <Select
               value={component.style?.headerVerticalDash || 'solid'}
-              onChange={(e) => handleStyleUpdate({ headerVerticalDash: e.target.value as any })}
-              className="h-7 text-[9px] bg-[var(--bg-widget)] border border-[var(--border-default)] rounded px-1 w-full outline-none text-[var(--text-primary)]"
+              onValueChange={(val) => handleStyleUpdate({ headerVerticalDash: val as any })}
             >
-              <option value="solid">Solid │</option>
-              <option value="dashed">Dashed ┆</option>
-              <option value="dotted">Dotted ┊</option>
-            </select>
+              <SelectTrigger className="h-7 text-[9px] bg-[var(--bg-widget)] border-[var(--border-default)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="solid">Solid │</SelectItem>
+                <SelectItem value="dashed">Dashed ┆</SelectItem>
+                <SelectItem value="dotted">Dotted ┊</SelectItem>
+              </SelectContent>
+            </Select>
           </ControlField>
         </PropertyGrid>
 
@@ -183,15 +199,19 @@ export const TableVisualSection = ({ component }: Props) => {
         </div>
         <PropertyGrid cols={2}>
           <ControlField label="Horiz. Style">
-            <select
+            <Select
               value={component.style?.horizontalDash || 'solid'}
-              onChange={(e) => handleStyleUpdate({ horizontalDash: e.target.value })}
-              className="h-7 text-[9px] bg-[var(--bg-widget)] border border-[var(--border-default)] rounded px-1 w-full outline-none text-[var(--text-primary)]"
+              onValueChange={(val) => handleStyleUpdate({ horizontalDash: val })}
             >
-              <option value="solid">Solid ──</option>
-              <option value="dashed">Dashed ╍╍</option>
-              <option value="dotted">Dotted ⋯⋯</option>
-            </select>
+              <SelectTrigger className="h-7 text-[9px] bg-[var(--bg-widget)] border-[var(--border-default)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="solid">Solid ──</SelectItem>
+                <SelectItem value="dashed">Dashed ╍╍</SelectItem>
+                <SelectItem value="dotted">Dotted ⋯⋯</SelectItem>
+              </SelectContent>
+            </Select>
           </ControlField>
           <ControlField label="Horiz. Color">
             <ColorPicker
@@ -201,15 +221,19 @@ export const TableVisualSection = ({ component }: Props) => {
           </ControlField>
           
           <ControlField label="Vert. Style">
-            <select
+            <Select
               value={component.style?.verticalDash || 'solid'}
-              onChange={(e) => handleStyleUpdate({ verticalDash: e.target.value })}
-              className="h-7 text-[9px] bg-[var(--bg-widget)] border border-[var(--border-default)] rounded px-1 w-full outline-none text-[var(--text-primary)]"
+              onValueChange={(val) => handleStyleUpdate({ verticalDash: val })}
             >
-              <option value="solid">Solid │</option>
-              <option value="dashed">Dashed ┆</option>
-              <option value="dotted">Dotted ┊</option>
-            </select>
+              <SelectTrigger className="h-7 text-[9px] bg-[var(--bg-widget)] border-[var(--border-default)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="solid">Solid │</SelectItem>
+                <SelectItem value="dashed">Dashed ┆</SelectItem>
+                <SelectItem value="dotted">Dotted ┊</SelectItem>
+              </SelectContent>
+            </Select>
           </ControlField>
           <ControlField label="Vert. Color">
             <ColorPicker
