@@ -1,5 +1,21 @@
 import init, { LayoutEngine } from './wasm-bridge/typst_bridge';
 
+export interface WasmSpacingIndicator {
+  side: 'left' | 'right' | 'top' | 'bottom';
+  distance: number;
+  line_start: number;
+  line_end: number;
+  cross_pos: number;
+}
+
+export interface WasmFullSnapResult {
+  snapped_x: number;
+  snapped_y: number;
+  guides_x: number[];
+  guides_y: number[];
+  spacing_indicators: WasmSpacingIndicator[];
+}
+
 /**
  * WASM Layout Engine wrapper.
  *
@@ -63,6 +79,7 @@ export class WasmLayoutEngine {
     }
   }
 
+  /** Legacy snap: returns {dx, dy, guides}. Prefer calculateSnap for new callers. */
   public findSnaps(
     id: string,
     x: number,
@@ -75,6 +92,40 @@ export class WasmLayoutEngine {
     if (!this.engine) return null;
     try {
       return this.engine.find_snaps(id, x, y, width, height, threshold, zoneFilter);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Comprehensive single-call snap. Combines:
+   *  - Equal-spacing snap (higher priority, Figma-style)
+   *  - Element edge/center snap via RTree
+   *  - Spacing indicators to nearest neighbors
+   *
+   * Returns absolute snapped coordinates + guide positions + spacing indicators,
+   * all in mm. Returns null if WASM is not ready.
+   */
+  public calculateSnap(
+    id: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    threshold = 2,
+    zoneFilter?: string
+  ): WasmFullSnapResult | null {
+    if (!this.engine) return null;
+    try {
+      return this.engine.calculate_snap(
+        id,
+        x,
+        y,
+        width,
+        height,
+        threshold,
+        zoneFilter
+      ) as WasmFullSnapResult | null;
     } catch {
       return null;
     }

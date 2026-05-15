@@ -214,14 +214,6 @@ export function groupPathsByParent(paths: string[]): PathGroup[] {
 }
 
 /**
- * Get a human-readable label for a path
- * Example: "customer.name" → "customer.name", "customer" → "customer"
- */
-export function getPathLabel(path: string): string {
-  return path;
-}
-
-/**
  * Immutably set a value at a dot-notation path in a nested object.
  * Returns the original object unchanged if the path contains "[*]"
  * (wildcard array paths cannot be edited directly).

@@ -4,11 +4,14 @@ import { dragSnapState } from '@/lib/engine/drag-snap-state';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import type { SnapPoint } from '@/lib/engine/snap-engine';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
-import type { layoutEngine as LayoutEngineType } from '@/lib/wasm-layout-engine';
+import type {
+  layoutEngine as LayoutEngineType,
+  WasmSpacingIndicator,
+} from '@/lib/wasm-layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode } from '@/types/schema';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 
 interface PageOffset {
   id: string;
@@ -38,13 +41,12 @@ interface DragSourceData {
   }>;
 }
 
-interface WasmSnapResult {
-  dx: number;
-  dy: number;
-  guides: {
-    is_vertical: boolean;
-    position: number;
-  }[];
+interface WasmFullSnapResult {
+  snapped_x: number;
+  snapped_y: number;
+  guides_x: number[];
+  guides_y: number[];
+  spacing_indicators: WasmSpacingIndicator[];
 }
 
 // ✅ EXTREME PERFORMANCE MODE for 1000+ pages
@@ -82,7 +84,7 @@ const perfMetrics = {
  * 4. Early exit when not moving significantly
  * 5. Direct DOM manipulation for visuals
  */
-export function DragMonitor() {
+export const DragMonitor = memo(function DragMonitor() {
   const dragRef = useRef<{
     containerRect: DOMRect | null;
     containerElement: HTMLElement | null;
@@ -103,7 +105,13 @@ export function DragMonitor() {
     lastRawX: number;
     lastRawY: number;
     frameCounter: number;
-    lastSnapResult: { x: number; y: number; guidesX: number[]; guidesY: number[] } | null;
+    lastSnapResult: {
+      x: number;
+      y: number;
+      guidesX: number[];
+      guidesY: number[];
+      spacingIndicators: WasmSpacingIndicator[];
+    } | null;
   }>({
     containerRect: null,
     containerElement: null,
@@ -339,7 +347,8 @@ export function DragMonitor() {
             cache.lastSnapResult.guidesY,
             cache.lastSnapResult.x,
             cache.lastSnapResult.y,
-            activePageInfo
+            activePageInfo,
+            cache.lastSnapResult.spacingIndicators
           );
           return;
         }
@@ -366,9 +375,9 @@ export function DragMonitor() {
           let activeGuidesX: number[] = [];
           let activeGuidesY: number[] = [];
 
-          let wasmSnap: WasmSnapResult | null = null;
+          let fullSnap: WasmFullSnapResult | null = null;
           try {
-            wasmSnap = layoutEngine.findSnaps(
+            fullSnap = layoutEngine.calculateSnap(
               data.id || 'new',
               rawX,
               rawY,
@@ -376,19 +385,23 @@ export function DragMonitor() {
               height,
               SNAP_THRESHOLD_MM,
               data.zone
-            );
+            ) as WasmFullSnapResult | null;
           } catch {
             // Fall through to JS
           }
 
-          if (
-            wasmSnap &&
-            (Math.abs(wasmSnap.dx) < SNAP_THRESHOLD_MM || Math.abs(wasmSnap.dy) < SNAP_THRESHOLD_MM)
-          ) {
-            snapX = rawX + wasmSnap.dx;
-            snapY = rawY + wasmSnap.dy;
-            activeGuidesX = wasmSnap.guides.filter((g) => g.is_vertical).map((g) => g.position);
-            activeGuidesY = wasmSnap.guides.filter((g) => !g.is_vertical).map((g) => g.position);
+          let spacingIndicators: WasmSpacingIndicator[] = [];
+
+          if (fullSnap) {
+            const movedX = Math.abs(fullSnap.snapped_x - rawX);
+            const movedY = Math.abs(fullSnap.snapped_y - rawY);
+            if (movedX < SNAP_THRESHOLD_MM || movedY < SNAP_THRESHOLD_MM) {
+              snapX = fullSnap.snapped_x;
+              snapY = fullSnap.snapped_y;
+              activeGuidesX = fullSnap.guides_x;
+              activeGuidesY = fullSnap.guides_y;
+              spacingIndicators = fullSnap.spacing_indicators;
+            }
           }
 
           // ✅ Cache snap result for reuse
@@ -397,6 +410,7 @@ export function DragMonitor() {
             y: snapY,
             guidesX: activeGuidesX,
             guidesY: activeGuidesY,
+            spacingIndicators,
           };
 
           // ✅ Publish snapped values synchronously for drop handlers
@@ -409,7 +423,14 @@ export function DragMonitor() {
           root.style.setProperty('--drag-dx', `${(pxDeltaX + snapOffsetX) / cache.zoom}px`);
           root.style.setProperty('--drag-dy', `${(pxDeltaY + snapOffsetY) / cache.zoom}px`);
 
-          updateTransientVisuals(activeGuidesX, activeGuidesY, snapX, snapY, activePageInfo);
+          updateTransientVisuals(
+            activeGuidesX,
+            activeGuidesY,
+            snapX,
+            snapY,
+            activePageInfo,
+            spacingIndicators
+          );
 
           // Performance tracking
           if (ENABLE_PERF_MONITORING) {
@@ -444,7 +465,8 @@ export function DragMonitor() {
           guidesY: number[],
           x: number,
           y: number,
-          pInfo: PageOffset
+          pInfo: PageOffset,
+          indicators: WasmSpacingIndicator[] = []
         ) {
           const pageTopPx = pInfo.top;
           const pageLeftPx = pInfo.left;
@@ -469,12 +491,55 @@ export function DragMonitor() {
               }
             }
           }
+
           const pill = document.getElementById('drag-coord-pill');
           if (pill) {
             pill.style.display = 'block';
             pill.style.left = `${pageLeftPx + LayoutEngine.mmToPx(x) + 10}px`;
             pill.style.top = `${pageTopPx + LayoutEngine.mmToPx(y) + 10}px`;
             pill.innerText = `${Math.round(x)}, ${Math.round(y)}mm`;
+          }
+
+          // Render spacing indicators using TransientOverlay's DOM structure
+          const sides = ['left', 'right', 'top', 'bottom'] as const;
+          const activeIndicators = new Map(indicators.map((ind) => [ind.side, ind]));
+          for (const side of sides) {
+            const container = document.getElementById(`spacing-${side}`);
+            const line = document.getElementById(`spacing-line-${side}`);
+            const label = document.getElementById(`spacing-label-${side}`);
+            const ind = activeIndicators.get(side);
+
+            if (!container || !line || !label) continue;
+            if (!ind) {
+              container.style.display = 'none';
+              continue;
+            }
+
+            const isHorizontal = side === 'left' || side === 'right';
+            const startPx = isHorizontal
+              ? pageLeftPx + LayoutEngine.mmToPx(ind.line_start)
+              : pageTopPx + LayoutEngine.mmToPx(ind.line_start);
+            const endPx = isHorizontal
+              ? pageLeftPx + LayoutEngine.mmToPx(ind.line_end)
+              : pageTopPx + LayoutEngine.mmToPx(ind.line_end);
+            const crossPx = isHorizontal
+              ? pageTopPx + LayoutEngine.mmToPx(ind.cross_pos)
+              : pageLeftPx + LayoutEngine.mmToPx(ind.cross_pos);
+
+            if (isHorizontal) {
+              container.style.left = `${startPx}px`;
+              container.style.top = `${crossPx - 6}px`;
+              container.style.width = `${endPx - startPx}px`;
+              container.style.height = '13px';
+            } else {
+              container.style.left = `${crossPx - 6}px`;
+              container.style.top = `${startPx}px`;
+              container.style.width = '13px';
+              container.style.height = `${endPx - startPx}px`;
+            }
+
+            container.style.display = 'flex';
+            label.innerText = `${ind.distance}mm`;
           }
         }
       },
@@ -490,7 +555,7 @@ export function DragMonitor() {
           root.style.removeProperty('--drag-dy');
 
           const overlays = document.querySelectorAll(
-            '[id^="v-guide-"], [id^="h-guide-"], [id^="drag-coord-pill"]'
+            '[id^="v-guide-"], [id^="h-guide-"], [id^="drag-coord-pill"], [id^="spacing-"]'
           );
           for (const el of overlays) {
             (el as HTMLElement).style.display = 'none';
@@ -515,4 +580,4 @@ export function DragMonitor() {
   }, []);
 
   return null;
-}
+});

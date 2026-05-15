@@ -283,6 +283,91 @@ export function removeComponentsFromSchema(schema: LayoutSchema, ids: string[]):
   };
 }
 
+// ─── Batch Map ─────────────────────────────────────────────────────────────
+
+/**
+ * Apply per-component transforms to multiple components in a single schema pass.
+ * Only zones/pages that actually contain a targeted component are reallocated,
+ * making this O(total_components) with minimal GC pressure — far more efficient
+ * than calling mapComponentInSchema N times (which is O(N × pages)).
+ *
+ * @example
+ * const transforms = new Map([
+ *   [id1, (c) => ({ ...c, x: newX })],
+ *   [id2, (c) => ({ ...c, y: newY })],
+ * ]);
+ * const { schema } = batchMapComponentsInSchema(state.schema, transforms);
+ */
+export function batchMapComponentsInSchema(
+  schema: LayoutSchema,
+  transforms: Map<string, (comp: ComponentNode) => ComponentNode>
+): MutationResult {
+  if (transforms.size === 0) return { schema, changed: false };
+
+  let anyChanged = false;
+
+  // 1. Global zones — only reallocate a zone when it contains a targeted component
+  let updatedZones = schema.zones;
+  for (const key of GLOBAL_ZONE_KEYS) {
+    const components = updatedZones[key].components;
+    let zoneChanged = false;
+    const next = components.map((c) => {
+      const t = transforms.get(c.id);
+      if (!t) return c;
+      zoneChanged = true;
+      return t(c);
+    });
+    if (zoneChanged) {
+      anyChanged = true;
+      updatedZones = { ...updatedZones, [key]: { ...updatedZones[key], components: next } };
+    }
+  }
+
+  // 2. Page bodies — only reallocate pages that contain a targeted component
+  const newPages = schema.pages.map((page) => {
+    let pageChanged = false;
+    const next = page.body.components.map((c) => {
+      const t = transforms.get(c.id);
+      if (!t) return c;
+      pageChanged = true;
+      return t(c);
+    });
+    if (!pageChanged) return page;
+    anyChanged = true;
+    return { ...page, body: { ...page.body, components: next } };
+  });
+
+  // 3. Group bands
+  const newGroups = (schema.groups || []).map((group) => {
+    let groupChanged = false;
+    const nextHeader = group.header.components.map((c) => {
+      const t = transforms.get(c.id);
+      if (!t) return c;
+      groupChanged = true;
+      return t(c);
+    });
+    const nextFooter = group.footer.components.map((c) => {
+      const t = transforms.get(c.id);
+      if (!t) return c;
+      groupChanged = true;
+      return t(c);
+    });
+    if (!groupChanged) return group;
+    anyChanged = true;
+    return {
+      ...group,
+      header: { ...group.header, components: nextHeader },
+      footer: { ...group.footer, components: nextFooter },
+    };
+  });
+
+  if (!anyChanged) return { schema, changed: false };
+  return {
+    schema: { ...schema, zones: updatedZones, pages: newPages, groups: newGroups },
+    changed: true,
+  };
+}
+
 // ─── Reorder ───────────────────────────────────────────────────────────────
 
 /**

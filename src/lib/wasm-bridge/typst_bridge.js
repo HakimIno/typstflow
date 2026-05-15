@@ -11,10 +11,36 @@ export class LayoutEngine {
         const ptr = this.__destroy_into_raw();
         wasm.__wbg_layoutengine_free(ptr, 0);
     }
+    /**
+     * Comprehensive single-call snap: equal-spacing + element + spacing indicators.
+     * Returns {snapped_x, snapped_y, guides_x, guides_y, spacing_indicators}.
+     * zone_filter scopes element/equal-spacing snaps; spacing indicators always use all nodes.
+     * @param {string} id
+     * @param {number} x
+     * @param {number} y
+     * @param {number} width
+     * @param {number} height
+     * @param {number} threshold
+     * @param {string | null} [zone_filter]
+     * @returns {any}
+     */
+    calculate_snap(id, x, y, width, height, threshold, zone_filter) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        var ptr1 = isLikeNone(zone_filter) ? 0 : passStringToWasm0(zone_filter, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len1 = WASM_VECTOR_LEN;
+        const ret = wasm.layoutengine_calculate_snap(this.__wbg_ptr, ptr0, len0, x, y, width, height, threshold, ptr1, len1);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
     clear() {
         wasm.layoutengine_clear(this.__wbg_ptr);
     }
     /**
+     * Legacy single-pass snap: returns {dx, dy, guides}.
+     * Kept for backward compatibility with existing callers.
      * @param {string} id
      * @param {number} x
      * @param {number} y
