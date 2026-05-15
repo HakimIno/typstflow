@@ -60,8 +60,6 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const toggleComponentSelection = useDesignerStore((s) => s.toggleComponentSelection);
   const updateComponent = useDesignerStore((s) => s.updateComponent);
   const addComponent = useDesignerStore((s) => s.addComponent);
-  const moveUp = useDesignerStore((s) => s.moveUp);
-  const moveDown = useDesignerStore((s) => s.moveDown);
 
   const handleFlowIndentLeft = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -75,20 +73,21 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
   const [isEditing, setIsEditing] = useState(false);
 
-  // ── Flow-mode drag-to-reorder state (must be declared unconditionally) ──────
+  // ── Flow-mode drag state (must be declared unconditionally) ─────────────────
+  // Uses direct DOM transform (no useState for deltas) → zero React re-renders during drag → no bounce.
   const flowDragRef = useRef<{
+    startX: number;
     startY: number;
     pointerId: number;
-    lastIndex: number;
-    myIndex: number;
+    initialXmm: number;
   } | null>(null);
   const [flowDragging, setFlowDragging] = useState(false);
-  const [flowDeltaY, setFlowDeltaY] = useState(0);
 
   const handleFlowPointerDown = useCallback((e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
     if (
       target.closest('button') ||
+      target.closest('[data-resize-handle]') ||
       target.closest('[contenteditable="true"]') ||
       target.closest('[data-variable-dropdown="true"]') ||
       isEditing
@@ -97,50 +96,48 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     e.stopPropagation();
     selectComponent(componentId);
 
-    const zoneContent = (e.currentTarget as HTMLElement).closest('[data-zone-key]');
-    if (!zoneContent) return;
-    const sibs = Array.from(zoneContent.querySelectorAll<HTMLElement>('[data-component-id]'));
-    const myIndex = sibs.findIndex((el) => el.dataset.componentId === componentId);
-
+    const comp = useDesignerStore.getState().componentRegistry[componentId];
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    flowDragRef.current = { startY: e.clientY, pointerId: e.pointerId, lastIndex: myIndex, myIndex };
+    flowDragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      pointerId: e.pointerId,
+      initialXmm: comp?.x ?? 0,
+    };
     setFlowDragging(true);
-    setFlowDeltaY(0);
   }, [componentId, isEditing, selectComponent]);
 
   const handleFlowPointerMove = useCallback((e: React.PointerEvent) => {
     const state = flowDragRef.current;
     if (!state || e.pointerId !== state.pointerId) return;
-    setFlowDeltaY(e.clientY - state.startY);
-
-    const zoneContent = (e.currentTarget as HTMLElement).closest('[data-zone-key]');
-    if (!zoneContent) return;
-    const sibs = Array.from(zoneContent.querySelectorAll<HTMLElement>('[data-component-id]'));
-    for (let i = 0; i < sibs.length; i++) {
-      const r = sibs[i].getBoundingClientRect();
-      if (e.clientY >= r.top && e.clientY <= r.bottom) { state.lastIndex = i; break; }
+    const zoom = useDesignerStore.getState().zoom;
+    const dx = (e.clientX - state.startX) / zoom;
+    const dy = (e.clientY - state.startY) / zoom;
+    // Apply transform directly — no React state → no re-render → no bounce
+    if (ref.current) {
+      ref.current.style.transform = `translate(${dx}px, ${dy}px)`;
+      ref.current.style.zIndex = '50';
     }
+    window.dispatchEvent(new CustomEvent('flow-drag-move', { detail: { clientX: e.clientX, clientY: e.clientY } }));
   }, []);
 
   const handleFlowPointerUp = useCallback((e: React.PointerEvent) => {
     const state = flowDragRef.current;
     if (!state || e.pointerId !== state.pointerId) return;
     flowDragRef.current = null;
-    setFlowDragging(false);
-    setFlowDeltaY(0);
 
-    const diff = state.lastIndex - state.myIndex;
-    if (diff === 0) return;
-    const steps = Math.abs(diff);
-    const store = useDesignerStore.getState();
-    // In flow zone: lower array index = higher on page.
-    // store.moveUp  = swap with [idx+1] = increases index = moves DOWN visually.
-    // store.moveDown = swap with [idx-1] = decreases index = moves UP visually.
-    // So dragged DOWN (diff>0 → higher lastIndex) → call moveUp to increase index.
-    //    dragged UP  (diff<0 → lower lastIndex)  → call moveDown to decrease index.
-    for (let i = 0; i < steps; i++) {
-      diff > 0 ? store.moveUp(componentId) : store.moveDown(componentId);
+    // Clear DOM transforms immediately — no transition, no bounce
+    if (ref.current) {
+      ref.current.style.transform = '';
+      ref.current.style.zIndex = '';
     }
+    setFlowDragging(false);
+    window.dispatchEvent(new CustomEvent('flow-drag-end'));
+
+    const zoom = useDesignerStore.getState().zoom;
+    const dxMm = LayoutEngine.pxToMm((e.clientX - state.startX) / zoom);
+    const newX = Math.max(0, state.initialXmm + dxMm);
+    useDesignerStore.getState().updateComponent(componentId, { x: Math.round(newX * 10) / 10 });
   }, [componentId]);
   // ── End flow-mode state ──────────────────────────────────────────────────────
 
@@ -480,6 +477,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             spacingIndicators: dragState.lastSpacingIndicators || [],
             activePageId: dragState.activePageId
           });
+          // Broadcast position so flow-mode zones can show row highlight
+          window.dispatchEvent(new CustomEvent('flow-drag-move', { detail: { clientX: event.clientX, clientY: event.clientY } }));
         });
       };
 
@@ -631,6 +630,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           toolbar.style.removeProperty('--toolbar-drag-dy');
         }
 
+        window.dispatchEvent(new CustomEvent('flow-drag-end'));
         document.removeEventListener('pointermove', onPointerMove);
         document.removeEventListener('pointerup', onPointerUp);
         document.removeEventListener('pointercancel', onPointerUp);
@@ -817,16 +817,17 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   );
 
   // Flow mode: render as block in document flow (no absolute positioning).
-  // Drag-to-reorder: dragging vertically swaps the component with its neighbours.
-  // x coordinate = left indent (via marginLeft in designer, #pad(left:xmm) in Typst output).
+  // Flow mode: elements stack in flex-col order (array position = visual order).
+  // Uses localBounds so resize updates are reflected live without store commits.
+  // x value = left indentation via marginLeft.
   if (flowMode) {
-    const flowHeight = LayoutEngine.mmToPx(component.height || 20);
-    const flowWidth = component.width ? `${LayoutEngine.mmToPx(component.width)}px` : '100%';
-    const flowXPx = LayoutEngine.mmToPx(component.x || 0);
-    const componentX = Math.round(component.x || 0);
+    const flowXPx = LayoutEngine.mmToPx(localBounds.x);
+    const flowWidthPx = LayoutEngine.mmToPx(localBounds.width);
+    const flowHeightPx = LayoutEngine.mmToPx(localBounds.height);
 
     return (
       <div
+        ref={ref}
         data-component-id={componentId}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
@@ -837,23 +838,22 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         onPointerCancel={handleFlowPointerUp}
         data-designer-component
         className={clsx(
-          'relative select-none group focus:outline-none rounded touch-none',
-          flowDragging ? 'cursor-grabbing z-50 opacity-80 ring-2 ring-[var(--accent)] shadow-xl' : 'cursor-grab',
-          isSelected
+          'relative select-none group focus:outline-none touch-none transition-shadow',
+          flowDragging
+            ? 'cursor-grabbing opacity-80 ring-2 ring-[var(--accent)] shadow-xl'
+            : 'cursor-grab',
+          isSelected && !flowDragging
             ? 'ring-2 ring-[var(--accent)] ring-inset shadow-md bg-white/10'
-            : 'ring-inset hover:ring-1 hover:ring-white/20 bg-white/5 hover:bg-white/10',
+            : !flowDragging && 'ring-inset hover:ring-1 hover:ring-white/20 bg-white/5 hover:bg-white/10',
           isHidden && 'opacity-40',
-          'transition-shadow'
         )}
         style={{
-          width: flowWidth,
-          minHeight: `${flowHeight}px`,
-          height: component.type === 'image' && component.height ? `${LayoutEngine.mmToPx(component.height)}px` : undefined,
+          width: `${flowWidthPx}px`,
+          height: `${flowHeightPx}px`,
           marginLeft: `${flowXPx}px`,
-          marginTop: `${LayoutEngine.mmToPx(component.y || 0)}px`,
           opacity: isHidden ? 0.4 : 1,
-          transform: flowDragging ? `translateY(${flowDeltaY}px)` : undefined,
-          transition: flowDragging ? 'none' : 'transform 0.15s ease',
+          willChange: 'transform',
+          boxSizing: 'border-box',
         }}
       >
         {!isLocked && (
@@ -869,6 +869,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           />
         )}
 
+        {isSelected && !isLocked && <ResizeHandles onResizeStart={handleResizeStart} />}
+
         {isEditing && component.type === 'text' && (
           <EditorOverlay
             component={component as TextComponent}
@@ -879,7 +881,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           />
         )}
 
-        <div ref={previewRef} className="w-full h-full relative pointer-events-none" style={{ minHeight: `${flowHeight}px` }}>
+        <div ref={previewRef} className="w-full h-full relative pointer-events-none">
           <ComponentPreview component={component} pageIndex={pageIndex} totalPages={totalPages} />
         </div>
       </div>

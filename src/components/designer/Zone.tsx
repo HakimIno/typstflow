@@ -2,12 +2,13 @@
 
 import { useZoneDropTarget } from '@/hooks/use-zone-drop-target';
 import { useZoneResize } from '@/hooks/use-zone-resize';
+import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { getZoneComponents } from '@/lib/utils/schema-mutators';
 import { useDesignerStore } from '@/store/designer-store';
 import { cn } from '@/lib/utils/cn';
 import { clsx } from 'clsx';
 import { Layers, Workflow, Move } from 'lucide-react';
-import { memo, useRef, useCallback } from 'react';
+import { memo, useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ComponentWrapper } from './component-wrapper';
 
@@ -73,6 +74,61 @@ export const Zone = memo(function Zone({
   );
   const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef, pageId, groupId, groupType, isFlowZone);
 
+  // Heights (px) in array order — used to compute slot positions for the drop highlight.
+  const flowHeightsPx = useDesignerStore(
+    useShallow((s) =>
+      getZoneComponents(s.schema, zoneKey, pageId).map((c) => LayoutEngine.mmToPx(c.height ?? 10))
+    )
+  );
+
+  // Cumulative slot tops: flowSlotTops[i] = top of slot i (px from zone top).
+  const flowSlotTops = useMemo(() => {
+    const tops = [0];
+    for (const h of flowHeightsPx) tops.push(tops[tops.length - 1] + h);
+    return tops;
+  }, [flowHeightsPx]);
+
+  // Ref so the event listener always sees the latest slot data without re-registering.
+  const flowSlotsRef = useRef({ heights: flowHeightsPx, tops: flowSlotTops });
+  useEffect(() => { flowSlotsRef.current = { heights: flowHeightsPx, tops: flowSlotTops }; }, [flowHeightsPx, flowSlotTops]);
+
+  const [dragHighlight, setDragHighlight] = useState<{ topPx: number; heightPx: number } | null>(null);
+
+  useEffect(() => {
+    if (!isFlowZone) return;
+
+    const onMove = (e: Event) => {
+      const { clientX, clientY } = (e as CustomEvent<{ clientX: number; clientY: number }>).detail;
+      const el = contentRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+        setDragHighlight(null);
+        return;
+      }
+      const cursorYpx = clientY - rect.top;
+      const { heights, tops } = flowSlotsRef.current;
+      // Find which slot the cursor is inside
+      let slotIdx = heights.length; // default: after last element
+      for (let i = 0; i < tops.length - 1; i++) {
+        if (cursorYpx < tops[i + 1]) { slotIdx = i; break; }
+      }
+      if (slotIdx < heights.length) {
+        setDragHighlight({ topPx: tops[slotIdx], heightPx: heights[slotIdx] });
+      } else {
+        setDragHighlight({ topPx: tops[tops.length - 1] ?? 0, heightPx: LayoutEngine.mmToPx(10) });
+      }
+    };
+
+    const onEnd = () => setDragHighlight(null);
+    window.addEventListener('flow-drag-move', onMove);
+    window.addEventListener('flow-drag-end', onEnd);
+    return () => {
+      window.removeEventListener('flow-drag-move', onMove);
+      window.removeEventListener('flow-drag-end', onEnd);
+    };
+  }, [isFlowZone]);
+
   return (
     <div
       ref={containerRef}
@@ -126,15 +182,15 @@ export const Zone = memo(function Zone({
             type="button"
             onClick={toggleLayoutMode}
             className={cn(
-              "group/toggle flex flex-col items-center gap-1.5 px-2 py-3 rounded-r-xl border border-l-0  hover:pl-3 bg-white dark:bg-slate-900",
+              "group/toggle flex flex-col items-center gap-1.5 py-2 px-1 rounded-r-xl border border-l-0  hover:pl-3 bg-black",
               isFlowZone
-                ? "border-green-500/50 text-green-500 dark:text-green-500"
+                ? "border-blue-500 text-blue-500 "
                 : "border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             )}
             title={isFlowZone ? "Switch to Absolute Layout" : "Switch to Flow Layout"}
           >
             {isFlowZone ? (
-              <Workflow className="w-4 h-4 text-green-500" />
+              <Workflow className="w-4 h-4 " />
             ) : (
               <Move className="w-4 h-4 group-hover/toggle:rotate-12 transition-transform" />
             )}
@@ -172,16 +228,32 @@ export const Zone = memo(function Zone({
                 </p>
               </div>
             ) : isFlowZone ? (
-              <div className="relative w-full min-h-full p-2 flex flex-col gap-1 overflow-visible">
-                {componentIds.map((id) => (
-                  <ComponentWrapper
-                    key={`${pageId ?? 'global'}-${id}`}
-                    componentId={id}
-                    zoneKey={zoneKey}
-                    pageId={pageId}
-                    pageIndex={pageIndex}
-                    flowMode
+              <div className="relative w-full min-h-full flex flex-col overflow-visible">
+                {/* Drop highlight overlay — height matches the target slot */}
+                {dragHighlight && (
+                  <div
+                    className="absolute left-0 right-0 bg-[var(--accent-glow)]/40 border-y-2 border-[var(--accent)]/60 pointer-events-none z-[5]"
+                    style={{ top: dragHighlight.topPx, height: dragHighlight.heightPx }}
                   />
+                )}
+
+                {componentIds.map((id, i) => (
+                  <div
+                    key={`${pageId ?? 'global'}-${id}`}
+                    className="relative w-full shrink-0"
+                  >
+                    <ComponentWrapper
+                      componentId={id}
+                      zoneKey={zoneKey}
+                      pageId={pageId}
+                      pageIndex={pageIndex}
+                      flowMode
+                    />
+                    {/* Divider line at the bottom of each element */}
+                    {i < componentIds.length - 1 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-px border-b border-dashed border-slate-300/25 pointer-events-none" />
+                    )}
+                  </div>
                 ))}
               </div>
             ) : (

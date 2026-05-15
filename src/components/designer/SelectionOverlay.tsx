@@ -92,13 +92,13 @@ export const SelectionOverlay = memo(function SelectionOverlay({ pageId }: Props
       }}
     >
       {/* Dimension Badge */}
-      <div 
+      <div
         className="absolute -top-6 left-0 bg-blue-600 text-[9px] text-white px-1.5 py-0.5 rounded-sm font-bold shadow-lg flex items-center gap-1.5 whitespace-nowrap"
         style={{ transform: `scale(${1 / zoom})`, transformOrigin: 'bottom left' }}
       >
         <span className="opacity-70 uppercase tracking-tighter">Selection</span>
         <span className="font-black tabular-nums">
-          {bounds.width.toFixed(1)} <span className="opacity-50 text-[7px]">mm</span> 
+          {bounds.width.toFixed(1)} <span className="opacity-50 text-[7px]">mm</span>
           <span className="mx-1 opacity-30">×</span>
           {bounds.height.toFixed(1)} <span className="opacity-50 text-[7px]">mm</span>
         </span>

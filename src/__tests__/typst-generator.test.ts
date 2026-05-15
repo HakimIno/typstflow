@@ -350,7 +350,10 @@ describe('TypstGenerator — flow zone mode', () => {
       }],
     };
     const output = new TypstGenerator().generate(schema, {});
-    expect(output).toContain('#block(width: 100%, clip: false)');
+    // x=10 → pad left; width=80, height=10 → sized inner block; outer block suppresses spacing
+    expect(output).toContain('#pad(left: 10mm)');
+    expect(output).toContain('#block(width: 80mm, height: 10mm, clip: false)');
+    expect(output).toContain('above: 0pt, below: 0pt');
     expect(output).not.toContain('#place(');
   });
 
@@ -375,7 +378,7 @@ describe('TypstGenerator — flow zone mode', () => {
     expect(output).toContain('#v(3mm)');
   });
 
-  it('uses default 2mm gap when flowGap not set', () => {
+  it('uses no gap (#v) when flowGap not set (default 0mm matches designer)', () => {
     const schema: LayoutSchema = {
       ...MINIMAL_SCHEMA,
       pages: [{
@@ -392,7 +395,7 @@ describe('TypstGenerator — flow zone mode', () => {
       }],
     };
     const output = new TypstGenerator().generate(schema, {});
-    expect(output).toContain('#v(2mm)');
+    expect(output).not.toContain('#v(2mm)');
   });
 
   it('injects native page margins and header/footer bands when header has height', () => {

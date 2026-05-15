@@ -18,9 +18,16 @@ export function wrapPlacement(
   if (base.pageBreakBefore) parts.push('#pagebreak()\n');
 
   if (flowMode) {
-    // Use 100% width so the block fills the available flow width naturally.
-    // A fixed mm width would cause the component to not align with zone boundaries.
-    parts.push(`#block(width: 100%, clip: false)[${body}]\n`);
+    const x = base.x ?? 0;
+    const w = base.width ?? 100;
+    const h = base.height ?? 10;
+    // Explicit height so percentage-height children (e.g. image rect using height: 100%)
+    // resolve against the correct mm value rather than the full page height.
+    // above/below: 0pt removes Typst's default inter-block spacing → rows stack flush.
+    const sizedBlock = `#block(width: ${w}mm, height: ${h}mm, clip: false)[${body}]`;
+    const inner = x > 0 ? `#pad(left: ${x}mm)[${sizedBlock}]` : sizedBlock;
+    // Outer full-width block carries the spacing suppression; inner block carries size.
+    parts.push(`#block(above: 0pt, below: 0pt, width: 100%, height: ${h}mm)[${inner}]\n`);
     return parts.join('');
   }
 

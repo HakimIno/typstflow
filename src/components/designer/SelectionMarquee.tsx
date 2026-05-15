@@ -117,18 +117,24 @@ export const SelectionMarquee = memo(function SelectionMarquee({
 
   return (
     <div
-      className="absolute border-2 border-[var(--accent)] bg-[var(--accent-glow)] rounded-sm z-[1000] pointer-events-none transition-[border-color,background-color]"
+      className="absolute z-[1000] pointer-events-none transition-[border-color,background-color]"
       style={{
         left: `${left}px`,
         top: `${top}px`,
         width: `${width}px`,
         height: `${height}px`,
-        boxShadow: '0 0 15px var(--accent-glow)',
-        backgroundColor: 'rgba(0, 111, 238, 0.12)',
-        borderStyle: 'solid',
-        borderWidth: '1.5px',
-        backdropFilter: 'blur(1px)',
+        border: '1.5px solid var(--accent)',
+        backgroundColor: 'rgba(0, 111, 238, 0.08)',
+        boxShadow: '0 0 20px var(--accent-glow), inset 0 0 10px rgba(0, 111, 238, 0.05)',
+        backdropFilter: 'blur(0.5px)',
       }}
-    />
+    >
+      {/* Corner Accents (The "triangles" mentioned by user) */}
+      <div className="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-blue-500" />
+      <div className="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-blue-500" />
+      <div className="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-blue-500" />
+      <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-blue-500" />
+
+    </div>
   );
 });

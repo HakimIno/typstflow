@@ -220,7 +220,8 @@ export class TypstGenerator {
   ): string {
     const registry = this.registry;
     const isFlowZone = zone.layoutMode === 'flow';
-    const flowGap = zone.flowGap ?? '2mm';
+    // Default to 0mm gap so Typst output matches the designer (no physical gap between rows).
+    const flowGap = zone.flowGap ?? '0mm';
 
     const renderChild = (
       comp: ComponentNode,
@@ -244,10 +245,11 @@ export class TypstGenerator {
       // Push flow content below any preceding absolute zones (e.g. header rendered with #place())
       // Without this, flow blocks start at y=0 and overlap the header area.
       const leadingSpace = offsetY > 0 ? `#v(${offsetY}mm)\n` : '';
+      const separator = flowGap === '0mm' ? '' : `#v(${flowGap})\n`;
       const content = zone.components
         .map((comp) => renderChild(comp))
         .filter(Boolean)
-        .join(`#v(${flowGap})\n`);
+        .join(separator);
       return leadingSpace + content;
     }
 

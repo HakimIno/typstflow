@@ -63,7 +63,8 @@ pub fn render_document(
         let is_flow_body = page_def.body.layout_mode.as_deref() == Some("flow");
 
         if is_flow_body {
-            let flow_gap = page_def.body.flow_gap.as_deref().unwrap_or("2mm");
+            // Default 0mm matches the designer's flex-col layout (no physical gap between rows).
+            let flow_gap = page_def.body.flow_gap.as_deref().unwrap_or("0mm");
             let parts: Vec<String> = page_def
                 .body
                 .components
@@ -73,7 +74,9 @@ pub fn render_document(
                 })
                 .filter(|s| !s.is_empty())
                 .collect();
-            t.push_str(&parts.join(&format!("#v({})\n", flow_gap)));
+            // Skip #v(0mm) — it's a no-op and adds noise to the Typst source.
+            let separator = if flow_gap == "0mm" { String::new() } else { format!("#v({})\n", flow_gap) };
+            t.push_str(&parts.join(&separator));
             if !parts.is_empty() {
                 t.push('\n');
             }

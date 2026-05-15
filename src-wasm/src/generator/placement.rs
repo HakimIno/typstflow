@@ -34,26 +34,34 @@ pub fn wrap_placement(
 }
 
 /// Flow wrapper — keeps content in document flow (no `#place()`).
-/// Uses `#block > #pad > #block` for left/top indent so that nested `#set` rules
-/// inside deep content brackets don't trigger Typst parser errors.
+/// - `above/below: 0pt` removes Typst's default inter-block spacing so rows stack flush.
+/// - Explicit `height` ensures percentage-height children (e.g. `height: 100%` in images)
+///   resolve against the component's mm value instead of the full page height.
+/// - `y` is intentionally ignored: in flow mode, order is determined by array position,
+///   not by absolute coordinates.
 pub fn wrap_flow_block(base: &BaseComponent, body: &str, prefix: &str) -> String {
     let x = base.x.unwrap_or(0.0);
-    let y = base.y.unwrap_or(0.0);
     let w = base.width.unwrap_or(190.0);
+    let h = base.height.unwrap_or(10.0);
 
     let mut out = String::new();
     if base.page_break_before.unwrap_or(false) {
         out.push_str("#pagebreak(weak: true)\n");
     }
     if !body.is_empty() {
-        if x > 0.0 || y > 0.0 {
-            out.push_str(&format!(
-                "{}block(width: 100%)[#pad(top: {}mm, left: {}mm)[#block(width: {}mm, clip: false)[{}]]]\n",
-                prefix, y, x, w, body
-            ));
+        let inner_block = format!(
+            "#block(width: {}mm, height: {}mm, clip: false)[{}]",
+            w, h, body
+        );
+        let inner = if x > 0.0 {
+            format!("#pad(left: {}mm)[{}]", x, inner_block)
         } else {
-            out.push_str(&format!("{}block(width: {}mm, clip: false)[{}]\n", prefix, w, body));
-        }
+            inner_block
+        };
+        out.push_str(&format!(
+            "{}block(above: 0pt, below: 0pt, width: 100%, height: {}mm)[{}]\n",
+            prefix, h, inner
+        ));
     }
     out
 }
