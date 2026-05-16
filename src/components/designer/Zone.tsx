@@ -75,22 +75,39 @@ export const Zone = memo(function Zone({
   const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef, pageId, groupId, groupType, isFlowZone);
 
   // Heights (px) in array order — used to compute slot positions for the drop highlight.
+  // For text components in flow mode, the actual DOM height is used (measured by ResizeObserver
+  // in ComponentWrapper and written back to the schema via skipHistory update).
   const flowHeightsPx = useDesignerStore(
     useShallow((s) =>
       getZoneComponents(s.schema, zoneKey, pageId).map((c) => LayoutEngine.mmToPx(c.height ?? 10))
     )
   );
 
-  // Cumulative slot tops: flowSlotTops[i] = top of slot i (px from zone top).
-  const flowSlotTops = useMemo(() => {
+  // Cumulative slot tops from DOM: measures actual rendered element heights so the drag
+  // highlight stays aligned with text components that auto-expand beyond their schema height.
+  // Heights are in layout pixels (pre-zoom) because CSS properties inside the scaled
+  // paper container are interpreted in layout space, not screen space.
+  const computeFlowSlots = useCallback((): { heights: number[]; tops: number[] } => {
+    const zoom = useDesignerStore.getState().zoom;
+    const children = contentRef.current
+      ? Array.from(contentRef.current.querySelectorAll<HTMLElement>('[data-designer-component]'))
+      : [];
+    if (children.length > 0 && children.length === flowHeightsPx.length) {
+      // getBoundingClientRect returns screen pixels; divide by zoom → layout pixels
+      const heights = children.map((el) => el.getBoundingClientRect().height / zoom);
+      const tops = [0];
+      for (const h of heights) tops.push(tops[tops.length - 1] + h);
+      return { heights, tops };
+    }
+    // Fallback to schema heights (layout pixels)
     const tops = [0];
     for (const h of flowHeightsPx) tops.push(tops[tops.length - 1] + h);
-    return tops;
+    return { heights: flowHeightsPx, tops };
   }, [flowHeightsPx]);
 
   // Ref so the event listener always sees the latest slot data without re-registering.
-  const flowSlotsRef = useRef({ heights: flowHeightsPx, tops: flowSlotTops });
-  useEffect(() => { flowSlotsRef.current = { heights: flowHeightsPx, tops: flowSlotTops }; }, [flowHeightsPx, flowSlotTops]);
+  const flowSlotsRef = useRef<{ heights: number[]; tops: number[] }>({ heights: flowHeightsPx, tops: [0] });
+  useEffect(() => { flowSlotsRef.current = computeFlowSlots(); }, [computeFlowSlots]);
 
   const [dragHighlight, setDragHighlight] = useState<{ topPx: number; heightPx: number } | null>(null);
 
@@ -106,13 +123,19 @@ export const Zone = memo(function Zone({
         setDragHighlight(null);
         return;
       }
-      const cursorYpx = clientY - rect.top;
-      const { heights, tops } = flowSlotsRef.current;
+      // Recompute from DOM on each drag-move so text auto-height is reflected immediately
+      const slots = computeFlowSlots();
+      flowSlotsRef.current = slots;
+      const { heights, tops } = slots;
+      const zoom = useDesignerStore.getState().zoom;
+      // rect is in screen pixels; divide by zoom → layout pixels for comparison with tops[]
+      const cursorYpx = (clientY - rect.top) / zoom;
       // Find which slot the cursor is inside
       let slotIdx = heights.length; // default: after last element
       for (let i = 0; i < tops.length - 1; i++) {
         if (cursorYpx < tops[i + 1]) { slotIdx = i; break; }
       }
+      // topPx and heightPx are layout pixels (CSS on scaled container = layout space)
       if (slotIdx < heights.length) {
         setDragHighlight({ topPx: tops[slotIdx], heightPx: heights[slotIdx] });
       } else {
@@ -127,7 +150,7 @@ export const Zone = memo(function Zone({
       window.removeEventListener('flow-drag-move', onMove);
       window.removeEventListener('flow-drag-end', onEnd);
     };
-  }, [isFlowZone]);
+  }, [isFlowZone, computeFlowSlots]);
 
   return (
     <div

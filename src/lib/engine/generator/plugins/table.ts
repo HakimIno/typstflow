@@ -1,7 +1,7 @@
 import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { TableComponent } from '@/types/schema';
 import { isVisible, resolveBinding, resolvePath } from '../binding';
-import { escapeStringLiteral, formatColor, wrapPlacement } from '../placement';
+import { escapeStringLiteral, formatColor, formatWeight, wrapPlacement } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
 export const tablePlugin: ComponentPlugin<TableComponent> = {
@@ -106,7 +106,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         const align = col.align ?? 'center';
         const header = escapeTypst(col.header);
 
-        const content = `[\n      #set text(size: ${headerFontSize}pt, fill: ${headerColor}, weight: "${headerWeight}")\n      #set align(${align})\n      ${header}\n    ]`;
+        const content = `[\n      #set text(size: ${headerFontSize}pt, fill: ${headerColor}, weight: ${formatWeight(headerWeight)})\n      #set align(${align})\n      ${header}\n    ]`;
 
         if (cs === 1 && rs === 1) {
           parts.push(`    ${content},\n`);
@@ -360,7 +360,7 @@ function buildFillFn(
 
 function renderStructuredCell(
   cell: any,
-  textStyle: { size: number; color: string; weight: string },
+  textStyle: { size: number; color: string; weight: string | number },
   contentOverride?: string
 ): string {
   const cs = cell.colspan ?? 1;
@@ -374,11 +374,11 @@ function renderStructuredCell(
 
   const color = formatColor(cell.style?.color || textStyle.color);
   const size = cell.style?.fontSize || textStyle.size;
-  const weight = cell.style?.fontWeight || textStyle.weight;
+  const weight = formatWeight(cell.style?.fontWeight ?? textStyle.weight);
   const leading = cell.style?.lineHeight ? cell.style.lineHeight - 1 : 0.2;
 
   const inner = contentOverride ? contentOverride.slice(1, -1) : escapeTypst(cell.content);
-  const wrapped = `[\n    #set par(leading: ${leading}em)\n    #set text(size: ${size}pt, fill: ${color}, weight: "${weight}")\n    ${inner}\n  ]`;
+  const wrapped = `[\n    #set par(leading: ${leading}em)\n    #set text(size: ${size}pt, fill: ${color}, weight: ${weight})\n    ${inner}\n  ]`;
 
   if (args.length === 0) return `    ${wrapped},\n`;
   return `    table.cell(${args.join(', ')})${wrapped},\n`;

@@ -37,6 +37,19 @@ pub fn format_color(color: &str) -> String {
     }
 }
 
+/// Format a font weight value for Typst emission.
+/// Named weights are quoted ("bold"); numeric strings are unquoted (700).
+/// CSS "normal" is mapped to Typst "regular" since Typst doesn't recognise "normal".
+pub fn format_weight(weight: &str) -> String {
+    let w = if weight == "normal" { "regular" } else { weight };
+    // If the value is a pure integer string, emit it unquoted (e.g. 700 not "700")
+    if w.parse::<u32>().is_ok() {
+        w.to_string()
+    } else {
+        format!("\"{}\"", w)
+    }
+}
+
 pub fn apply_number_format(val: &str, decimals: usize) -> String {
     let n = val.replace(",", "").parse::<f64>().unwrap_or(0.0);
     let s = format!("{:.1$}", n, decimals);

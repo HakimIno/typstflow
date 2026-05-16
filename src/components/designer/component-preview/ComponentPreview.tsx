@@ -22,18 +22,20 @@ interface Props {
   component: ComponentNode;
   pageIndex?: number;
   totalPages?: number;
+  autoHeight?: boolean;
 }
 
 export const ComponentPreview = memo(function ComponentPreview({
   component,
   pageIndex = 0,
   totalPages = 1,
+  autoHeight,
 }: Props) {
   const sampleData = useDesignerStore((state) => state.sampleData);
 
   switch (component.type) {
     case 'text':
-      return <TextPreview component={component as TextComponent} sampleData={sampleData} />;
+      return <TextPreview component={component as TextComponent} sampleData={sampleData} autoHeight={autoHeight} />;
     case 'table':
       return <TablePreview component={component as TableComponent} />;
     case 'line':

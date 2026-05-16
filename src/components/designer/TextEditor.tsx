@@ -24,6 +24,7 @@ interface TextEditorProps {
   textareaClassName?: string;
   inline?: boolean; // For inline editor mode
   onExit?: () => void; // Called when user wants to finish editing
+  autoHeight?: boolean; // For flow mode where editor should grow with content
 }
 
 // Type icons mapping
@@ -53,6 +54,7 @@ export function TextEditor({
   textareaClassName = '',
   inline = false,
   onExit,
+  autoHeight = false,
 }: TextEditorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -240,42 +242,12 @@ export function TextEditor({
   const highlightedContent = useMemo(() => {
     // Process text for display: escape HTML-like characters and wrap bindings
     const parts = value.split(/(\{\{[^}]*\}\})/g);
-    return parts.map((part, i) => {
-      if (part.startsWith('{{') && part.endsWith('}}')) {
-        const content = part.slice(2, -2);
-        const segments = content.split(/(\.)/g);
-
-        return (
-          <span key={i} className="bg-blue-50/80 rounded-[2px]">
-            <span className="text-blue-500 opacity-70">{'{{'}</span>
-            {segments.map((seg, si) => {
-              if (seg === '.')
-                return (
-                  <span key={si} className="text-slate-400">
-                    .
-                  </span>
-                );
-              // High contrast colors for visibility
-              const colorClass =
-                si === 0 ? 'text-orange-600' : si === 2 ? 'text-pink-600' : 'text-blue-600';
-              return (
-                <span key={si} className={colorClass}>
-                  {seg}
-                </span>
-              );
-            })}
-            <span className="text-blue-500 opacity-70">{'}}'}</span>
-          </span>
-        );
-      }
-      // For literal text, we use inherit color to respect the component style
-      return (
-        <span key={i} style={{ color: 'inherit' }}>
-          {part || ''}
-        </span>
-      );
-    });
-  }, [value]);
+    return parts.map((part, i) => (
+      <span key={i}>
+        {part || ''}
+      </span>
+    ));
+  }, [value, textStyle]);
 
   const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -306,17 +278,18 @@ export function TextEditor({
     fontSize: textStyle.fontSize ? `${textStyle.fontSize}pt` : '10pt',
     lineHeight: textStyle.lineHeight || 1.2,
     letterSpacing: textStyle.letterSpacing || 'normal',
-    fontWeight: textStyle.fontWeight || 'regular',
+    fontWeight: textStyle.fontWeight === 'bold' ? 'bold' : 'normal',
     fontStyle: textStyle.italic ? 'italic' : 'normal',
     textDecoration: textStyle.underline ? 'underline' : 'none',
-    color: textStyle.color || 'inherit',
+    color: textStyle.color || '#0f172a',
     textAlign: (textStyle as any).textAlign || 'left',
     padding: inline ? 0 : '8px',
     margin: 0,
     boxSizing: 'border-box',
     width: '100%',
-    height: '100%',
-    overflow: 'auto',
+    height: autoHeight ? 'auto' : '100%',
+    minHeight: autoHeight ? 'inherit' : undefined,
+    overflow: autoHeight ? 'visible' : 'auto',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
   };
@@ -324,7 +297,8 @@ export function TextEditor({
   return (
     <div
       className={clsx(
-        'relative bg-transparent group select-text h-full overflow-hidden',
+        'relative bg-transparent group select-text',
+        autoHeight ? 'h-auto' : 'h-full overflow-hidden',
         className
       )}
       style={style}
@@ -339,7 +313,10 @@ export function TextEditor({
       {/* Highlighting Overlay (Display Layer - Visible) */}
       <div
         ref={highlightRef}
-        className="absolute inset-0 select-none border-none z-[1]"
+        className={clsx(
+          'select-none border-none z-[1]',
+          autoHeight ? 'relative min-h-[1em]' : 'absolute inset-0'
+        )}
         style={sharedStyles}
       >
         {highlightedContent}

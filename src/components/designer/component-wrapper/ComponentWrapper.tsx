@@ -514,16 +514,17 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
           const isCrossZone = targetZone && isDifferentZone(originalZone, targetZone);
           if (targetZone) {
+            const tz = targetZone;
             const { lastSnappedX, lastSnappedY } = dragState;
 
             const dstZoneOffset = LayoutEngine.calculateZoneOffset(
-              targetZone.zoneKey,
+              tz.zoneKey,
               store.schema,
-              targetZone.pageId
+              tz.pageId
             );
             // Subtract destination page's absolute offset to get zone-local y
-            const dstPageIdx = targetZone.pageId
-              ? store.schema.pages.findIndex(p => p.id === targetZone.pageId)
+            const dstPageIdx = tz.pageId
+              ? store.schema.pages.findIndex(p => p.id === tz.pageId)
               : 0;
             const dstPageAbsOffset = Math.max(0, dstPageIdx) * pH;
 
@@ -546,27 +547,27 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               const newX = newAbsX;
               const newY = Math.max(0, newAbsY - dstZoneOffset - dstPageAbsOffset);
 
-              const compIsCrossZone = targetZone && isDifferentZone({
+              const compIsCrossZone = tz && isDifferentZone({
                 zoneKey: compData.zoneKey as ZoneKey,
                 pageId: compData.pageId,
                 groupId: compData.groupId,
                 groupType: compData.groupType as any
-              }, targetZone);
+              }, tz);
 
               if (compIsCrossZone) {
                 moves.push({
                   id: dragId,
                   fromZone: compData.zoneKey as any,
-                  toZone: targetZone.zoneKey as any,
+                  toZone: tz.zoneKey as any,
                   newIndex: -1, // Append to end of zone
                   x: newX,
                   y: newY,
                   fromPageId: compData.pageId || null,
-                  toPageId: targetZone.pageId || null,
+                  toPageId: tz.pageId || null,
                   fromGroupId: compData.groupId,
-                  toGroupId: targetZone.groupId,
+                  toGroupId: tz.groupId,
                   fromGroupType: compData.groupType as any,
-                  toGroupType: targetZone.groupType
+                  toGroupType: tz.groupType
                 });
               } else {
                 updatesMap[dragId] = { x: newX, y: newY };
@@ -696,13 +697,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       const target = e.target as Element;
       if (!target) return;
 
-      // Tippy suggestion popup is appended to body — don't close editor when clicking it
-      if (target.closest?.('.tippy-box') || target.closest?.('.tippy-content')) return;
-
+      // Ignore clicks on designer UI elements (sidebars, panels, toolbar)
       if (
-        target.closest?.('[data-variable-dropdown="true"]') ||
-        target.parentElement?.classList.contains('z-50') ||
-        target.parentElement?.parentElement?.classList.contains('z-50')
+        target.closest('aside') || 
+        target.closest('[data-designer-ui="true"]') ||
+        target.closest('[data-toolbar="true"]')
       ) {
         return;
       }
@@ -747,6 +746,35 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       height: component.height || 20,
     });
   }, [component.x, component.y, component.width, component.height, syncBounds]);
+
+  // Auto-measure height for text components in flow mode.
+  // ResizeObserver fires whenever content reflows (text edit, width resize, font change).
+  // Updates store with measured mm height (skipHistory) so drop-slot positions stay accurate.
+  const isTextInFlow = flowMode && component.type === 'text';
+  useEffect(() => {
+    if (!isTextInFlow || !ref.current) return;
+    const el = ref.current;
+    let rafId: number;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const heightPx = entry.contentRect.height;
+        if (heightPx <= 0) return;
+        const heightMm = Math.round(LayoutEngine.pxToMm(heightPx) * 10) / 10;
+        const current = useDesignerStore.getState().componentRegistry[componentId]?.height;
+        if (current === undefined || Math.abs(heightMm - current) > 0.3) {
+          useDesignerStore.getState().updateComponent(componentId, { height: heightMm }, true);
+        }
+      });
+    });
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(rafId);
+    };
+  }, [isTextInFlow, componentId]);
 
   const isMoving =
     dragStateRef.current?.isActive &&
@@ -820,10 +848,13 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   // Flow mode: elements stack in flex-col order (array position = visual order).
   // Uses localBounds so resize updates are reflected live without store commits.
   // x value = left indentation via marginLeft.
+  // Text components use height:auto so content drives height (ResizeObserver syncs back to store).
   if (flowMode) {
     const flowXPx = LayoutEngine.mmToPx(localBounds.x);
     const flowWidthPx = LayoutEngine.mmToPx(localBounds.width);
     const flowHeightPx = LayoutEngine.mmToPx(localBounds.height);
+    // Text in flow mode: auto-height so multi-line content expands naturally
+    const autoHeight = component.type === 'text';
 
     return (
       <div
@@ -849,7 +880,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         )}
         style={{
           width: `${flowWidthPx}px`,
-          height: `${flowHeightPx}px`,
+          height: autoHeight ? 'auto' : `${flowHeightPx}px`,
+          minHeight: autoHeight ? `${LayoutEngine.mmToPx(4)}px` : undefined,
           marginLeft: `${flowXPx}px`,
           opacity: isHidden ? 0.4 : 1,
           willChange: 'transform',
@@ -871,19 +903,26 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
         {isSelected && !isLocked && <ResizeHandles onResizeStart={handleResizeStart} />}
 
-        {isEditing && component.type === 'text' && (
+        {isEditing && component.type === 'text' ? (
           <EditorOverlay
             component={component as TextComponent}
             sampleData={sampleData}
             handleTextChange={handleTextChange}
             handleExitEdit={handleExitEdit}
             editorContainerRef={editorContainerRef}
+            autoHeight={autoHeight}
           />
+        ) : (
+          <div 
+            ref={previewRef} 
+            className={clsx(
+              'w-full relative pointer-events-none', 
+              !autoHeight && 'h-full'
+            )}
+          >
+            <ComponentPreview component={component} pageIndex={pageIndex} totalPages={totalPages} autoHeight={autoHeight} />
+          </div>
         )}
-
-        <div ref={previewRef} className="w-full h-full relative pointer-events-none">
-          <ComponentPreview component={component} pageIndex={pageIndex} totalPages={totalPages} />
-        </div>
       </div>
     );
   }

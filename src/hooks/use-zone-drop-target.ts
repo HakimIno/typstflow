@@ -15,29 +15,40 @@ function resolveFlowY(
   zoneKey: ZoneKey,
   pageId?: string
 ): number {
+  const zoom = useDesignerStore.getState().zoom;
   const rect = zoneEl.getBoundingClientRect();
-  const cursorRelYMm = LayoutEngine.pxToMm(cursorClientY - rect.top);
+  // Convert cursor position to layout pixels (pre-zoom) then to mm
+  const cursorRelYMm = LayoutEngine.pxToMm((cursorClientY - rect.top) / zoom);
 
-  // Build row map: y_mm → max height_mm across all components sharing that y
+  // Build row map using actual DOM heights when available (text auto-height in flow mode).
+  // Fall back to schema height if DOM element not found.
   const components = getZoneComponents(schema, zoneKey, pageId);
-  const rowMap = new Map<number, number>();
-  for (const c of components) {
-    const y = c.y ?? 0;
-    rowMap.set(y, Math.max(rowMap.get(y) ?? 0, c.height ?? 10));
-  }
-  const rows = Array.from(rowMap.entries()).sort(([a], [b]) => a - b);
+  const domEls = Array.from(zoneEl.querySelectorAll<HTMLElement>('[data-designer-component]'));
 
-  // Snap to existing row if cursor lands within it
-  for (const [rowY, maxH] of rows) {
-    if (cursorRelYMm >= rowY && cursorRelYMm < rowY + maxH) {
-      return rowY;
+  // Accumulate rows by their display order (array order = visual order in flow mode)
+  let cumulativeY = 0;
+  const rows: Array<{ startMm: number; heightMm: number; endMm: number }> = [];
+  for (let i = 0; i < components.length; i++) {
+    const domEl = domEls[i];
+    const heightPx = domEl
+      ? domEl.getBoundingClientRect().height / zoom  // layout pixels
+      : LayoutEngine.mmToPx(components[i].height ?? 10);
+    const heightMm = LayoutEngine.pxToMm(heightPx);
+    rows.push({ startMm: cumulativeY, heightMm, endMm: cumulativeY + heightMm });
+    cumulativeY += heightMm;
+  }
+
+  // Snap to existing row if cursor lands within it → return that row's start y
+  for (const row of rows) {
+    if (cursorRelYMm >= row.startMm && cursorRelYMm < row.endMm) {
+      return row.startMm;
     }
   }
 
-  // Below last row → new row immediately after it
+  // Below all rows → new row after last
   if (rows.length > 0) {
-    const [lastY, lastH] = rows[rows.length - 1];
-    if (cursorRelYMm >= lastY + lastH) return lastY + lastH;
+    const last = rows[rows.length - 1];
+    if (cursorRelYMm >= last.endMm) return last.endMm;
   }
 
   return Math.max(0, cursorRelYMm);

@@ -2,7 +2,7 @@ use crate::schema::*;
 use serde_json::Value;
 
 use super::bindings::{is_visible, resolve_binding_scoped, resolve_binding_with_aggregates, resolve_path};
-use super::formatting::{apply_text_transform, escape_string_literal, escape_typst, format_color};
+use super::formatting::{apply_text_transform, escape_string_literal, escape_typst, format_color, format_weight};
 use super::placement::{wrap_flow_block, wrap_placement};
 
 pub fn render_text(c: &TextComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool) -> String {
@@ -37,8 +37,8 @@ pub fn render_text(c: &TextComponent, local: &Value, global: &Value, offset_x: &
     };
 
     let mut body = format!(
-        "#set align({})\n#set par(leading: {}em, justify: {})\n#text(size: {}pt, font: (\"{}\", \"Sarabun\", \"sans-serif\"), weight: \"{}\", style: \"{}\", fill: {}, tracking: {})",
-        align, leading, justify, size, font, weight, style, format_color(color), tracking
+        "#set align({})\n#set par(leading: {}em, justify: {})\n#text(size: {}pt, font: (\"{}\", \"Sarabun\", \"sans-serif\"), weight: {}, style: \"{}\", fill: {}, tracking: {})",
+        align, leading, justify, size, font, format_weight(&weight), style, format_color(color), tracking
     );
 
     if underline {
@@ -224,8 +224,8 @@ pub fn render_page_number(c: &PageNumberComponent, local: &Value, global: &Value
         let underline = s.underline.unwrap_or(false);
         
         body.push_str(&format!(
-            "#set align({})\n#set text(font: (\"{}\", \"Sarabun\", \"sans-serif\"), size: {}pt, weight: \"{}\", style: \"{}\", fill: {})\n",
-            align, font, size, weight, style, format_color(color)
+            "#set align({})\n#set text(font: (\"{}\", \"Sarabun\", \"sans-serif\"), size: {}pt, weight: {}, style: \"{}\", fill: {})\n",
+            align, font, size, format_weight(weight), style, format_color(color)
         ));
 
         if underline {

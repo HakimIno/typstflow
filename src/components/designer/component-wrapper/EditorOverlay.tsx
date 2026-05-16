@@ -1,4 +1,5 @@
 import type { TextComponent } from '@/types/schema';
+import { clsx } from 'clsx';
 import { memo } from 'react';
 import { TextEditor } from '../TextEditor';
 
@@ -8,6 +9,7 @@ interface EditorOverlayProps {
   handleTextChange: (value: string) => void;
   handleExitEdit: () => void;
   editorContainerRef: React.RefObject<HTMLDivElement | null>;
+  autoHeight?: boolean;
 }
 
 export const EditorOverlay = memo(function EditorOverlay({
@@ -16,11 +18,15 @@ export const EditorOverlay = memo(function EditorOverlay({
   handleTextChange,
   handleExitEdit,
   editorContainerRef,
+  autoHeight = false,
 }: EditorOverlayProps) {
   return (
     <div
       ref={editorContainerRef}
-      className="absolute inset-0 w-full h-full bg-white overflow-hidden"
+      className={clsx(
+        "w-full bg-transparent overflow-hidden",
+        autoHeight ? "relative" : "absolute inset-0 h-full"
+      )}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
       role="presentation"
@@ -47,11 +53,11 @@ export const EditorOverlay = memo(function EditorOverlay({
         textStyle={component.style}
         style={{
           textAlign: component.align === 'justify' ? 'left' : component.align || 'left',
-          color: '#1e293b',
           minHeight: `${component.height || 20}px`,
           display: 'block',
         }}
         onExit={handleExitEdit}
+        autoHeight={autoHeight}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { TextComponent } from '@/types/schema';
 import { isVisible, resolveBinding } from '../binding';
-import { escapeStringLiteral, formatColor, wrapPlacement } from '../placement';
+import { escapeStringLiteral, formatColor, formatWeight, wrapPlacement } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
 function applyTextTransform(s: string, transform: string | undefined): string {
@@ -30,7 +30,7 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
     const s = comp.style;
 
     const size = s?.fontSize ?? 10;
-    const weight = s?.fontWeight ?? 'regular';
+    const weight = formatWeight(s?.fontWeight);
     const align = comp.align ?? 'left';
     const leading = s?.lineHeight ? s.lineHeight - 1 : 0.2;
     const tracking = s?.letterSpacing || '0pt';
@@ -50,7 +50,7 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
       `#set align(${align})\n` +
       `#set par(leading: ${leading}em, justify: ${justify})\n` +
       `#text(size: ${size}pt, font: ("${font}", "Sarabun", "sans-serif"), ` +
-      `weight: "${weight}", style: "${fontStyle}", fill: ${color}, tracking: ${tracking})`;
+      `weight: ${weight}, style: "${fontStyle}", fill: ${color}, tracking: ${tracking})`;
     body += underline ? `[#underline${contentBlock}]` : contentBlock;
 
     if (s?.background) {

@@ -7,9 +7,10 @@ import { memo } from 'react';
 interface TextPreviewProps {
   component: TextComponent;
   sampleData: any;
+  autoHeight?: boolean;
 }
 
-export const TextPreview = memo(function TextPreview({ component, sampleData }: TextPreviewProps) {
+export const TextPreview = memo(function TextPreview({ component, sampleData, autoHeight }: TextPreviewProps) {
   const fontFamily = component.style?.fontFamily;
 
   // Subscribe to this font's installedAt timestamp (not a global value) so only THIS
@@ -35,10 +36,10 @@ export const TextPreview = memo(function TextPreview({ component, sampleData }: 
 
   return (
     <div
-      className="w-full h-full overflow-hidden"
+      className={autoHeight ? 'w-full' : 'w-full h-full overflow-hidden'}
       style={{
         fontSize: `${component.style?.fontSize || 10}pt`,
-        fontWeight: component.style?.fontWeight || 'regular',
+        fontWeight: component.style?.fontWeight === 'bold' ? 'bold' : 'normal',
         fontStyle: component.style?.italic ? 'italic' : 'normal',
         textDecoration: component.style?.underline ? 'underline' : 'none',
         color: component.style?.color || '#0f172a',

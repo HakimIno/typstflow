@@ -679,6 +679,8 @@ fn render_cell_text_with_style(content: &str, style: Option<&TextStyle>, default
 }
 
 fn format_weight(w: &str) -> String {
+    // CSS "normal" is not a valid Typst weight — map to "regular"
+    let w = if w == "normal" { "regular" } else { w };
     if w.chars().all(char::is_numeric) {
         w.to_string()
     } else {
