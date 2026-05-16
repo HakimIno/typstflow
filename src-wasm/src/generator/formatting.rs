@@ -6,6 +6,7 @@ pub fn escape_typst(s: &str) -> String {
         .replace('$', "\\$")
         .replace('*', "\\*")
         .replace('_', "\\_")
+        .replace('`', "\\`")
         .replace('[', "\\[")
         .replace(']', "\\]")
         .replace('(', "\\(")

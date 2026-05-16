@@ -331,7 +331,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     }
 
     parts.push(')\n');
-    return wrapPlacement(comp, parts.join(''), ctx.offsetX, ctx.offsetY, ctx.flowMode);
+    return wrapPlacement(comp, parts.join(''), ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
   },
 };
 

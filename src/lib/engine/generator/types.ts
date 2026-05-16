@@ -18,6 +18,9 @@ export interface RenderContext {
   readonly offsetY: number;
   /** When true, components render as block flow (no #place) so content pushes others down. */
   readonly flowMode?: boolean;
+  /** When true, component width fills its container (100%) instead of using absolute mm value.
+   *  Used inside grid cells where the cell width determines the available space. */
+  readonly fillWidth?: boolean;
   /** Full layout schema — available for plugins that need page/font config. */
   readonly schema: LayoutSchema;
   /**

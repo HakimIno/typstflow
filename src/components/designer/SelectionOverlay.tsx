@@ -81,19 +81,18 @@ export const SelectionOverlay = memo(function SelectionOverlay({ pageId }: Props
 
   return (
     <div
-      className="absolute border border-blue-500/40 pointer-events-none z-[40]"
+      className="absolute border border-[var(--accent)]/40 pointer-events-none z-[40] bg-[var(--accent)]/5"
       style={{
         left: `${left}px`,
         top: `${top}px`,
         width: `${width}px`,
         height: `${height}px`,
-        backgroundColor: 'rgba(59, 130, 246, 0.03)',
-        boxShadow: '0 0 0 1px rgba(59, 130, 246, 0.1)',
+        boxShadow: '0 0 0 1px var(--accent-glow)',
       }}
     >
       {/* Dimension Badge */}
       <div
-        className="absolute -top-6 left-0 bg-blue-600 text-[9px] text-white px-1.5 py-0.5 rounded-sm font-bold shadow-lg flex items-center gap-1.5 whitespace-nowrap"
+        className="absolute -top-6 left-0 bg-[var(--accent)] text-[9px] text-white px-1.5 py-0.5 rounded-sm font-bold shadow-lg flex items-center gap-1.5 whitespace-nowrap"
         style={{ transform: `scale(${1 / zoom})`, transformOrigin: 'bottom left' }}
       >
         <span className="opacity-70 uppercase tracking-tighter">Selection</span>
@@ -105,10 +104,10 @@ export const SelectionOverlay = memo(function SelectionOverlay({ pageId }: Props
       </div>
 
       {/* Corner Accents */}
-      <div className="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-blue-500" />
-      <div className="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-blue-500" />
-      <div className="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-blue-500" />
-      <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-blue-500" />
+      <div className="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-[var(--accent)]" />
+      <div className="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-[var(--accent)]" />
+      <div className="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-[var(--accent)]" />
+      <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-[var(--accent)]" />
     </div>
   );
 });

@@ -92,8 +92,8 @@ export const ComponentSchema = z
   .preprocess((val: unknown) => deepCleanComponent(val), z.object({
     id: z.string(),
     type: z.string(),
-    x: z.number(),
-    y: z.number(),
+    x: z.number().optional().default(0),
+    y: z.number().optional().default(0),
     width: z.number().optional(),
     height: z.number().optional(),
     name: z.string().optional(),

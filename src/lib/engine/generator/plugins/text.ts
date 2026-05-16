@@ -58,6 +58,6 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
       body = `#block(fill: ${bgColor}, width: 100%, height: 100%, inset: 5pt)[${body}]`;
     }
 
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
   },
 };

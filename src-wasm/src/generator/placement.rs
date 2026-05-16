@@ -39,7 +39,9 @@ pub fn wrap_placement(
 ///   resolve against the component's mm value instead of the full page height.
 /// - `y` is intentionally ignored: in flow mode, order is determined by array position,
 ///   not by absolute coordinates.
-pub fn wrap_flow_block(base: &BaseComponent, body: &str, prefix: &str) -> String {
+/// - `fill_width`: when true, uses `width: 100%` for the inner block (used inside grid cells
+///   where the cell width determines the available space).
+pub fn wrap_flow_block(base: &BaseComponent, body: &str, prefix: &str, fill_width: bool) -> String {
     let x = base.x.unwrap_or(0.0);
     let w = base.width.unwrap_or(190.0);
     let h = base.height.unwrap_or(10.0);
@@ -49,11 +51,15 @@ pub fn wrap_flow_block(base: &BaseComponent, body: &str, prefix: &str) -> String
         out.push_str("#pagebreak(weak: true)\n");
     }
     if !body.is_empty() {
+        // When inside a grid cell (fill_width=true), use 100% so content fills
+        // the cell determined by the grid column width.
+        let width_expr = if fill_width { "100%".to_string() } else { format!("{}mm", w) };
         let inner_block = format!(
-            "#block(width: {}mm, height: {}mm, clip: false)[{}]",
-            w, h, body
+            "#block(width: {}, height: {}mm, clip: false)[{}]",
+            width_expr, h, body
         );
-        let inner = if x > 0.0 {
+        // Inside a grid cell, skip left-padding (x indent) — the grid handles positioning
+        let inner = if !fill_width && x > 0.0 {
             format!("#pad(left: {}mm)[{}]", x, inner_block)
         } else {
             inner_block

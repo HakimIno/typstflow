@@ -2,6 +2,7 @@ import { getValueType } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import type {
   BarcodeComponent,
+  ColumnLayoutComponent,
   ComponentNode,
   ImageComponent,
   LineComponent,
@@ -14,6 +15,7 @@ import type {
 import { clsx } from 'clsx';
 import { useShallow } from 'zustand/react/shallow';
 import {
+  Columns,
   FileDown,
   FileText,
   Layers,
@@ -43,6 +45,7 @@ import { LineProperties } from './properties/LineProperties';
 import { ControlField, PropertyGrid, PropertyRow, SectionHeader } from './properties/Shared';
 import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
 import { TypographyProperties } from './properties/TypographyProperties';
+import { ColumnProperties } from './properties/ColumnProperties';
 import {
   Select,
   SelectContent,
@@ -60,6 +63,7 @@ const isSummaryBox = (c: ComponentNode): c is SummaryBoxComponent => c.type === 
 const isBarcode = (c: ComponentNode): c is BarcodeComponent =>
   c.type === 'barcode' || c.type === 'qr';
 const isPageNumber = (c: ComponentNode): c is PageNumberComponent => c.type === 'page-number';
+const isColumns = (c: ComponentNode): c is ColumnLayoutComponent => c.type === 'columns';
 
 type TabType = 'design' | 'layout' | 'data' | 'settings';
 
@@ -410,6 +414,12 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 <TablePropertiesPanel component={selectedComponent} />
               </div>
             )}
+
+            {isColumns(selectedComponent) && (
+              <div className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
+                <ColumnProperties component={selectedComponent} />
+              </div>
+            )}
           </div>
         );
 
@@ -622,7 +632,8 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
             {isTable(selectedComponent) && <Database className="w-3.5 h-3.5" />}
             {isImage(selectedComponent) && <Palette className="w-3.5 h-3.5" />}
             {isLine(selectedComponent) && <Maximize className="w-3.5 h-3.5" />}
-            {(!isText(selectedComponent) && !isTable(selectedComponent) && !isImage(selectedComponent) && !isLine(selectedComponent)) && <Settings className="w-3.5 h-3.5" />}
+            {isColumns(selectedComponent) && <Columns className="w-3.5 h-3.5" />}
+            {(!isText(selectedComponent) && !isTable(selectedComponent) && !isImage(selectedComponent) && !isLine(selectedComponent) && !isColumns(selectedComponent)) && <Settings className="w-3.5 h-3.5" />}
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">

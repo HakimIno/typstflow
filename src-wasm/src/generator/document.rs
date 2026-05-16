@@ -37,7 +37,7 @@ pub fn render_document(
             t.push_str("#place(dx: 0mm, dy: 0mm)[\n");
             for comp in &schema.zones.header.components {
                 t.push_str(&render_component(
-                    comp, local_data, global_data, offset_x, header_offset_y, "  #", false,
+                    comp, local_data, global_data, offset_x, header_offset_y, "  #", false, false,
                 ));
             }
             t.push_str("]\n");
@@ -53,7 +53,7 @@ pub fn render_document(
             t.push_str("#place(dx: 0mm, dy: 0mm)[\n");
             for comp in &schema.zones.footer.components {
                 t.push_str(&render_component(
-                    comp, local_data, global_data, offset_x, footer_offset_y, "  #", false,
+                    comp, local_data, global_data, offset_x, footer_offset_y, "  #", false, false,
                 ));
             }
             t.push_str("]\n");
@@ -70,7 +70,7 @@ pub fn render_document(
                 .components
                 .iter()
                 .map(|comp| {
-                    render_component(comp, local_data, global_data, offset_x, body_offset_y, "#", true)
+                    render_component(comp, local_data, global_data, offset_x, body_offset_y, "#", true, false)
                 })
                 .filter(|s| !s.is_empty())
                 .collect();
@@ -83,7 +83,7 @@ pub fn render_document(
         } else {
             for comp in &page_def.body.components {
                 t.push_str(&render_component(
-                    comp, local_data, global_data, offset_x, body_offset_y, "#", false,
+                    comp, local_data, global_data, offset_x, body_offset_y, "#", false, false,
                 ));
             }
         }
@@ -109,7 +109,7 @@ pub fn render_groups(
             for item in items {
                 for comp in &schema.pages[0].body.components {
                     out.push_str(&render_component(
-                        comp, item, global_data, offset_x, body_offset_y, "#", false,
+                        comp, item, global_data, offset_x, body_offset_y, "#", false, false,
                     ));
                 }
             }
@@ -226,12 +226,12 @@ fn render_component_with_items(
             }
             let raw = resolve_binding_with_aggregates(&c.content, local, global, items);
             let c2 = TextComponent { base: c.base.clone(), content: raw, style: c.style.clone() };
-            render_text(&c2, local, global, offset_x, offset_y, prefix, false)
+            render_text(&c2, local, global, offset_x, offset_y, prefix, false, false)
         }
         ComponentNode::SummaryBox(c) => {
-            render_summary_box(c, local, global, items, offset_x, offset_y, prefix, false)
+            render_summary_box(c, local, global, items, offset_x, offset_y, prefix, false, false)
         }
-        _ => render_component(node, local, global, offset_x, offset_y, prefix, false),
+        _ => render_component(node, local, global, offset_x, offset_y, prefix, false, false),
     }
 }
 
@@ -243,37 +243,38 @@ pub fn render_component(
     offset_y: &str,
     prefix: &str,
     flow_mode: bool,
+    fill_width: bool,
 ) -> String {
     match node {
         ComponentNode::Text(c) => {
-            render_text(c, local, global, offset_x, offset_y, prefix, flow_mode)
+            render_text(c, local, global, offset_x, offset_y, prefix, flow_mode, fill_width)
         }
         ComponentNode::Line(c) => {
-            render_line(c, local, global, offset_x, offset_y, prefix, flow_mode)
+            render_line(c, local, global, offset_x, offset_y, prefix, flow_mode, fill_width)
         }
         ComponentNode::Image(c) => {
-            render_image(c, local, global, offset_x, offset_y, prefix, flow_mode)
+            render_image(c, local, global, offset_x, offset_y, prefix, flow_mode, fill_width)
         }
         ComponentNode::Table(c) => {
             render_table(c, local, global, offset_x, offset_y, prefix, flow_mode)
         }
         ComponentNode::Spacer(c) => {
-            render_spacer(c, local, global, offset_x, offset_y, prefix, flow_mode)
+            render_spacer(c, local, global, offset_x, offset_y, prefix, flow_mode, fill_width)
         }
         ComponentNode::Barcode(c) => {
-            render_barcode(c, local, global, offset_x, offset_y, prefix, flow_mode)
+            render_barcode(c, local, global, offset_x, offset_y, prefix, flow_mode, fill_width)
         }
         ComponentNode::Qr(c) => {
-            render_qr(c, local, global, offset_x, offset_y, prefix, flow_mode)
+            render_qr(c, local, global, offset_x, offset_y, prefix, flow_mode, fill_width)
         }
         ComponentNode::PageNumber(c) => {
-            render_page_number(c, local, global, offset_x, offset_y, prefix, flow_mode)
+            render_page_number(c, local, global, offset_x, offset_y, prefix, flow_mode, fill_width)
         }
         ComponentNode::PageBreakIndicator(c) => {
-            render_page_break_indicator(c, local, global, offset_x, offset_y, prefix, flow_mode)
+            render_page_break_indicator(c, local, global, offset_x, offset_y, prefix, flow_mode, fill_width)
         }
         ComponentNode::SummaryBox(c) => {
-            render_summary_box(c, local, global, &[], offset_x, offset_y, prefix, flow_mode)
+            render_summary_box(c, local, global, &[], offset_x, offset_y, prefix, flow_mode, fill_width)
         }
         ComponentNode::Repeater(c) => render_repeater(
             c,
@@ -283,7 +284,8 @@ pub fn render_component(
             offset_y,
             prefix,
             flow_mode,
-            &|child, l, g, ox, oy, px, fm| render_component(child, l, g, ox, oy, px, fm),
+            fill_width,
+            &|child, l, g, ox, oy, px, fm, fw| render_component(child, l, g, ox, oy, px, fm, fw),
         ),
         ComponentNode::Columns(c) => render_columns(
             c,
@@ -293,7 +295,8 @@ pub fn render_component(
             offset_y,
             prefix,
             flow_mode,
-            &|child, l, g, ox, oy, px, fm| render_component(child, l, g, ox, oy, px, fm),
+            fill_width,
+            &|child, l, g, ox, oy, px, fm, fw| render_component(child, l, g, ox, oy, px, fm, fw),
         ),
     }
 }

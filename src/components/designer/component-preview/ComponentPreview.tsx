@@ -15,8 +15,9 @@ import { PageNumberPreview } from './previews/PageNumberPreview';
 import { SpacerPreview } from './previews/SpacerPreview';
 import { SummaryBoxPreview } from './previews/SummaryBoxPreview';
 import { TextPreview } from './previews/TextPreview';
+import { ColumnLayoutPreview } from './previews/ColumnLayoutPreview';
 import { QRPreview } from './previews/QRPreview';
-import type { QRComponent } from '@/types/schema';
+import type { ColumnLayoutComponent, QRComponent } from '@/types/schema';
 
 interface Props {
   component: ComponentNode;
@@ -50,6 +51,8 @@ export const ComponentPreview = memo(function ComponentPreview({
       return <QRPreview component={component as QRComponent} sampleData={sampleData} />;
     case 'summary-box':
       return <SummaryBoxPreview component={component} sampleData={sampleData} />;
+    case 'columns':
+      return <ColumnLayoutPreview component={component as ColumnLayoutComponent} pageIndex={pageIndex} totalPages={totalPages} />;
     case 'page-break-indicator':
       return (
         <PageBreakPreview component={component} pageIndex={pageIndex} totalPages={totalPages} />

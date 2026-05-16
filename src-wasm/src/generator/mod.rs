@@ -67,7 +67,7 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
             .header
             .components
             .iter()
-            .map(|comp| render_component(comp, data, data, "0mm", "0mm", "#", false))
+            .map(|comp| render_component(comp, data, data, "0mm", "0mm", "#", false, false))
             .collect();
         t.push_str(&format!("  header: [{}],\n", header_content));
     }
@@ -79,7 +79,7 @@ pub fn generate_typst(schema: &LayoutSchema, data: &Value) -> String {
             .footer
             .components
             .iter()
-            .map(|comp| render_component(comp, data, data, "0mm", "0mm", "#", false))
+            .map(|comp| render_component(comp, data, data, "0mm", "0mm", "#", false, false))
             .collect();
         t.push_str(&format!("  footer: [{}],\n", footer_content));
     }

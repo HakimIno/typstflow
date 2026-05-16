@@ -255,7 +255,7 @@ export const Zone = memo(function Zone({
                 {/* Drop highlight overlay — height matches the target slot */}
                 {dragHighlight && (
                   <div
-                    className="absolute left-0 right-0 bg-[var(--accent-glow)]/40 border-y-2 border-[var(--accent)]/60 pointer-events-none z-[5]"
+                    className="absolute left-0 right-0 bg-[var(--accent-glow)]/40 border-y-1 border-[var(--accent)]/60 pointer-events-none z-[5]"
                     style={{ top: dragHighlight.topPx, height: dragHighlight.heightPx }}
                   />
                 )}

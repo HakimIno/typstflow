@@ -12,7 +12,8 @@ export function wrapPlacement(
   body: string,
   offsetX: number,
   offsetY: number,
-  flowMode?: boolean
+  flowMode?: boolean,
+  fillWidth?: boolean
 ): string {
   const parts: string[] = [];
   if (base.pageBreakBefore) parts.push('#pagebreak()\n');
@@ -21,18 +22,23 @@ export function wrapPlacement(
     const x = base.x ?? 0;
     const w = base.width ?? 100;
     const h = base.height ?? 10;
+    // When inside a grid cell (fillWidth=true), use 100% so the content
+    // fills the cell determined by the grid column width.
+    const widthExpr = fillWidth ? '100%' : `${w}mm`;
     // Text components use auto-height in flow mode: Typst determines height from content,
     // avoiding the browser font-metric gap that causes extra whitespace in the preview.
     // Other components (image, table, etc.) still need an explicit height so percentage-height
     // children resolve against the correct mm value rather than the full page height.
     const isText = base.type === 'text';
     const sizedBlock = isText
-      ? `#block(width: ${w}mm, clip: false)[${body}]`
-      : `#block(width: ${w}mm, height: ${h}mm, clip: false)[${body}]`;
-    const inner = x > 0 ? `#pad(left: ${x}mm)[${sizedBlock}]` : sizedBlock;
+      ? `#block(width: ${widthExpr}, clip: false)[${body}]`
+      : `#block(width: ${widthExpr}, height: ${h}mm, clip: false)[${body}]`;
+    // Inside a grid cell, skip left-padding (x indent) — the grid handles positioning
+    const inner = (!fillWidth && x > 0) ? `#pad(left: ${x}mm)[${sizedBlock}]` : sizedBlock;
     // above/below: 0pt removes Typst's default inter-block spacing → rows stack flush.
     const outerHeight = isText ? '' : `, height: ${h}mm`;
-    parts.push(`#block(above: 0pt, below: 0pt, width: 100%${outerHeight})[${inner}]\n`);
+    const outerWidth = fillWidth ? '100%' : '100%';
+    parts.push(`#block(above: 0pt, below: 0pt, width: ${outerWidth}${outerHeight})[${inner}]\n`);
     return parts.join('');
   }
 

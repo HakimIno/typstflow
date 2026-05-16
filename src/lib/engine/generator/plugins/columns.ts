@@ -14,14 +14,15 @@ export const columnsPlugin: ComponentPlugin<ColumnLayoutComponent> = {
     const colContents = comp.columns
       .map((col) => {
         const children = col.components
-          // Children in a column are positioned relative to 0,0; don't inherit flow mode
-          .map((child) => ctx.render(child, { offsetX: 0, offsetY: 0, flowMode: false }))
+          // Children in a column flow vertically and fill the cell width.
+          // fillWidth: true → wrapPlacement uses 100% instead of absolute mm.
+          .map((child) => ctx.render(child, { offsetX: 0, offsetY: 0, flowMode: true, fillWidth: true }))
           .join('');
         return `[${children}]`;
       })
       .join(', ');
 
     const body = `#grid(columns: (${widths}), gutter: ${gap}, ${colContents})`;
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
   },
 };

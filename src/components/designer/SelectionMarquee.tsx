@@ -117,24 +117,24 @@ export const SelectionMarquee = memo(function SelectionMarquee({
 
   return (
     <div
-      className="absolute z-[1000] pointer-events-none transition-[border-color,background-color]"
+      className="absolute z-[1000] pointer-events-none transition-[border-color,background-color] bg-blue-500/10" // ใช้ bg-blue-500/10 (Tailwind)
       style={{
         left: `${left}px`,
         top: `${top}px`,
         width: `${width}px`,
         height: `${height}px`,
-        border: '1.5px solid var(--accent)',
-        backgroundColor: 'rgba(0, 111, 238, 0.08)',
-        boxShadow: '0 0 20px var(--accent-glow), inset 0 0 10px rgba(0, 111, 238, 0.05)',
+        border: '1.5px solid var(--accent)', // เปลี่ยนจาก --primary เป็น --accent
+        boxShadow: '0 0 20px var(--accent-glow), inset 0 0 10px var(--accent-glow)', // เปลี่ยนเป็น --accent-glow
         backdropFilter: 'blur(0.5px)',
       }}
     >
-      {/* Corner Accents (The "triangles" mentioned by user) */}
-      <div className="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-blue-500" />
-      <div className="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-blue-500" />
-      <div className="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-blue-500" />
-      <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-blue-500" />
-
+      {/* Corner Accents - ใช้สีฟ้า blue-500 ของ Tailwind */}
+      <div className="absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 border-[var(--accent)]" />
+      <div className="absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 border-[var(--accent)]" />
+      <div className="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-[var(--accent)]" />
+      <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-[var(--accent)]" />
     </div>
+
+
   );
 });

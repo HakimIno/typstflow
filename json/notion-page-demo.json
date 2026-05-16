@@ -1,0 +1,469 @@
+{
+  "id": "notion-demo-001",
+  "name": "Sample Complicated Notion Page",
+  "version": "1.0.0",
+  "page": {
+    "size": "A4",
+    "orientation": "portrait",
+    "margin": {
+      "top": "20mm",
+      "bottom": "20mm",
+      "left": "25mm",
+      "right": "25mm"
+    }
+  },
+  "fonts": [
+    {
+      "family": "Inter",
+      "role": "body",
+      "size": 10,
+      "embedded": true
+    },
+    {
+      "family": "Inter",
+      "role": "heading",
+      "size": 24,
+      "embedded": true
+    }
+  ],
+  "zones": {
+    "header": {
+      "id": "header-zone",
+      "components": []
+    },
+    "footer": {
+      "id": "footer-zone",
+      "components": []
+    }
+  },
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Page 1",
+      "body": {
+        "id": "body-zone-1",
+        "layoutMode": "flow",
+        "flowGap": "8mm",
+        "components": [
+          {
+            "id": "title-text",
+            "type": "text",
+            "x": 0,
+            "y": 0,
+            "content": "Sample Complicated Notion Page",
+            "marginBottom": "10mm",
+            "style": {
+              "fontSize": 32,
+              "fontWeight": "bold",
+              "color": "#000000"
+            }
+          },
+          {
+            "id": "intro-section",
+            "type": "columns",
+            "x": 0,
+            "y": 0,
+            "columns": [
+              {
+                "width": "60mm",
+                "components": [
+                  {
+                    "id": "profile-image",
+                    "type": "image",
+                    "x": 0,
+                    "y": 0,
+                    "src": "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
+                    "width": 50,
+                    "height": 50,
+                    "fit": "cover"
+                  }
+                ]
+              },
+              {
+                "width": "1fr",
+                "components": [
+                  {
+                    "id": "intro-text-1",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "Hello there! My name is **Some Integral** I'm a web developer based in Somewhere and have been in the industry for the past few years.",
+                    "marginBottom": "4mm",
+                    "style": {
+                      "fontSize": 11,
+                      "italic": true,
+                      "lineHeight": 1.5
+                    }
+                  },
+                  {
+                    "id": "intro-text-2",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "I've always been fascinated with web development and enjoy building websites and apps that solve real-world problems. In my free time, I like to stay up-to-date with the latest web development trends and technologies, attend local meetups, and collaborate with other developers.",
+                    "style": {
+                      "fontSize": 11,
+                      "italic": true,
+                      "lineHeight": 1.5
+                    }
+                  }
+                ]
+              }
+            ],
+            "gap": "10mm"
+          },
+          {
+            "id": "main-grid",
+            "type": "columns",
+            "x": 0,
+            "y": 0,
+            "columns": [
+              {
+                "width": "60mm",
+                "components": [
+                  {
+                    "id": "contact-header",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "CONTACT",
+                    "marginBottom": "4mm",
+                    "style": {
+                      "fontSize": 18,
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "id": "contact-phone",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "📞  01234567890",
+                    "marginBottom": "2mm",
+                    "style": { "fontSize": 10 }
+                  },
+                  {
+                    "id": "contact-email",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "✉️  youremail@gmail.com",
+                    "marginBottom": "2mm",
+                    "style": { "fontSize": 10, "underline": true }
+                  },
+                  {
+                    "id": "contact-web",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "🌐  yourwebsite.com",
+                    "marginBottom": "2mm",
+                    "style": { "fontSize": 10, "underline": true }
+                  },
+                  {
+                    "id": "contact-loc",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "📍  Rouen, France",
+                    "marginBottom": "8mm",
+                    "style": { "fontSize": 10 }
+                  },
+                  {
+                    "id": "skills-header",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "SKILLS",
+                    "marginBottom": "4mm",
+                    "style": {
+                      "fontSize": 18,
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "id": "skill-1",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "• Adobe Photoshop",
+                    "marginBottom": "1mm",
+                    "style": { "fontSize": 10 }
+                  },
+                  {
+                    "id": "skill-2",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "• Adobe Illustrator",
+                    "marginBottom": "1mm",
+                    "style": { "fontSize": 10 }
+                  },
+                  {
+                    "id": "skill-3",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "• Notion HQ",
+                    "marginBottom": "1mm",
+                    "style": { "fontSize": 10 }
+                  },
+                  {
+                    "id": "skill-4",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "• Website Development",
+                    "marginBottom": "8mm",
+                    "style": { "fontSize": 10 }
+                  },
+                  {
+                    "id": "socials-header",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "SOCIALS",
+                    "marginBottom": "4mm",
+                    "style": {
+                      "fontSize": 18,
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "id": "twitter-btn",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "  🐦 @YourTwitter",
+                    "style": {
+                      "fontSize": 10,
+                      "background": "#f7f7f7",
+                      "color": "#1DA1F2",
+                      "underline": true
+                    }
+                  }
+                ]
+              },
+              {
+                "width": "1fr",
+                "components": [
+                  {
+                    "id": "experience-header",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "PROFESSIONAL EXPERIENCE",
+                    "marginBottom": "6mm",
+                    "style": {
+                      "fontSize": 14,
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "id": "exp-1-row",
+                    "type": "columns",
+                    "x": 0,
+                    "y": 0,
+                    "columns": [
+                      {
+                        "width": "20mm",
+                        "components": [
+                          {
+                            "id": "exp-1-year",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "20XX -",
+                            "style": { "fontWeight": "bold" }
+                          },
+                          {
+                            "id": "exp-1-year-end",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "20XX"
+                          }
+                        ]
+                      },
+                      {
+                        "width": "1fr",
+                        "components": [
+                          {
+                            "id": "exp-1-title",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "Web developer | Freelance",
+                            "marginBottom": "2mm",
+                            "style": { "fontWeight": "bold", "color": "#1DA1F2" }
+                          },
+                          {
+                            "id": "exp-1-desc",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum imperdiet sapien nec dolor rhoncus pulvinar. Nunc quis lectus non neque blandit venenatis nec et neque. Vestibulum commodo tincidunt felis eu faucibus.",
+                            "marginBottom": "6mm",
+                            "style": { "fontSize": 10, "lineHeight": 1.4 }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "exp-2-row",
+                    "type": "columns",
+                    "x": 0,
+                    "y": 0,
+                    "columns": [
+                      {
+                        "width": "20mm",
+                        "components": [
+                          {
+                            "id": "exp-2-year",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "20XX -",
+                            "style": { "fontWeight": "bold" }
+                          },
+                          {
+                            "id": "exp-2-year-end",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "20XX"
+                          }
+                        ]
+                      },
+                      {
+                        "width": "1fr",
+                        "components": [
+                          {
+                            "id": "exp-2-title",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "Notion Lover | NotionHQ",
+                            "marginBottom": "2mm",
+                            "style": { "fontWeight": "bold", "color": "#1DA1F2" }
+                          },
+                          {
+                            "id": "exp-2-desc",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum imperdiet sapien nec dolor rhoncus pulvinar. Nunc quis lectus non neque blandit venenatis nec et neque. Vestibulum commodo tincidunt felis eu faucibus.",
+                            "marginBottom": "10mm",
+                            "style": { "fontSize": 10, "lineHeight": 1.4 }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "edu-header",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "content": "EDUCATION",
+                    "marginBottom": "6mm",
+                    "style": {
+                      "fontSize": 14,
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "id": "edu-1-row",
+                    "type": "columns",
+                    "x": 0,
+                    "y": 0,
+                    "columns": [
+                      {
+                        "width": "20mm",
+                        "components": [
+                          { "id": "edu-1-y1", "type": "text", "x": 0, "y": 0, "content": "20XX -", "style": { "fontWeight": "bold" } },
+                          { "id": "edu-1-y2", "type": "text", "x": 0, "y": 0, "content": "20XX" }
+                        ]
+                      },
+                      {
+                        "width": "1fr",
+                        "components": [
+                          {
+                            "id": "edu-1-title",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "Study | School Name",
+                            "marginBottom": "1mm",
+                            "style": { "fontWeight": "bold", "color": "#1DA1F2" }
+                          },
+                          {
+                            "id": "edu-1-info",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "More Info",
+                            "marginBottom": "6mm",
+                            "style": { "fontSize": 9, "italic": true }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "edu-2-row",
+                    "type": "columns",
+                    "x": 0,
+                    "y": 0,
+                    "columns": [
+                      {
+                        "width": "20mm",
+                        "components": [
+                          { "id": "edu-2-y1", "type": "text", "x": 0, "y": 0, "content": "20XX -", "style": { "fontWeight": "bold" } },
+                          { "id": "edu-2-y2", "type": "text", "x": 0, "y": 0, "content": "20XX" }
+                        ]
+                      },
+                      {
+                        "width": "1fr",
+                        "components": [
+                          {
+                            "id": "edu-2-title",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "Study | School Name",
+                            "marginBottom": "1mm",
+                            "style": { "fontWeight": "bold", "color": "#1DA1F2" }
+                          },
+                          {
+                            "id": "edu-2-info",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "More Info",
+                            "style": { "fontSize": 9, "italic": true }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "gap": "10mm"
+          }
+        ]
+      }
+    }
+  ],
+  "groups": [],
+  "variables": [],
+  "dataSchema": [],
+  "metadata": {
+    "title": "Notion Page Demo",
+    "createdAt": "2026-05-16T11:40:00Z",
+    "updatedAt": "2026-05-16T11:40:00Z",
+    "author": "Antigravity"
+  }
+}

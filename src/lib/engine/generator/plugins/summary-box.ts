@@ -24,6 +24,6 @@ export const summaryBoxPlugin: ComponentPlugin<SummaryBoxComponent> = {
 
     const body = `#rect(width: 100%, inset: 10pt, fill: white, stroke: 0.5pt + gray.lighten(50%))[\n  #grid(columns: (1fr, 1fr), gutter: 8pt,\n${rowsParts.join('\n')}\n  )\n]`;
 
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
   },
 };
