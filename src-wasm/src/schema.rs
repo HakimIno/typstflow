@@ -114,6 +114,7 @@ pub enum ComponentNode {
     PageBreakIndicator(PageBreakIndicatorComponent),
     #[serde(rename = "page-number")]
     PageNumber(PageNumberComponent),
+    Checklist(ChecklistComponent),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -470,4 +471,39 @@ pub struct PageNumberComponent {
     pub base: BaseComponent,
     pub format: String,
     pub style: Option<TextStyle>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChecklistItem {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default)]
+    pub label: String,
+    pub checked: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChecklistComponent {
+    #[serde(flatten)]
+    pub base: BaseComponent,
+    #[serde(default)]
+    pub list_style: String,
+    #[serde(default)]
+    pub items: Vec<ChecklistItem>,
+    pub data_source: Option<String>,
+    pub label_field: Option<String>,
+    pub checked_field: Option<String>,
+    pub marker: Option<String>,
+    pub spacing: Option<f64>,
+    pub indent: Option<f64>,
+    pub style: Option<TextStyle>,
+    pub checkbox_color: Option<String>,
+    pub checkbox_fill: Option<String>,
+    pub check_mark: Option<String>,
+    pub checkbox_size: Option<f64>,
+    pub checkbox_shape: Option<String>,
+    pub direction: Option<String>,
+    pub columns: Option<u32>,
 }

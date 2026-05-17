@@ -28,7 +28,7 @@ export function wrapPlacement(
     // Text and columns components use auto-height in flow mode: Typst determines height
     // from content, preventing overflow/overlap. Other components (image, table, etc.)
     // still need an explicit height so percentage-height children resolve correctly.
-    const autoHeight = base.type === 'text' || base.type === 'columns';
+    const autoHeight = base.type === 'text' || base.type === 'columns' || base.type === 'checklist';
     const sizedBlock = autoHeight
       ? `#block(width: ${widthExpr}, clip: false)[${body}]`
       : `#block(width: ${widthExpr}, height: ${h}mm, clip: false)[${body}]`;

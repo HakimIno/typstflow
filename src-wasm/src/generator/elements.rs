@@ -301,6 +301,243 @@ pub fn render_repeater(
     out
 }
 
+/// Returns the cheq function name for a check-mark character.
+fn cheq_sym_fn(mark: &str) -> &'static str {
+    match mark {
+        "/" => "incomplete-sym",
+        "-" => "canceled-sym",
+        _   => "checked-sym",
+    }
+}
+
+/// Maps shape preset → Typst radius string.
+fn shape_to_typst_radius(shape: &str) -> &'static str {
+    match shape {
+        "square" => "0em",
+        "circle" => "0.5em",
+        _        => "0.15em", // rounded
+    }
+}
+
+/// For a given cheq sym function, returns the correct `fill` value.
+/// unchecked-sym and incomplete-sym use box background (checkboxFill).
+/// checked-sym and canceled-sym use white for their marks.
+fn fill_for_sym<'a>(fn_name: &str, checkbox_fill: &'a str) -> &'a str {
+    if fn_name == "unchecked-sym" || fn_name == "incomplete-sym" {
+        checkbox_fill
+    } else {
+        "#ffffff"
+    }
+}
+
+/// Sym call for CODE context — dict values, function arguments, #grid args.
+/// No `#` prefix: expressions are written directly in code mode.
+fn cheq_sym_code(fn_name: &str, stroke: &str, fill: &str, radius: &str, size: Option<f64>) -> String {
+    let call = format!(
+        "{}(stroke: rgb(\"{}\"), fill: rgb(\"{}\"), radius: {})",
+        fn_name, stroke, fill, radius
+    );
+    match size {
+        Some(s) => format!("text(size: {}pt)[#{}]", s, call),
+        None    => call,
+    }
+}
+
+pub fn render_checklist(c: &ChecklistComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool, fill_width: bool) -> String {
+    if !is_visible(&c.base, local, global) { return String::new(); }
+
+    let spacing = c.spacing.unwrap_or(4.0);
+    let indent  = c.indent.unwrap_or(5.0);
+    let list_style = c.list_style.as_str();
+    let direction = c.direction.as_deref().unwrap_or("vertical");
+    let columns = c.columns.unwrap_or(2).max(1) as usize;
+    let checkbox_color = c.checkbox_color.as_deref().unwrap_or("#616161");
+    let checkbox_fill  = c.checkbox_fill.as_deref().unwrap_or("#ffffff");
+    let check_mark = c.check_mark.as_deref().unwrap_or("x");
+    let checkbox_size = c.checkbox_size;
+    let checkbox_shape = c.checkbox_shape.as_deref().unwrap_or("rounded");
+    let radius = shape_to_typst_radius(checkbox_shape);
+    let s = c.style.as_ref();
+
+    let size   = s.and_then(|st| st.font_size).unwrap_or(10.0);
+    let weight = s.and_then(|st| st.font_weight.clone()).unwrap_or("regular".to_string());
+    let color  = s.and_then(|st| st.color.as_deref()).unwrap_or("#000000");
+    let font   = s.and_then(|st| st.font_family.as_deref()).unwrap_or("Sarabun");
+
+    let text_set = format!(
+        "#set text(size: {}pt, font: (\"{}\", \"Sarabun\", \"sans-serif\"), weight: {}, fill: {})\n",
+        size, font, format_weight(&weight), format_color(color)
+    );
+
+    // Resolve items from data source or static list
+    let resolved: Vec<(String, bool)> = if let Some(ds) = &c.data_source {
+        let path = ds.replace("{{", "").replace("}}", "");
+        let path = path.trim();
+        let label_field  = c.label_field.as_deref().unwrap_or("label");
+        let checked_field = c.checked_field.as_deref().unwrap_or("checked");
+        let arr: Vec<Value> = resolve_path(path, local)
+            .or_else(|| resolve_path(path, global))
+            .and_then(|v| if let Value::Array(a) = v { Some(a.clone()) } else { None })
+            .unwrap_or_default();
+        arr.iter().map(|item| {
+            let label = item.get(label_field)
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_default();
+            let checked = item.get(checked_field)
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            (label, checked)
+        }).collect()
+    } else {
+        c.items.iter().map(|it| (
+            resolve_binding_scoped(&it.label, local, global),
+            it.checked.unwrap_or(false),
+        )).collect()
+    };
+
+    if resolved.is_empty() {
+        let body = format!("{}#list()", text_set);
+        return if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width, true) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) };
+    }
+
+    // Helper: wrap items in a grid for horizontal/grid directions
+    let grid_cols = if direction == "horizontal" { resolved.len() } else { columns };
+    let make_grid = |cells: String| -> String {
+        format!(
+            "{}#grid(\n  columns: {},\n  gutter: {}pt,\n{})",
+            text_set, grid_cols, spacing, cells
+        )
+    };
+
+    let body = match list_style {
+        "numbered" | "alpha" | "roman" => {
+            let numbering = match list_style {
+                "alpha"  => "\"a.\"",
+                "roman"  => "\"i.\"",
+                _        => "\"1.\"",
+            };
+            if direction == "vertical" {
+                let items_str: String = resolved.iter()
+                    .map(|(label, _)| format!("  [{}],\n", escape_typst(label)))
+                    .collect();
+                format!(
+                    "{}#enum(\n  numbering: {},\n  spacing: {}pt,\n  indent: {}mm,\n{})",
+                    text_set, numbering, spacing, indent, items_str
+                )
+            } else {
+                let cells: String = resolved.iter().enumerate()
+                    .map(|(i, (label, _))| {
+                        let num = match list_style {
+                            "alpha" => format!("{}.", char::from(b'a' + (i as u8 % 26))),
+                            "roman" => format!("{}.", i + 1), // simplified
+                            _       => format!("{}.", i + 1),
+                        };
+                        format!("  [{} {}],\n", num, escape_typst(label))
+                    })
+                    .collect();
+                make_grid(cells)
+            }
+        }
+        "checkbox" => {
+            let checked_fn = cheq_sym_fn(check_mark);
+            let all_imports = "checked-sym, unchecked-sym, incomplete-sym, canceled-sym";
+
+            if direction == "vertical" {
+                let lines: String = resolved.iter()
+                    .map(|(label, checked)| {
+                        let mark = if *checked { check_mark } else { " " };
+                        format!("- [{}] {}\n", mark, escape_typst(label))
+                    })
+                    .collect();
+
+                {
+                    // Always use marker-map to control fill + radius + optional size precisely
+                    let checked_fill = fill_for_sym(checked_fn, checkbox_fill);
+                    let checked_sym  = cheq_sym_code(checked_fn, checkbox_color, checked_fill, radius, checkbox_size);
+                    let unchecked_sym = cheq_sym_code("unchecked-sym", checkbox_color, checkbox_fill, radius, checkbox_size);
+                    format!(
+                        "#import \"@preview/cheq:0.2.2\": checklist, {}\n{}#set list(indent: {}mm, spacing: {}pt)\n#show: checklist.with(fill: rgb(\"{}\"), stroke: rgb(\"{}\"), radius: {}, marker-map: (\n  \"{}\": {},\n  \" \": {},\n))\n{}",
+                        all_imports, text_set, indent, spacing,
+                        checkbox_fill, checkbox_color, radius,
+                        check_mark, checked_sym, unchecked_sym, lines
+                    )
+                }
+            } else {
+                // Grid/horizontal: each cell = inner 2-col #grid(sym, label) for row alignment.
+                // cheq's show list.item rule does NOT apply to #grid cells.
+                let cells: String = resolved.iter()
+                    .map(|(label, checked)| {
+                        let fn_name = if *checked { checked_fn } else { "unchecked-sym" };
+                        let sym_fill = fill_for_sym(fn_name, checkbox_fill);
+                        let sym_arg = cheq_sym_code(fn_name, checkbox_color, sym_fill, radius, checkbox_size);
+                        format!(
+                            "  [#grid(columns: (auto, 1fr), column-gutter: 0.35em, align: horizon + left, {}, [{}])],\n",
+                            sym_arg, escape_typst(label)
+                        )
+                    })
+                    .collect();
+                format!(
+                    "#import \"@preview/cheq:0.2.2\": {}\n{}#grid(\n  columns: {},\n  gutter: {}pt,\n{})",
+                    all_imports, text_set, grid_cols, spacing, cells
+                )
+            }
+        }
+        "dash" => {
+            if direction == "vertical" {
+                let items_str: String = resolved.iter()
+                    .map(|(label, _)| format!("  [{}],\n", escape_typst(label)))
+                    .collect();
+                format!(
+                    "{}#list(marker: [-],\n  spacing: {}pt,\n  indent: {}mm,\n{})",
+                    text_set, spacing, indent, items_str
+                )
+            } else {
+                let cells: String = resolved.iter()
+                    .map(|(label, _)| format!("  [– {}],\n", escape_typst(label)))
+                    .collect();
+                make_grid(cells)
+            }
+        }
+        "custom" => {
+            let m = escape_typst(c.marker.as_deref().unwrap_or("→"));
+            if direction == "vertical" {
+                let items_str: String = resolved.iter()
+                    .map(|(label, _)| format!("  [{}],\n", escape_typst(label)))
+                    .collect();
+                format!(
+                    "{}#list(marker: [{}],\n  spacing: {}pt,\n  indent: {}mm,\n{})",
+                    text_set, m, spacing, indent, items_str
+                )
+            } else {
+                let cells: String = resolved.iter()
+                    .map(|(label, _)| format!("  [{} {}],\n", m, escape_typst(label)))
+                    .collect();
+                make_grid(cells)
+            }
+        }
+        _ => {
+            // bullet (default)
+            if direction == "vertical" {
+                let items_str: String = resolved.iter()
+                    .map(|(label, _)| format!("  [{}],\n", escape_typst(label)))
+                    .collect();
+                format!(
+                    "{}#list(\n  spacing: {}pt,\n  indent: {}mm,\n{})",
+                    text_set, spacing, indent, items_str
+                )
+            } else {
+                let cells: String = resolved.iter()
+                    .map(|(label, _)| format!("  [• {}],\n", escape_typst(label)))
+                    .collect();
+                make_grid(cells)
+            }
+        }
+    };
+
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width, true) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
+}
+
 /// Render a Columns layout: side-by-side grid of component groups.
 pub fn render_columns(
     c: &ColumnsComponent,

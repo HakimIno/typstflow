@@ -1,23 +1,26 @@
 import { useDesignerStore } from '@/store/designer-store';
 import type {
+  ChecklistComponent,
+  ColumnLayoutComponent,
   ComponentNode,
   PageNumberComponent,
+  QRComponent,
   TableComponent,
   TextComponent,
 } from '@/types/schema';
 import { memo } from 'react';
 import { TablePreview } from '../TablePreview';
 import { BarcodePreview } from './previews/BarcodePreview';
+import { ChecklistPreview } from './previews/ChecklistPreview';
+import { ColumnLayoutPreview } from './previews/ColumnLayoutPreview';
 import { ImagePreview } from './previews/ImagePreview';
 import { LinePreview } from './previews/LinePreview';
 import { PageBreakPreview } from './previews/PageBreakPreview';
 import { PageNumberPreview } from './previews/PageNumberPreview';
+import { QRPreview } from './previews/QRPreview';
 import { SpacerPreview } from './previews/SpacerPreview';
 import { SummaryBoxPreview } from './previews/SummaryBoxPreview';
 import { TextPreview } from './previews/TextPreview';
-import { ColumnLayoutPreview } from './previews/ColumnLayoutPreview';
-import { QRPreview } from './previews/QRPreview';
-import type { ColumnLayoutComponent, QRComponent } from '@/types/schema';
 
 interface Props {
   component: ComponentNode;
@@ -36,7 +39,13 @@ export const ComponentPreview = memo(function ComponentPreview({
 
   switch (component.type) {
     case 'text':
-      return <TextPreview component={component as TextComponent} sampleData={sampleData} autoHeight={autoHeight} />;
+      return (
+        <TextPreview
+          component={component as TextComponent}
+          sampleData={sampleData}
+          autoHeight={autoHeight}
+        />
+      );
     case 'table':
       return <TablePreview component={component as TableComponent} />;
     case 'line':
@@ -52,7 +61,13 @@ export const ComponentPreview = memo(function ComponentPreview({
     case 'summary-box':
       return <SummaryBoxPreview component={component} sampleData={sampleData} />;
     case 'columns':
-      return <ColumnLayoutPreview component={component as ColumnLayoutComponent} pageIndex={pageIndex} totalPages={totalPages} />;
+      return (
+        <ColumnLayoutPreview
+          component={component as ColumnLayoutComponent}
+          pageIndex={pageIndex}
+          totalPages={totalPages}
+        />
+      );
     case 'page-break-indicator':
       return (
         <PageBreakPreview component={component} pageIndex={pageIndex} totalPages={totalPages} />
@@ -64,6 +79,10 @@ export const ComponentPreview = memo(function ComponentPreview({
           pageIndex={pageIndex}
           totalPages={totalPages}
         />
+      );
+    case 'checklist':
+      return (
+        <ChecklistPreview component={component as ChecklistComponent} sampleData={sampleData} />
       );
     default:
       return <div>Preview for {component.type}</div>;

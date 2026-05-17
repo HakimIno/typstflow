@@ -5,6 +5,7 @@ import { PluginRegistry } from './registry';
 import type { ComponentPlugin, RenderContext } from './types';
 
 import { barcodePlugin } from './plugins/barcode';
+import { checklistPlugin } from './plugins/checklist';
 import { columnsPlugin } from './plugins/columns';
 import { imagePlugin } from './plugins/image';
 import { linePlugin } from './plugins/line';
@@ -32,6 +33,7 @@ const BUILT_IN_PLUGINS: ComponentPlugin[] = [
   repeaterPlugin,
   columnsPlugin,
   tablePlugin,
+  checklistPlugin,
 ];
 
 /**
@@ -90,11 +92,27 @@ export class TypstGenerator {
       // Render header and footer as native Typst page bands (repeat on every page).
       // offsetY = 0: component positions are relative to the band's own top-left.
       if (!schema.zones.header.repeatOnEveryPage && headerH > 0) {
-        const hContent = this.renderZoneComponents(schema.zones.header, data, data, [], 0, 0, schema);
+        const hContent = this.renderZoneComponents(
+          schema.zones.header,
+          data,
+          data,
+          [],
+          0,
+          0,
+          schema
+        );
         parts.push(`#set page(header: [${hContent}])\n`);
       }
       if (!schema.zones.footer.repeatOnEveryPage && footerH > 0) {
-        const fContent = this.renderZoneComponents(schema.zones.footer, data, data, [], 0, 0, schema);
+        const fContent = this.renderZoneComponents(
+          schema.zones.footer,
+          data,
+          data,
+          [],
+          0,
+          0,
+          schema
+        );
         parts.push(`#set page(footer: [${fContent}])\n`);
       }
     } else {
@@ -105,7 +123,13 @@ export class TypstGenerator {
 
       if (schema.zones.header.repeatOnEveryPage) {
         const headerContent = this.renderZoneComponents(
-          schema.zones.header, data, data, [], 0, topM, schema
+          schema.zones.header,
+          data,
+          data,
+          [],
+          0,
+          topM,
+          schema
         );
         parts.push(`\n#set page(header: [${headerContent}])\n`);
       }
@@ -113,7 +137,13 @@ export class TypstGenerator {
       if (schema.zones.footer.repeatOnEveryPage) {
         const footerY = pageH - bottomM - footerH;
         const footerContent = this.renderZoneComponents(
-          schema.zones.footer, data, data, [], 0, footerY, schema
+          schema.zones.footer,
+          data,
+          data,
+          [],
+          0,
+          footerY,
+          schema
         );
         parts.push(`\n#set page(footer: [${footerContent}])\n`);
       }
@@ -135,12 +165,16 @@ export class TypstGenerator {
       for (let i = 0; i < batchItems.length; i++) {
         const item = batchItems[i] as Record<string, unknown>;
         if (i > 0) parts.push('\n#pagebreak(weak: true)\n#box()\n');
-        parts.push(this.renderDocument(schema, item, data, 0, bodyY, headerY, footerY, hasFlowBody));
+        parts.push(
+          this.renderDocument(schema, item, data, 0, bodyY, headerY, footerY, hasFlowBody)
+        );
       }
     } else if (schema.groups && schema.groups.length > 0) {
       const sourcePath = schema.groupDataSource || 'items';
       const resolvedItems = resolvePath(sourcePath, data);
-      const items = Array.isArray(resolvedItems) ? (resolvedItems as Record<string, unknown>[]) : [];
+      const items = Array.isArray(resolvedItems)
+        ? (resolvedItems as Record<string, unknown>[])
+        : [];
 
       if (
         !hasFlowBody &&
@@ -148,7 +182,9 @@ export class TypstGenerator {
         shouldRenderZone(schema.zones.header, 0, 1, 'header')
       ) {
         parts.push('// --- REPORT HEADER ---\n');
-        parts.push(this.renderZoneComponents(schema.zones.header, data, data, [], 0, headerY, schema));
+        parts.push(
+          this.renderZoneComponents(schema.zones.header, data, data, [], 0, headerY, schema)
+        );
       }
 
       parts.push(this.renderGroupLevel(schema, schema.groups, 0, items, data, bodyY));
@@ -159,7 +195,9 @@ export class TypstGenerator {
         shouldRenderZone(schema.zones.footer, 0, 1, 'footer')
       ) {
         parts.push('// --- REPORT FOOTER ---\n');
-        parts.push(this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema));
+        parts.push(
+          this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema)
+        );
       }
     } else {
       parts.push(this.renderDocument(schema, data, data, 0, bodyY, headerY, footerY, hasFlowBody));
@@ -189,18 +227,42 @@ export class TypstGenerator {
       const h = schema.zones.header;
       if (!nativeBands && !h.repeatOnEveryPage && shouldRenderZone(h, i, totalPages, 'header')) {
         t += `// --- PAGE ${i + 1} HEADER ---\n`;
-        t += this.renderZoneComponents(h, localData, globalData, [], offsetX, headerOffsetY, schema);
+        t += this.renderZoneComponents(
+          h,
+          localData,
+          globalData,
+          [],
+          offsetX,
+          headerOffsetY,
+          schema
+        );
       }
 
       // Body
       t += `// --- PAGE ${i + 1} BODY ---\n`;
-      t += this.renderZoneComponents(pageDef.body, localData, globalData, [], offsetX, bodyOffsetY, schema);
+      t += this.renderZoneComponents(
+        pageDef.body,
+        localData,
+        globalData,
+        [],
+        offsetX,
+        bodyOffsetY,
+        schema
+      );
 
       // Footer — skip if using native bands
       const f = schema.zones.footer;
       if (!nativeBands && !f.repeatOnEveryPage && shouldRenderZone(f, i, totalPages, 'footer')) {
         t += `// --- PAGE ${i + 1} FOOTER ---\n`;
-        t += this.renderZoneComponents(f, localData, globalData, [], offsetX, footerOffsetY, schema);
+        t += this.renderZoneComponents(
+          f,
+          localData,
+          globalData,
+          [],
+          offsetX,
+          footerOffsetY,
+          schema
+        );
       }
     }
 

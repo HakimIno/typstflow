@@ -5,8 +5,9 @@ use super::bindings::{
     is_visible, resolve_binding_scoped, resolve_binding_with_aggregates, resolve_path,
 };
 use super::elements::{
-    render_barcode, render_columns, render_image, render_line, render_page_break_indicator,
-    render_page_number, render_qr, render_repeater, render_spacer, render_summary_box, render_text,
+    render_barcode, render_checklist, render_columns, render_image, render_line,
+    render_page_break_indicator, render_page_number, render_qr, render_repeater, render_spacer,
+    render_summary_box, render_text,
 };
 use super::paper::parse_mm_value;
 use super::table::render_table;
@@ -298,5 +299,8 @@ pub fn render_component(
             fill_width,
             &|child, l, g, ox, oy, px, fm, fw| render_component(child, l, g, ox, oy, px, fm, fw),
         ),
+        ComponentNode::Checklist(c) => {
+            render_checklist(c, local, global, offset_x, offset_y, prefix, flow_mode, fill_width)
+        }
     }
 }

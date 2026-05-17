@@ -1,7 +1,15 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
 import { getValueType } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import type {
   BarcodeComponent,
+  ChecklistComponent,
   ColumnLayoutComponent,
   ComponentNode,
   ImageComponent,
@@ -13,30 +21,31 @@ import type {
   TextComponent,
 } from '@/types/schema';
 import { clsx } from 'clsx';
-import { useShallow } from 'zustand/react/shallow';
 import {
   Columns,
-  FileDown,
-  FileText,
-  Layers,
-  Trash2,
-  Settings,
-  Layout,
-  Palette,
   Database,
-  Type,
-  Maximize,
+  FileDown,
+  Layers,
+  Layout,
   Lock,
-  Workflow,
+  Maximize,
   Move,
+  Palette,
+  Settings,
+  Trash2,
+  Type,
+  Workflow,
 } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { DesignerInput } from '../shared/DesignerInput';
 import { TablePropertiesPanel } from './TablePropertiesPanel';
 import { TextEditor } from './TextEditor';
 import { VariablePicker } from './VariablePicker';
 import { AlignmentProperties } from './properties/AlignmentProperties';
 import { BulkEditPanel } from './properties/BulkEditPanel';
+import { ChecklistProperties } from './properties/ChecklistProperties';
+import { ColumnProperties } from './properties/ColumnProperties';
 import { FormatPicker } from './properties/FormatPicker';
 import { GeometryProperties } from './properties/GeometryProperties';
 import { GroupProperties } from './properties/GroupProperties';
@@ -45,14 +54,6 @@ import { LineProperties } from './properties/LineProperties';
 import { ControlField, PropertyGrid, PropertyRow, SectionHeader } from './properties/Shared';
 import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
 import { TypographyProperties } from './properties/TypographyProperties';
-import { ColumnProperties } from './properties/ColumnProperties';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/Select';
 
 // Type guards for safe component access
 const isText = (c: ComponentNode): c is TextComponent => c.type === 'text';
@@ -64,6 +65,7 @@ const isBarcode = (c: ComponentNode): c is BarcodeComponent =>
   c.type === 'barcode' || c.type === 'qr';
 const isPageNumber = (c: ComponentNode): c is PageNumberComponent => c.type === 'page-number';
 const isColumns = (c: ComponentNode): c is ColumnLayoutComponent => c.type === 'columns';
+const isChecklist = (c: ComponentNode): c is ChecklistComponent => c.type === 'checklist';
 
 type TabType = 'design' | 'layout' | 'data' | 'settings';
 
@@ -243,15 +245,30 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 <div className="p-2 space-y-2">
                   {/* Layout Mode Toggle */}
                   <div>
-                    <p className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5 opacity-60">Layout Mode</p>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1.5 opacity-60">
+                      Layout Mode
+                    </p>
                     <div className="grid grid-cols-2 gap-px bg-[var(--border-default)] border border-[var(--border-default)] rounded overflow-hidden">
-                      {([
-                        { mode: 'absolute', label: 'Absolute', icon: Move, desc: 'Drag & drop positioning' },
-                        { mode: 'flow', label: 'Flow', icon: Workflow, desc: 'Stack vertically, auto-push' },
-                      ] as const).map(({ mode, label, icon: Icon, desc }) => {
-                        const currentZone = selectedZoneKey === 'body'
-                          ? activePage?.body
-                          : zones[selectedZoneKey as 'header' | 'footer'];
+                      {(
+                        [
+                          {
+                            mode: 'absolute',
+                            label: 'Absolute',
+                            icon: Move,
+                            desc: 'Drag & drop positioning',
+                          },
+                          {
+                            mode: 'flow',
+                            label: 'Flow',
+                            icon: Workflow,
+                            desc: 'Stack vertically, auto-push',
+                          },
+                        ] as const
+                      ).map(({ mode, label, icon: Icon, desc }) => {
+                        const currentZone =
+                          selectedZoneKey === 'body'
+                            ? activePage?.body
+                            : zones[selectedZoneKey as 'header' | 'footer'];
                         const currentMode = currentZone?.layoutMode ?? 'absolute';
                         const isActive = currentMode === mode;
                         return (
@@ -259,7 +276,11 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                             key={mode}
                             type="button"
                             onClick={() => {
-                              updateZone(selectedZoneKey, { layoutMode: mode }, activePageId ?? undefined);
+                              updateZone(
+                                selectedZoneKey,
+                                { layoutMode: mode },
+                                activePageId ?? undefined
+                              );
                             }}
                             title={desc}
                             className={clsx(
@@ -272,7 +293,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                             )}
                           >
                             <Icon className="w-3.5 h-3.5" />
-                            <span className="text-[8px] font-bold uppercase tracking-wider">{label}</span>
+                            <span className="text-[8px] font-bold uppercase tracking-wider">
+                              {label}
+                            </span>
                           </button>
                         );
                       })}
@@ -299,7 +322,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                             ? activePage?.body.flowGap
                             : zones[selectedZoneKey as 'header' | 'footer']?.flowGap) ?? '2mm'
                         }
-                        onChange={(v) => updateZone(selectedZoneKey, { flowGap: v }, activePageId ?? undefined)}
+                        onChange={(v) =>
+                          updateZone(selectedZoneKey, { flowGap: v }, activePageId ?? undefined)
+                        }
                         placeholder="2mm"
                         mono
                       />
@@ -354,7 +379,10 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         return (
           <div className="space-y-1 animate-in fade-in duration-200">
             <section className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
-              {(isText(selectedComponent) || isTable(selectedComponent) || isPageNumber(selectedComponent)) && (
+              {(isText(selectedComponent) ||
+                isTable(selectedComponent) ||
+                isPageNumber(selectedComponent) ||
+                isChecklist(selectedComponent)) && (
                 <TypographyProperties
                   style={(selectedComponent as any).style}
                   onUpdateStyle={handleStyleUpdate}
@@ -387,7 +415,8 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 }}
               />
               {(() => {
-                const hasBinding = (isText(selectedComponent) && (selectedComponent.content || '').includes('{{'));
+                const hasBinding =
+                  isText(selectedComponent) && (selectedComponent.content || '').includes('{{');
                 if (!hasBinding) return null;
 
                 return (
@@ -418,6 +447,15 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
             {isColumns(selectedComponent) && (
               <div className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
                 <ColumnProperties component={selectedComponent} />
+              </div>
+            )}
+
+            {isChecklist(selectedComponent) && (
+              <div className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
+                <ChecklistProperties
+                  component={selectedComponent}
+                  onUpdate={(updates) => updateComponent(selectedComponent.id, updates as any)}
+                />
               </div>
             )}
           </div>
@@ -469,12 +507,16 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               {isText(selectedComponent) && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between px-1">
-                    <span className="text-[9px] font-black uppercase tracking-[0.1em] text-[var(--text-muted)]">Text Content</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                      Text Content
+                    </span>
                     <VariablePicker
                       sampleData={sampleData}
                       onSelect={(_path, binding) => {
                         const currentContent = selectedComponent.content || '';
-                        updateComponent(selectedComponent.id, { content: currentContent + binding });
+                        updateComponent(selectedComponent.id, {
+                          content: currentContent + binding,
+                        });
                       }}
                     />
                   </div>
@@ -492,10 +534,14 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               {isTable(selectedComponent) && (
                 <div className="space-y-3 bg-[var(--bg-widget)] p-3 rounded-[4px] border border-[var(--border-default)]">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-[var(--text-primary)]">Data Connection</span>
+                    <span className="text-[10px] font-bold text-[var(--text-primary)]">
+                      Data Connection
+                    </span>
                     <VariablePicker
                       sampleData={sampleData}
-                      onSelect={(_path, binding) => updateComponent(selectedComponent.id, { dataSource: binding })}
+                      onSelect={(_path, binding) =>
+                        updateComponent(selectedComponent.id, { dataSource: binding })
+                      }
                     />
                   </div>
                   <PropertyRow label="Source Path">
@@ -514,10 +560,14 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               {isBarcode(selectedComponent) && (
                 <div className="space-y-3 bg-[var(--bg-widget)] p-3 rounded-[4px] border border-[var(--border-default)]">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-[var(--text-primary)]">Barcode Data</span>
+                    <span className="text-[10px] font-bold text-[var(--text-primary)]">
+                      Barcode Data
+                    </span>
                     <VariablePicker
                       sampleData={sampleData}
-                      onSelect={(_path, binding) => updateComponent(selectedComponent.id, { value: binding })}
+                      onSelect={(_path, binding) =>
+                        updateComponent(selectedComponent.id, { value: binding })
+                      }
                     />
                   </div>
                   <PropertyRow label="Value Binding">
@@ -547,7 +597,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
               {isPageNumber(selectedComponent) && (
                 <div className="bg-[var(--bg-widget)] p-3 rounded-[4px] border border-[var(--border-default)] space-y-2">
-                  <span className="text-[9px] font-black uppercase tracking-[0.1em] text-[var(--text-muted)]">Page Format</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                    Page Format
+                  </span>
                   <DesignerInput
                     type="text"
                     value={selectedComponent.format || ''}
@@ -555,7 +607,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                     placeholder="หน้าที่ {{page}} / {{pageTotal}}"
                     className="bg-[var(--bg-surface)]"
                   />
-                  <p className="text-[8px] text-[var(--text-muted)] italic opacity-60">Use {'{{page}}'} and {'{{pageTotal}}'} tokens.</p>
+                  <p className="text-[8px] text-[var(--text-muted)] italic opacity-60">
+                    Use {'{{page}}'} and {'{{pageTotal}}'} tokens.
+                  </p>
                 </div>
               )}
             </div>
@@ -633,16 +687,18 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
             {isImage(selectedComponent) && <Palette className="w-3.5 h-3.5" />}
             {isLine(selectedComponent) && <Maximize className="w-3.5 h-3.5" />}
             {isColumns(selectedComponent) && <Columns className="w-3.5 h-3.5" />}
-            {(!isText(selectedComponent) && !isTable(selectedComponent) && !isImage(selectedComponent) && !isLine(selectedComponent) && !isColumns(selectedComponent)) && <Settings className="w-3.5 h-3.5" />}
+            {!isText(selectedComponent) &&
+              !isTable(selectedComponent) &&
+              !isImage(selectedComponent) &&
+              !isLine(selectedComponent) &&
+              !isColumns(selectedComponent) && <Settings className="w-3.5 h-3.5" />}
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold tracking-tight text-[var(--text-primary)] uppercase">
                 {selectedComponent.type}
               </span>
-              {isLocked && (
-                <Lock className="w-2.5 h-2.5 text-orange-400" />
-              )}
+              {isLocked && <Lock className="w-2.5 h-2.5 text-orange-400" />}
             </div>
             <span className="text-[8px] text-[var(--text-muted)] font-mono">
               {isLocked ? 'READ ONLY (LOCKED)' : `ID: ${selectedComponent.id.slice(0, 8)}`}
@@ -654,12 +710,12 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           onClick={() => removeComponent(selectedComponent.id)}
           disabled={isLocked}
           className={clsx(
-            "p-1.5 rounded transition-colors",
+            'p-1.5 rounded transition-colors',
             isLocked
-              ? "opacity-20 cursor-not-allowed text-[var(--text-muted)]"
-              : "hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500"
+              ? 'opacity-20 cursor-not-allowed text-[var(--text-muted)]'
+              : 'hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500'
           )}
-          title={isLocked ? "Cannot delete locked component" : "Delete component"}
+          title={isLocked ? 'Cannot delete locked component' : 'Delete component'}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -667,12 +723,14 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
       {/* Tabs Navigation */}
       <div className="flex border-b border-[var(--border-default)] bg-white/[0.02]">
-        {([
-          { id: 'design', icon: Palette, label: 'Design' },
-          { id: 'layout', icon: Layout, label: 'Layout' },
-          { id: 'data', icon: Database, label: 'Content' },
-          { id: 'settings', icon: Settings, label: 'Setup' },
-        ] as const).map((tab) => (
+        {(
+          [
+            { id: 'design', icon: Palette, label: 'Design' },
+            { id: 'layout', icon: Layout, label: 'Layout' },
+            { id: 'data', icon: Database, label: 'Content' },
+            { id: 'settings', icon: Settings, label: 'Setup' },
+          ] as const
+        ).map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -690,21 +748,21 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
       </div>
 
       {/* Main Content */}
-      <div className={clsx("flex-1 overflow-auto relative", isLocked && "select-none")}>
+      <div className={clsx('flex-1 overflow-auto relative', isLocked && 'select-none')}>
         {isLocked && (
           <div className="absolute inset-0 bg-[var(--bg-surface)]/20 backdrop-blur-[1px] z-50 flex items-start justify-center pt-20 pointer-events-none">
             <div className="bg-black/40 border border-white/5 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-2xl animate-in zoom-in-95 duration-200">
               <Lock className="w-3 h-3 text-orange-400" />
-              <span className="text-[10px] font-bold text-white/90 uppercase tracking-widest">Locked</span>
+              <span className="text-[10px] font-bold text-white/90 uppercase tracking-widest">
+                Locked
+              </span>
             </div>
           </div>
         )}
-        <div className={clsx(isLocked && "pointer-events-none opacity-50 grayscale-[0.5]")}>
+        <div className={clsx(isLocked && 'pointer-events-none opacity-50 grayscale-[0.5]')}>
           {renderTabContent()}
         </div>
       </div>
-
     </div>
   );
 });
-

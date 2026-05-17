@@ -86,7 +86,8 @@ export type ComponentNode =
   | QRComponent
   | SummaryBoxComponent
   | PageBreakIndicatorComponent
-  | PageNumberComponent;
+  | PageNumberComponent
+  | ChecklistComponent;
 
 export interface BaseComponent {
   id: string;
@@ -114,7 +115,17 @@ export interface TextComponent extends BaseComponent {
 export interface TextStyle {
   fontSize?: number;
   fontFamily?: string;
-  fontWeight?: 'thin' | 'extralight' | 'light' | 'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold' | 'black' | number;
+  fontWeight?:
+    | 'thin'
+    | 'extralight'
+    | 'light'
+    | 'regular'
+    | 'medium'
+    | 'semibold'
+    | 'bold'
+    | 'extrabold'
+    | 'black'
+    | number;
   color?: string; // hex
   italic?: boolean;
   underline?: boolean;
@@ -324,7 +335,6 @@ export interface LineComponent extends BaseComponent {
   stroke?: string; // Advanced manual override
 }
 
-
 // --- Spacer Component ---
 export interface SpacerComponent extends BaseComponent {
   type: 'spacer';
@@ -389,6 +399,46 @@ export interface PageNumberComponent extends BaseComponent {
   type: 'page-number';
   format: string; // "{{page}}", "{{pageTotal}}", "หน้าที่ {{page}} / {{pageTotal}}"
   style: TextStyle;
+}
+
+// --- Checklist Component ---
+export type ChecklistStyle =
+  | 'bullet'
+  | 'numbered'
+  | 'alpha'
+  | 'roman'
+  | 'checkbox'
+  | 'dash'
+  | 'custom';
+
+export interface ChecklistItem {
+  id: string;
+  label: string; // static text or {{binding}}
+  checked?: boolean; // for checkbox/checked styles
+}
+
+export type ChecklistDirection = 'vertical' | 'horizontal' | 'grid';
+export type ChecklistCheckMark = 'x' | '/' | '-';
+export type ChecklistCheckShape = 'square' | 'rounded' | 'circle';
+
+export interface ChecklistComponent extends BaseComponent {
+  type: 'checklist';
+  listStyle: ChecklistStyle;
+  items: ChecklistItem[];
+  dataSource?: BindingExpression; // "{{tasks}}" — data-bound
+  labelField?: string; // field name for label in data-bound mode
+  checkedField?: string; // field name for checked state in data-bound mode
+  marker?: string; // custom marker (for 'custom' style)
+  spacing?: number; // pt between items (default: 4)
+  indent?: number; // mm left indent (default: 5)
+  style?: TextStyle;
+  checkboxColor?: string; // hex: border + fill-when-checked color (default: #616161)
+  checkboxFill?: string; // hex: unchecked box background (default: #ffffff)
+  checkMark?: ChecklistCheckMark; // x=✓  /=half  -=minus (default: x)
+  checkboxSize?: number; // pt — checkbox size independent of text (default: auto = 0.8em)
+  checkboxShape?: ChecklistCheckShape; // square | rounded | circle (default: rounded)
+  direction?: ChecklistDirection; // layout direction (default: vertical)
+  columns?: number; // columns for grid direction (default: 2)
 }
 
 // --- Supporting Types ---

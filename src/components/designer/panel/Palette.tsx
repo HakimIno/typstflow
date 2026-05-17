@@ -11,6 +11,7 @@ import {
   Hash,
   Image,
   LayoutDashboard,
+  ListChecks,
   ListTree,
   Minus,
   QrCode,
@@ -31,6 +32,7 @@ const CATEGORIES = [
     items: [
       { type: 'table', label: 'Data Table', icon: Table },
       { type: 'summary-box', label: 'Summary Box', icon: LayoutDashboard },
+      { type: 'checklist', label: 'Checklist', icon: ListChecks },
     ],
   },
   {
@@ -151,7 +153,15 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: Palet
         case 'image':
           return { ...base, type: 'image', src: '/logo13.png', width: 40, height: 40 };
         case 'line':
-          return { ...base, type: 'line', orientation: 'horizontal', thickness: '1pt', color: 'black', width: 180, height: 2 };
+          return {
+            ...base,
+            type: 'line',
+            orientation: 'horizontal',
+            thickness: '1pt',
+            color: 'black',
+            width: 180,
+            height: 2,
+          };
         case 'barcode':
           return {
             ...base,
@@ -192,6 +202,22 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: Palet
             rows: [{ label: 'Subtotal', value: '$0.00' }],
             width: 80,
             height: 30,
+          };
+        case 'checklist':
+          return {
+            ...base,
+            type: 'checklist',
+            listStyle: 'bullet',
+            items: [
+              { id: 'item-1', label: 'รายการที่ 1', checked: false },
+              { id: 'item-2', label: 'รายการที่ 2', checked: false },
+              { id: 'item-3', label: 'รายการที่ 3', checked: false },
+            ],
+            spacing: 4,
+            indent: 5,
+            style: { fontSize: 10, fontFamily: 'Sarabun', color: '#000000' },
+            width: 120,
+            height: 35,
           };
         case 'page-break-indicator':
           return {

@@ -56,8 +56,8 @@ impl TypstBridge {
         let library = typst::Library::builder().build();
         web_sys::console::log_1(&"✅ Typst WASM Engine v0.14.2 Loaded".into());
 
-        let pkg_prefix = "@preview/codetastic:0.2.2/";
         let mut packages = HashMap::new();
+
         for (name, content) in [
             ("typst.toml",    include_str!("../typst-packages/codetastic/0.2.2/typst.toml")),
             ("codetastic.typ", include_str!("../typst-packages/codetastic/0.2.2/codetastic.typ")),
@@ -69,7 +69,14 @@ impl TypstBridge {
             ("qrutil.typ",    include_str!("../typst-packages/codetastic/0.2.2/qrutil.typ")),
             ("util.typ",      include_str!("../typst-packages/codetastic/0.2.2/util.typ")),
         ] {
-            packages.insert(format!("{}{}", pkg_prefix, name), content.to_string());
+            packages.insert(format!("@preview/codetastic:0.2.2/{}", name), content.to_string());
+        }
+
+        for (name, content) in [
+            ("typst.toml", include_str!("../typst-packages/cheq/0.2.2/typst.toml")),
+            ("lib.typ",    include_str!("../typst-packages/cheq/0.2.2/lib.typ")),
+        ] {
+            packages.insert(format!("@preview/cheq:0.2.2/{}", name), content.to_string());
         }
 
         Self {
