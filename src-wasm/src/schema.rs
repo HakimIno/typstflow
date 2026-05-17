@@ -170,6 +170,8 @@ pub struct TableCell {
     pub colspan: Option<u32>,
     pub rowspan: Option<u32>,
     pub align: Option<String>,
+    pub vertical_align: Option<String>,
+    pub text_direction: Option<String>,
     pub fill: Option<String>,
     pub inset: Option<String>,
     pub stroke: Option<serde_json::Value>,

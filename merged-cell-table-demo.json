@@ -1,0 +1,132 @@
+{
+  "schema": {
+    "id": "merged-cell-table-demo",
+    "name": "Merged Cell Table Demo",
+    "version": "1.0.0",
+    "page": {
+      "size": "A4",
+      "orientation": "landscape",
+      "margin": {
+        "top": "15mm",
+        "bottom": "15mm",
+        "left": "15mm",
+        "right": "15mm"
+      }
+    },
+    "fonts": [
+      { "family": "Sarabun", "role": "body", "size": 10, "embedded": true }
+    ],
+    "zones": {
+      "header": {
+        "id": "header",
+        "minHeight": "10mm",
+        "components": []
+      },
+      "footer": {
+        "id": "footer",
+        "minHeight": "10mm",
+        "components": []
+      }
+    },
+    "pages": [
+      {
+        "id": "page-1",
+        "name": "Table Demo",
+        "body": {
+          "id": "body",
+          "minHeight": "150mm",
+          "layoutMode": "flow",
+          "components": [
+            {
+              "id": "merged-table",
+              "type": "table",
+              "x": 0,
+              "y": 0,
+              "width": 267,
+              "height": 25,
+              "dataSource": "{{items}}",
+              "isStatic": true,
+              "showHeader": false,
+              "repeatHeaderOnPage": false,
+              "columns": [
+                { "id": "col-0", "header": "", "field": "", "width": "40pt" },
+                { "id": "col-1", "header": "", "field": "", "width": "40pt" },
+                { "id": "col-2", "header": "", "field": "", "width": "1fr" },
+                { "id": "col-3", "header": "", "field": "", "width": "1fr" },
+                { "id": "col-4", "header": "", "field": "", "width": "1fr" }
+              ],
+              "headerRows": [
+                {
+                  "id": "hdr-row-0",
+                  "type": "header",
+                  "cells": [
+                    { "id": "hdr-0-0", "content": "", "rowspan": 1, "colspan": 1, "align": "center" },
+                    { "id": "hdr-0-1", "content": "", "rowspan": 1, "colspan": 1, "align": "center" },
+                    { "id": "hdr-0-2", "content": "cell 2 Hdr", "rowspan": 1, "colspan": 1, "align": "center" },
+                    { "id": "hdr-0-3", "content": "", "rowspan": 1, "colspan": 1, "align": "center" },
+                    { "id": "hdr-0-4", "content": "cell 3 Hdr", "rowspan": 1, "colspan": 1, "align": "center" }
+                  ]
+                }
+              ],
+              "detailRows": [
+                {
+                  "id": "data-row-0",
+                  "type": "data",
+                  "cells": [
+                    { "id": "data-0-0", "content": "ZERO", "rowspan": 2, "colspan": 1, "align": "center", "textDirection": "vertical" },
+                    { "id": "data-0-1", "content": "R1 C1", "rowspan": 1, "colspan": 1, "align": "center", "textDirection": "vertical" },
+                    { "id": "data-0-2", "content": "R1 C2", "rowspan": 1, "colspan": 1, "align": "center" },
+                    { "id": "data-0-3", "content": "", "rowspan": 1, "colspan": 1, "align": "center" },
+                    { "id": "data-0-4", "content": "R1 C3", "rowspan": 1, "colspan": 1, "align": "right" }
+                  ]
+                },
+                {
+                  "id": "data-row-1",
+                  "type": "data",
+                  "cells": [
+                    { "id": "data-1-1", "content": "R2 C1", "rowspan": 1, "colspan": 1, "align": "center", "textDirection": "vertical" },
+                    { "id": "data-1-2", "content": "R2 C2", "rowspan": 1, "colspan": 1, "align": "center" },
+                    { "id": "data-1-3", "content": "", "rowspan": 1, "colspan": 1, "align": "center" },
+                    { "id": "data-1-4", "content": "R2 C3", "rowspan": 1, "colspan": 1, "align": "right" }
+                  ]
+                }
+              ],
+              "style": {
+                "headerBackground": "#ffffff",
+                "headerTextColor": "#000000",
+                "headerFontWeight": "bold",
+                "headerFontSize": 12,
+                "bodyFontSize": 11,
+                "bodyColor": "#000000",
+                "borderColor": "#000000",
+                "borderWidth": "1pt",
+                "fillPattern": "none",
+                "inset": "8pt",
+                "borderSides": {
+                  "top": true,
+                  "bottom": true,
+                  "left": true,
+                  "right": true,
+                  "innerH": true,
+                  "innerV": true
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "groups": [],
+    "variables": [],
+    "dataSchema": [],
+    "metadata": {
+      "title": "Merged Cell Table Demo",
+      "createdAt": "2026-05-16T22:25:00.000Z",
+      "updatedAt": "2026-05-16T22:25:00.000Z",
+      "author": "TypstFlow"
+    }
+  },
+  "data": {},
+  "exportedAt": "2026-05-16T22:25:00.000Z",
+  "version": "1.0.0"
+}

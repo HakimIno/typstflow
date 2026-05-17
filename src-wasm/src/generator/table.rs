@@ -653,7 +653,8 @@ pub fn render_table(c: &TableComponent, local: &Value, global: &Value, offset_x:
                 total_rows += arr.len() as u32;
             }
         } else if is_static {
-            total_rows += 1;
+            let static_data_rows = c.detail_rows.as_ref().map(|dr| dr.len() as u32).unwrap_or(1);
+            total_rows += static_data_rows;
         }
         t.push_str(&format!("  table.hline(y: {}, stroke: {} + {}),\n", total_rows, border_width, format_color(border_color)));
     }
@@ -696,15 +697,34 @@ fn render_cell_container_v2(cell: &TableCell, inner: &str, fill_override: Option
     let fill = fill_override.or_else(|| cell.fill.clone());
     if let Some(f) = fill { args.push(format!("fill: {}", format_color(&f))); }
     
-    let align = align_override.or_else(|| cell.align.clone());
-    if let Some(a) = align { args.push(format!("align: {}", a)); }
+    // Handle alignment: combine horizontal + vertical
+    let h_align = align_override.or_else(|| cell.align.clone());
+    let v_align = cell.vertical_align.as_deref().unwrap_or("horizon");
+    let v_align_typst = match v_align {
+        "top" => "top",
+        "bottom" => "bottom",
+        _ => "horizon",
+    };
+    if let Some(a) = h_align {
+        args.push(format!("align: {} + {}", a, v_align_typst));
+    } else if v_align_typst != "horizon" {
+        args.push(format!("align: {}", v_align_typst));
+    }
     
     if let Some(i) = &cell.inset { args.push(format!("inset: {}", i)); }
     
-    if args.is_empty() {
-        format!("[{}]", inner)
+    // Handle vertical text direction
+    let is_vertical = cell.text_direction.as_deref() == Some("vertical");
+    let content = if is_vertical {
+        format!("#rotate(-90deg, reflow: true)[{}]", inner)
     } else {
-        format!("table.cell({})[{}]", args.join(", "), inner)
+        inner.to_string()
+    };
+    
+    if args.is_empty() {
+        format!("[{}]", content)
+    } else {
+        format!("table.cell({})[{}]", args.join(", "), content)
     }
 }
 

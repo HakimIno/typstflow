@@ -143,6 +143,8 @@ export interface TableCell {
   colspan?: number;
   rowspan?: number;
   align?: 'left' | 'center' | 'right';
+  verticalAlign?: 'top' | 'middle' | 'bottom'; // vertical alignment within cell
+  textDirection?: 'horizontal' | 'vertical'; // text rotation (vertical = 90° CW)
   fill?: string; // per-cell background color
   stroke?: StrokeConfig; // per-cell border override
   inset?: string; // per-cell padding override
@@ -152,7 +154,7 @@ export interface TableCell {
 // --- Table Row (maps to table.header / table.footer / data rows) ---
 export interface TableRow {
   id: string;
-  type: 'header' | 'data' | 'footer';
+  type: 'header' | 'data' | 'footer' | 'group-header' | 'group-footer';
   cells: TableCell[];
   height?: string; // row height (e.g. "30pt", "auto")
   repeat?: boolean; // for header/footer: repeat across pages

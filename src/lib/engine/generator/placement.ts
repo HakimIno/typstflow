@@ -25,20 +25,22 @@ export function wrapPlacement(
     // When inside a grid cell (fillWidth=true), use 100% so the content
     // fills the cell determined by the grid column width.
     const widthExpr = fillWidth ? '100%' : `${w}mm`;
-    // Text components use auto-height in flow mode: Typst determines height from content,
-    // avoiding the browser font-metric gap that causes extra whitespace in the preview.
-    // Other components (image, table, etc.) still need an explicit height so percentage-height
-    // children resolve against the correct mm value rather than the full page height.
-    const isText = base.type === 'text';
-    const sizedBlock = isText
+    // Text and columns components use auto-height in flow mode: Typst determines height
+    // from content, preventing overflow/overlap. Other components (image, table, etc.)
+    // still need an explicit height so percentage-height children resolve correctly.
+    const autoHeight = base.type === 'text' || base.type === 'columns';
+    const sizedBlock = autoHeight
       ? `#block(width: ${widthExpr}, clip: false)[${body}]`
       : `#block(width: ${widthExpr}, height: ${h}mm, clip: false)[${body}]`;
     // Inside a grid cell, skip left-padding (x indent) — the grid handles positioning
     const inner = (!fillWidth && x > 0) ? `#pad(left: ${x}mm)[${sizedBlock}]` : sizedBlock;
-    // above/below: 0pt removes Typst's default inter-block spacing → rows stack flush.
-    const outerHeight = isText ? '' : `, height: ${h}mm`;
+    // Use component margins for spacing. Text defaults to 2pt below if no margin set,
+    // preventing the "cramped" look where text blocks stack flush against each other.
+    const aboveVal = (base as any).marginTop != null ? `${(base as any).marginTop}mm` : '0pt';
+    const belowVal = (base as any).marginBottom != null ? `${(base as any).marginBottom}mm` : (autoHeight ? '2pt' : '0pt');
+    const outerHeight = autoHeight ? '' : `, height: ${h}mm`;
     const outerWidth = fillWidth ? '100%' : '100%';
-    parts.push(`#block(above: 0pt, below: 0pt, width: ${outerWidth}${outerHeight})[${inner}]\n`);
+    parts.push(`#block(above: ${aboveVal}, below: ${belowVal}, width: ${outerWidth}${outerHeight})[${inner}]\n`);
     return parts.join('');
   }
 

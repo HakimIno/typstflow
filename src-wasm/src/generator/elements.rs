@@ -70,7 +70,7 @@ pub fn render_text(c: &TextComponent, local: &Value, global: &Value, offset_x: &
         body
     };
 
-    if flow_mode { wrap_flow_block(&c.base, &final_body, prefix, fill_width) } else { wrap_placement(&c.base, &final_body, offset_x, offset_y, prefix) }
+    if flow_mode { wrap_flow_block(&c.base, &final_body, prefix, fill_width, true) } else { wrap_placement(&c.base, &final_body, offset_x, offset_y, prefix) }
 }
 
 pub fn render_line(c: &LineComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool, fill_width: bool) -> String {
@@ -86,7 +86,7 @@ pub fn render_line(c: &LineComponent, local: &Value, global: &Value, offset_x: &
     // Advanced manual override
     if let Some(stroke_override) = &c.stroke {
         let body = format!("#line(start: {}, end: {}, stroke: {})", start, end, stroke_override);
-        return if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) };
+        return if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width, false) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) };
     }
 
     let thickness = c.thickness.as_deref().unwrap_or("1pt");
@@ -115,7 +115,7 @@ pub fn render_line(c: &LineComponent, local: &Value, global: &Value, offset_x: &
 
     let stroke = format!("({})", stroke_parts.join(", "));
     let body = format!("#line(start: {}, end: {}, stroke: {})", start, end, stroke);
-    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width, false) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
 
@@ -142,7 +142,7 @@ pub fn render_image(c: &ImageComponent, local: &Value, global: &Value, offset_x:
     } else {
         format!("#rect(width: 100%, height: {}, fill: gray.lighten(80%))[#set align(center + horizon); No Image]", h_str)
     };
-    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width, false) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
 pub fn render_spacer(c: &SpacerComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool, _fill_width: bool) -> String {
@@ -170,7 +170,7 @@ pub fn render_barcode(c: &BarcodeComponent, local: &Value, global: &Value, offse
             sym
         ),
     };
-    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width, false) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
 pub fn render_qr(c: &QRComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool, fill_width: bool) -> String {
@@ -179,7 +179,7 @@ pub fn render_qr(c: &QRComponent, local: &Value, global: &Value, offset_x: &str,
     let w = c.base.width.unwrap_or(20.0);
     let val = resolve_binding_scoped(&c.value, local, global);
     let body = format!("#qrcode(\"{}\", width: {}mm)", escape_string_literal(&val), w);
-    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width, false) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
 pub fn render_summary_box(c: &SummaryBoxComponent, local: &Value, global: &Value, items: &[Value], offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool, fill_width: bool) -> String {
@@ -215,7 +215,7 @@ pub fn render_summary_box(c: &SummaryBoxComponent, local: &Value, global: &Value
         "#rect(width: 100%, inset: 10pt, fill: white, stroke: 0.5pt + gray.lighten(50%))[\\n  #grid(columns: (1fr, 1fr), gutter: 8pt,\\n{})\\n]",
         rows_typst
     );
-    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width, false) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
 pub fn render_page_break_indicator(c: &PageBreakIndicatorComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool, fill_width: bool) -> String {
@@ -226,7 +226,7 @@ pub fn render_page_break_indicator(c: &PageBreakIndicatorComponent, local: &Valu
         "#align(center)[#line(length: 40%, stroke: gray + 0.5pt)\n#text(size: 8pt, fill: gray)[{}]\n#line(length: 40%, stroke: gray + 0.5pt)]",
         escape_typst(label)
     );
-    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width, false) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
 pub fn render_page_number(c: &PageNumberComponent, local: &Value, global: &Value, offset_x: &str, offset_y: &str, prefix: &str, flow_mode: bool, fill_width: bool) -> String {
@@ -263,7 +263,7 @@ pub fn render_page_number(c: &PageNumberComponent, local: &Value, global: &Value
     };
 
     body.push_str(&format!("#context [{}]", content));
-    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix, fill_width, false) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }
 
 /// Render a Repeater: iterate over data source items, render children for each.
@@ -335,5 +335,7 @@ pub fn render_columns(
         gutter,
         col_contents.join(", ")
     );
-    if flow_mode { wrap_flow_block(&c.base, &body, prefix, _fill_width) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
+    // Columns need auto height (last param = true) because the grid inside determines
+    // its own height from children. A fixed-height container causes overflow/overlap.
+    if flow_mode { wrap_flow_block(&c.base, &body, prefix, _fill_width, true) } else { wrap_placement(&c.base, &body, offset_x, offset_y, prefix) }
 }

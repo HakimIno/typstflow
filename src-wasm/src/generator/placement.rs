@@ -41,7 +41,8 @@ pub fn wrap_placement(
 ///   not by absolute coordinates.
 /// - `fill_width`: when true, uses `width: 100%` for the inner block (used inside grid cells
 ///   where the cell width determines the available space).
-pub fn wrap_flow_block(base: &BaseComponent, body: &str, prefix: &str, fill_width: bool) -> String {
+/// - `is_text`: when true, omits height so Typst auto-sizes based on content (prevents overlap).
+pub fn wrap_flow_block(base: &BaseComponent, body: &str, prefix: &str, fill_width: bool, is_text: bool) -> String {
     let x = base.x.unwrap_or(0.0);
     let w = base.width.unwrap_or(190.0);
     let h = base.height.unwrap_or(10.0);
@@ -54,19 +55,30 @@ pub fn wrap_flow_block(base: &BaseComponent, body: &str, prefix: &str, fill_widt
         // When inside a grid cell (fill_width=true), use 100% so content fills
         // the cell determined by the grid column width.
         let width_expr = if fill_width { "100%".to_string() } else { format!("{}mm", w) };
-        let inner_block = format!(
-            "#block(width: {}, height: {}mm, clip: false)[{}]",
-            width_expr, h, body
-        );
+        // Text: auto height (Typst determines from content) → prevents overlap
+        // Other: explicit mm height so percentage-height children resolve correctly
+        let inner_block = if is_text {
+            format!("#block(width: {}, clip: false)[{}]", width_expr, body)
+        } else {
+            format!("#block(width: {}, height: {}mm, clip: false)[{}]", width_expr, h, body)
+        };
         // Inside a grid cell, skip left-padding (x indent) — the grid handles positioning
         let inner = if !fill_width && x > 0.0 {
             format!("#pad(left: {}mm)[{}]", x, inner_block)
         } else {
             inner_block
         };
+        // Use component margins for spacing. Text defaults to 2pt below if no margin set,
+        // preventing the "cramped" look where text blocks stack flush against each other.
+        let above_val = base.margin_top.map(|m| format!("{}mm", m)).unwrap_or_else(|| "0pt".to_string());
+        let below_val = base.margin_bottom.map(|m| format!("{}mm", m)).unwrap_or_else(|| {
+            if is_text { "2pt".to_string() } else { "0pt".to_string() }
+        });
+        // Text: auto outer height too
+        let outer_height = if is_text { String::new() } else { format!(", height: {}mm", h) };
         out.push_str(&format!(
-            "{}block(above: 0pt, below: 0pt, width: 100%, height: {}mm)[{}]\n",
-            prefix, h, inner
+            "{}block(above: {}, below: {}, width: 100%{})[{}]\n",
+            prefix, above_val, below_val, outer_height, inner
         ));
     }
     out

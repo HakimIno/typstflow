@@ -190,7 +190,7 @@ const LayerItem = memo(
       <div
         ref={ref}
         className={clsx(
-          'w-full group relative flex items-center gap-3 px-3 py-0 cursor-pointer select-none h-8',
+          'w-full group relative flex items-center gap-3 px-3 py-0 cursor-pointer select-none',
           isSelected && 'bg-white/5',
           isDragging && 'opacity-40 grayscale',
           isHidden && 'opacity-50'
