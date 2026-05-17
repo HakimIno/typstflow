@@ -275,7 +275,10 @@ export function removeComponentsFromSchema(schema: LayoutSchema, ids: string[]):
     const res = removeNested(original, idSet);
     if (res.changed) {
       anyChanged = true;
-      updatedZones = { ...updatedZones, [key]: { ...updatedZones[key], components: res.components } };
+      updatedZones = {
+        ...updatedZones,
+        [key]: { ...updatedZones[key], components: res.components },
+      };
     }
   }
 

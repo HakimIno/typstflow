@@ -100,7 +100,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         target.closest('[data-col-splitter]') ||
         target.closest('[contenteditable="true"]') ||
         target.closest('[data-variable-dropdown="true"]') ||
-        isEditing
+        target.closest('[data-toolbar="true"]') ||
+        isEditing ||
+        (isSelected &&
+          component.type === 'table' &&
+          (target.closest('td') ||
+            target.closest('th') ||
+            target.closest('.cursor-col-resize') ||
+            target.closest('.cursor-row-resize')))
       )
         return;
 
@@ -117,7 +124,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       };
       setFlowDragging(true);
     },
-    [componentId, isEditing, selectComponent]
+    [componentId, isEditing, selectComponent, isSelected, component.type]
   );
 
   const handleFlowPointerMove = useCallback((e: React.PointerEvent) => {
@@ -200,7 +207,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         target.closest('[data-col-splitter]') ||
         target.closest('[contenteditable="true"]') ||
         target.closest('[data-variable-dropdown="true"]') ||
-        isEditing
+        target.closest('[data-toolbar="true"]') ||
+        isEditing ||
+        (isSelected &&
+          component.type === 'table' &&
+          (target.closest('td') ||
+            target.closest('th') ||
+            target.closest('.cursor-col-resize') ||
+            target.closest('.cursor-row-resize')))
       ) {
         return;
       }
@@ -708,7 +722,18 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       document.addEventListener('pointerup', onPointerUp);
       document.addEventListener('pointercancel', onPointerUp);
     },
-    [componentId, isEditing, zoneKey, pageId]
+    [
+      componentId,
+      isEditing,
+      zoneKey,
+      pageId,
+      isSelected,
+      component.type,
+      component.x,
+      component.y,
+      component.width,
+      component.height,
+    ]
   );
 
   const handleDoubleClick = useCallback(
@@ -737,6 +762,16 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!isEditing) {
+        const target = e.target as HTMLElement;
+        // A selected table's cell stops click via its own onClick handler, but guard here
+        // too so selectComponent (which clears selectedCell) never fires from a cell click.
+        if (
+          isSelected &&
+          component.type === 'table' &&
+          (target.closest('td') || target.closest('th'))
+        )
+          return;
+
         if (e.shiftKey) {
           toggleComponentSelection(componentId);
         } else {
@@ -744,7 +779,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         }
       }
     },
-    [componentId, isEditing, selectComponent, toggleComponentSelection]
+    [componentId, isEditing, isSelected, component.type, selectComponent, toggleComponentSelection]
   );
 
   const handleKeyDown = useCallback(
@@ -881,11 +916,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       outline: 'none',
       boxSizing: 'border-box' as const,
       willChange: isMoving ? 'transform' : ('auto' as const),
-      zIndex: isMoving ? 100 : 10,
+      zIndex: isMoving || isResizing ? 100 : isSelected ? 50 : 10,
       opacity: isHidden ? 0 : 1,
       pointerEvents: isHidden || (isLocked && !isMoving) ? ('none' as const) : ('auto' as const),
     }),
-    [x, y, width, height, isMoving, isHidden, isLocked]
+    [x, y, width, height, isMoving, isResizing, isSelected, isHidden, isLocked]
   );
 
   const containerClassName = useMemo(
@@ -958,6 +993,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           opacity: isHidden ? 0.4 : 1,
           willChange: 'transform',
           boxSizing: 'border-box',
+          zIndex: flowDragging ? 100 : isSelected ? 50 : 10,
         }}
       >
         {!isLocked && (
@@ -989,7 +1025,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             ref={previewRef}
             className={clsx(
               'w-full relative',
-              component.type !== 'columns' && 'pointer-events-none',
+              component.type !== 'columns' &&
+                !(isSelected && component.type === 'table') &&
+                'pointer-events-none',
               !autoHeight && 'h-full'
             )}
           >
@@ -1049,7 +1087,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           ref={previewRef}
           className={clsx(
             'w-full h-full relative',
-            component.type !== 'columns' && 'pointer-events-none'
+            component.type !== 'columns' &&
+              !(isSelected && component.type === 'table') &&
+              'pointer-events-none'
           )}
         >
           <ComponentPreview component={component} pageIndex={pageIndex} totalPages={totalPages} />

@@ -74,7 +74,10 @@ export function TableActionToolbar({
   };
 
   return (
-    <div className="absolute -top-10 left-0 flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-xl rounded-[6px] p-1 z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
+    <div
+      data-toolbar="true"
+      className="absolute -top-10 left-0 flex items-center gap-1 bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-xl rounded-[6px] p-1 z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200"
+    >
       <div className="flex items-center gap-0.5 border-r border-white/10 pr-1 mr-1">
         <button
           type="button"

@@ -6,7 +6,8 @@ import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import type { TableCell as TCell, TableComponent, TableRow } from '@/types/schema';
 import { clsx } from 'clsx';
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TableActionToolbar } from './TableActionToolbar';
 
 // ─── Inline Cell Editor ─────────────────────────────────────────────────────
@@ -32,21 +33,25 @@ function InlineCellInput({
     setVal(initialValue);
   }, [initialValue]);
 
-  const adjustHeight = () => {
+  const adjustHeight = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
-  };
+  }, []);
 
   useEffect(() => {
+    const _ignored = val;
     adjustHeight();
-  }, [val]);
+  }, [val, adjustHeight]);
 
   return (
     <textarea
       ref={textareaRef}
-      className={clsx(className, 'resize-none overflow-hidden min-h-[1.4em] p-0 block bg-transparent w-full')}
+      className={clsx(
+        className,
+        'resize-none overflow-hidden min-h-[1.4em] p-0 block bg-transparent w-full'
+      )}
       style={{
         ...style,
         height: 'auto',
@@ -79,7 +84,6 @@ export function TablePreview({ component }: Props) {
   const setSelectedCell = useDesignerStore((s) => s.setSelectedCell);
   const setSelectedCells = useDesignerStore((s) => s.setSelectedCells);
 
-  const [resizingColIndex, setResizingColIndex] = useState<number | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   type SectionType = 'header' | 'data' | 'footer';
   const [selectionStart, setSelectionStart] = useState<{
@@ -90,10 +94,23 @@ export function TablePreview({ component }: Props) {
 
   const tableRef = useRef<HTMLTableElement>(null);
 
+  // Custom interactive resizing variables
+  const isTableSelected = useDesignerStore((s) => s.selectedComponentIds.includes(component.id));
+  const zoom = useDesignerStore((s) => s.zoom);
+
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  // Ghost overlay elements — always in DOM, positioned via direct style (zero React state per frame)
+  const colGhostRef = useRef<HTMLDivElement>(null);
+  const rowGhostRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  // Gate ResizeObserver so row-resize DOM changes don't trigger updateComponent mid-drag
+  const isResizingRef = useRef(false);
+
   // ─── Auto-fit component height to actual table height ──────────────────
   useEffect(() => {
     if (!tableRef.current) return;
     const observer = new ResizeObserver((entries) => {
+      if (isResizingRef.current) return;
       for (const entry of entries) {
         const tablePx = entry.contentRect.height;
         const tableMm = LayoutEngine.pxToMm(tablePx);
@@ -215,33 +232,213 @@ export function TablePreview({ component }: Props) {
 
   const previewSections = buildPreviewRows();
 
-  // ─── Column resize ────────────────────────────────────────────────────
+  // ─── Column resize (zero React state per frame — pure DOM) ───────────────
   const handleColResizeStart = (e: React.MouseEvent, index: number) => {
     e.preventDefault();
     e.stopPropagation();
-    setResizingColIndex(index);
-    const startX = e.clientX;
-    const columns = [...component.columns];
-    const initialWidths = columns.map((col) => {
-      if (col.width.endsWith('mm')) return Number.parseFloat(col.width);
-      return LayoutEngine.pxToMm(40);
-    });
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const zoom = Number.parseFloat(
-        document.querySelector('[data-paper-container]')?.getAttribute('data-zoom') || '1'
+
+    const tableEl = tableRef.current;
+    const containerEl = tableContainerRef.current;
+    if (!tableEl || !containerEl) return;
+
+    isResizingRef.current = true;
+    const totalMm = component.width || 180;
+    const colEls = Array.from(tableEl.querySelectorAll<HTMLElement>('col'));
+
+    // Read initial widths from <col> percentage styles (set by colWidths calc)
+    const initialWidths = colEls.map((col, idx) => {
+      const w = col.style.width;
+      if (w?.endsWith('%')) return (Number.parseFloat(w) / 100) * totalMm;
+      // DOM fallback when col has no explicit style (fractional/auto)
+      const cellEl = tableEl.querySelector<HTMLElement>(
+        `tr th:nth-child(${idx + 1}), tr td:nth-child(${idx + 1})`
       );
-      const deltaMm = LayoutEngine.pxToMm(deltaX / zoom);
-      const newWidths = [...initialWidths];
-      newWidths[index] = Math.max(5, initialWidths[index] + deltaMm);
-      const updatedCols = columns.map((col, i) => ({ ...col, width: `${newWidths[i]}mm` }));
-      updateComponent(component.id, { columns: updatedCols } as any);
+      return cellEl
+        ? LayoutEngine.pxToMm(cellEl.getBoundingClientRect().width / zoom)
+        : totalMm / Math.max(colEls.length, 1);
+    });
+
+    // Cache ghost line's initial X position (right edge of target column)
+    const targetCellEl = tableEl.querySelector<HTMLElement>(
+      `tr th:nth-child(${index + 1}), tr td:nth-child(${index + 1})`
+    );
+    const containerRect = containerEl.getBoundingClientRect();
+    const initialGhostLeft = targetCellEl
+      ? (targetCellEl.getBoundingClientRect().right - containerRect.left) / zoom
+      : 0;
+
+    // Show ghost line
+    const ghostEl = colGhostRef.current;
+    if (ghostEl) {
+      ghostEl.style.left = `${initialGhostLeft}px`;
+      ghostEl.classList.remove('hidden');
+    }
+    // Highlight the active divider via inline style (avoids a re-render)
+    const dividerEl = tableEl.querySelector<HTMLElement>(`[data-col-divider="${index}"]`);
+    if (dividerEl) dividerEl.style.backgroundColor = 'var(--accent)';
+
+    // Mutable tracking — updated per-frame, read once on mouseup
+    const lastWidths = [...initialWidths];
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const rawDeltaMm = LayoutEngine.pxToMm((ev.clientX - e.clientX) / zoom);
+      const siblingIdx = index + 1;
+
+      if (siblingIdx < colEls.length) {
+        const clampedTarget = Math.max(5, initialWidths[index] + rawDeltaMm);
+        const actualDelta = clampedTarget - initialWidths[index];
+        const clampedSibling = Math.max(5, initialWidths[siblingIdx] - actualDelta);
+        const finalDelta = initialWidths[siblingIdx] - clampedSibling;
+
+        lastWidths[index] = initialWidths[index] + finalDelta;
+        lastWidths[siblingIdx] = clampedSibling;
+
+        // Direct DOM — no React state, no re-render
+        colEls[index].style.width = `${(lastWidths[index] / totalMm) * 100}%`;
+        colEls[siblingIdx].style.width = `${(lastWidths[siblingIdx] / totalMm) * 100}%`;
+        if (ghostEl) ghostEl.style.left = `${initialGhostLeft + LayoutEngine.mmToPx(finalDelta)}px`;
+      } else {
+        lastWidths[index] = Math.max(5, initialWidths[index] + rawDeltaMm);
+        const actualDelta = lastWidths[index] - initialWidths[index];
+        colEls[index].style.width = `${(lastWidths[index] / totalMm) * 100}%`;
+        if (ghostEl)
+          ghostEl.style.left = `${initialGhostLeft + LayoutEngine.mmToPx(actualDelta)}px`;
+      }
+
+      // Tooltip — direct DOM, zero React state
+      const tooltip = tooltipRef.current;
+      if (tooltip) {
+        tooltip.textContent = `W: ${lastWidths[index].toFixed(1)} mm`;
+        tooltip.style.left = ghostEl?.style.left ?? `${initialGhostLeft}px`;
+        tooltip.style.top = '6px';
+        tooltip.classList.remove('hidden');
+      }
     };
+
     const onMouseUp = () => {
-      setResizingColIndex(null);
+      isResizingRef.current = false;
+      ghostEl?.classList.add('hidden');
+      tooltipRef.current?.classList.add('hidden');
+      if (dividerEl) dividerEl.style.backgroundColor = '';
+
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+
+      // Commit final widths — read from lastWidths (no store read needed)
+      const finalCols = component.columns.map((col, i) => ({
+        ...col,
+        width: `${(lastWidths[i] ?? initialWidths[i]).toFixed(1)}mm`,
+      }));
+      updateComponent(component.id, { columns: finalCols } as any);
     };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  // ─── Row height resize (zero React state per frame — pure DOM) ───────────
+  const handleRowResizeStart = (e: React.MouseEvent, sectionKey: string, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const tableEl = tableRef.current;
+    const containerEl = tableContainerRef.current;
+    if (!tableEl || !containerEl) return;
+
+    // Resolve rows array, handle synthetic fallback
+    let rows: TableRow[] = (component[sectionKey as keyof TableComponent] as TableRow[]) || [];
+    if (rows.length === 0) {
+      const isHeader = sectionKey === 'headerRows';
+      if (isHeader) {
+        rows = [
+          {
+            id: 'synthetic-header',
+            type: 'header',
+            cells: component.columns.map((c) => ({
+              id: c.id,
+              content: c.header || '',
+              align: c.align || 'left',
+            })),
+          },
+        ];
+      } else if (sectionKey === 'detailRows') {
+        rows = [
+          {
+            id: 'synthetic-detail',
+            type: 'data',
+            cells: component.columns.map((c) => ({
+              id: `detail-${c.id}`,
+              content: c.field ? `{{${c.field}}}` : '',
+              align: c.align || 'left',
+            })),
+          },
+        ];
+      } else {
+        return;
+      }
+    }
+
+    const row = rows[index];
+    if (!row) return;
+
+    // Find row DOM element
+    const rowEl =
+      tableEl.querySelector<HTMLElement>(`tr[data-row-id="${row.id}"]`) ||
+      (Array.from(tableEl.querySelectorAll('tr'))[index] as HTMLElement | undefined) ||
+      null;
+    if (!rowEl) return;
+
+    isResizingRef.current = true;
+
+    // Cache measurements at drag-start (no per-frame DOM reads for these)
+    const containerRect = containerEl.getBoundingClientRect();
+    const initialHeightMm = LayoutEngine.pxToMm(rowEl.getBoundingClientRect().height / zoom);
+    const initialGhostTop = (rowEl.getBoundingClientRect().bottom - containerRect.top) / zoom;
+
+    const ghostEl = rowGhostRef.current;
+    if (ghostEl) {
+      ghostEl.style.top = `${initialGhostTop}px`;
+      ghostEl.classList.remove('hidden');
+    }
+
+    let lastHeightMm = initialHeightMm;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const deltaMm = LayoutEngine.pxToMm((ev.clientY - e.clientY) / zoom);
+      lastHeightMm = Math.max(5, initialHeightMm + deltaMm);
+
+      // Direct DOM — no React state, no re-render
+      rowEl.style.height = `${LayoutEngine.mmToPx(lastHeightMm)}px`;
+
+      const newGhostTop = initialGhostTop + LayoutEngine.mmToPx(lastHeightMm - initialHeightMm);
+      if (ghostEl) ghostEl.style.top = `${newGhostTop}px`;
+
+      // Tooltip — direct DOM
+      const tooltip = tooltipRef.current;
+      if (tooltip) {
+        const cRect = containerEl.getBoundingClientRect();
+        tooltip.textContent = `H: ${lastHeightMm.toFixed(1)} mm`;
+        tooltip.style.left = `${(ev.clientX - cRect.left) / zoom}px`;
+        tooltip.style.top = `${Math.max(4, newGhostTop - 26)}px`;
+        tooltip.classList.remove('hidden');
+      }
+    };
+
+    const onMouseUp = () => {
+      isResizingRef.current = false;
+      ghostEl?.classList.add('hidden');
+      tooltipRef.current?.classList.add('hidden');
+
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+
+      // Commit to store — single history entry
+      const newRows = rows.map((r, i) =>
+        i === index ? { ...r, height: `${lastHeightMm.toFixed(1)}mm` } : r
+      );
+      updateComponent(component.id, { [sectionKey]: newRows } as any);
+    };
+
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
   };
@@ -264,6 +461,28 @@ export function TablePreview({ component }: Props) {
     e: React.MouseEvent
   ) => {
     e.stopPropagation();
+
+    // Shift+Click: extend range from the existing anchor — do NOT reset it
+    if (e.shiftKey && selectionStart && selectionStart.section === section) {
+      const sectionKey =
+        section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
+      const rows: TableRow[] = (component[sectionKey as keyof TableComponent] as TableRow[]) || [];
+      const anchorIdx = rows.findIndex((r) => r.id === selectionStart.rowId);
+      const targetIdx = rows.findIndex((r) => r.id === rowId);
+
+      if (anchorIdx !== -1 && targetIdx !== -1) {
+        const minRow = Math.min(anchorIdx, targetIdx);
+        const maxRow = Math.max(anchorIdx, targetIdx);
+        const minCol = Math.min(selectionStart.cellIdx, cellIdx);
+        const maxCol = Math.max(selectionStart.cellIdx, cellIdx);
+        const rowIds = rows.slice(minRow, maxRow + 1).map((r) => r.id);
+        const cellIndices = Array.from({ length: maxCol - minCol + 1 }, (_, i) => minCol + i);
+        setSelectedCells({ tableId: component.id, section, rowIds, cellIndices });
+        return;
+      }
+    }
+
+    // Regular click: reset anchor and start fresh selection
     setIsSelecting(true);
     setSelectionStart({ rowId, cellIdx, section });
     setSelectedCell({ tableId: component.id, section, rowId, cellIdx });
@@ -359,21 +578,14 @@ export function TablePreview({ component }: Props) {
 
   const handleInsertRow = () => {
     if (!selectedCells) return;
+    const section = selectedCells.section;
     const sectionKey =
-      selectedCells.section === 'header'
-        ? 'headerRows'
-        : selectedCells.section === 'footer'
-          ? 'footerRows'
-          : 'detailRows';
-    const rows = component[sectionKey] || [];
+      section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
+    const rows = (component[sectionKey as keyof TableComponent] as TableRow[]) || [];
     const lastRowId = selectedCells.rowIds[selectedCells.rowIds.length - 1];
     const index = rows.findIndex((r) => r.id === lastRowId);
-    const newRows = insertStructuredRow(
-      rows,
-      index,
-      component.columns.length,
-      selectedCells.section as any
-    );
+    // index === -1 means a synthetic row was selected — insertStructuredRow handles this via Math.max(0, index+1)
+    const newRows = insertStructuredRow(rows, index, component.columns.length, section as any);
     updateComponent(component.id, { [sectionKey]: newRows } as any);
   };
 
@@ -578,6 +790,7 @@ export function TablePreview({ component }: Props) {
         rowSpan={cell.rowspan && cell.rowspan > 1 ? cell.rowspan : undefined}
         onMouseDown={(e) => handleCellMouseDown(section, row.id, cellIdx, e)}
         onMouseEnter={() => handleCellMouseEnter(section, row.id, cellIdx)}
+        onClick={(e) => e.stopPropagation()}
         className={clsx(
           'relative group/cell cursor-cell',
           isSelected && 'ring-2 ring-[var(--accent)] ring-inset z-10'
@@ -645,15 +858,37 @@ export function TablePreview({ component }: Props) {
         />
 
         {/* Column resize handle */}
-        <div
-          onMouseDown={(e) => handleColResizeStart(e, cellIdx + (cell.colspan || 1) - 1)}
-          className={clsx(
-            'absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-20 transition-colors',
-            resizingColIndex === cellIdx
-              ? 'bg-[var(--accent)]'
-              : 'hover:bg-[var(--accent)] opacity-0 hover:opacity-100'
-          )}
-        />
+        {isTableSelected && cellIdx + (cell.colspan || 1) - 1 < component.columns.length - 1 && (
+          <div
+            onMouseDown={(e) => handleColResizeStart(e, cellIdx + (cell.colspan || 1) - 1)}
+            className="absolute top-0 -right-[3px] w-1.5 h-full cursor-col-resize z-[25] group/colresizer"
+          >
+            {/* Divider line — backgroundColor set via direct DOM on resize start/end */}
+            <div
+              data-col-divider={cellIdx + (cell.colspan || 1) - 1}
+              className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[1.5px] h-full bg-transparent group-hover/colresizer:bg-[var(--accent)] transition-colors"
+            />
+            {/* Circular grip */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-[1.5px] border-[var(--accent)] bg-white shadow-sm opacity-0 group-hover/colresizer:opacity-100 transition-opacity pointer-events-none z-30" />
+          </div>
+        )}
+
+        {/* Row height resize handle */}
+        {isTableSelected && !isGroupHeader && !isGroupFooter && (
+          <div
+            onMouseDown={(e) => handleRowResizeStart(e, sectionKey, rowIdx)}
+            className="absolute -bottom-[3px] left-0 right-0 h-1.5 cursor-row-resize z-[25] group/rowresizer"
+          >
+            {/* Divider line — active state shown via ghost line overlay instead */}
+            <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[1.5px] bg-transparent group-hover/rowresizer:bg-[var(--accent)] transition-colors" />
+            {/* Pill grip */}
+            {cellIdx === Math.floor(component.columns.length / 2) && (
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border-[1.5px] border-[var(--accent)] w-5 h-1.5 rounded-full shadow-sm opacity-0 group-hover/rowresizer:opacity-100 transition-opacity pointer-events-none z-30 flex items-center justify-center">
+                <div className="w-2 h-[1px] bg-[var(--accent)]" />
+              </div>
+            )}
+          </div>
+        )}
       </Tag>
     );
   };
@@ -670,7 +905,7 @@ export function TablePreview({ component }: Props) {
         ? `${LayoutEngine.mmToPx(parseTypstUnit(row.height))}px`
         : undefined;
       return (
-        <tr key={row.id} style={{ height: rowHeight }}>
+        <tr key={row.id} data-row-id={row.id} style={{ height: rowHeight }}>
           {row.cells.map((cell, cellIdx) =>
             renderCell(cell, cellIdx, row, rowIdx, sectionKey, section, isHeader, rows.length)
           )}
@@ -683,9 +918,7 @@ export function TablePreview({ component }: Props) {
   const colWidths = (() => {
     const totalTableWidthMm = component.width || 180;
 
-    type ParsedCol =
-      | { type: 'fixed'; mm: number }
-      | { type: 'fractional'; value: number };
+    type ParsedCol = { type: 'fixed'; mm: number } | { type: 'fractional'; value: number };
 
     // 1. Parse all widths to millimeters or fractional values
     const parsedColumns = component.columns.map((col): ParsedCol => {
@@ -740,7 +973,7 @@ export function TablePreview({ component }: Props) {
   })();
 
   return (
-    <div className="w-full h-full relative">
+    <div ref={tableContainerRef} className="w-full h-full relative">
       {selectedCells?.tableId === component.id && (
         <TableActionToolbar
           component={component}
@@ -779,6 +1012,21 @@ export function TablePreview({ component }: Props) {
           )}
         </tbody>
       </table>
+
+      {/* Ghost guide lines — always mounted, toggled via 'hidden' class from resize handlers */}
+      <div
+        ref={colGhostRef}
+        className="hidden absolute top-0 bottom-0 w-px bg-[var(--accent)] z-[60] pointer-events-none"
+      />
+      <div
+        ref={rowGhostRef}
+        className="hidden absolute left-0 right-0 h-px bg-[var(--accent)] z-[60] pointer-events-none"
+      />
+      {/* Tooltip — textContent and style set via direct DOM in resize handlers */}
+      <div
+        ref={tooltipRef}
+        className="hidden absolute z-[70] bg-[var(--accent)] text-white text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded shadow-lg pointer-events-none whitespace-nowrap -translate-x-1/2 border border-white/20"
+      />
     </div>
   );
 }

@@ -45,9 +45,9 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
       format !== 'text'
         ? `#fmt_${format.replace(/-/g, '_')}("${escapeStringLiteral(content)}")`
         : content
-          .split('\n')
-          .map((line) => escapeTypst(line))
-          .join(' #linebreak() ');
+            .split('\n')
+            .map((line) => escapeTypst(line))
+            .join(' #linebreak() ');
 
     const mainContent = underline ? `#underline[${innerContent}]` : innerContent;
 

@@ -128,7 +128,9 @@ export function ColumnLayoutPreview({ component, pageIndex, totalPages }: Props)
       window.removeEventListener('mouseup', onMouseUp);
 
       // Commit final column layouts — registers undo/redo history action
-      const currentLatestState = useDesignerStore.getState().componentRegistry[component.id] as ColumnLayoutComponent;
+      const currentLatestState = useDesignerStore.getState().componentRegistry[
+        component.id
+      ] as ColumnLayoutComponent;
       if (currentLatestState) {
         updateComponent(component.id, { columns: currentLatestState.columns }, false);
       }

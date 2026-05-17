@@ -1,0 +1,930 @@
+{
+  "schema": {
+    "id": "epf-shareholder",
+    "name": "EPF Shareholder Statement",
+    "version": "1.0.0",
+    "page": {
+      "size": "A4",
+      "orientation": "portrait",
+      "margin": {
+        "top": "15mm",
+        "bottom": "15mm",
+        "left": "5mm",
+        "right": "5mm"
+      }
+    },
+    "fonts": [
+      {
+        "family": "Inter",
+        "role": "body",
+        "size": 9,
+        "embedded": true
+      }
+    ],
+    "zones": {
+      "header": {
+        "id": "header",
+        "minHeight": "30mm",
+        "components": [
+          {
+            "id": "epf-logo",
+            "type": "image",
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNTAgODAiIHdpZHRoPSIzNTAiIGhlaWdodD0iNDAiPjxwYXRoIGQ9Ik00MCAxMCBDIDIwIDEwLCAxMCAyNSwgMTAgNDAgQyAxMCA1NSwgMjAgNzAsIDQwIDcwIEMgMjUgNjUsIDIwIDUzLCAyMCA0MCBDIDIwIDI3LCAyNSAxNSwgNDAgMTAgWiIgZmlsbD0iIzBjM2M3NSIvPjxwYXRoIGQ9Ik00NSAxMCBDIDY1IDEwLCA3NSAyNSwgNzUgNDAgQyA3NSA1NSwgNjUgNzAsIDQ1IDcwIEMgNjAgNjUsIDY1IDUzLCA2NSA0MCBDIDY1IDI3LCA2MCAxNSwgNDUgMTAgWiIgZmlsbD0iI2UzMWUyNCIvPjx0ZXh0IHg9IjkwIiB5PSI1MiIgZm9udC1mYW1pbHk9IkhlbHZldGljYSwgQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMzgiIGZvbnQtd2VpZ2h0PSI5MDAiIGZpbGw9IiMwMDAwMDAiIGxldHRlci1zcGFjaW5nPSIxIj5FUEY8L3RleHQ+PGxpbmUgeDE9IjE3NSIgeTE9IjEyIiB4Mj0iMTc1IiB5Mj0iNjgiIHN0cm9rZT0iI2QxZDVkYiIgc3Ryb2tlLXdpZHRoPSIxLjUiLz48dGV4dCB4PSIxODUiIHk9IjI3IiBmb250LWZhbWlseT0iSGVsdmV0aWNhLCBBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM3MTcxN2EiIGxldHRlci1zcGFjaW5nPSIwLjUiPkVWUk9QU0tJPC90ZXh0Pjx0ZXh0IHg9IjE4NSIgeT0iNDIiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EsIEFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzcxNzE3YSIgbGV0dGVyLXNwYW1mg2luZz0iMC41Ij5ET0JST1ZPTEpOSTwvdGV4dD48dGV4dCB4PSIxODUiIHk9IjU3IiBmb250LWZhbWlseT0iSGVsdmV0aWNhLCBBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM3MTcxN2EiIGxldHRlci1zcGFjaW5nPSIwLjUiPlBFTlpJSlNLSSBGT05EPC90ZXh0Pjwvc3ZnPg==",
+            "srcData": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNTAgODAiIHdpZHRoPSIzNTAiIGhlaWdodD0iNDAiPjxwYXRoIGQ9Ik00MCAxMCBDIDIwIDEwLCAxMCAyNSwgMTAgNDAgQyAxMCA1NSwgMjAgNzAsIDQwIDcwIEMgMjUgNjUsIDIwIDUzLCAyMCA0MCBDIDIwIDI3LCAyNSAxNSwgNDAgMTAgWiIgZmlsbD0iIzBjM2M3NSIvPjxwYXRoIGQ9Ik00NSAxMCBDIDY1IDEwLCA3NSAyNSwgNzUgNDAgQyA3NSA1NSwgNjUgNzAsIDQ1IDcwIEMgNjAgNjUsIDY1IDUzLCA2NSA0MCBDIDY1IDI3LCA2MCAxNSwgNDUgMTAgWiIgZmlsbD0iI2UzMWUyNCIvPjx0ZXh0IHg9IjkwIiB5PSI1MiIgZm9udC1mYW1pbHk9IkhlbHZldGljYSwgQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMzgiIGZvbnQtd2VpZ2h0PSI5MDAiIGZpbGw9IiMwMDAwMDAiIGxldHRlci1zcGFjaW5nPSIxIj5FUEY8L3RleHQ+PGxpbmUgeDE9IjE3NSIgeTE9IjEyIiB4Mj0iMTc1IiB5Mj0iNjgiIHN0cm9rZT0iI2QxZDVkYiIgc3Ryb2tlLXdpZHRoPSIxLjUiLz48dGV4dCB4PSIxODUiIHk9IjI3IiBmb250LWZhbWlseT0iSGVsdmV0aWNhLCBBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiM3MTcxN2EiIGxldHRlci1zcGFjaW5nPSIwLjUiPkVWUk9QU0tJPC90ZXh0Pjx0ZXh0IHg9IjE4NSIgeT0iNDIiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EsIEFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzcxNzE3YSIgbGV0dGVyLXNwYWNpbmc9IjAuNSI+RE9CUk9WT0xKTkk8L3RleHQ+PHRleHQgeD0iMTg1IiB5PSI1NyIgZm9udC1mYW1pbHk9IkhlbHZldGljYSwgQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjNzE3MTdhIiBsZXR0ZXItc3BhY2luZz0iMC41Ij5QRU5aSUpTS0kgRk9ORDwvdGV4dD48L3N2Zz4=",
+            "x": 0,
+            "y": 0,
+            "width": 80,
+            "height": 18,
+            "fit": "contain"
+          },
+          {
+            "id": "epf-fund-details",
+            "type": "text",
+            "content": "**DRUŠTVO ZA UPRAVLJANJE EVROPSKIM DOBROVOLJNIM PENZIJSKIM FONDOM**\nKralja Petra I Karađorđevića 109/III • 78000 Banja Luka • Republika Srpska • Bosna i Hercegovina\ntel: + 387 (0)51 492 824 • fax: + 387 (0)51 492 825 • www.epf.ba • office@epf.ba",
+            "x": 95,
+            "y": 0,
+            "width": 105,
+            "height": 18,
+            "align": "right",
+            "style": {
+              "fontSize": 6.2,
+              "fontWeight": "medium",
+              "color": "#0c3c75",
+              "lineHeight": 1.2
+            }
+          },
+          {
+            "id": "brand-blue-bar",
+            "type": "line",
+            "x": 0,
+            "y": 20,
+            "width": 90,
+            "height": 1,
+            "color": "#0c3c75",
+            "thickness": "1.2mm"
+          },
+          {
+            "id": "brand-red-bar",
+            "type": "line",
+            "x": 90,
+            "y": 20,
+            "width": 110,
+            "height": 1,
+            "color": "#e31e24",
+            "thickness": "1.2mm"
+          }
+        ]
+      },
+      "footer": {
+        "id": "footer",
+        "minHeight": "15mm",
+        "components": [
+          {
+            "id": "footer-brand-logo",
+            "type": "image",
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNTAgNDAiIHdpZHRoPSIxNTAiIGhlaWdodD0iNDAiPjxyZWN0IHg9IjUiIHk9IjEwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHJ4PSIzIiBzdHJva2U9IiNmNTllMGIiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIvPjxyZWN0IHg9IjEyIiB5PSI1IiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHJ4PSIzIiBmaWxsPSIjZjU5ZTBiIi8+PGxpbmUgeDE9IjE4IiB5MT0iMTIiIHgyPSIyNiIgeTI9IjEyIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIvPjxsaW5lIHgxPSIxOCIgeTE9IjE3IiB4Mj0iMjYiIHkyPSIxNyIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjIiLz48dGV4dCB4PSI0MCIgeT0iMjYiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EsIEFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzFmMjkzNyI+Q3g8dHNwYW4gZmlsbD0iI2Y1OWUwYiI+UmVwb3J0czwvdHNwYW4+PC90ZXh0Pjwvc3ZnPg==",
+            "srcData": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNTAgNDAiIHdpZHRoPSIxNTAiIGhlaWdodD0iNDAiPjxyZWN0IHg9IjUiIHk9IjEwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHJ4PSIzIiBzdHJva2U9IiNmNTllMGIiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIvPjxyZWN0IHg9IjEyIiB5PSI1IiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHJ4PSIzIiBmaWxsPSIjZjU5ZTBiIi8+PGxpbmUgeDE9IjE4IiB5MT0iMTIiIHgyPSIyNiIgeTI9IjEyIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIvPjxsaW5lIHgxPSIxOCIgeTE9IjE3IiB4Mj0iMjYiIHkyPSIxNyIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjIiLz48dGV4dCB4PSI0MCIgeT0iMjYiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EsIEFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzFmMjkzNyI+Q3g8dHNwYW4gZmlsbD0iI2Y1OWUwYiI+UmVwb3J0czwvdHNwYW4+PC90ZXh0Pjwvc3ZnPg==",
+            "x": 0,
+            "y": 3,
+            "width": 26,
+            "height": 8,
+            "fit": "contain"
+          },
+          {
+            "id": "footer-powered-by",
+            "type": "text",
+            "content": "Powered by",
+            "x": 0,
+            "y": 0,
+            "width": 20,
+            "height": 3,
+            "style": {
+              "fontSize": 5.5,
+              "color": "#71717a"
+            }
+          },
+          {
+            "id": "footer-notice-text",
+            "type": "text",
+            "content": "Ovaj izvještaj napravljen je pomoću alata CxReports.\n[https://www.cx-reports.com](https://www.cx-reports.com)",
+            "x": 28,
+            "y": 4,
+            "width": 130,
+            "height": 8,
+            "style": {
+              "fontSize": 6.8,
+              "color": "#71717a",
+              "lineHeight": 1.15
+            }
+          },
+          {
+            "id": "footer-page-numbering",
+            "type": "page-number",
+            "format": "Strana {{page}} od {{pageTotal}}",
+            "x": 160,
+            "y": 4,
+            "width": 40,
+            "height": 8,
+            "align": "right",
+            "style": {
+              "fontSize": 8,
+              "color": "#000000"
+            }
+          }
+        ]
+      }
+    },
+    "pages": [
+      {
+        "id": "main-statement-page",
+        "name": "Shareholder Statement",
+        "body": {
+          "id": "statement-body",
+          "layoutMode": "flow",
+          "flowGap": "3mm",
+          "components": [
+            {
+              "id": "statement-top-spacer",
+              "type": "spacer",
+              "height": 1
+            },
+            {
+              "id": "statement-main-title",
+              "type": "text",
+              "content": "Izvod vlasnika udjela",
+              "style": {
+                "fontSize": 16,
+                "fontWeight": "bold",
+                "color": "#000000"
+              },
+              "marginBottom": "4mm"
+            },
+            {
+              "id": "statement-metadata-grid",
+              "type": "table",
+              "isStatic": true,
+              "dataSource": "",
+              "showHeader": false,
+              "columns": [
+                { "id": "meta_col1", "header": "", "field": "", "width": "30mm" },
+                { "id": "meta_col2", "header": "", "field": "", "width": "60mm" },
+                { "id": "meta_col3", "header": "", "field": "", "width": "10mm" },
+                { "id": "meta_col4", "header": "", "field": "", "width": "100mm", "align": "right" }
+              ],
+              "style": {
+                "borderSides": {
+                  "top": false,
+                  "bottom": false,
+                  "left": false,
+                  "right": false,
+                  "innerH": false,
+                  "innerV": false
+                },
+                "inset": "1pt",
+                "fontSize": 8.5,
+                "fontFamily": "Inter"
+              },
+              "detailRows": [
+                {
+                  "id": "meta-detail-row",
+                  "type": "data",
+                  "cells": [
+                    {
+                      "id": "md_c1",
+                      "content": "Vrijeme:\nPeriod:\nBroj partnera:\nBroj udjeličara:\nUgovor:",
+                      "style": { "fontWeight": "bold", "lineHeight": 1.3 }
+                    },
+                    {
+                      "id": "md_c2",
+                      "content": "{{metadata.vrijeme}}\n{{metadata.period}}\n{{metadata.brojPartnera}}\n{{metadata.brojUdjolicara}}\n{{metadata.ugovor}}",
+                      "style": { "lineHeight": 1.3 }
+                    },
+                    {
+                      "id": "md_c3",
+                      "content": ""
+                    },
+                    {
+                      "id": "md_c4",
+                      "content": "**{{metadata.addressName}}**\n**{{metadata.addressStreet}}**\n**{{metadata.addressCity}}**\n**{{metadata.addressCountry}}**",
+                      "align": "right",
+                      "style": { "fontSize": 9.5, "lineHeight": 1.3 }
+                    }
+                  ]
+                }
+              ],
+              "marginBottom": "6mm"
+            },
+            {
+              "id": "section-prethodni-header",
+              "type": "text",
+              "content": "Period: Prethodni",
+              "style": {
+                "fontSize": 10,
+                "fontWeight": "bold",
+                "color": "#000000"
+              },
+              "marginBottom": "2mm"
+            },
+            {
+              "id": "table-prethodni-period",
+              "type": "table",
+              "dataSource": "{{prethodni_items}}",
+              "showHeader": true,
+              "repeatHeaderOnPage": true,
+              "columns": [
+                {
+                  "id": "epf_c1",
+                  "header": "Datum",
+                  "field": "datum",
+                  "width": "15mm",
+                  "align": "center"
+                },
+                {
+                  "id": "epf_c2",
+                  "header": "Tip\ndokumenta",
+                  "field": "tip",
+                  "width": "18mm",
+                  "align": "left"
+                },
+                {
+                  "id": "epf_c3",
+                  "header": "NAV datum",
+                  "field": "nav_datum",
+                  "width": "15mm",
+                  "align": "center"
+                },
+                {
+                  "id": "epf_c4",
+                  "header": "NAV cijena",
+                  "field": "nav_cijena",
+                  "width": "13mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c5",
+                  "header": "Broj udjela",
+                  "field": "broj_udjela",
+                  "width": "16mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c6",
+                  "header": "Vrijednost\ntransakcije",
+                  "field": "vrijednost_transakcije",
+                  "width": "18mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c7",
+                  "header": "Uplata člana",
+                  "field": "uplata_clana",
+                  "width": "15mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c8",
+                  "header": "Uplata\nugovarača",
+                  "field": "uplata_ugovaraca",
+                  "width": "16mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c9",
+                  "header": "Provizija",
+                  "field": "provizija",
+                  "width": "12mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c10",
+                  "header": "Upravljačka\nnaknada",
+                  "field": "upravljacka_naknada",
+                  "width": "16mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c11",
+                  "header": "Godišnji\nprinos",
+                  "field": "godisnji_prinos",
+                  "width": "11mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c12",
+                  "header": "Garantovani\niznos",
+                  "field": "garantovani_iznos",
+                  "width": "17mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c13",
+                  "header": "Stanje\nračuna",
+                  "field": "stanje_racuna",
+                  "width": "18mm",
+                  "align": "right"
+                }
+              ],
+              "style": {
+                "headerBackground": "#ffffff",
+                "headerColor": "#000000",
+                "headerFontSize": 6.2,
+                "headerFontWeight": "bold",
+                "bodyFontSize": 6.2,
+                "bodyColor": "#000000",
+                "borderColor": "#000000",
+                "borderWidth": "0.4pt",
+                "inset": "0.8mm",
+                "fontFamily": "Inter",
+                "borderSides": {
+                  "top": true,
+                  "bottom": true,
+                  "left": false,
+                  "right": false,
+                  "innerH": true,
+                  "innerV": false
+                },
+                "headerBorderWidth": "0.4pt",
+                "headerBorderColor": "#000000"
+              },
+              "marginBottom": "6mm"
+            },
+            {
+              "id": "section-tekuci-header",
+              "type": "text",
+              "content": "Period: Tekući",
+              "style": {
+                "fontSize": 10,
+                "fontWeight": "bold",
+                "color": "#000000"
+              },
+              "marginBottom": "2mm"
+            },
+            {
+              "id": "table-tekuci-period",
+              "type": "table",
+              "dataSource": "{{tekuci_items}}",
+              "showHeader": true,
+              "repeatHeaderOnPage": true,
+              "columns": [
+                {
+                  "id": "epf_c1",
+                  "header": "Datum",
+                  "field": "datum",
+                  "width": "15mm",
+                  "align": "center"
+                },
+                {
+                  "id": "epf_c2",
+                  "header": "Tip\ndokumenta",
+                  "field": "tip",
+                  "width": "18mm",
+                  "align": "left"
+                },
+                {
+                  "id": "epf_c3",
+                  "header": "NAV datum",
+                  "field": "nav_datum",
+                  "width": "15mm",
+                  "align": "center"
+                },
+                {
+                  "id": "epf_c4",
+                  "header": "NAV cijena",
+                  "field": "nav_cijena",
+                  "width": "13mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c5",
+                  "header": "Broj udjela",
+                  "field": "broj_udjela",
+                  "width": "16mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c6",
+                  "header": "Vrijednost\ntransakcije",
+                  "field": "vrijednost_transakcije",
+                  "width": "18mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c7",
+                  "header": "Uplata člana",
+                  "field": "uplata_clana",
+                  "width": "15mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c8",
+                  "header": "Uplata\nugovarača",
+                  "field": "uplata_ugovaraca",
+                  "width": "16mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c9",
+                  "header": "Provizija",
+                  "field": "provizija",
+                  "width": "12mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c10",
+                  "header": "Upravljačka\nnaknada",
+                  "field": "upravljacka_naknada",
+                  "width": "16mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c11",
+                  "header": "Godišnji\nprinos",
+                  "field": "godisnji_prinos",
+                  "width": "11mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c12",
+                  "header": "Garantovani\niznos",
+                  "field": "garantovani_iznos",
+                  "width": "17mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c13",
+                  "header": "Stanje\nračuna",
+                  "field": "stanje_racuna",
+                  "width": "18mm",
+                  "align": "right"
+                }
+              ],
+              "style": {
+                "headerBackground": "#ffffff",
+                "headerColor": "#000000",
+                "headerFontSize": 6.2,
+                "headerFontWeight": "bold",
+                "bodyFontSize": 6.2,
+                "bodyColor": "#000000",
+                "borderColor": "#000000",
+                "borderWidth": "0.4pt",
+                "inset": "0.8mm",
+                "fontFamily": "Inter",
+                "borderSides": {
+                  "top": true,
+                  "bottom": true,
+                  "left": false,
+                  "right": false,
+                  "innerH": true,
+                  "innerV": false
+                },
+                "headerBorderWidth": "0.4pt",
+                "headerBorderColor": "#000000"
+              },
+              "footerRows": [
+                {
+                  "id": "tekuci-summary-row",
+                  "type": "footer",
+                  "cells": [
+                    { "id": "tf_c1", "content": "{{tekuci_summary.datum}}", "align": "center" },
+                    { "id": "tf_c2", "content": "{{tekuci_summary.tip}}", "align": "left" },
+                    { "id": "tf_c3", "content": "{{tekuci_summary.nav_datum}}", "align": "center" },
+                    { "id": "tf_c4", "content": "{{tekuci_summary.nav_cijena}}", "align": "right" },
+                    {
+                      "id": "tf_c5",
+                      "content": "{{tekuci_summary.broj_udjela}}",
+                      "align": "right"
+                    },
+                    {
+                      "id": "tf_c6",
+                      "content": "{{tekuci_summary.vrijednost_transakcije}}",
+                      "align": "right"
+                    },
+                    {
+                      "id": "tf_c7",
+                      "content": "{{tekuci_summary.uplata_clana}}",
+                      "align": "right"
+                    },
+                    {
+                      "id": "tf_c8",
+                      "content": "{{tekuci_summary.uplata_ugovaraca}}",
+                      "align": "right"
+                    },
+                    { "id": "tf_c9", "content": "{{tekuci_summary.provizija}}", "align": "right" },
+                    {
+                      "id": "tf_c10",
+                      "content": "{{tekuci_summary.upravljacka_naknada}}",
+                      "align": "right"
+                    },
+                    {
+                      "id": "tf_c11",
+                      "content": "{{tekuci_summary.godisnji_prinos}}",
+                      "align": "right"
+                    },
+                    {
+                      "id": "tf_c12",
+                      "content": "{{tekuci_summary.garantovani_iznos}}",
+                      "align": "right"
+                    },
+                    {
+                      "id": "tf_c13",
+                      "content": "{{tekuci_summary.stanje_racuna}}",
+                      "align": "right"
+                    }
+                  ]
+                }
+              ],
+              "marginBottom": "6mm"
+            },
+            {
+              "id": "section-ukupno-header",
+              "type": "text",
+              "content": "Period: Ukupno",
+              "style": {
+                "fontSize": 10,
+                "fontWeight": "bold",
+                "color": "#000000"
+              },
+              "marginBottom": "2mm"
+            },
+            {
+              "id": "table-ukupno-period",
+              "type": "table",
+              "dataSource": "{{ukupno_items}}",
+              "showHeader": true,
+              "repeatHeaderOnPage": true,
+              "columns": [
+                {
+                  "id": "epf_c1",
+                  "header": "Datum",
+                  "field": "datum",
+                  "width": "15mm",
+                  "align": "center"
+                },
+                {
+                  "id": "epf_c2",
+                  "header": "Tip\ndokumenta",
+                  "field": "tip",
+                  "width": "18mm",
+                  "align": "left"
+                },
+                {
+                  "id": "epf_c3",
+                  "header": "NAV datum",
+                  "field": "nav_datum",
+                  "width": "15mm",
+                  "align": "center"
+                },
+                {
+                  "id": "epf_c4",
+                  "header": "NAV cijena",
+                  "field": "nav_cijena",
+                  "width": "13mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c5",
+                  "header": "Broj udjela",
+                  "field": "broj_udjela",
+                  "width": "16mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c6",
+                  "header": "Vrijednost\ntransakcije",
+                  "field": "vrijednost_transakcije",
+                  "width": "18mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c7",
+                  "header": "Uplata člana",
+                  "field": "uplata_clana",
+                  "width": "15mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c8",
+                  "header": "Uplata\nugovarača",
+                  "field": "uplata_ugovaraca",
+                  "width": "16mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c9",
+                  "header": "Provizija",
+                  "field": "provizija",
+                  "width": "12mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c10",
+                  "header": "Upravljačka\nnaknada",
+                  "field": "upravljacka_naknada",
+                  "width": "16mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c11",
+                  "header": "Godišnji\nprinos",
+                  "field": "godisnji_prinos",
+                  "width": "11mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c12",
+                  "header": "Garantovani\niznos",
+                  "field": "garantovani_iznos",
+                  "width": "17mm",
+                  "align": "right"
+                },
+                {
+                  "id": "epf_c13",
+                  "header": "Stanje\nračuna",
+                  "field": "stanje_racuna",
+                  "width": "18mm",
+                  "align": "right"
+                }
+              ],
+              "style": {
+                "headerBackground": "#ffffff",
+                "headerColor": "#000000",
+                "headerFontSize": 6.2,
+                "headerFontWeight": "bold",
+                "bodyFontSize": 6.2,
+                "bodyColor": "#000000",
+                "borderColor": "#000000",
+                "borderWidth": "0.4pt",
+                "inset": "0.8mm",
+                "fontFamily": "Inter",
+                "borderSides": {
+                  "top": true,
+                  "bottom": true,
+                  "left": false,
+                  "right": false,
+                  "innerH": true,
+                  "innerV": false
+                },
+                "headerBorderWidth": "0.4pt",
+                "headerBorderColor": "#000000"
+              },
+              "marginBottom": "6mm"
+            }
+          ]
+        }
+      }
+    ],
+    "groups": [],
+    "variables": [],
+    "dataSchema": [],
+    "metadata": {
+      "title": "EPF Shareholder Statement",
+      "createdAt": "2026-05-17T00:00:00Z",
+      "updatedAt": "2026-05-17T00:00:00Z",
+      "author": "TypstFlow Designer"
+    }
+  },
+  "data": {
+    "metadata": {
+      "vrijeme": "4. 4. 2025. 09:18",
+      "period": "od 01.01.2024. do 31.12.2024.",
+      "brojPartnera": "\\#\\#\\#\\#\\#\\#",
+      "brojUdjolicara": "\\#\\#\\#\\#\\#",
+      "ugovor": "\\#\\#\\#\\#\\#\\#\\#\\#\\#",
+      "addressName": "\\#\\#\\#\\#\\# (\\#\\#\\#\\#\\#) \\#\\#\\#\\#\\#\\#\\#",
+      "addressStreet": "\\#\\#\\#\\#\\#\\#\\#\\#\\# \\#\\#\\#\\#\\#\\#\\#\\#\\#\\#\\# \\#\\#\\#\\#\\# \\#\\#",
+      "addressCity": "78000 Banja Luka",
+      "addressCountry": "Bosna i Hercegovina"
+    },
+    "prethodni_items": [
+      {
+        "datum": "31.12.2023.",
+        "tip": "Stanje",
+        "nav_datum": "31.12.2023.",
+        "nav_cijena": "10,73 KM",
+        "broj_udjela": "317,964305",
+        "vrijednost_transakcije": "3.400,00 KM",
+        "uplata_clana": "1.700,00 KM",
+        "uplata_ugovaraca": "1.700,00 KM",
+        "provizija": "64,60 KM",
+        "upravljacka_naknada": "97,80 KM",
+        "godisnji_prinos": "0,26%",
+        "garantovani_iznos": "1.671,80 KM",
+        "stanje_racuna": "3.412,84 KM"
+      }
+    ],
+    "tekuci_items": [
+      {
+        "datum": "05.01.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "04.01.2024.",
+        "nav_cijena": "10,73 KM",
+        "broj_udjela": "9,142633",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,10 KM",
+        "stanje_racuna": "98,10 KM"
+      },
+      {
+        "datum": "05.02.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "04.02.2024.",
+        "nav_cijena": "10,75 KM",
+        "broj_udjela": "9,123697",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,09 KM",
+        "stanje_racuna": "98,10 KM"
+      },
+      {
+        "datum": "04.03.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "03.03.2024.",
+        "nav_cijena": "10,80 KM",
+        "broj_udjela": "9,084662",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,09 KM",
+        "stanje_racuna": "98,10 KM"
+      },
+      {
+        "datum": "03.04.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "02.04.2024.",
+        "nav_cijena": "10,83 KM",
+        "broj_udjela": "9,054552",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,09 KM",
+        "stanje_racuna": "98,10 KM"
+      },
+      {
+        "datum": "07.05.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "06.05.2024.",
+        "nav_cijena": "10,85 KM",
+        "broj_udjela": "9,039742",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,08 KM",
+        "stanje_racuna": "98,10 KM"
+      },
+      {
+        "datum": "03.06.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "02.06.2024.",
+        "nav_cijena": "10,87 KM",
+        "broj_udjela": "9,026874",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,08 KM",
+        "stanje_racuna": "98,10 KM"
+      },
+      {
+        "datum": "03.07.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "02.07.2024.",
+        "nav_cijena": "10,89 KM",
+        "broj_udjela": "9,011020",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,07 KM",
+        "stanje_racuna": "98,10 KM"
+      },
+      {
+        "datum": "05.08.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "04.08.2024.",
+        "nav_cijena": "10,89 KM",
+        "broj_udjela": "9,004155",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,07 KM",
+        "stanje_racuna": "98,10 KM"
+      },
+      {
+        "datum": "04.09.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "03.09.2024.",
+        "nav_cijena": "10,92 KM",
+        "broj_udjela": "8,983953",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,07 KM",
+        "stanje_racuna": "98,10 KM"
+      },
+      {
+        "datum": "03.10.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "02.10.2024.",
+        "nav_cijena": "10,94 KM",
+        "broj_udjela": "8,967118",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,06 KM",
+        "stanje_racuna": "98,10 KM"
+      },
+      {
+        "datum": "04.11.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "03.11.2024.",
+        "nav_cijena": "10,95 KM",
+        "broj_udjela": "8,955330",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,06 KM",
+        "stanje_racuna": "98,10 KM"
+      },
+      {
+        "datum": "03.12.2024.",
+        "tip": "Upis udjela",
+        "nav_datum": "02.12.2024.",
+        "nav_cijena": "11,01 KM",
+        "broj_udjela": "8,908366",
+        "vrijednost_transakcije": "100,00 KM",
+        "uplata_clana": "50,00 KM",
+        "uplata_ugovaraca": "50,00 KM",
+        "provizija": "1,90 KM",
+        "upravljacka_naknada": "",
+        "godisnji_prinos": "",
+        "garantovani_iznos": "49,05 KM",
+        "stanje_racuna": "98,10 KM"
+      }
+    ],
+    "tekuci_summary": {
+      "datum": "31.12.2024.",
+      "tip": "Stanje",
+      "nav_datum": "31.12.2024.",
+      "nav_cijena": "11,04 KM",
+      "broj_udjela": "426,266407",
+      "vrijednost_transakcije": "4.600,00 KM",
+      "uplata_clana": "2.300,00 KM",
+      "uplata_ugovaraca": "2.300,00 KM",
+      "provizija": "87,40 KM",
+      "upravljacka_naknada": "82,02 KM",
+      "godisnji_prinos": "2,33%",
+      "garantovani_iznos": "2.260,71 KM",
+      "stanje_racuna": "4.707,43 KM"
+    },
+    "ukupno_items": [
+      {
+        "datum": "31.12.2024.",
+        "tip": "Stanje",
+        "nav_datum": "31.12.2024.",
+        "nav_cijena": "11,04 KM",
+        "broj_udjela": "426,266407",
+        "vrijednost_transakcije": "4.600,00 KM",
+        "uplata_clana": "2.300,00 KM",
+        "uplata_ugovaraca": "2.300,00 KM",
+        "provizija": "87,40 KM",
+        "upravljacka_naknada": "179,82 KM",
+        "godisnji_prinos": "1,18%",
+        "garantovani_iznos": "2.260,71 KM",
+        "stanje_racuna": "4.707,43 KM"
+      }
+    ]
+  }
+}

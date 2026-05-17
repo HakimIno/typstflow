@@ -161,11 +161,13 @@ export const DataPanel = memo(function DataPanel() {
     setJsonString(value);
     try {
       if (!value.trim()) {
+        updateSource.current = 'user';
         setSampleData({});
         setError(null);
         return;
       }
       const parsed = JSON.parse(value);
+      updateSource.current = 'user';
       setSampleData(parsed);
       setError(null);
     } catch (e: any) {
@@ -244,7 +246,8 @@ export const DataPanel = memo(function DataPanel() {
         total: '1',
       },
     };
-    handleJsonChange(JSON.stringify(example, null, 2));
+    remountEditor(JSON.stringify(example, null, 2));
+    setSampleData(example);
   };
 
   return (

@@ -5,7 +5,7 @@ export const MAX_HISTORY = 50;
 
 export const buildComponentRegistry = (schema: LayoutSchema): Record<string, ComponentNode> => {
   const registry: Record<string, ComponentNode> = {};
-  
+
   const processComponent = (comp: ComponentNode) => {
     registry[comp.id] = comp;
     if (comp.type === 'columns' && comp.columns) {

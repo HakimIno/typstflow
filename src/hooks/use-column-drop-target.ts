@@ -6,22 +6,18 @@ import type { ComponentNode } from '@/types/schema';
 import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { useEffect, useState } from 'react';
 
-function resolveColumnIndex(
-  cursorClientY: number,
-  columnEl: HTMLElement,
-  zoom: number
-): number {
+function resolveColumnIndex(cursorClientY: number, columnEl: HTMLElement, zoom: number): number {
   const rect = columnEl.getBoundingClientRect();
   const cursorRelYMm = LayoutEngine.pxToMm((cursorClientY - rect.top) / zoom);
-  
+
   const domEls = Array.from(columnEl.querySelectorAll<HTMLElement>('[data-designer-component]'));
-  
+
   let cumulativeY = 0;
   for (let i = 0; i < domEls.length; i++) {
     const domEl = domEls[i];
     const heightPx = domEl.getBoundingClientRect().height / zoom;
     const heightMm = LayoutEngine.pxToMm(heightPx);
-    
+
     const midPoint = cumulativeY + heightMm / 2;
     if (cursorRelYMm < midPoint) {
       return i;
@@ -31,10 +27,7 @@ function resolveColumnIndex(
   return domEls.length;
 }
 
-export function useColumnDropTarget(
-  columnLayoutId: string,
-  colIndex: number
-) {
+export function useColumnDropTarget(columnLayoutId: string, colIndex: number) {
   const [isDraggedOver, setIsDraggedOver] = useState(false);
   const addComponentToColumn = useDesignerStore((state) => state.addComponentToColumn);
   const moveComponentToColumn = useDesignerStore((state) => state.moveComponentToColumn);
@@ -60,11 +53,7 @@ export function useColumnDropTarget(
         if (!location.current) return;
 
         const data = source.data as any;
-        const targetIndex = resolveColumnIndex(
-          location.current.input.clientY,
-          element,
-          zoom
-        );
+        const targetIndex = resolveColumnIndex(location.current.input.clientY, element, zoom);
 
         if (data.type === 'new-component') {
           addComponentToColumn(
@@ -81,12 +70,7 @@ export function useColumnDropTarget(
           // Prevent dropping a component inside itself or inside its own children recursive loop
           if (data.id === columnLayoutId) return;
 
-          moveComponentToColumn(
-            data.id,
-            columnLayoutId,
-            colIndex,
-            targetIndex
-          );
+          moveComponentToColumn(data.id, columnLayoutId, colIndex, targetIndex);
         }
       },
     });

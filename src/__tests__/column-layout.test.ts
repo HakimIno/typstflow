@@ -5,7 +5,12 @@ import {
   removeComponentFromSchema,
   mapComponentInSchema,
 } from '@/lib/utils/schema-mutators';
-import type { LayoutSchema, ComponentNode, ColumnLayoutComponent, TextComponent } from '@/types/schema';
+import type {
+  LayoutSchema,
+  ComponentNode,
+  ColumnLayoutComponent,
+  TextComponent,
+} from '@/types/schema';
 
 function makeText(id: string): TextComponent {
   return {

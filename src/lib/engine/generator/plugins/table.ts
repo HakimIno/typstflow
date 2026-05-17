@@ -100,10 +100,84 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
       }
     }
 
+    // ── Resolve data items early (needed for rows: parameter) ────────────────
+    const isStatic = comp.isStatic ?? false;
+    const dataItems = isStatic
+      ? [ctx.local]
+      : (() => {
+          const path = comp.dataSource.replace(/\{\{|\}\}/g, '').trim();
+          const raw = resolvePath(path, ctx.local) ?? resolvePath(path, ctx.global);
+          return Array.isArray(raw) ? raw : [];
+        })();
+    const detailRowCount =
+      comp.detailRows && comp.detailRows.length > 0 ? comp.detailRows.length : 1;
+
+    // ── Compute rows: parameter (maps each physical row to its height) ────────
+    // Without this, Typst ignores row.height set in the designer entirely.
+    const rowsArr: string[] = [];
+    let hasCustomRowHeight = false;
+
+    const pushRowHeight = (h: string | undefined) => {
+      if (h) {
+        rowsArr.push(h); // e.g. "12.5mm" — Typst understands directly
+        hasCustomRowHeight = true;
+      } else {
+        rowsArr.push('auto');
+      }
+    };
+
+    // 1. Header rows
+    if (comp.headerRows?.length) {
+      for (const row of comp.headerRows) pushRowHeight(row.height);
+    } else if (comp.showHeader !== false) {
+      pushRowHeight(undefined); // synthetic header: auto
+    }
+
+    // 2. Data rows — enumerate using resolved dataItems so we know the exact count
+    if (comp.groupBy && !isStatic) {
+      const groups = new Map<string, any[]>();
+      for (const item of dataItems) {
+        const key = String(resolvePath(comp.groupBy, item) ?? 'Other');
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)?.push(item);
+      }
+      for (const items of groups.values()) {
+        rowsArr.push('auto'); // group-header row
+        for (let i = 0; i < items.length; i++) {
+          if (comp.detailRows?.length) {
+            for (const dr of comp.detailRows) pushRowHeight(dr.height);
+          } else {
+            pushRowHeight(undefined);
+          }
+        }
+        if (comp.autoGroupFooter) rowsArr.push('auto');
+        if (comp.repeatSummaryOnGroup && comp.summaryRows?.length) {
+          for (const _sr of comp.summaryRows) rowsArr.push('auto');
+        }
+      }
+    } else {
+      for (let i = 0; i < dataItems.length; i++) {
+        if (comp.detailRows?.length) {
+          for (const dr of comp.detailRows) pushRowHeight(dr.height);
+        } else {
+          pushRowHeight(undefined);
+        }
+      }
+      if (comp.summaryRows?.length && !comp.repeatSummaryOnGroup) {
+        for (const _sr of comp.summaryRows) rowsArr.push('auto');
+      }
+    }
+
+    // 3. Footer rows
+    for (const row of comp.footerRows ?? []) pushRowHeight(row.height);
+
     // ── Table args ────────────────────────────────────────────────────────────
     const inset = style?.inset ?? style?.cellPadding ?? '7pt';
     const tableArgs = [`columns: (${colWidths})`, `inset: ${inset}`, `stroke: ${strokeStr}`];
     if (fillFn) tableArgs.push(`fill: ${fillFn}`);
+    if (hasCustomRowHeight && rowsArr.length > 0) {
+      tableArgs.push(`rows: (${rowsArr.join(', ')})`);
+    }
 
     parts.push(`#table(\n  ${tableArgs.join(',\n  ')},\n`);
 
@@ -175,17 +249,6 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     }
 
     // ── Data rows ─────────────────────────────────────────────────────────────
-    const isStatic = comp.isStatic ?? false;
-    const dataItems = isStatic
-      ? [ctx.local]
-      : (() => {
-          const path = comp.dataSource.replace(/\{\{|\}\}/g, '').trim();
-          const raw = resolvePath(path, ctx.local) ?? resolvePath(path, ctx.global);
-          return Array.isArray(raw) ? raw : [];
-        })();
-
-    const detailRowCount = comp.detailRows && comp.detailRows.length > 0 ? comp.detailRows.length : 1;
-
     // Calculate total rows for stroke function and hlines
     let totalRows = headerRowCount + (comp.footerRows?.length ?? 0);
     if (comp.groupBy && !isStatic) {
@@ -195,7 +258,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         if (!groups[key]) groups[key] = [];
         groups[key].push(item);
       }
-      totalRows += (dataItems.length * detailRowCount) + Object.keys(groups).length; // (items * detailRowCount) + group headers
+      totalRows += dataItems.length * detailRowCount + Object.keys(groups).length; // (items * detailRowCount) + group headers
       if (comp.autoGroupFooter) totalRows += Object.keys(groups).length; // + group footers
       if (comp.repeatSummaryOnGroup && comp.summaryRows && comp.summaryRows.length > 0) {
         totalRows += Object.keys(groups).length * comp.summaryRows.length; // + repeated group summaries
