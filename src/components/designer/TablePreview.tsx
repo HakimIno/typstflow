@@ -26,19 +26,42 @@ function InlineCellInput({
   title?: string;
 }) {
   const [val, setVal] = useState(initialValue);
-  React.useEffect(() => setVal(initialValue), [initialValue]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setVal(initialValue);
+  }, [initialValue]);
+
+  const adjustHeight = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    adjustHeight();
+  }, [val]);
 
   return (
-    <input
-      className={className}
-      style={style}
+    <textarea
+      ref={textareaRef}
+      className={clsx(className, 'resize-none overflow-hidden min-h-[1.4em] p-0 block bg-transparent w-full')}
+      style={{
+        ...style,
+        height: 'auto',
+      }}
+      rows={1}
       value={val}
       placeholder={placeholder}
       title={title}
       onChange={(e) => setVal(e.target.value)}
       onBlur={() => onSave(val)}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          e.currentTarget.blur();
+        }
       }}
     />
   );
@@ -576,7 +599,7 @@ export function TablePreview({ component }: Props) {
             textAlign: resolvedAlign as any,
             fontFamily: cellFontFamily || 'inherit',
             color: textColor,
-            fontSize: `${fontSize}px`,
+            fontSize: `${fontSize}pt`,
             fontWeight,
             fontStyle: isItalic ? 'italic' : 'normal',
             textDecoration: isUnderline ? 'underline' : 'none',
@@ -657,15 +680,67 @@ export function TablePreview({ component }: Props) {
   };
 
   // ─── Column widths via <colgroup> ─────────────────────────────────────
-  const colWidths = component.columns.map((col) => {
-    if (col.width.endsWith('mm')) return `${LayoutEngine.mmToPx(Number.parseFloat(col.width))}px`;
-    if (col.width.endsWith('pt')) return `${LayoutEngine.mmToPx(parseTypstUnit(col.width))}px`;
-    if (col.width.includes('fr')) return undefined; // auto
-    return col.width;
-  });
+  const colWidths = (() => {
+    const totalTableWidthMm = component.width || 180;
+
+    type ParsedCol =
+      | { type: 'fixed'; mm: number }
+      | { type: 'fractional'; value: number };
+
+    // 1. Parse all widths to millimeters or fractional values
+    const parsedColumns = component.columns.map((col): ParsedCol => {
+      const w = col.width.trim();
+      if (w.endsWith('mm')) {
+        return { type: 'fixed', mm: Number.parseFloat(w) };
+      }
+      if (w.endsWith('pt')) {
+        // convert pt to mm (1pt ≈ 0.352778mm)
+        return { type: 'fixed', mm: parseTypstUnit(w) };
+      }
+      if (w === '*') {
+        return { type: 'fractional', value: 1 };
+      }
+      if (w.endsWith('fr')) {
+        return { type: 'fractional', value: Number.parseFloat(w) || 1 };
+      }
+      // fallback for raw numbers or anything else (treat as fractional like Typst does)
+      const num = Number.parseFloat(w);
+      if (!Number.isNaN(num)) {
+        return { type: 'fractional', value: num };
+      }
+      // default/fallback
+      return { type: 'fractional', value: 1 };
+    });
+
+    // 2. Sum up fixed widths and fractions
+    let fixedSumMm = 0;
+    let fractionSum = 0;
+    for (const p of parsedColumns) {
+      if (p.type === 'fixed') {
+        fixedSumMm += p.mm;
+      } else {
+        fractionSum += p.value;
+      }
+    }
+
+    // 3. Calculate remaining width
+    const remainingMm = Math.max(totalTableWidthMm - fixedSumMm, 0);
+
+    // 4. Convert all to percentage of the table width
+    return parsedColumns.map((p) => {
+      if (p.type === 'fixed') {
+        return `${(p.mm / totalTableWidthMm) * 100}%`;
+      }
+      if (fractionSum > 0) {
+        const shareMm = (p.value / fractionSum) * remainingMm;
+        return `${(shareMm / totalTableWidthMm) * 100}%`;
+      }
+      return undefined; // fallback
+    });
+  })();
 
   return (
-    <div className="w-full relative">
+    <div className="w-full h-full relative">
       {selectedCells?.tableId === component.id && (
         <TableActionToolbar
           component={component}
@@ -685,6 +760,7 @@ export function TablePreview({ component }: Props) {
           borderCollapse: 'collapse',
           tableLayout: 'fixed',
           fontFamily: style.fontFamily || 'inherit',
+          height: '100%',
         }}
       >
         <colgroup>

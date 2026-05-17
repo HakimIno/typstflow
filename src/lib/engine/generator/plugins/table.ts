@@ -184,6 +184,8 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           return Array.isArray(raw) ? raw : [];
         })();
 
+    const detailRowCount = comp.detailRows && comp.detailRows.length > 0 ? comp.detailRows.length : 1;
+
     // Calculate total rows for stroke function and hlines
     let totalRows = headerRowCount + (comp.footerRows?.length ?? 0);
     if (comp.groupBy && !isStatic) {
@@ -193,10 +195,16 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         if (!groups[key]) groups[key] = [];
         groups[key].push(item);
       }
-      totalRows += dataItems.length + Object.keys(groups).length; // items + group headers
+      totalRows += (dataItems.length * detailRowCount) + Object.keys(groups).length; // (items * detailRowCount) + group headers
       if (comp.autoGroupFooter) totalRows += Object.keys(groups).length; // + group footers
+      if (comp.repeatSummaryOnGroup && comp.summaryRows && comp.summaryRows.length > 0) {
+        totalRows += Object.keys(groups).length * comp.summaryRows.length; // + repeated group summaries
+      }
     } else {
-      totalRows += dataItems.length;
+      totalRows += dataItems.length * detailRowCount;
+      if (comp.summaryRows && comp.summaryRows.length > 0 && !comp.repeatSummaryOnGroup) {
+        totalRows += comp.summaryRows.length; // + table end summaries
+      }
     }
 
     const renderRow = (item: any) => {
