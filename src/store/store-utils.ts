@@ -5,9 +5,27 @@ export const MAX_HISTORY = 50;
 
 export const buildComponentRegistry = (schema: LayoutSchema): Record<string, ComponentNode> => {
   const registry: Record<string, ComponentNode> = {};
+  
+  const processComponent = (comp: ComponentNode) => {
+    registry[comp.id] = comp;
+    if (comp.type === 'columns' && comp.columns) {
+      for (const col of comp.columns) {
+        if (col.components) {
+          for (const child of col.components) {
+            processComponent(child);
+          }
+        }
+      }
+    } else if (comp.type === 'repeater' && (comp as any).children) {
+      for (const child of (comp as any).children) {
+        processComponent(child);
+      }
+    }
+  };
+
   const processZone = (zone: Zone) => {
     for (const comp of zone.components) {
-      registry[comp.id] = comp;
+      processComponent(comp);
     }
   };
 

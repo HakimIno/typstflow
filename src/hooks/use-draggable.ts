@@ -1,6 +1,7 @@
 'use client';
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { findComponentZone } from '@/lib/utils/schema-mutators';
 import { useDesignerStore } from '@/store/designer-store';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { setCustomNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview';
@@ -52,35 +53,18 @@ export function useDraggable({
         const schema = state.schema;
         const groupInfo = dragGroup
           .map((gid) => {
-            // 1. Check Global Zones
-            for (const zKey of ['header', 'footer'] as const) {
-              const found = schema.zones[zKey].components.find((c) => c.id === gid);
-              if (found) {
-                return {
-                  id: gid,
-                  x: found.x || 0,
-                  y: found.y || 0,
-                  zoneKey: zKey as string,
-                  pageId: undefined,
-                  absY:
-                    (found.y || 0) + LayoutEngine.calculateZoneOffset(zKey as any, schema, pageId),
-                };
-              }
-            }
-
-            // 2. Check Pages
-            for (const page of schema.pages) {
-              const found = page.body.components.find((c) => c.id === gid);
-              if (found) {
-                return {
-                  id: gid,
-                  x: found.x || 0,
-                  y: found.y || 0,
-                  zoneKey: 'body',
-                  pageId: page.id,
-                  absY: (found.y || 0) + LayoutEngine.calculateZoneOffset('body', schema, page.id),
-                };
-              }
+            const found = findComponentZone(schema, gid);
+            if (found) {
+              return {
+                id: gid,
+                x: found.component.x || 0,
+                y: found.component.y || 0,
+                zoneKey: found.zoneKey,
+                pageId: found.pageId,
+                absY:
+                  (found.component.y || 0) +
+                  LayoutEngine.calculateZoneOffset(found.zoneKey, schema, found.pageId),
+              };
             }
             return null;
           })

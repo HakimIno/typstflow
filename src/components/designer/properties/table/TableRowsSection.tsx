@@ -292,13 +292,13 @@ export const TableRowsSection = ({ component, type }: Props) => {
                           <MiniInput
                             type="number"
                             step="0.1"
-                            value={String(cell.style?.lineHeight || 1.2)}
+                            value={String(cell.style?.lineHeight || 1.4)}
                             onChange={(v) => {
                               const newRows = [...rows];
                               const current = newRows[rIdx].cells[cIdx].style || {};
                               newRows[rIdx].cells[cIdx].style = {
                                 ...current,
-                                lineHeight: Number.parseFloat(v) || 1.2,
+                                lineHeight: Number.parseFloat(v) || 1.4,
                               };
                               updateRows(newRows);
                             }}

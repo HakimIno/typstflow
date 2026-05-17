@@ -15,7 +15,7 @@ export function generatePageSetup(schema: LayoutSchema): string {
 export function generateFonts(schema: LayoutSchema): string {
   const font = schema.fonts.find((f) => f.role === 'body') ?? schema.fonts[0];
   if (!font) return '';
-  return `#set text(font: ("${font.family}", "Sarabun", "sans-serif"), size: ${font.size}pt, lang: "th")\n#set par(leading: 0.2em, justify: false)\n\n`;
+  return `#set text(font: ("${font.family}", "Sarabun", "sans-serif"), size: ${font.size}pt, lang: "th")\n#set par(leading: 0.75em, justify: false)\n\n`;
 }
 
 /** Import block for bundled packages (codetastic for QR / barcodes). */

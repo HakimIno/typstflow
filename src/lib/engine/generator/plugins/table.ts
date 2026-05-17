@@ -544,7 +544,7 @@ function renderStructuredCell(
   const color = formatColor(cellStyle?.color || textStyle.color);
   const size = cellStyle?.fontSize || textStyle.size;
   const weight = formatWeight(cellStyle?.fontWeight ?? textStyle.weight);
-  const leading = cellStyle?.lineHeight ? cellStyle.lineHeight - 1 : 0.2;
+  const leading = cellStyle?.lineHeight ? cellStyle.lineHeight - 0.65 : 0.75;
 
   let inner = contentOverride !== undefined ? contentOverride : escapeTypst(cell.content);
   if (inner.startsWith('[') && inner.endsWith(']')) {

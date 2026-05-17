@@ -96,8 +96,8 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
             step="0.1"
             min={0.5}
             max={3}
-            value={style?.lineHeight || 1.2}
-            onChange={(v) => onUpdateStyle({ lineHeight: Number.parseFloat(v) || 1.2 })}
+            value={style?.lineHeight || 1.4}
+            onChange={(v) => onUpdateStyle({ lineHeight: Number.parseFloat(v) || 1.4 })}
           />
         </ControlField>
 

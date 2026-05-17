@@ -48,7 +48,7 @@ export const TextPreview = memo(function TextPreview({
         textDecoration: component.style?.underline ? 'underline' : 'none',
         color: component.style?.color || '#0f172a',
         textAlign: component.align || 'left',
-        lineHeight: component.style?.lineHeight || '1.2',
+        lineHeight: component.style?.lineHeight || '1.4',
         letterSpacing: component.style?.letterSpacing || 'normal',
         fontFamily: `${fontFamily || 'Sarabun'}, "Geist", "Inter", "Sarabun-Local", "Noto Sans Thai", sans-serif`,
         wordBreak: 'break-word',

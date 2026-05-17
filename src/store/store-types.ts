@@ -103,6 +103,18 @@ export interface DesignerState extends FontSlice {
     groupId?: string,
     groupType?: 'header' | 'footer'
   ) => void;
+  addComponentToColumn: (
+    columnLayoutId: string,
+    colIndex: number,
+    component: Partial<ComponentNode>,
+    insertIndex?: number
+  ) => void;
+  moveComponentToColumn: (
+    id: string,
+    toColumnLayoutId: string,
+    toColIndex: number,
+    newIndex: number
+  ) => void;
   updateComponent: (id: string, updates: Partial<ComponentNode>, skipHistory?: boolean) => void;
   removeComponent: (id: string) => void;
   removeComponents: (ids: string[]) => void;

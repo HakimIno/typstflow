@@ -32,7 +32,7 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
     const size = s?.fontSize ?? 10;
     const weight = formatWeight(s?.fontWeight);
     const align = comp.align ?? 'left';
-    const leading = s?.lineHeight ? s.lineHeight - 1 : 0.2;
+    const leading = s?.lineHeight ? s.lineHeight - 0.65 : 0.75;
     const tracking = s?.letterSpacing || '0pt';
     const justify = s?.justify ?? false;
     const color = formatColor(s?.color ?? '#000000');
@@ -41,20 +41,22 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
     const underline = s?.underline ?? false;
     const format = comp.format ?? 'text';
 
-    const contentBlock =
+    const innerContent =
       format !== 'text'
-        ? `[#fmt_${format.replace(/-/g, '_')}("${escapeStringLiteral(content)}")]`
-        : `[${content
-            .split('\n')
-            .map((line) => escapeTypst(line))
-            .join('#linebreak()')}]`;
+        ? `#fmt_${format.replace(/-/g, '_')}("${escapeStringLiteral(content)}")`
+        : content
+          .split('\n')
+          .map((line) => escapeTypst(line))
+          .join(' #linebreak() ');
+
+    const mainContent = underline ? `#underline[${innerContent}]` : innerContent;
 
     let body =
       `#set align(${align})\n` +
       `#set par(leading: ${leading}em, justify: ${justify})\n` +
-      `#text(size: ${size}pt, font: ("${font}", "Sarabun", "sans-serif"), ` +
-      `weight: ${weight}, style: "${fontStyle}", fill: ${color}, tracking: ${tracking})`;
-    body += underline ? `[#underline${contentBlock}]` : contentBlock;
+      `#set text(size: ${size}pt, font: ("${font}", "Sarabun", "sans-serif"), ` +
+      `weight: ${weight}, style: "${fontStyle}", fill: ${color}, tracking: ${tracking})\n` +
+      `${mainContent}`;
 
     if (s?.background) {
       const bgColor = formatColor(s.background);

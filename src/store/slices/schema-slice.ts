@@ -21,6 +21,8 @@ export type SchemaSlice = Pick<
   | 'historyIndex'
   | 'componentRegistry'
   | 'addComponent'
+  | 'addComponentToColumn'
+  | 'moveComponentToColumn'
   | 'updateComponent'
   | 'removeComponent'
   | 'removeComponents'
@@ -90,6 +92,71 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
         };
       }
 
+      return { ...pushHistory(state, newSchema), selectedComponentIds: [id] };
+    }),
+
+  addComponentToColumn: (columnLayoutId, colIndex, component, insertIndex) =>
+    set((state) => {
+      const id = `${component.type}-${Math.random().toString(36).substring(2, 9)}`;
+      const newComponent = {
+        ...component,
+        id,
+        x: 0,
+        y: 0,
+        width: component.width ?? 100,
+        height: component.height ?? 20,
+      } as ComponentNode;
+
+      const { schema: newSchema, changed } = mapComponentInSchema(
+        state.schema,
+        columnLayoutId,
+        (parent) => {
+          if (parent.type !== 'columns') return parent;
+          const newCols = parent.columns.map((col, idx) => {
+            if (idx !== colIndex) return col;
+            const comps = [...(col.components || [])];
+            const at = insertIndex !== undefined ? insertIndex : comps.length;
+            comps.splice(at, 0, newComponent);
+            return { ...col, components: comps };
+          });
+          return { ...parent, columns: newCols };
+        }
+      );
+
+      if (!changed) return state;
+      return { ...pushHistory(state, newSchema), selectedComponentIds: [id] };
+    }),
+
+  moveComponentToColumn: (id, toColumnLayoutId, toColIndex, newIndex) =>
+    set((state) => {
+      const comp = findComponentInSchema(state.schema, id);
+      if (!comp) return state;
+
+      const { schema: removedSchema } = removeComponentFromSchema(state.schema, id);
+
+      const updatedComp: ComponentNode = {
+        ...comp,
+        x: 0,
+        y: 0,
+      };
+
+      const { schema: newSchema, changed } = mapComponentInSchema(
+        removedSchema,
+        toColumnLayoutId,
+        (parent) => {
+          if (parent.type !== 'columns') return parent;
+          const newCols = parent.columns.map((col, idx) => {
+            if (idx !== toColIndex) return col;
+            const comps = [...(col.components || [])];
+            const at = newIndex !== -1 ? newIndex : comps.length;
+            comps.splice(at, 0, updatedComp);
+            return { ...col, components: comps };
+          });
+          return { ...parent, columns: newCols };
+        }
+      );
+
+      if (!changed) return state;
       return { ...pushHistory(state, newSchema), selectedComponentIds: [id] };
     }),
 

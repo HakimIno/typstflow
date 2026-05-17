@@ -272,7 +272,7 @@ export function TextEditor({
   const sharedStyles: React.CSSProperties = {
     fontFamily: `${textStyle.fontFamily || 'Sarabun'}, "Geist", "Inter", "Sarabun-Local", "Noto Sans Thai", sans-serif`,
     fontSize: textStyle.fontSize ? `${textStyle.fontSize}pt` : '10pt',
-    lineHeight: textStyle.lineHeight || 1.2,
+    lineHeight: textStyle.lineHeight || 1.4,
     letterSpacing: textStyle.letterSpacing || 'normal',
     fontWeight: textStyle.fontWeight === 'bold' ? 'bold' : 'normal',
     fontStyle: textStyle.italic ? 'italic' : 'normal',

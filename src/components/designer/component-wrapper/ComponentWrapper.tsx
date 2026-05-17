@@ -26,6 +26,7 @@ interface Props {
   pageId?: string;
   pageIndex?: number;
   flowMode?: boolean;
+  isNested?: boolean;
 }
 
 export const ComponentWrapper = memo(function ComponentWrapper({
@@ -34,6 +35,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   pageId,
   pageIndex = 0,
   flowMode = false,
+  isNested = false,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -95,6 +97,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       if (
         target.closest('button') ||
         target.closest('[data-resize-handle]') ||
+        target.closest('[data-col-splitter]') ||
         target.closest('[contenteditable="true"]') ||
         target.closest('[data-variable-dropdown="true"]') ||
         isEditing
@@ -194,6 +197,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       if (
         target.closest('button') ||
         target.closest('[data-resize-handle]') ||
+        target.closest('[data-col-splitter]') ||
         target.closest('[contenteditable="true"]') ||
         target.closest('[data-variable-dropdown="true"]') ||
         isEditing
@@ -910,7 +914,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   // x value = left indentation via marginLeft.
   // Text components use height:auto so content drives height (ResizeObserver syncs back to store).
   if (flowMode) {
-    const flowXPx = LayoutEngine.mmToPx(localBounds.x);
+    const flowXPx = isNested ? 0 : LayoutEngine.mmToPx(localBounds.x);
     const flowWidthPx = LayoutEngine.mmToPx(localBounds.width);
     const flowHeightPx = LayoutEngine.mmToPx(localBounds.height);
     // Dynamic components in flow mode: auto-height so content expands naturally
@@ -934,6 +938,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         onPointerUp={handleFlowPointerUp}
         onPointerCancel={handleFlowPointerUp}
         data-designer-component
+        data-columns-layout={component.type === 'columns' ? 'true' : undefined}
         className={clsx(
           'relative select-none group focus:outline-none touch-none transition-shadow',
           flowDragging
@@ -946,10 +951,10 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           isHidden && 'opacity-40'
         )}
         style={{
-          width: `${flowWidthPx}px`,
+          width: isNested ? '100%' : `${flowWidthPx}px`,
           height: autoHeight ? 'auto' : `${flowHeightPx}px`,
           minHeight: autoHeight ? `${LayoutEngine.mmToPx(4)}px` : undefined,
-          marginLeft: `${flowXPx}px`,
+          marginLeft: isNested ? undefined : `${flowXPx}px`,
           opacity: isHidden ? 0.4 : 1,
           willChange: 'transform',
           boxSizing: 'border-box',
@@ -982,7 +987,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         ) : (
           <div
             ref={previewRef}
-            className={clsx('w-full relative pointer-events-none', !autoHeight && 'h-full')}
+            className={clsx(
+              'w-full relative',
+              component.type !== 'columns' && 'pointer-events-none',
+              !autoHeight && 'h-full'
+            )}
           >
             <ComponentPreview
               component={component}
@@ -1006,6 +1015,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       onClick={handleClick}
       style={containerStyle}
       data-designer-component
+      data-columns-layout={component.type === 'columns' ? 'true' : undefined}
       className={containerClassName}
     >
       {isLocked && (
@@ -1035,7 +1045,13 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       )}
 
       {!isEditing && (
-        <div ref={previewRef} className="w-full h-full relative pointer-events-none">
+        <div
+          ref={previewRef}
+          className={clsx(
+            'w-full h-full relative',
+            component.type !== 'columns' && 'pointer-events-none'
+          )}
+        >
           <ComponentPreview component={component} pageIndex={pageIndex} totalPages={totalPages} />
         </div>
       )}

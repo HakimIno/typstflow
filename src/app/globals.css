@@ -202,7 +202,7 @@
     cursor: grabbing !important;
   }
 
-  .is-dragging-components [data-designer-component] {
+  .is-dragging-components [data-designer-component]:not([data-columns-layout="true"]) {
     /* Stop any CSS interactions/animations on components during drag */
     transition: none !important;
     animation: none !important;

@@ -358,8 +358,8 @@ export const BulkEditPanel = memo(function BulkEditPanel({
                 step="0.1"
                 min={0.5}
                 max={3}
-                value={isMixed(lineHeight) ? '' : (lineHeight as number) || 1.2}
-                onChange={(v) => onBulkStyleUpdate({ lineHeight: Number.parseFloat(v) || 1.2 })}
+                value={isMixed(lineHeight) ? '' : (lineHeight as number) || 1.4}
+                onChange={(v) => onBulkStyleUpdate({ lineHeight: Number.parseFloat(v) || 1.4 })}
                 placeholder={isMixed(lineHeight) ? '—' : undefined}
               />
             </PropertyRow>

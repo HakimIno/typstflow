@@ -49,7 +49,7 @@ function deepCleanComponent(comp: any): any {
       result.style.cellPadding = `${result.style.cellPadding}pt`;
     }
     if (typeof result.style.lineHeight === 'string') {
-      result.style.lineHeight = Number.parseFloat(result.style.lineHeight) || 1.2;
+      result.style.lineHeight = Number.parseFloat(result.style.lineHeight) || 1.4;
     }
     if (typeof result.style.fontSize === 'string') {
       result.style.fontSize = Number.parseFloat(result.style.fontSize) || 10;

@@ -74,10 +74,26 @@ export function useZoneDropTarget(
       element: el,
       getData: () => ({ zoneKey, pageId, groupId, groupType }),
       canDrop: () => true,
-      onDragEnter: () => {
+      onDragEnter: ({ location }) => {
+        const hasColumnSlot = location.current.dropTargets.some(
+          (t) => t.data.type === 'column-slot'
+        );
+        if (hasColumnSlot) {
+          setIsDraggedOver(false);
+          return;
+        }
         setIsDraggedOver(true);
       },
       onDrag: ({ location }) => {
+        const hasColumnSlot = location.current.dropTargets.some(
+          (t) => t.data.type === 'column-slot'
+        );
+        if (hasColumnSlot) {
+          setIsDraggedOver(false);
+          if (isFlowMode) window.dispatchEvent(new CustomEvent('flow-drag-end'));
+          return;
+        }
+        setIsDraggedOver(true);
         if (!isFlowMode) return;
         // Broadcast cursor position so Zone.tsx can highlight the correct row
         window.dispatchEvent(
@@ -97,6 +113,13 @@ export function useZoneDropTarget(
         setIsDraggedOver(false);
         if (isFlowMode) window.dispatchEvent(new CustomEvent('flow-drag-end'));
         if (!location.current) return;
+
+        const hasColumnSlot = location.current.dropTargets.some(
+          (t) => t.data.type === 'column-slot'
+        );
+        if (hasColumnSlot) {
+          return;
+        }
 
         const state = useDesignerStore.getState();
         const data = source.data as any;

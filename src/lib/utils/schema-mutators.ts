@@ -64,19 +64,35 @@ export function findComponentZone(
   groupId?: string;
   groupType?: 'header' | 'footer';
 } | null {
+  const searchNested = (components: ComponentNode[]): ComponentNode | null => {
+    for (const c of components) {
+      if (c.id === id) return c;
+      if (c.type === 'columns' && c.columns) {
+        for (const col of c.columns) {
+          const found = searchNested(col.components || []);
+          if (found) return found;
+        }
+      } else if (c.type === 'repeater' && (c as any).children) {
+        const found = searchNested((c as any).children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
   for (const key of GLOBAL_ZONE_KEYS) {
-    const found = schema.zones[key].components.find((c) => c.id === id);
+    const found = searchNested(schema.zones[key].components);
     if (found) return { component: found, zoneKey: key };
   }
   for (const page of schema.pages) {
-    const found = page.body.components.find((c) => c.id === id);
+    const found = searchNested(page.body.components);
     if (found) return { component: found, zoneKey: 'body', pageId: page.id };
   }
   for (const group of schema.groups || []) {
-    const headerFound = group.header.components.find((c) => c.id === id);
+    const headerFound = searchNested(group.header.components);
     if (headerFound)
       return { component: headerFound, zoneKey: 'body', groupId: group.id, groupType: 'header' };
-    const footerFound = group.footer.components.find((c) => c.id === id);
+    const footerFound = searchNested(group.footer.components);
     if (footerFound)
       return { component: footerFound, zoneKey: 'body', groupId: group.id, groupType: 'footer' };
   }
@@ -111,17 +127,49 @@ export function mapComponentInSchema(
   id: string,
   transform: (comp: ComponentNode) => ComponentNode
 ): MutationResult {
+  const mapNested = (
+    components: ComponentNode[]
+  ): { components: ComponentNode[]; changed: boolean } => {
+    let changed = false;
+    const nextComps = components.map((c) => {
+      if (c.id === id) {
+        changed = true;
+        return transform(c);
+      }
+      if (c.type === 'columns' && c.columns) {
+        let colsChanged = false;
+        const newCols = c.columns.map((col) => {
+          const res = mapNested(col.components || []);
+          if (res.changed) {
+            colsChanged = true;
+            return { ...col, components: res.components };
+          }
+          return col;
+        });
+        if (colsChanged) {
+          changed = true;
+          return { ...c, columns: newCols };
+        }
+      } else if (c.type === 'repeater' && (c as any).children) {
+        const res = mapNested((c as any).children);
+        if (res.changed) {
+          changed = true;
+          return { ...c, children: res.components };
+        }
+      }
+      return c;
+    });
+    return { components: nextComps, changed };
+  };
+
   // 1. Global zones — short-circuit on first match
   for (const key of GLOBAL_ZONE_KEYS) {
-    const components = schema.zones[key].components;
-    const idx = components.findIndex((c) => c.id === id);
-    if (idx !== -1) {
-      const next = [...components];
-      next[idx] = transform(components[idx]);
+    const res = mapNested(schema.zones[key].components);
+    if (res.changed) {
       return {
         schema: {
           ...schema,
-          zones: { ...schema.zones, [key]: { ...schema.zones[key], components: next } },
+          zones: { ...schema.zones, [key]: { ...schema.zones[key], components: res.components } },
         },
         changed: true,
       };
@@ -131,12 +179,10 @@ export function mapComponentInSchema(
   // 2. Page bodies — early exit on first match; avoids allocating 1000 page objects
   for (let i = 0; i < schema.pages.length; i++) {
     const page = schema.pages[i];
-    const bodyIdx = page.body.components.findIndex((c) => c.id === id);
-    if (bodyIdx !== -1) {
-      const next = [...page.body.components];
-      next[bodyIdx] = transform(page.body.components[bodyIdx]);
+    const res = mapNested(page.body.components);
+    if (res.changed) {
       const newPages = [...schema.pages];
-      newPages[i] = { ...page, body: { ...page.body, components: next } };
+      newPages[i] = { ...page, body: { ...page.body, components: res.components } };
       return { schema: { ...schema, pages: newPages }, changed: true };
     }
   }
@@ -144,19 +190,15 @@ export function mapComponentInSchema(
   // 3. Group bands
   let groupChanged = false;
   const newGroups = (schema.groups || []).map((group) => {
-    const hIdx = group.header.components.findIndex((c) => c.id === id);
-    if (hIdx !== -1) {
-      const next = [...group.header.components];
-      next[hIdx] = transform(group.header.components[hIdx]);
+    const hRes = mapNested(group.header.components);
+    if (hRes.changed) {
       groupChanged = true;
-      return { ...group, header: { ...group.header, components: next } };
+      return { ...group, header: { ...group.header, components: hRes.components } };
     }
-    const fIdx = group.footer.components.findIndex((c) => c.id === id);
-    if (fIdx !== -1) {
-      const next = [...group.footer.components];
-      next[fIdx] = transform(group.footer.components[fIdx]);
+    const fRes = mapNested(group.footer.components);
+    if (fRes.changed) {
       groupChanged = true;
-      return { ...group, footer: { ...group.footer, components: next } };
+      return { ...group, footer: { ...group.footer, components: fRes.components } };
     }
     return group;
   });
@@ -172,58 +214,7 @@ export function mapComponentInSchema(
  * Checks global zones first, then page bodies.
  */
 export function removeComponentFromSchema(schema: LayoutSchema, id: string): MutationResult {
-  // 1. Global zones
-  for (const key of GLOBAL_ZONE_KEYS) {
-    const original = schema.zones[key].components;
-    if (original.some((c) => c.id === id)) {
-      return {
-        schema: {
-          ...schema,
-          zones: {
-            ...schema.zones,
-            [key]: { ...schema.zones[key], components: original.filter((c) => c.id !== id) },
-          },
-        },
-        changed: true,
-      };
-    }
-  }
-
-  // 2. Page bodies — early exit on first match; avoids allocating 1000 page objects
-  for (let i = 0; i < schema.pages.length; i++) {
-    const page = schema.pages[i];
-    if (page.body.components.some((c) => c.id === id)) {
-      const newPages = [...schema.pages];
-      newPages[i] = {
-        ...page,
-        body: { ...page.body, components: page.body.components.filter((c) => c.id !== id) },
-      };
-      return { schema: { ...schema, pages: newPages }, changed: true };
-    }
-  }
-
-  // 3. Group bands
-  let groupChanged = false;
-  const newGroups = (schema.groups || []).map((group) => {
-    if (group.header.components.some((c) => c.id === id)) {
-      groupChanged = true;
-      return {
-        ...group,
-        header: { ...group.header, components: group.header.components.filter((c) => c.id !== id) },
-      };
-    }
-    if (group.footer.components.some((c) => c.id === id)) {
-      groupChanged = true;
-      return {
-        ...group,
-        footer: { ...group.footer, components: group.footer.components.filter((c) => c.id !== id) },
-      };
-    }
-    return group;
-  });
-
-  if (!groupChanged) return { schema, changed: false };
-  return { schema: { ...schema, groups: newGroups }, changed: true };
+  return removeComponentsFromSchema(schema, [id]);
 }
 
 /**
@@ -236,41 +227,79 @@ export function removeComponentsFromSchema(schema: LayoutSchema, ids: string[]):
   const idSet = new Set(ids);
   let anyChanged = false;
 
+  const removeNested = (
+    components: ComponentNode[],
+    idSet: Set<string>
+  ): { components: ComponentNode[]; changed: boolean } => {
+    let changed = false;
+    const filtered = components.filter((c) => {
+      if (idSet.has(c.id)) {
+        changed = true;
+        return false;
+      }
+      return true;
+    });
+
+    const nextComps = filtered.map((c) => {
+      if (c.type === 'columns' && c.columns) {
+        let colsChanged = false;
+        const newCols = c.columns.map((col) => {
+          const res = removeNested(col.components || [], idSet);
+          if (res.changed) {
+            colsChanged = true;
+            return { ...col, components: res.components };
+          }
+          return col;
+        });
+        if (colsChanged) {
+          changed = true;
+          return { ...c, columns: newCols };
+        }
+      } else if (c.type === 'repeater' && (c as any).children) {
+        const res = removeNested((c as any).children, idSet);
+        if (res.changed) {
+          changed = true;
+          return { ...c, children: res.components };
+        }
+      }
+      return c;
+    });
+
+    return { components: nextComps, changed };
+  };
+
   // 1. Global zones
   let updatedZones = schema.zones;
   for (const key of GLOBAL_ZONE_KEYS) {
     const original = updatedZones[key].components;
-    const filtered = original.filter((c) => !idSet.has(c.id));
-    if (filtered.length !== original.length) {
+    const res = removeNested(original, idSet);
+    if (res.changed) {
       anyChanged = true;
-      updatedZones = { ...updatedZones, [key]: { ...updatedZones[key], components: filtered } };
+      updatedZones = { ...updatedZones, [key]: { ...updatedZones[key], components: res.components } };
     }
   }
 
   // 2. Page bodies
   const newPages = schema.pages.map((page) => {
-    const filteredBody = page.body.components.filter((c) => !idSet.has(c.id));
-    if (filteredBody.length !== page.body.components.length) {
+    const res = removeNested(page.body.components, idSet);
+    if (res.changed) {
       anyChanged = true;
-      return { ...page, body: { ...page.body, components: filteredBody } };
+      return { ...page, body: { ...page.body, components: res.components } };
     }
     return page;
   });
 
   // 3. Group bands
   const newGroups = (schema.groups || []).map((group) => {
-    const nextHeader = group.header.components.filter((c) => !idSet.has(c.id));
-    const nextFooter = group.footer.components.filter((c) => !idSet.has(c.id));
+    const hRes = removeNested(group.header.components, idSet);
+    const fRes = removeNested(group.footer.components, idSet);
 
-    if (
-      nextHeader.length !== group.header.components.length ||
-      nextFooter.length !== group.footer.components.length
-    ) {
+    if (hRes.changed || fRes.changed) {
       anyChanged = true;
       return {
         ...group,
-        header: { ...group.header, components: nextHeader },
-        footer: { ...group.footer, components: nextFooter },
+        header: { ...group.header, components: hRes.components },
+        footer: { ...group.footer, components: fRes.components },
       };
     }
     return group;
