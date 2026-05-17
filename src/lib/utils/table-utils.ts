@@ -1,4 +1,5 @@
-import type { TableCell, TableComponent, TableRow } from '@/types/schema';
+import type { TableComponent, TableRow } from '@/types/schema';
+import { buildLogicalGrid } from './table-grid';
 
 /**
  * Normalizes a selection into a rectangular range of row and column indices.
@@ -27,47 +28,62 @@ export function isRectangularSelection(
 }
 
 /**
- * Merges cells in structured rows (header/footer/detail).
+ * Merges cells in structured rows using LOGICAL column indices.
+ * Uses buildLogicalGrid internally so colspan/rowspan from prior merges are
+ * handled correctly — physical array indices are derived, not assumed.
  */
 export function mergeStructuredCells(
   rows: TableRow[],
   startRowIdx: number,
   endRowIdx: number,
-  startColIdx: number,
-  endColIdx: number
+  startColIdx: number, // logical column
+  endColIdx: number, // logical column
+  totalCols: number
 ): TableRow[] {
-  const newRows = [...rows];
+  const grid = buildLogicalGrid(rows, totalCols);
+
+  // Master cell = top-left logical position of the selection
+  const masterSlot = grid[startRowIdx]?.[startColIdx];
+  if (!masterSlot) return rows;
 
   const colspan = endColIdx - startColIdx + 1;
   const rowspan = endRowIdx - startRowIdx + 1;
 
-  // Update the target cell (top-left of selection)
-  const targetRow = newRows[startRowIdx];
-  newRows[startRowIdx] = {
-    ...targetRow,
-    cells: targetRow.cells.map((cell, idx) => {
-      if (idx === startColIdx) return { ...cell, colspan, rowspan };
-      return cell;
-    }),
-  };
+  // Collect all non-master physical cells inside the selection range to remove
+  const toRemove = new Map<number, Set<number>>(); // rowIdx → Set<physIdx>
 
-  // Remove cells that are now covered by the span
   for (let r = startRowIdx; r <= endRowIdx; r++) {
-    const row = newRows[r];
-    const cellsToKeep: TableCell[] = [];
-    for (let c = 0; c < row.cells.length; c++) {
-      const isTarget = r === startRowIdx && c === startColIdx;
-      const isInRange = c >= startColIdx && c <= endColIdx;
-      if (isTarget) {
-        cellsToKeep.push(newRows[startRowIdx].cells[startColIdx]);
-      } else if (!isInRange) {
-        cellsToKeep.push(row.cells[c]);
-      }
+    for (let c = startColIdx; c <= endColIdx; c++) {
+      const slot = grid[r]?.[c];
+      if (!slot) continue;
+      // Don't remove cells owned by rows above the selection (rowspan from outside)
+      if (slot.ownerRowIdx < startRowIdx) continue;
+      // Keep master
+      if (
+        slot.ownerRowIdx === masterSlot.ownerRowIdx &&
+        slot.ownerPhysIdx === masterSlot.ownerPhysIdx
+      )
+        continue;
+
+      if (!toRemove.has(slot.ownerRowIdx)) toRemove.set(slot.ownerRowIdx, new Set());
+      const removeSet = toRemove.get(slot.ownerRowIdx);
+      if (removeSet) removeSet.add(slot.ownerPhysIdx);
     }
-    newRows[r] = { ...row, cells: cellsToKeep };
   }
 
-  return newRows;
+  return rows.map((row, ri) => {
+    // Update master cell span BEFORE filtering (indices are still stable here)
+    const cells = row.cells.map((cell, pi) => {
+      if (ri === masterSlot.ownerRowIdx && pi === masterSlot.ownerPhysIdx) {
+        return { ...cell, colspan, rowspan };
+      }
+      return cell;
+    });
+
+    const removeSet = toRemove.get(ri);
+    if (!removeSet) return { ...row, cells };
+    return { ...row, cells: cells.filter((_, idx) => !removeSet.has(idx)) };
+  });
 }
 
 /** Parse a column width string to mm. `tableWidthMm` used as fallback for fr/auto. */
