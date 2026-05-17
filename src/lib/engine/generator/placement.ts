@@ -48,6 +48,7 @@ export function wrapPlacement(
     const type = base.type as string;
     const autoHeight =
       type === 'text' ||
+      type === 'table' ||
       type === 'columns' ||
       type === 'checklist' ||
       type === 'summary-box' ||

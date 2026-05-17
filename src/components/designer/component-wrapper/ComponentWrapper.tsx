@@ -913,8 +913,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     const flowXPx = LayoutEngine.mmToPx(localBounds.x);
     const flowWidthPx = LayoutEngine.mmToPx(localBounds.width);
     const flowHeightPx = LayoutEngine.mmToPx(localBounds.height);
-    // Text in flow mode: auto-height so multi-line content expands naturally
-    const autoHeight = component.type === 'text';
+    // Dynamic components in flow mode: auto-height so content expands naturally
+    const autoHeight =
+      component.type === 'text' ||
+      component.type === 'table' ||
+      component.type === 'repeater' ||
+      component.type === 'columns' ||
+      component.type === 'summary-box' ||
+      component.type === 'checklist';
 
     return (
       <div
