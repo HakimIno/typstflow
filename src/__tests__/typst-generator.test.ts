@@ -445,8 +445,8 @@ describe('TypstGenerator — flow zone mode', () => {
     const schema: LayoutSchema = {
       ...MINIMAL_SCHEMA,
       zones: {
-        header: { id: 'header', minHeight: '30mm', components: [] },
-        footer: { id: 'footer', minHeight: '15mm', components: [] },
+        header: { id: 'header', minHeight: '30mm', components: [], repeatOnEveryPage: true },
+        footer: { id: 'footer', minHeight: '15mm', components: [], repeatOnEveryPage: true },
       },
       pages: [
         {

@@ -117,10 +117,6 @@ export class TypstGenerator {
       }
     } else {
       // --- Legacy: Global Repeating Zones (explicit repeatOnEveryPage flag) ---
-      const margin = schema.page.margin;
-      const topM = Number.parseFloat(margin.top ?? '0');
-      const bottomM = Number.parseFloat(margin.bottom ?? '0');
-
       if (schema.zones.header.repeatOnEveryPage) {
         const headerContent = this.renderZoneComponents(
           schema.zones.header,
@@ -128,14 +124,14 @@ export class TypstGenerator {
           data,
           [],
           0,
-          topM,
+          0,
           schema
         );
         parts.push(`\n#set page(header: [${headerContent}])\n`);
       }
 
       if (schema.zones.footer.repeatOnEveryPage) {
-        const footerY = pageH - bottomM - footerH;
+        const footerY = pageH - footerH;
         const footerContent = this.renderZoneComponents(
           schema.zones.footer,
           data,
@@ -155,8 +151,11 @@ export class TypstGenerator {
     // - Flow body: 0 — Typst margin (top: headerH) already shifts content below the header band.
     // - Absolute body: headerH — manual #place() components need the offset baked in.
     const bodyY = hasFlowBody ? 0 : headerH;
-    const footerY = pageH - footerH;
-    const headerY = 0;
+    // In Flow Mode, non-repeating (static) header and footer are normal page content,
+    // which gets automatically shifted down by the top margin (headerH).
+    // We subtract headerH to place them at their correct absolute coordinates.
+    const headerY = hasFlowBody ? -headerH : 0;
+    const footerY = hasFlowBody ? pageH - headerH - footerH : pageH - footerH;
 
     if (schema.batchDataSource) {
       const resolvedItems = resolvePath(schema.batchDataSource, data);
