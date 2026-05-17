@@ -383,6 +383,7 @@ export interface SummaryBoxComponent extends BaseComponent {
     label: string;
     value: BindingExpression;
     style?: 'normal' | 'subtotal' | 'total' | 'highlight';
+    separator?: boolean;
   }[];
   width?: number;
 }

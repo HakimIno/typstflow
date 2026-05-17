@@ -19,11 +19,7 @@ export const BarcodePreview = memo(function BarcodePreview({
         {/* Fake Barcode Lines - Scalable */}
         <div className="flex flex-1 w-full items-stretch justify-center gap-[1px] min-h-0">
           {[1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 2, 4, 1, 2, 1].map((w, i) => (
-            <div
-              key={i}
-              className="bg-black"
-              style={{ width: `${w}px` }}
-            />
+            <div key={i} className="bg-black" style={{ width: `${w}px` }} />
           ))}
         </div>
         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest shrink-0">

@@ -10,7 +10,11 @@ interface TextPreviewProps {
   autoHeight?: boolean;
 }
 
-export const TextPreview = memo(function TextPreview({ component, sampleData, autoHeight }: TextPreviewProps) {
+export const TextPreview = memo(function TextPreview({
+  component,
+  sampleData,
+  autoHeight,
+}: TextPreviewProps) {
   const fontFamily = component.style?.fontFamily;
 
   // Subscribe to this font's installedAt timestamp (not a global value) so only THIS

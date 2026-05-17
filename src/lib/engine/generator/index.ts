@@ -91,7 +91,7 @@ export class TypstGenerator {
       }
       // Render header and footer as native Typst page bands (repeat on every page).
       // offsetY = 0: component positions are relative to the band's own top-left.
-      if (!schema.zones.header.repeatOnEveryPage && headerH > 0) {
+      if (schema.zones.header.repeatOnEveryPage && headerH > 0) {
         const hContent = this.renderZoneComponents(
           schema.zones.header,
           data,
@@ -103,7 +103,7 @@ export class TypstGenerator {
         );
         parts.push(`#set page(header: [${hContent}])\n`);
       }
-      if (!schema.zones.footer.repeatOnEveryPage && footerH > 0) {
+      if (schema.zones.footer.repeatOnEveryPage && footerH > 0) {
         const fContent = this.renderZoneComponents(
           schema.zones.footer,
           data,
@@ -225,7 +225,7 @@ export class TypstGenerator {
 
       // Header — skip if using native bands (#set page(header: ...) handles it)
       const h = schema.zones.header;
-      if (!nativeBands && !h.repeatOnEveryPage && shouldRenderZone(h, i, totalPages, 'header')) {
+      if (!h.repeatOnEveryPage && shouldRenderZone(h, i, totalPages, 'header')) {
         t += `// --- PAGE ${i + 1} HEADER ---\n`;
         t += this.renderZoneComponents(
           h,
@@ -252,7 +252,7 @@ export class TypstGenerator {
 
       // Footer — skip if using native bands
       const f = schema.zones.footer;
-      if (!nativeBands && !f.repeatOnEveryPage && shouldRenderZone(f, i, totalPages, 'footer')) {
+      if (!f.repeatOnEveryPage && shouldRenderZone(f, i, totalPages, 'footer')) {
         t += `// --- PAGE ${i + 1} FOOTER ---\n`;
         t += this.renderZoneComponents(
           f,

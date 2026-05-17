@@ -1,20 +1,20 @@
 'use client';
 
+import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
 import {
-  GripHorizontal,
-  ChevronUp,
   ChevronDown,
-  ChevronsUp,
-  ChevronsDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronsDown,
+  ChevronsUp,
   Copy,
+  GripHorizontal,
   Trash2,
 } from 'lucide-react';
-import { LayoutEngine } from '@/lib/engine/layout-engine';
 import type React from 'react';
 import { memo, useRef } from 'react';
 
@@ -112,7 +112,7 @@ export const ActionBar = memo(function ActionBar({
               title="Indent Left 5mm"
               onClick={(e) => handleFlowIndentLeft?.(e)}
             />
-            <div 
+            <div
               className="px-1.5 py-0.5 mx-0.5 rounded bg-white/10 hover:bg-white/20 cursor-ew-resize transition-colors"
               onPointerDown={handleScrubberPointerDown}
               title="Drag left/right to adjust"
@@ -127,11 +127,7 @@ export const ActionBar = memo(function ActionBar({
               onClick={(e) => handleFlowIndentRight?.(e)}
             />
             <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
-            <ActionButton
-              icon={ChevronUp}
-              title="Move Up"
-              onClick={() => moveDown(component.id)}
-            />
+            <ActionButton icon={ChevronUp} title="Move Up" onClick={() => moveDown(component.id)} />
             <ActionButton
               icon={ChevronDown}
               title="Move Down"
@@ -166,11 +162,7 @@ export const ActionBar = memo(function ActionBar({
 
       {/* Duplicate */}
       <div className="flex items-center gap-0.5 px-0.5 border-r border-white/10">
-        <ActionButton
-          icon={Copy}
-          title="Duplicate"
-          onClick={handleDuplicate}
-        />
+        <ActionButton icon={Copy} title="Duplicate" onClick={handleDuplicate} />
       </div>
 
       {/* Delete */}
@@ -196,12 +188,12 @@ function ActionButton({
   icon: Icon,
   title,
   onClick,
-  className
+  className,
 }: {
   icon: any;
   title: string;
   onClick: (e: React.MouseEvent) => void;
-  className?: string
+  className?: string;
 }) {
   return (
     <button
@@ -220,4 +212,3 @@ function ActionButton({
     </button>
   );
 }
-

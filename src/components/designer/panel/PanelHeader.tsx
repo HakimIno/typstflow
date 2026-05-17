@@ -1,7 +1,7 @@
 'use client';
 
-import { Icon } from '@iconify/react';
 import { useDesignerStore } from '@/store/designer-store';
+import { Icon } from '@iconify/react';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -13,7 +13,13 @@ interface PanelHeaderProps {
   onClose?: () => void;
 }
 
-export function PanelHeader({ title, icon: IconComponent, actions, children, onClose }: PanelHeaderProps) {
+export function PanelHeader({
+  title,
+  icon: IconComponent,
+  actions,
+  children,
+  onClose,
+}: PanelHeaderProps) {
   const setSidebarOpen = useDesignerStore((state) => state.setSidebarOpen);
 
   const renderIcon = () => {
@@ -57,4 +63,3 @@ export function PanelHeader({ title, icon: IconComponent, actions, children, onC
     </div>
   );
 }
-

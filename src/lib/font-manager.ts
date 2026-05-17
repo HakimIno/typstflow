@@ -123,7 +123,9 @@ class FontManager {
     try {
       const cache = await caches.open(CACHE_NAME);
       await cache.put(cacheUrl, res.clone());
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
 
     const buf = await res.arrayBuffer();
     return buf.byteLength > 4000 ? buf : null;
@@ -138,17 +140,13 @@ class FontManager {
   isBrowserLoaded(family: string): boolean {
     if (this.registeredInBrowser.has(family)) return true;
     return (
-      this.registeredInBrowser.has(`${family}-400`) ||
-      this.registeredInBrowser.has(`${family}-700`)
+      this.registeredInBrowser.has(`${family}-400`) || this.registeredInBrowser.has(`${family}-700`)
     );
   }
 
   isWasmLoaded(family: string): boolean {
     if (this.registeredInWasm.has(family)) return true;
-    return (
-      this.registeredInWasm.has(`${family}-400`) ||
-      this.registeredInWasm.has(`${family}-700`)
-    );
+    return this.registeredInWasm.has(`${family}-400`) || this.registeredInWasm.has(`${family}-700`);
   }
 }
 

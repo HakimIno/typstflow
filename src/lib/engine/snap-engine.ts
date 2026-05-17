@@ -1,7 +1,7 @@
-import { LayoutEngine } from './layout-engine';
+import type { ComponentNode, LayoutSchema } from '../../types/schema';
 import { getPaperDimensions } from '../utils/paper-sizes';
 import { parseTypstUnit } from '../utils/units';
-import type { ComponentNode, LayoutSchema } from '../../types/schema';
+import { LayoutEngine } from './layout-engine';
 
 export interface SnapPoint {
   value: number; // mm
@@ -61,7 +61,7 @@ export const SnapEngine = {
     );
 
     // Current page vertical offset
-    const pageIndex = pageId ? schema.pages.findIndex(p => p.id === pageId) : 0;
+    const pageIndex = pageId ? schema.pages.findIndex((p) => p.id === pageId) : 0;
     const pageAbsY = pageIndex * pageHeight;
 
     // Page boundaries & center
@@ -95,7 +95,7 @@ export const SnapEngine = {
     for (const c of schema.zones.header.components) {
       addComponentPoints(c, 0);
     }
-    
+
     // Footer is physically at bottom of each page
     const footerHeight = parseTypstUnit(schema.zones.footer.minHeight) || 20;
     const fOffset = pageAbsY + pageHeight - footerHeight;
@@ -104,7 +104,7 @@ export const SnapEngine = {
     }
 
     // b) Pages (Optimized: only current page)
-    const pagesToProcess = pageId ? schema.pages.filter(p => p.id === pageId) : schema.pages;
+    const pagesToProcess = pageId ? schema.pages.filter((p) => p.id === pageId) : schema.pages;
     for (const page of pagesToProcess) {
       const bOffset = LayoutEngine.calculateZoneOffset('body', schema, page.id);
       for (const c of page.body.components) {
@@ -118,7 +118,7 @@ export const SnapEngine = {
         // Groups usually follow the body flow context
         const bOffset = LayoutEngine.calculateZoneOffset('body', schema, pageId);
         for (const c of group.header.components) {
-          addComponentPoints(c, bOffset); 
+          addComponentPoints(c, bOffset);
         }
         for (const c of group.footer.components) {
           addComponentPoints(c, bOffset);
@@ -162,15 +162,15 @@ export const SnapEngine = {
 
     // a) Global Zones
     collectComponents(schema.zones.header.components, 0);
-    
+
     const { height: pageHeight } = getPaperDimensions(schema.page.size, schema.page.orientation);
-    const pageIndex = pageId ? schema.pages.findIndex(p => p.id === pageId) : 0;
+    const pageIndex = pageId ? schema.pages.findIndex((p) => p.id === pageId) : 0;
     const pageAbsY = pageIndex * pageHeight;
     const footerHeight = parseTypstUnit(schema.zones.footer.minHeight) || 20;
     collectComponents(schema.zones.footer.components, pageAbsY + pageHeight - footerHeight);
 
     // b) Pages (Optimized: only current page)
-    const pagesToProcess = pageId ? schema.pages.filter(p => p.id === pageId) : schema.pages;
+    const pagesToProcess = pageId ? schema.pages.filter((p) => p.id === pageId) : schema.pages;
     for (const page of pagesToProcess) {
       const bOffset = LayoutEngine.calculateZoneOffset('body', schema, page.id);
       collectComponents(page.body.components, bOffset);
@@ -183,17 +183,17 @@ export const SnapEngine = {
 
     // Find nearest neighbor on each side
     // LEFT: closest sibling whose right edge is to the left of our left edge
-    let nearestLeft: typeof siblings[0] | null = null;
-    let nearestLeftDist = Infinity;
+    let nearestLeft: (typeof siblings)[0] | null = null;
+    let nearestLeftDist = Number.POSITIVE_INFINITY;
     // RIGHT: closest sibling whose left edge is to the right of our right edge
-    let nearestRight: typeof siblings[0] | null = null;
-    let nearestRightDist = Infinity;
+    let nearestRight: (typeof siblings)[0] | null = null;
+    let nearestRightDist = Number.POSITIVE_INFINITY;
     // TOP: closest sibling whose bottom edge is above our top edge
-    let nearestTop: typeof siblings[0] | null = null;
-    let nearestTopDist = Infinity;
+    let nearestTop: (typeof siblings)[0] | null = null;
+    let nearestTopDist = Number.POSITIVE_INFINITY;
     // BOTTOM: closest sibling whose top edge is below our bottom edge
-    let nearestBottom: typeof siblings[0] | null = null;
-    let nearestBottomDist = Infinity;
+    let nearestBottom: (typeof siblings)[0] | null = null;
+    let nearestBottomDist = Number.POSITIVE_INFINITY;
 
     for (const s of siblings) {
       const sRight = s.x + s.w;
@@ -304,7 +304,7 @@ export const SnapEngine = {
   ): EqualSpacingSnap[] {
     const snaps: EqualSpacingSnap[] = [];
     const siblings: { x: number; y: number; w: number; h: number }[] = [];
-    
+
     const draggedIdArray = Array.isArray(draggedIds) ? draggedIds : [draggedIds];
 
     const collectComponents = (components: ComponentNode[]) => {
@@ -378,7 +378,13 @@ export const SnapEngine = {
     cachedPoints?: { x: SnapPoint[]; y: SnapPoint[] }
   ): SnapResult {
     if (isAltKeyPressed) {
-      return { snappedX: x, snappedY: y, activeGuidesX: [], activeGuidesY: [], spacingIndicators: [] };
+      return {
+        snappedX: x,
+        snappedY: y,
+        activeGuidesX: [],
+        activeGuidesY: [],
+        spacingIndicators: [],
+      };
     }
 
     const points = cachedPoints || this.generateSnapPoints(schema, draggedIds, pageId);
@@ -494,15 +500,22 @@ export const SnapEngine = {
       }
     }
 
-    const spacingIndicators = this.calculateSpacingIndicators(snappedX, snappedY, width, height, draggedIds, schema, pageId);
+    const spacingIndicators = this.calculateSpacingIndicators(
+      snappedX,
+      snappedY,
+      width,
+      height,
+      draggedIds,
+      schema,
+      pageId
+    );
 
-    return { 
-      snappedX, 
-      snappedY, 
-      activeGuidesX, 
+    return {
+      snappedX,
+      snappedY,
+      activeGuidesX,
       activeGuidesY,
-      spacingIndicators 
+      spacingIndicators,
     };
   },
 };
-

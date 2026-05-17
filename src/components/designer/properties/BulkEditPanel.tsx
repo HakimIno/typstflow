@@ -67,10 +67,7 @@ function getMixedValue<T>(
   return first;
 }
 
-function getMixedStyleValue<T>(
-  components: ComponentNode[],
-  key: keyof TextStyle
-): MixedValue<T> {
+function getMixedStyleValue<T>(components: ComponentNode[], key: keyof TextStyle): MixedValue<T> {
   return getMixedValue(components, (c) => {
     const style = (c as any).style as TextStyle | undefined;
     return (style?.[key] ?? undefined) as T;
@@ -120,17 +117,13 @@ export const BulkEditPanel = memo(function BulkEditPanel({
   // Typography values (only computed when relevant)
   const fontFamily = allText ? getMixedStyleValue<string>(selectedComponents, 'fontFamily') : MIXED;
   const fontSize = allText ? getMixedStyleValue<number>(selectedComponents, 'fontSize') : MIXED;
-  const fontWeight = allText
-    ? getMixedStyleValue<string>(selectedComponents, 'fontWeight')
-    : MIXED;
+  const fontWeight = allText ? getMixedStyleValue<string>(selectedComponents, 'fontWeight') : MIXED;
   const isItalic = allText ? getMixedStyleValue<boolean>(selectedComponents, 'italic') : MIXED;
   const isUnderline = allText
     ? getMixedStyleValue<boolean>(selectedComponents, 'underline')
     : MIXED;
   const textColor = allText ? getMixedStyleValue<string>(selectedComponents, 'color') : MIXED;
-  const lineHeight = allText
-    ? getMixedStyleValue<number>(selectedComponents, 'lineHeight')
-    : MIXED;
+  const lineHeight = allText ? getMixedStyleValue<number>(selectedComponents, 'lineHeight') : MIXED;
 
   // Line values
   const lineColor = allLine
@@ -211,7 +204,7 @@ export const BulkEditPanel = memo(function BulkEditPanel({
                 type="number"
                 step="1"
                 min={1}
-                value={isMixed(widthValue) ? '' : widthValue ?? 0}
+                value={isMixed(widthValue) ? '' : (widthValue ?? 0)}
                 onChange={handleWidthChange}
                 placeholder={isMixed(widthValue) ? '—' : undefined}
               />
@@ -221,7 +214,7 @@ export const BulkEditPanel = memo(function BulkEditPanel({
                 type="number"
                 step="1"
                 min={1}
-                value={isMixed(heightValue) ? '' : heightValue ?? 0}
+                value={isMixed(heightValue) ? '' : (heightValue ?? 0)}
                 onChange={handleHeightChange}
                 placeholder={isMixed(heightValue) ? '—' : undefined}
               />
@@ -312,7 +305,9 @@ export const BulkEditPanel = memo(function BulkEditPanel({
                 <button
                   type="button"
                   title="Italic"
-                  onClick={() => onBulkStyleUpdate({ italic: isMixed(isItalic) ? true : !isItalic })}
+                  onClick={() =>
+                    onBulkStyleUpdate({ italic: isMixed(isItalic) ? true : !isItalic })
+                  }
                   className={clsx(
                     'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
                     !isMixed(isItalic) && isItalic

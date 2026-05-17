@@ -242,11 +242,7 @@ export function TextEditor({
   const highlightedContent = useMemo(() => {
     // Process text for display: escape HTML-like characters and wrap bindings
     const parts = value.split(/(\{\{[^}]*\}\})/g);
-    return parts.map((part, i) => (
-      <span key={i}>
-        {part || ''}
-      </span>
-    ));
+    return parts.map((part, i) => <span key={i}>{part || ''}</span>);
   }, [value, textStyle]);
 
   const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);

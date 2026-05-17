@@ -1,3 +1,10 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
 import { getApplicableFormats } from '@/lib/utils/formatters';
 import { getValueType } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
@@ -15,13 +22,6 @@ import {
 import { useState } from 'react';
 import { ColorPicker } from '../../../shared/ColorPicker';
 import { MiniInput } from './TableShared';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/Select';
 
 interface Props {
   component: TableComponent;
@@ -194,8 +194,10 @@ export const TableColumnsSection = ({ component }: Props) => {
                   </Select>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                   <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Align</span>
-                   <div className="flex border border-[var(--border-default)] rounded overflow-hidden">
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Align
+                  </span>
+                  <div className="flex border border-[var(--border-default)] rounded overflow-hidden">
                     {[
                       { id: 'left', Icon: AlignLeft },
                       { id: 'center', Icon: AlignCenter },
@@ -223,14 +225,18 @@ export const TableColumnsSection = ({ component }: Props) => {
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[var(--border-default)]">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Cell BG</span>
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Cell BG
+                  </span>
                   <ColorPicker
                     color={col.background || '#ffffff'}
                     onChange={(color) => updateColumn(idx, { background: color })}
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Border</span>
+                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                    Border
+                  </span>
                   <MiniInput
                     value={col.borderWidth || ''}
                     onChange={(v) => updateColumn(idx, { borderWidth: v })}
@@ -242,7 +248,9 @@ export const TableColumnsSection = ({ component }: Props) => {
               {component.autoGroupFooter && (
                 <div className="pt-1 border-t border-[var(--border-default)]">
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Footer Expr (Auto Group)</span>
+                    <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                      Footer Expr (Auto Group)
+                    </span>
                     <MiniInput
                       value={col.footerExpr || ''}
                       onChange={(v) => updateColumn(idx, { footerExpr: v })}

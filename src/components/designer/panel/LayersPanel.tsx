@@ -13,6 +13,7 @@ import {
   dropTargetForElements,
   monitorForElements,
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { Icon } from '@iconify/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { clsx } from 'clsx';
 import {
@@ -20,24 +21,20 @@ import {
   Eye,
   EyeOff,
   Globe,
-  GripVertical,
   Image as ImageIcon,
   Layers,
   Lock,
   QrCode,
-  Search,
   Square,
   Table,
   Trash2,
   Type,
   Unlock,
-  X,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { BasePanel } from './BasePanel';
 import { PanelHeader } from './PanelHeader';
-import { Icon } from '@iconify/react';
 
 // --- Types ---
 
@@ -46,30 +43,32 @@ type RenderItem =
   | { type: 'page-separator'; pageId: string; index: number }
   | { type: 'global-separator'; label: string }
   | {
-    type: 'zone-header';
-    zoneKey: string;
-    label: string;
-    pageId?: string;
-    count: number;
-    groupId?: string;
-    groupType?: 'header' | 'footer';
-  }
+      type: 'zone-header';
+      zoneKey: string;
+      label: string;
+      pageId?: string;
+      count: number;
+      groupId?: string;
+      groupType?: 'header' | 'footer';
+    }
   | {
-    type: 'component';
-    component: ComponentNode;
-    zoneKey: string;
-    index: number;
-    pageId?: string;
-    groupId?: string;
-    groupType?: 'header' | 'footer';
-  };
+      type: 'component';
+      component: ComponentNode;
+      zoneKey: string;
+      index: number;
+      pageId?: string;
+      groupId?: string;
+      groupType?: 'header' | 'footer';
+    };
 
 // --- Components ---
 
 const ComponentIcon = memo(({ type, isSelected }: { type: string; isSelected?: boolean }) => {
   const iconClass = clsx(
     'w-4 h-4 transition-transform duration-200 group-hover:scale-110',
-    isSelected ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] group-hover:text-[var(--accent)]'
+    isSelected
+      ? 'text-[var(--accent)]'
+      : 'text-[var(--text-muted)] group-hover:text-[var(--accent)]'
   );
 
   const getIcon = () => {
@@ -228,8 +227,7 @@ const LayerItem = memo(
                 )}
                 onDoubleClick={() => setIsEditing(true)}
               >
-                {component.name ||
-                  (component.type === 'text' ? component.content : component.type)}
+                {component.name || (component.type === 'text' ? component.content : component.type)}
               </span>
             )}
           </div>
@@ -314,7 +312,7 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
             type: 'component',
             component: reversed[i],
             zoneKey: 'header',
-            index: schema.zones.header.components.findIndex(c => c.id === reversed[i].id),
+            index: schema.zones.header.components.findIndex((c) => c.id === reversed[i].id),
           });
         }
       }
@@ -340,7 +338,7 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
               type: 'component',
               component: reversed[i],
               zoneKey: 'header',
-              index: group.header.components.findIndex(c => c.id === reversed[i].id),
+              index: group.header.components.findIndex((c) => c.id === reversed[i].id),
               groupId: group.id,
               groupType: 'header',
             });
@@ -375,7 +373,7 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
               type: 'component',
               component: reversed[i],
               zoneKey: 'body',
-              index: page.body.components.findIndex(c => c.id === reversed[i].id),
+              index: page.body.components.findIndex((c) => c.id === reversed[i].id),
               pageId: page.id,
             });
           }
@@ -405,7 +403,7 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
               type: 'component',
               component: reversed[j],
               zoneKey: 'footer',
-              index: group.footer.components.findIndex(c => c.id === reversed[j].id),
+              index: group.footer.components.findIndex((c) => c.id === reversed[j].id),
               groupId: group.id,
               groupType: 'footer',
             });
@@ -437,7 +435,7 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
             type: 'component',
             component: reversed[i],
             zoneKey: 'footer',
-            index: schema.zones.footer.components.findIndex(c => c.id === reversed[i].id),
+            index: schema.zones.footer.components.findIndex((c) => c.id === reversed[i].id),
           });
         }
       }
@@ -573,7 +571,10 @@ export const LayersPanel = memo(function LayersPanel() {
             onChange={(v: string) => setSearchQuery(v)}
             className="pr-8"
           />
-          <Icon icon="lucide:search" className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
+          <Icon
+            icon="lucide:search"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors"
+          />
         </div>
       </div>
 
@@ -728,7 +729,7 @@ const ZoneHeader = memo(
       }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    const _handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         handleSelect();

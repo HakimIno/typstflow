@@ -16,16 +16,16 @@ export function FontWeightSelect({ value, onChange, className }: FontWeightSelec
   // Normalize legacy string values to standard numeric string values
   let normalizedValue = String(value || '400');
   const legacyMap: Record<string, string> = {
-    'thin': '100',
-    'extralight': '200',
-    'light': '300',
-    'regular': '400',
-    'normal': '400',
-    'medium': '500',
-    'semibold': '600',
-    'bold': '700',
-    'extrabold': '800',
-    'black': '900',
+    thin: '100',
+    extralight: '200',
+    light: '300',
+    regular: '400',
+    normal: '400',
+    medium: '500',
+    semibold: '600',
+    bold: '700',
+    extrabold: '800',
+    black: '900',
   };
 
   if (legacyMap[normalizedValue.toLowerCase()]) {

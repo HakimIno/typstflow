@@ -283,8 +283,7 @@ function buildQuickPrompt(schema: LayoutSchema): string {
   const headerSummary = zones.header.components.map(summarizeComponent).join(' | ') || 'empty';
   const footerSummary = zones.footer.components.map(summarizeComponent).join(' | ') || 'empty';
   const bodyLines = pages.map(
-    (p, i) =>
-      `  Page ${i + 1}: ${p.body.components.map(summarizeComponent).join(' | ') || 'empty'}`
+    (p, i) => `  Page ${i + 1}: ${p.body.components.map(summarizeComponent).join(' | ') || 'empty'}`
   );
 
   return `PDF designer. Execute the user's single action with ONE tool call. No get_layout, no planning, no follow-up steps.
@@ -324,7 +323,11 @@ Data fields: ${dataFields}`;
 }
 
 // ─── Design prompt (full agent) ───────────────────────────────────────────────
-function buildSystemPrompt(schema: LayoutSchema, sessionIntent?: string, aiMode?: 'plan' | 'act'): string {
+function buildSystemPrompt(
+  schema: LayoutSchema,
+  sessionIntent?: string,
+  aiMode?: 'plan' | 'act'
+): string {
   const { page, zones, pages, dataSchema } = schema;
 
   const base = PAPER_DIMS[page.size] ?? PAPER_DIMS.A4;
@@ -353,9 +356,10 @@ function buildSystemPrompt(schema: LayoutSchema, sessionIntent?: string, aiMode?
     ? `\n## SESSION MEMORY (maintain these choices — do NOT override)\n${sessionIntent}\n`
     : '';
 
-  const modeBlock = aiMode === 'plan'
-    ? '\n## MODE: PLAN — describe your full layout plan with exact mm positions before any tool calls.'
-    : '\n## MODE: ACT — build directly and efficiently, batch 4–6 tool calls per round.';
+  const modeBlock =
+    aiMode === 'plan'
+      ? '\n## MODE: PLAN — describe your full layout plan with exact mm positions before any tool calls.'
+      : '\n## MODE: ACT — build directly and efficiently, batch 4–6 tool calls per round.';
 
   return `You are a senior PDF layout designer for TypstFlow. You create polished, production-ready business documents that look like they were designed by a professional graphic designer — not auto-generated.
 ${intentBlock}${modeBlock}
@@ -477,8 +481,7 @@ export async function POST(req: NextRequest) {
     model?: string;
     aiMode?: 'plan' | 'act';
   };
-  const model =
-    body.model ?? process.env.OPENROUTER_MODEL_NAME ?? 'anthropic/claude-sonnet-4-5';
+  const model = body.model ?? process.env.OPENROUTER_MODEL_NAME ?? 'anthropic/claude-sonnet-4-5';
 
   const isChatMode = body.mode === 'chat';
   const isPlanMode = body.mode === 'plan';
@@ -508,10 +511,7 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({
       model,
       max_tokens: isChatMode ? 1024 : isPlanMode ? 2048 : isQuickMode ? 1024 : 4096,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...body.messages,
-      ],
+      messages: [{ role: 'system', content: systemPrompt }, ...body.messages],
       ...(hasTools ? { tools: TOOLS, tool_choice: isQuickMode ? 'required' : 'auto' } : {}),
     }),
   });

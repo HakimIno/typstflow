@@ -18,11 +18,15 @@ export const pageNumberPlugin: ComponentPlugin<PageNumberComponent> = {
     const weight = formatWeight(s?.fontWeight);
     const font = s?.fontFamily ?? 'Sarabun';
     const color = formatColor(s?.color ?? '#000000');
+    const fontStyle = s?.italic ? 'italic' : 'normal';
+    const underline = s?.underline ?? false;
+
+    const displayWithStyle = underline ? `#underline[${display}]` : display;
 
     const body =
       `#set align(${align})\n` +
-      `#set text(font: "${font}", size: ${size}pt, weight: ${weight}, fill: ${color})\n` +
-      `#context [${display}]`;
+      `#set text(font: "${font}", size: ${size}pt, weight: ${weight}, style: "${fontStyle}", fill: ${color})\n` +
+      `#context [${displayWithStyle}]`;
 
     return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
   },

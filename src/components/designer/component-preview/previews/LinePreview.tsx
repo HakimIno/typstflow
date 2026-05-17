@@ -14,7 +14,8 @@ export const LinePreview = memo(function LinePreview({ component }: LinePreviewP
   const cap = line.cap || 'butt';
 
   // CSS border style mapping
-  const borderStyle = lineStyle === 'dotted' ? 'dotted' : lineStyle === 'dashed' ? 'dashed' : 'solid';
+  const borderStyle =
+    lineStyle === 'dotted' ? 'dotted' : lineStyle === 'dashed' ? 'dashed' : 'solid';
 
   if (orientation === 'vertical') {
     return (
@@ -46,4 +47,3 @@ export const LinePreview = memo(function LinePreview({ component }: LinePreviewP
     </div>
   );
 });
-

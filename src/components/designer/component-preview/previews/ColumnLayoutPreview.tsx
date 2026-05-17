@@ -26,9 +26,7 @@ function toCssGridWidth(w: string): string {
 export function ColumnLayoutPreview({ component, pageIndex, totalPages }: Props) {
   const gap = component.gap ?? '10mm';
 
-  const gridTemplateColumns = component.columns
-    .map((c) => toCssGridWidth(c.width))
-    .join(' ');
+  const gridTemplateColumns = component.columns.map((c) => toCssGridWidth(c.width)).join(' ');
 
   return (
     <div
@@ -40,11 +38,7 @@ export function ColumnLayoutPreview({ component, pageIndex, totalPages }: Props)
       }}
     >
       {component.columns.map((col, colIdx) => (
-        <div
-          key={colIdx}
-          className="flex flex-col relative overflow-hidden"
-          style={{ gap: '0px' }}
-        >
+        <div key={colIdx} className="flex flex-col relative overflow-hidden" style={{ gap: '0px' }}>
           {col.components.map((child) => {
             // For children inside a column, we render their preview
             // at full column width (ignoring the child's absolute x/width

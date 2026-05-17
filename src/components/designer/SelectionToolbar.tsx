@@ -6,27 +6,26 @@ import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import {
-  AlignLeft,
   AlignCenter,
-  AlignRight,
-  AlignStartVertical,
   AlignCenterVertical,
   AlignEndVertical,
-  ArrowUpDown,
-  Rows2,
-  Columns2,
-  AlignVerticalDistributeCenter,
   AlignHorizontalDistributeCenter,
-  Layers,
-  ChevronUp,
+  AlignLeft,
+  AlignRight,
+  AlignStartVertical,
+  AlignVerticalDistributeCenter,
+  ArrowUpDown,
   ChevronDown,
-  ChevronsUp,
+  ChevronUp,
   ChevronsDown,
+  ChevronsUp,
+  Columns2,
   Copy,
+  Layers,
+  Rows2,
   Trash2,
 } from 'lucide-react';
 import { memo, useMemo, useRef, useState } from 'react';
-import type { ComponentNode } from '@/types/schema';
 
 export const SelectionToolbar = memo(function SelectionToolbar({
   pageId,
@@ -35,7 +34,7 @@ export const SelectionToolbar = memo(function SelectionToolbar({
 }) {
   const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
   const schema = useDesignerStore((state) => state.schema);
-  const updateComponents = useDesignerStore((state) => state.updateComponents);
+  const _updateComponents = useDesignerStore((state) => state.updateComponents);
   const removeComponents = useDesignerStore((state) => state.removeComponents);
   const zoom = useDesignerStore((state) => state.zoom);
   const bringToFrontMany = useDesignerStore((state) => state.bringToFrontMany);
@@ -80,7 +79,7 @@ export const SelectionToolbar = memo(function SelectionToolbar({
   }, [selectedComponentIds, schema, pageId]);
 
   // Page content area bounds (inside margins)
-  const pageBounds = useMemo(() => {
+  const _pageBounds = useMemo(() => {
     const { width, height } = getPaperDimensions(schema.page.size, schema.page.orientation);
     const mTop = parseTypstUnit(schema.page.margin.top);
     const mBottom = parseTypstUnit(schema.page.margin.bottom);
@@ -97,16 +96,26 @@ export const SelectionToolbar = memo(function SelectionToolbar({
   }, [schema.page]);
 
   // Calculate selection bounds (safe with empty array — guarded by early return below)
-  const minX = selectedComponents.length > 1 ? Math.min(...selectedComponents.map((c) => c.x ?? 0)) : 0;
-  const maxX = selectedComponents.length > 1 ? Math.max(...selectedComponents.map((c) => (c.x ?? 0) + (c.width ?? 20))) : 0;
-  const minY = selectedComponents.length > 1 ? Math.min(...selectedComponents.map((c) => c.absY ?? 0)) : 0;
-  const maxY = selectedComponents.length > 1 ? Math.max(...selectedComponents.map((c) => {
-    const h = c.height ?? (c.type === 'text' ? 5 : 10);
-    return (c.absY ?? 0) + h;
-  })) : 0;
+  const minX =
+    selectedComponents.length > 1 ? Math.min(...selectedComponents.map((c) => c.x ?? 0)) : 0;
+  const maxX =
+    selectedComponents.length > 1
+      ? Math.max(...selectedComponents.map((c) => (c.x ?? 0) + (c.width ?? 20)))
+      : 0;
+  const minY =
+    selectedComponents.length > 1 ? Math.min(...selectedComponents.map((c) => c.absY ?? 0)) : 0;
+  const maxY =
+    selectedComponents.length > 1
+      ? Math.max(
+          ...selectedComponents.map((c) => {
+            const h = c.height ?? (c.type === 'text' ? 5 : 10);
+            return (c.absY ?? 0) + h;
+          })
+        )
+      : 0;
 
   const selectionWidth = maxX - minX;
-  const selectionHeight = maxY - minY;
+  const _selectionHeight = maxY - minY;
 
   const isNearTop = minY < 20; // Flip if within 20mm of the top
   const baseTop = isNearTop
@@ -145,34 +154,46 @@ export const SelectionToolbar = memo(function SelectionToolbar({
         <div className="flex items-center gap-0.5 p-0.5">
           <ActionButton
             icon={AlignLeft}
-            title={isMulti ? "Align Left" : "Align Left to Page"}
-            onClick={() => isMulti ? alignSelected('left', pageId) : alignToPage('page-left', pageId)}
+            title={isMulti ? 'Align Left' : 'Align Left to Page'}
+            onClick={() =>
+              isMulti ? alignSelected('left', pageId) : alignToPage('page-left', pageId)
+            }
           />
           <ActionButton
             icon={AlignCenter}
-            title={isMulti ? "Center Horizontally" : "Center H on Page"}
-            onClick={() => isMulti ? alignSelected('center', pageId) : alignToPage('page-center-h', pageId)}
+            title={isMulti ? 'Center Horizontally' : 'Center H on Page'}
+            onClick={() =>
+              isMulti ? alignSelected('center', pageId) : alignToPage('page-center-h', pageId)
+            }
           />
           <ActionButton
             icon={AlignRight}
-            title={isMulti ? "Align Right" : "Align Right to Page"}
-            onClick={() => isMulti ? alignSelected('right', pageId) : alignToPage('page-right', pageId)}
+            title={isMulti ? 'Align Right' : 'Align Right to Page'}
+            onClick={() =>
+              isMulti ? alignSelected('right', pageId) : alignToPage('page-right', pageId)
+            }
           />
           <div className="w-[1px] h-3 bg-white/10 mx-1" />
           <ActionButton
             icon={AlignStartVertical}
-            title={isMulti ? "Align Top" : "Align Top to Page"}
-            onClick={() => isMulti ? alignSelected('top', pageId) : alignToPage('page-top', pageId)}
+            title={isMulti ? 'Align Top' : 'Align Top to Page'}
+            onClick={() =>
+              isMulti ? alignSelected('top', pageId) : alignToPage('page-top', pageId)
+            }
           />
           <ActionButton
             icon={AlignCenterVertical}
-            title={isMulti ? "Center Vertically" : "Center V on Page"}
-            onClick={() => isMulti ? alignSelected('middle', pageId) : alignToPage('page-center-v', pageId)}
+            title={isMulti ? 'Center Vertically' : 'Center V on Page'}
+            onClick={() =>
+              isMulti ? alignSelected('middle', pageId) : alignToPage('page-center-v', pageId)
+            }
           />
           <ActionButton
             icon={AlignEndVertical}
-            title={isMulti ? "Align Bottom" : "Align Bottom to Page"}
-            onClick={() => isMulti ? alignSelected('bottom', pageId) : alignToPage('page-bottom', pageId)}
+            title={isMulti ? 'Align Bottom' : 'Align Bottom to Page'}
+            onClick={() =>
+              isMulti ? alignSelected('bottom', pageId) : alignToPage('page-bottom', pageId)
+            }
           />
         </div>
       </ToolbarGroup>
@@ -192,7 +213,9 @@ export const SelectionToolbar = memo(function SelectionToolbar({
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-baseline gap-1">
                   <span className="text-xs font-black text-blue-400 tabular-nums">{stackGap}</span>
-                  <span className="text-[7px] font-bold text-zinc-500 uppercase tracking-tighter">mm</span>
+                  <span className="text-[7px] font-bold text-zinc-500 uppercase tracking-tighter">
+                    mm
+                  </span>
                 </div>
                 <div className="flex gap-0.5">
                   {[0, 5, 10].map((v) => (
@@ -200,8 +223,10 @@ export const SelectionToolbar = memo(function SelectionToolbar({
                       key={v}
                       onClick={() => setStackGap(v)}
                       className={clsx(
-                        "text-[8px] px-1 py-0.5 rounded transition-all font-bold",
-                        stackGap === v ? "bg-blue-500 text-white" : "bg-white/5 text-zinc-500 hover:bg-white/10"
+                        'text-[8px] px-1 py-0.5 rounded transition-all font-bold',
+                        stackGap === v
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white/5 text-zinc-500 hover:bg-white/10'
                       )}
                     >
                       {v}
@@ -216,7 +241,7 @@ export const SelectionToolbar = memo(function SelectionToolbar({
                 max="50"
                 step="0.5"
                 value={stackGap}
-                onChange={(e) => setStackGap(parseFloat(e.target.value))}
+                onChange={(e) => setStackGap(Number.parseFloat(e.target.value))}
                 className="w-full h-1 bg-white/5 rounded-full appearance-none cursor-pointer accent-blue-500"
               />
 
@@ -283,11 +308,7 @@ export const SelectionToolbar = memo(function SelectionToolbar({
       <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
 
       {/* Duplicate Section */}
-      <ActionButton
-        icon={Copy}
-        title="Duplicate"
-        onClick={() => duplicateSelected()}
-      />
+      <ActionButton icon={Copy} title="Duplicate" onClick={() => duplicateSelected()} />
 
       {/* Destruction Section */}
       <div className="flex items-center gap-0.5 border-l border-white/10 ml-0.5 pl-0.5">
@@ -307,13 +328,13 @@ function ToolbarGroup({
   title,
   children,
   isActive,
-  onHover
+  onHover,
 }: {
   icon: any;
   title: string;
   children: React.ReactNode;
   isActive: boolean;
-  onHover: (v: boolean) => void
+  onHover: (v: boolean) => void;
 }) {
   return (
     <div
@@ -321,18 +342,24 @@ function ToolbarGroup({
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
     >
-      <div className={clsx(
-        "p-1 rounded-md transition-all duration-200 cursor-default",
-        isActive ? "bg-white/10 text-white" : "text-zinc-400 hover:text-white hover:bg-white/5"
-      )}>
+      <div
+        className={clsx(
+          'p-1 rounded-md transition-all duration-200 cursor-default',
+          isActive ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'
+        )}
+      >
         <Icon className="w-3.5 h-3.5" />
       </div>
 
       {/* Floating Panel */}
-      <div className={clsx(
-        "absolute bottom-full left-1/2 -translate-x-1/2 pb-2 transition-all duration-300 origin-bottom z-[1100]",
-        isActive ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-2 pointer-events-none"
-      )}>
+      <div
+        className={clsx(
+          'absolute bottom-full left-1/2 -translate-x-1/2 pb-2 transition-all duration-300 origin-bottom z-[1100]',
+          isActive
+            ? 'opacity-100 scale-100 translate-y-0'
+            : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
+        )}
+      >
         <div className="pro-panel p-0.5 backdrop-blur-xl border-white/10 shadow-2xl relative bg-[var(--bg-surface-solid)]/95">
           {children}
           {/* Arrow */}
@@ -343,7 +370,12 @@ function ToolbarGroup({
   );
 }
 
-function ActionButton({ icon: Icon, title, onClick, className }: { icon: any; title: string; onClick: () => void; className?: string }) {
+function ActionButton({
+  icon: Icon,
+  title,
+  onClick,
+  className,
+}: { icon: any; title: string; onClick: () => void; className?: string }) {
   return (
     <button
       type="button"
@@ -361,5 +393,3 @@ function ActionButton({ icon: Icon, title, onClick, className }: { icon: any; ti
     </button>
   );
 }
-
-

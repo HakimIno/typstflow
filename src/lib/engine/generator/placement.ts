@@ -16,34 +16,67 @@ export function wrapPlacement(
   fillWidth?: boolean
 ): string {
   const parts: string[] = [];
-  if (base.pageBreakBefore) parts.push('#pagebreak()\n');
 
   if (flowMode) {
+    if (base.pageBreakBefore) parts.push('#pagebreak(weak: true)\n');
+
+    if (base.type === 'table') {
+      // --- Special Native Flow-Pagination Wrapper for Tables ---
+      // Exactly matches Rust wrap_flow() logic:
+      // - Uses #pad(top, left) with offsets so it stays in document flow and supports page breaks.
+      // - No height constraint so Typst splits table rows naturally across page boundaries.
+      const x = base.x ?? 0;
+      const y = base.y ?? 0;
+      const w = base.width ?? 100;
+      const absX = offsetX + x;
+      const absY = offsetY + y;
+      parts.push(
+        `#align(top + left)[#pad(top: ${absY}mm, left: ${absX}mm)[#block(width: ${w}mm, clip: false)[${body}]]]\n`
+      );
+      return parts.join('');
+    }
+
     const x = base.x ?? 0;
     const w = base.width ?? 100;
     const h = base.height ?? 10;
     // When inside a grid cell (fillWidth=true), use 100% so the content
     // fills the cell determined by the grid column width.
     const widthExpr = fillWidth ? '100%' : `${w}mm`;
-    // Text and columns components use auto-height in flow mode: Typst determines height
-    // from content, preventing overflow/overlap. Other components (image, table, etc.)
-    // still need an explicit height so percentage-height children resolve correctly.
-    const autoHeight = base.type === 'text' || base.type === 'columns' || base.type === 'checklist';
+    // Text, columns, checklist, summary-box, and repeater components use auto-height in flow mode:
+    // Typst determines height from content, preventing overflow/overlap.
+    // Other components (image, spacer, line, etc.) still need an explicit height.
+    const type = base.type as string;
+    const autoHeight =
+      type === 'text' ||
+      type === 'columns' ||
+      type === 'checklist' ||
+      type === 'summary-box' ||
+      type === 'repeater';
+
     const sizedBlock = autoHeight
       ? `#block(width: ${widthExpr}, clip: false)[${body}]`
       : `#block(width: ${widthExpr}, height: ${h}mm, clip: false)[${body}]`;
     // Inside a grid cell, skip left-padding (x indent) — the grid handles positioning
-    const inner = (!fillWidth && x > 0) ? `#pad(left: ${x}mm)[${sizedBlock}]` : sizedBlock;
+    const inner = !fillWidth && x > 0 ? `#pad(left: ${x}mm)[${sizedBlock}]` : sizedBlock;
     // Use component margins for spacing. Text defaults to 2pt below if no margin set,
     // preventing the "cramped" look where text blocks stack flush against each other.
     const aboveVal = (base as any).marginTop != null ? `${(base as any).marginTop}mm` : '0pt';
-    const belowVal = (base as any).marginBottom != null ? `${(base as any).marginBottom}mm` : (autoHeight ? '2pt' : '0pt');
+    const belowVal =
+      (base as any).marginBottom != null
+        ? `${(base as any).marginBottom}mm`
+        : autoHeight
+          ? '2pt'
+          : '0pt';
     const outerHeight = autoHeight ? '' : `, height: ${h}mm`;
     const outerWidth = fillWidth ? '100%' : '100%';
-    parts.push(`#block(above: ${aboveVal}, below: ${belowVal}, width: ${outerWidth}${outerHeight})[${inner}]\n`);
+    parts.push(
+      `#block(above: ${aboveVal}, below: ${belowVal}, width: ${outerWidth}${outerHeight})[${inner}]\n`
+    );
     return parts.join('');
   }
 
+  // --- Absolute Mode ---
+  if (base.pageBreakBefore) parts.push('#pagebreak(weak: true)\n#box()\n');
   const x = base.x ?? 0;
   const y = base.y ?? 0;
   const w = base.width ?? 100;
@@ -51,8 +84,6 @@ export function wrapPlacement(
   const absX = offsetX + x;
   const absY = offsetY + y;
 
-  // top + left ensures placement is always absolute from page top-left,
-  // not relative to the current flow cursor (critical when body zone is in flow mode).
   parts.push(
     `#place(top + left, dx: ${absX}mm, dy: ${absY}mm)[#block(width: ${w}mm, height: ${h}mm, clip: false)[${body}]]\n`
   );
@@ -69,6 +100,9 @@ export function formatWeight(weight: string | number | undefined, fallback = 're
   if (typeof w === 'number') return String(w);
   // CSS uses "normal" but Typst requires "regular"
   const normalized = w === 'normal' ? 'regular' : w;
+  if (/^\d+$/.test(normalized)) {
+    return normalized;
+  }
   return `"${normalized}"`;
 }
 

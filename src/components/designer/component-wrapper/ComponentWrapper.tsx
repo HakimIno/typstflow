@@ -10,10 +10,10 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { useResizable } from '@/hooks/use-resizable';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { SnapEngine } from '@/lib/engine/snap-engine';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { detectZoneAtPoint, isDifferentZone } from '@/lib/utils/zone-detector';
-import { SnapEngine } from '@/lib/engine/snap-engine';
 import { ComponentPreview } from '../component-preview';
 import { ActionBar } from './ActionBar';
 import { EditorOverlay } from './EditorOverlay';
@@ -61,15 +61,21 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const updateComponent = useDesignerStore((s) => s.updateComponent);
   const addComponent = useDesignerStore((s) => s.addComponent);
 
-  const handleFlowIndentLeft = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    updateComponent(componentId, { x: Math.max(0, (component?.x ?? 0) - 5) });
-  }, [componentId, component?.x, updateComponent]);
+  const handleFlowIndentLeft = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      updateComponent(componentId, { x: Math.max(0, (component?.x ?? 0) - 5) });
+    },
+    [componentId, component?.x, updateComponent]
+  );
 
-  const handleFlowIndentRight = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    updateComponent(componentId, { x: (component?.x ?? 0) + 5 });
-  }, [componentId, component?.x, updateComponent]);
+  const handleFlowIndentRight = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      updateComponent(componentId, { x: (component?.x ?? 0) + 5 });
+    },
+    [componentId, component?.x, updateComponent]
+  );
 
   const [isEditing, setIsEditing] = useState(false);
 
@@ -83,29 +89,33 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   } | null>(null);
   const [flowDragging, setFlowDragging] = useState(false);
 
-  const handleFlowPointerDown = useCallback((e: React.PointerEvent) => {
-    const target = e.target as HTMLElement;
-    if (
-      target.closest('button') ||
-      target.closest('[data-resize-handle]') ||
-      target.closest('[contenteditable="true"]') ||
-      target.closest('[data-variable-dropdown="true"]') ||
-      isEditing
-    ) return;
+  const handleFlowPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.closest('button') ||
+        target.closest('[data-resize-handle]') ||
+        target.closest('[contenteditable="true"]') ||
+        target.closest('[data-variable-dropdown="true"]') ||
+        isEditing
+      )
+        return;
 
-    e.stopPropagation();
-    selectComponent(componentId);
+      e.stopPropagation();
+      selectComponent(componentId);
 
-    const comp = useDesignerStore.getState().componentRegistry[componentId];
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    flowDragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      pointerId: e.pointerId,
-      initialXmm: comp?.x ?? 0,
-    };
-    setFlowDragging(true);
-  }, [componentId, isEditing, selectComponent]);
+      const comp = useDesignerStore.getState().componentRegistry[componentId];
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      flowDragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        pointerId: e.pointerId,
+        initialXmm: comp?.x ?? 0,
+      };
+      setFlowDragging(true);
+    },
+    [componentId, isEditing, selectComponent]
+  );
 
   const handleFlowPointerMove = useCallback((e: React.PointerEvent) => {
     const state = flowDragRef.current;
@@ -118,27 +128,32 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       ref.current.style.transform = `translate(${dx}px, ${dy}px)`;
       ref.current.style.zIndex = '50';
     }
-    window.dispatchEvent(new CustomEvent('flow-drag-move', { detail: { clientX: e.clientX, clientY: e.clientY } }));
+    window.dispatchEvent(
+      new CustomEvent('flow-drag-move', { detail: { clientX: e.clientX, clientY: e.clientY } })
+    );
   }, []);
 
-  const handleFlowPointerUp = useCallback((e: React.PointerEvent) => {
-    const state = flowDragRef.current;
-    if (!state || e.pointerId !== state.pointerId) return;
-    flowDragRef.current = null;
+  const handleFlowPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      const state = flowDragRef.current;
+      if (!state || e.pointerId !== state.pointerId) return;
+      flowDragRef.current = null;
 
-    // Clear DOM transforms immediately — no transition, no bounce
-    if (ref.current) {
-      ref.current.style.transform = '';
-      ref.current.style.zIndex = '';
-    }
-    setFlowDragging(false);
-    window.dispatchEvent(new CustomEvent('flow-drag-end'));
+      // Clear DOM transforms immediately — no transition, no bounce
+      if (ref.current) {
+        ref.current.style.transform = '';
+        ref.current.style.zIndex = '';
+      }
+      setFlowDragging(false);
+      window.dispatchEvent(new CustomEvent('flow-drag-end'));
 
-    const zoom = useDesignerStore.getState().zoom;
-    const dxMm = LayoutEngine.pxToMm((e.clientX - state.startX) / zoom);
-    const newX = Math.max(0, state.initialXmm + dxMm);
-    useDesignerStore.getState().updateComponent(componentId, { x: Math.round(newX * 10) / 10 });
-  }, [componentId]);
+      const zoom = useDesignerStore.getState().zoom;
+      const dxMm = LayoutEngine.pxToMm((e.clientX - state.startX) / zoom);
+      const newX = Math.max(0, state.initialXmm + dxMm);
+      useDesignerStore.getState().updateComponent(componentId, { x: Math.round(newX * 10) / 10 });
+    },
+    [componentId]
+  );
   // ── End flow-mode state ──────────────────────────────────────────────────────
 
   const dragStateRef = useRef<{
@@ -204,9 +219,15 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         idsToDrag = [componentId];
       }
 
-      const { width: pW, height: pH } = getPaperDimensions(store.schema.page.size, store.schema.page.orientation);
+      const { width: pW, height: pH } = getPaperDimensions(
+        store.schema.page.size,
+        store.schema.page.orientation
+      );
 
-      const initialPositions = new Map<string, { x: number; y: number; absY: number; element: HTMLElement }>();
+      const initialPositions = new Map<
+        string,
+        { x: number; y: number; absY: number; element: HTMLElement }
+      >();
 
       for (const dragId of idsToDrag) {
         const dragEl = document.querySelector<HTMLDivElement>(`[data-component-id="${dragId}"]`);
@@ -215,18 +236,22 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         const pos = getComponentPosition(dragId, store.schema);
         const zoneInfo = getComponentById(dragId, store.schema);
         if (pos && zoneInfo) {
-          const zoneOffset = LayoutEngine.calculateZoneOffset(zoneInfo.zoneKey as any, store.schema, zoneInfo.pageId);
+          const zoneOffset = LayoutEngine.calculateZoneOffset(
+            zoneInfo.zoneKey as any,
+            store.schema,
+            zoneInfo.pageId
+          );
           // Include the page's absolute offset so absY matches the document-absolute
           // coordinate space used by onPointerMove (rawY + pageIndex * pageHeight).
           const srcPageIdx = zoneInfo.pageId
-            ? store.schema.pages.findIndex(p => p.id === zoneInfo.pageId)
+            ? store.schema.pages.findIndex((p) => p.id === zoneInfo.pageId)
             : 0;
           const srcPageAbsOffset = Math.max(0, srcPageIdx) * pH;
           initialPositions.set(dragId, {
             x: pos.x,
             y: pos.y,
             absY: pos.y + zoneOffset + srcPageAbsOffset,
-            element: dragEl
+            element: dragEl,
           });
         }
       }
@@ -253,13 +278,23 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         const hOffset = LayoutEngine.calculateZoneOffset('header', store.schema, targetPageId);
         for (const c of store.schema.zones.header.components) {
           if (!idsToDrag.includes(c.id)) {
-            snapTargets.push({ x: c.x || 0, y: (c.y || 0) + hOffset, width: c.width || 40, height: c.height || 10 });
+            snapTargets.push({
+              x: c.x || 0,
+              y: (c.y || 0) + hOffset,
+              width: c.width || 40,
+              height: c.height || 10,
+            });
           }
         }
         const fOffset = LayoutEngine.calculateZoneOffset('footer', store.schema, targetPageId);
         for (const c of store.schema.zones.footer.components) {
           if (!idsToDrag.includes(c.id)) {
-            snapTargets.push({ x: c.x || 0, y: (c.y || 0) + fOffset, width: c.width || 40, height: c.height || 10 });
+            snapTargets.push({
+              x: c.x || 0,
+              y: (c.y || 0) + fOffset,
+              width: c.width || 40,
+              height: c.height || 10,
+            });
           }
         }
 
@@ -289,7 +324,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
       const zoneOffset = LayoutEngine.calculateZoneOffset(zoneKey, store.schema, pageId);
       // Match the document-absolute coordinate space: rawY + pageIndex * pageHeight
-      const primaryPageIdx = pageId ? store.schema.pages.findIndex(p => p.id === pageId) : 0;
+      const primaryPageIdx = pageId ? store.schema.pages.findIndex((p) => p.id === pageId) : 0;
       const primaryPageAbsOffset = Math.max(0, primaryPageIdx) * pH;
       dragStateRef.current = {
         isActive: true,
@@ -315,7 +350,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         lastSnapClientY: e.clientY,
         lastSnap: null,
         lastSpacingIndicators: null,
-        cachedSnapPoints: SnapEngine.generateSnapPoints(store.schema, store.selectedComponentIds, pageId || undefined),
+        cachedSnapPoints: SnapEngine.generateSnapPoints(
+          store.schema,
+          store.selectedComponentIds,
+          pageId || undefined
+        ),
         initialAbsoluteY: (component.y || 0) + zoneOffset + primaryPageAbsOffset,
       };
 
@@ -360,45 +399,60 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           const viewportY = event.clientY;
 
           // Check if we crossed into a new page
-          let detectedPageId = dragState.activePageId;
-          const paperAtPoint = document.elementFromPoint(viewportX, viewportY)?.closest<HTMLElement>('[data-paper-container]');
+          let _detectedPageId = dragState.activePageId;
+          const paperAtPoint = document
+            .elementFromPoint(viewportX, viewportY)
+            ?.closest<HTMLElement>('[data-paper-container]');
           if (paperAtPoint) {
             const newPageId = paperAtPoint.getAttribute('data-page-id');
             if (newPageId && newPageId !== dragState.activePageId) {
-              detectedPageId = newPageId;
+              _detectedPageId = newPageId;
               dragState.activePageId = newPageId;
               dragState.paperContainerEl = paperAtPoint;
               dragState.scrollParentEl = paperAtPoint.closest<HTMLElement>('.overflow-auto');
               // Refresh snap points for the new page context
-              dragState.cachedSnapPoints = SnapEngine.generateSnapPoints(store.schema, componentId, newPageId);
+              dragState.cachedSnapPoints = SnapEngine.generateSnapPoints(
+                store.schema,
+                componentId,
+                newPageId
+              );
             }
           }
 
           if (!dragState.cachedSnapPoints) {
-            dragState.cachedSnapPoints = SnapEngine.generateSnapPoints(store.schema, componentId, dragState.activePageId || undefined);
+            dragState.cachedSnapPoints = SnapEngine.generateSnapPoints(
+              store.schema,
+              componentId,
+              dragState.activePageId || undefined
+            );
           }
 
           // Use cached element refs — avoids document.querySelector on every frame
           const currentPos = dragState.paperContainerEl
             ? LayoutEngine.calculateAbsolutePositionWithElement(
-              viewportX,
-              viewportY,
-              dragState.dragOffsetXpx,
-              dragState.dragOffsetYpx,
-              dragState.paperContainerEl,
-              dragState.scrollParentEl
-            )
+                viewportX,
+                viewportY,
+                dragState.dragOffsetXpx,
+                dragState.dragOffsetYpx,
+                dragState.paperContainerEl,
+                dragState.scrollParentEl
+              )
             : LayoutEngine.calculateAbsolutePosition(
-              viewportX,
-              viewportY,
-              dragState.dragOffsetXpx,
-              dragState.dragOffsetYpx,
-              dragState.activePageId || undefined
-            );
+                viewportX,
+                viewportY,
+                dragState.dragOffsetXpx,
+                dragState.dragOffsetYpx,
+                dragState.activePageId || undefined
+              );
 
-          const paperRect = dragState.paperContainerEl?.getBoundingClientRect();
-          const pageIndex = dragState.activePageId ? store.schema.pages.findIndex(p => p.id === dragState.activePageId) : 0;
-          const { height: pageHeight } = getPaperDimensions(store.schema.page.size, store.schema.page.orientation);
+          const _paperRect = dragState.paperContainerEl?.getBoundingClientRect();
+          const pageIndex = dragState.activePageId
+            ? store.schema.pages.findIndex((p) => p.id === dragState.activePageId)
+            : 0;
+          const { height: pageHeight } = getPaperDimensions(
+            store.schema.page.size,
+            store.schema.page.orientation
+          );
           const pageAbsOffsetMM = pageIndex * pageHeight;
 
           // Standardized to absolute document-space (mm)
@@ -431,8 +485,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               y: snapResult.snappedY,
               guides: {
                 vertical: snapResult.activeGuidesX,
-                horizontal: snapResult.activeGuidesY
-              }
+                horizontal: snapResult.activeGuidesY,
+              },
             };
 
             dragState.lastSnap = snap;
@@ -475,10 +529,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             lastSnappedY: snap.y,
             activeGuides: snap.guides,
             spacingIndicators: dragState.lastSpacingIndicators || [],
-            activePageId: dragState.activePageId
+            activePageId: dragState.activePageId,
           });
           // Broadcast position so flow-mode zones can show row highlight
-          window.dispatchEvent(new CustomEvent('flow-drag-move', { detail: { clientX: event.clientX, clientY: event.clientY } }));
+          window.dispatchEvent(
+            new CustomEvent('flow-drag-move', {
+              detail: { clientX: event.clientX, clientY: event.clientY },
+            })
+          );
         });
       };
 
@@ -492,7 +550,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         }
 
         const { startX, startY, initialPositions, hasStartedDrag } = dragState;
-        
+
         if (hasStartedDrag) {
           const store = useDesignerStore.getState();
           let targetZone = detectZoneAtPoint(event.clientX, event.clientY);
@@ -512,7 +570,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             }
           }
 
-          const isCrossZone = targetZone && isDifferentZone(originalZone, targetZone);
+          const _isCrossZone = targetZone && isDifferentZone(originalZone, targetZone);
           if (targetZone) {
             const tz = targetZone;
             const { lastSnappedX, lastSnappedY } = dragState;
@@ -524,7 +582,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             );
             // Subtract destination page's absolute offset to get zone-local y
             const dstPageIdx = tz.pageId
-              ? store.schema.pages.findIndex(p => p.id === tz.pageId)
+              ? store.schema.pages.findIndex((p) => p.id === tz.pageId)
               : 0;
             const dstPageAbsOffset = Math.max(0, dstPageIdx) * pH;
 
@@ -547,12 +605,17 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               const newX = newAbsX;
               const newY = Math.max(0, newAbsY - dstZoneOffset - dstPageAbsOffset);
 
-              const compIsCrossZone = tz && isDifferentZone({
-                zoneKey: compData.zoneKey as ZoneKey,
-                pageId: compData.pageId,
-                groupId: compData.groupId,
-                groupType: compData.groupType as any
-              }, tz);
+              const compIsCrossZone =
+                tz &&
+                isDifferentZone(
+                  {
+                    zoneKey: compData.zoneKey as ZoneKey,
+                    pageId: compData.pageId,
+                    groupId: compData.groupId,
+                    groupType: compData.groupType as any,
+                  },
+                  tz
+                );
 
               if (compIsCrossZone) {
                 moves.push({
@@ -567,7 +630,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
                   fromGroupId: compData.groupId,
                   toGroupId: tz.groupId,
                   fromGroupType: compData.groupType as any,
-                  toGroupType: tz.groupType
+                  toGroupType: tz.groupType,
                 });
               } else {
                 updatesMap[dragId] = { x: newX, y: newY };
@@ -592,7 +655,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             for (const [dragId, pos] of initialPositions) {
               updatesMap[dragId] = {
                 x: pos.x + deltaXmm,
-                y: pos.y + deltaYmm
+                y: pos.y + deltaYmm,
               };
               pos.element.style.transform = '';
               pos.element.style.willChange = '';
@@ -699,17 +762,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
       // Ignore clicks on designer UI elements (sidebars, panels, toolbar)
       if (
-        target.closest('aside') || 
+        target.closest('aside') ||
         target.closest('[data-designer-ui="true"]') ||
         target.closest('[data-toolbar="true"]')
       ) {
         return;
       }
 
-      if (
-        editorContainerRef.current &&
-        !editorContainerRef.current.contains(target)
-      ) {
+      if (editorContainerRef.current && !editorContainerRef.current.contains(target)) {
         setIsEditing(false);
       }
     };
@@ -830,13 +890,13 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         'transition-none cursor-default select-none group focus:outline-none high-perf-gpu',
         isSelected
           ? clsx(
-            'z-50 ring-2 ring-[var(--accent)] ring-inset shadow-md',
-            component.type === 'text' ? 'bg-white/[0.02]' : 'bg-white/10'
-          )
+              'z-50 ring-2 ring-[var(--accent)] ring-inset shadow-md',
+              component.type === 'text' ? 'bg-white/[0.02]' : 'bg-white/10'
+            )
           : clsx(
-            'z-10 ring-inset hover:ring-1 hover:ring-white/20',
-            component.type === 'text' ? 'bg-transparent' : 'bg-white/5 hover:bg-white/10'
-          ),
+              'z-10 ring-inset hover:ring-1 hover:ring-white/20',
+              component.type === 'text' ? 'bg-transparent' : 'bg-white/5 hover:bg-white/10'
+            ),
         isSelected && !isLocked && 'z-[100]',
         isMoving && 'is-moving z-[100] ring-2 ring-[var(--accent)] shadow-lg',
         isResizing && 'ring-2 ring-[var(--accent)] shadow-lg z-[100]'
@@ -875,8 +935,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             : 'cursor-grab',
           isSelected && !flowDragging
             ? 'ring-2 ring-[var(--accent)] ring-inset shadow-md bg-white/10'
-            : !flowDragging && 'ring-inset hover:ring-1 hover:ring-white/20 bg-white/5 hover:bg-white/10',
-          isHidden && 'opacity-40',
+            : !flowDragging &&
+                'ring-inset hover:ring-1 hover:ring-white/20 bg-white/5 hover:bg-white/10',
+          isHidden && 'opacity-40'
         )}
         style={{
           width: `${flowWidthPx}px`,
@@ -913,14 +974,16 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             autoHeight={autoHeight}
           />
         ) : (
-          <div 
-            ref={previewRef} 
-            className={clsx(
-              'w-full relative pointer-events-none', 
-              !autoHeight && 'h-full'
-            )}
+          <div
+            ref={previewRef}
+            className={clsx('w-full relative pointer-events-none', !autoHeight && 'h-full')}
           >
-            <ComponentPreview component={component} pageIndex={pageIndex} totalPages={totalPages} autoHeight={autoHeight} />
+            <ComponentPreview
+              component={component}
+              pageIndex={pageIndex}
+              totalPages={totalPages}
+              autoHeight={autoHeight}
+            />
           </div>
         )}
       </div>

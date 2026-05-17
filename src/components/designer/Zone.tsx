@@ -3,12 +3,12 @@
 import { useZoneDropTarget } from '@/hooks/use-zone-drop-target';
 import { useZoneResize } from '@/hooks/use-zone-resize';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { cn } from '@/lib/utils/cn';
 import { getZoneComponents } from '@/lib/utils/schema-mutators';
 import { useDesignerStore } from '@/store/designer-store';
-import { cn } from '@/lib/utils/cn';
 import { clsx } from 'clsx';
-import { Layers, Workflow, Move } from 'lucide-react';
-import { memo, useRef, useCallback, useState, useEffect, useMemo } from 'react';
+import { Layers, Move, Workflow } from 'lucide-react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ComponentWrapper } from './component-wrapper';
 
@@ -56,10 +56,13 @@ export const Zone = memo(function Zone({
 
   const updateZone = useDesignerStore((s) => s.updateZone);
 
-  const toggleLayoutMode = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    updateZone(zoneKey, { layoutMode: isFlowZone ? 'absolute' : 'flow' }, pageId);
-  }, [zoneKey, pageId, isFlowZone, updateZone]);
+  const toggleLayoutMode = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      updateZone(zoneKey, { layoutMode: isFlowZone ? 'absolute' : 'flow' }, pageId);
+    },
+    [zoneKey, pageId, isFlowZone, updateZone]
+  );
 
   const { isResizing, handleResizeStart } = useZoneResize(
     zoneKey,
@@ -72,7 +75,14 @@ export const Zone = memo(function Zone({
     groupId,
     groupType
   );
-  const { isDraggedOver } = useZoneDropTarget(zoneKey, contentRef, pageId, groupId, groupType, isFlowZone);
+  const { isDraggedOver } = useZoneDropTarget(
+    zoneKey,
+    contentRef,
+    pageId,
+    groupId,
+    groupType,
+    isFlowZone
+  );
 
   // Heights (px) in array order — used to compute slot positions for the drop highlight.
   // For text components in flow mode, the actual DOM height is used (measured by ResizeObserver
@@ -106,10 +116,17 @@ export const Zone = memo(function Zone({
   }, [flowHeightsPx]);
 
   // Ref so the event listener always sees the latest slot data without re-registering.
-  const flowSlotsRef = useRef<{ heights: number[]; tops: number[] }>({ heights: flowHeightsPx, tops: [0] });
-  useEffect(() => { flowSlotsRef.current = computeFlowSlots(); }, [computeFlowSlots]);
+  const flowSlotsRef = useRef<{ heights: number[]; tops: number[] }>({
+    heights: flowHeightsPx,
+    tops: [0],
+  });
+  useEffect(() => {
+    flowSlotsRef.current = computeFlowSlots();
+  }, [computeFlowSlots]);
 
-  const [dragHighlight, setDragHighlight] = useState<{ topPx: number; heightPx: number } | null>(null);
+  const [dragHighlight, setDragHighlight] = useState<{ topPx: number; heightPx: number } | null>(
+    null
+  );
 
   useEffect(() => {
     if (!isFlowZone) return;
@@ -119,7 +136,12 @@ export const Zone = memo(function Zone({
       const el = contentRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+      if (
+        clientX < rect.left ||
+        clientX > rect.right ||
+        clientY < rect.top ||
+        clientY > rect.bottom
+      ) {
         setDragHighlight(null);
         return;
       }
@@ -133,7 +155,10 @@ export const Zone = memo(function Zone({
       // Find which slot the cursor is inside
       let slotIdx = heights.length; // default: after last element
       for (let i = 0; i < tops.length - 1; i++) {
-        if (cursorYpx < tops[i + 1]) { slotIdx = i; break; }
+        if (cursorYpx < tops[i + 1]) {
+          slotIdx = i;
+          break;
+        }
       }
       // topPx and heightPx are layout pixels (CSS on scaled container = layout space)
       if (slotIdx < heights.length) {
@@ -172,7 +197,7 @@ export const Zone = memo(function Zone({
         isGroupBand && (groupType === 'header' ? 'bg-indigo-500/[0.03]' : 'bg-fuchsia-500/[0.03]'),
         isDraggedOver && 'bg-[var(--accent-glow)]/50',
         isResizing &&
-        'ring-1 ring-[var(--accent)] z-50 shadow-lg !transition-none will-change-[height] [contain:size_layout]',
+          'ring-1 ring-[var(--accent)] z-50 shadow-lg !transition-none will-change-[height] [contain:size_layout]',
         hidden && 'pointer-events-none'
       )}
     >
@@ -184,9 +209,9 @@ export const Zone = memo(function Zone({
             className={clsx(
               'text-[8px] font-bold uppercase tracking-[0.15em] text-[var(--text-muted)] whitespace-nowrap px-1 py-4 rounded-l-md',
               isGroupBand &&
-              (groupType === 'header'
-                ? 'text-indigo-400 bg-indigo-500/10'
-                : 'text-fuchsia-400 bg-fuchsia-500/10')
+                (groupType === 'header'
+                  ? 'text-indigo-400 bg-indigo-500/10'
+                  : 'text-fuchsia-400 bg-fuchsia-500/10')
             )}
             style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
           >
@@ -197,20 +222,22 @@ export const Zone = memo(function Zone({
 
       {/* Layout Mode Toggle (External to Paper - Right Side) */}
       {!hidden && (
-        <div className={cn(
-          "absolute left-full top-16 -translate-y-1/2 z-20 flex items-center transition-opacity",
-          isFlowZone ? "opacity-100" : "opacity-0 group-hover/zone:opacity-100"
-        )}>
+        <div
+          className={cn(
+            'absolute left-full top-16 -translate-y-1/2 z-20 flex items-center transition-opacity',
+            isFlowZone ? 'opacity-100' : 'opacity-0 group-hover/zone:opacity-100'
+          )}
+        >
           <button
             type="button"
             onClick={toggleLayoutMode}
             className={cn(
-              "group/toggle flex flex-col items-center gap-1.5 py-2 px-1 rounded-r-xl border border-l-0  hover:pl-3 bg-black",
+              'group/toggle flex flex-col items-center gap-1.5 py-2 px-1 rounded-r-xl border border-l-0  hover:pl-3 bg-black',
               isFlowZone
-                ? "border-blue-500 text-blue-500 "
-                : "border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                ? 'border-blue-500 text-blue-500 '
+                : 'border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
             )}
-            title={isFlowZone ? "Switch to Absolute Layout" : "Switch to Flow Layout"}
+            title={isFlowZone ? 'Switch to Absolute Layout' : 'Switch to Flow Layout'}
           >
             {isFlowZone ? (
               <Workflow className="w-4 h-4 " />
@@ -261,10 +288,7 @@ export const Zone = memo(function Zone({
                 )}
 
                 {componentIds.map((id, i) => (
-                  <div
-                    key={`${pageId ?? 'global'}-${id}`}
-                    className="relative w-full shrink-0"
-                  >
+                  <div key={`${pageId ?? 'global'}-${id}`} className="relative w-full shrink-0">
                     <ComponentWrapper
                       componentId={id}
                       zoneKey={zoneKey}

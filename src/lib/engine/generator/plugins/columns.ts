@@ -16,7 +16,9 @@ export const columnsPlugin: ComponentPlugin<ColumnLayoutComponent> = {
         const children = col.components
           // Children in a column flow vertically and fill the cell width.
           // fillWidth: true → wrapPlacement uses 100% instead of absolute mm.
-          .map((child) => ctx.render(child, { offsetX: 0, offsetY: 0, flowMode: true, fillWidth: true }))
+          .map((child) =>
+            ctx.render(child, { offsetX: 0, offsetY: 0, flowMode: true, fillWidth: true })
+          )
           .join('');
         return `[${children}]`;
       })

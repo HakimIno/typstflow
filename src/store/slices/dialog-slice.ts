@@ -3,10 +3,7 @@ import type { DesignerState } from '../store-types';
 
 export type DialogSlice = Pick<DesignerState, 'dialog' | 'showDialog' | 'hideDialog'>;
 
-export const createDialogSlice: StateCreator<DesignerState, [], [], DialogSlice> = (
-  set,
-  _get
-) => ({
+export const createDialogSlice: StateCreator<DesignerState, [], [], DialogSlice> = (set, _get) => ({
   dialog: {
     isOpen: false,
     title: '',

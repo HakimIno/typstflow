@@ -11,7 +11,6 @@ import { clsx } from 'clsx';
 import { Box, Braces, ChevronDown, FileText, Hash, List, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { DesignerInput } from '../shared/DesignerInput';
 
 interface VariablePickerProps {
   sampleData: Record<string, any>;
@@ -122,134 +121,141 @@ export function VariablePicker({
       >
         <Braces className="w-3 h-3" />
         <span>Variables</span>
-        <ChevronDown className={clsx('w-2.5 h-2.5 transition-transform duration-200', isOpen && 'rotate-180')} />
+        <ChevronDown
+          className={clsx('w-2.5 h-2.5 transition-transform duration-200', isOpen && 'rotate-180')}
+        />
       </button>
 
-      {isOpen && createPortal(
-        <div className="fixed inset-0 z-[9999] pointer-events-none">
-          {/* Backdrop (Invisible but clickable to close) */}
-          <div 
-            className="absolute inset-0 pointer-events-auto" 
-            onClick={() => setIsOpen(false)} 
-          />
+      {isOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] pointer-events-none">
+            {/* Backdrop (Invisible but clickable to close) */}
+            <div
+              className="absolute inset-0 pointer-events-auto"
+              onClick={() => setIsOpen(false)}
+            />
 
-          {/* Popover */}
-          <div 
-            style={{ 
-              position: 'absolute', 
-              top: `${coords.top + 4}px`, 
-              left: `${coords.left - 240}px`, // Adjust to float left of the button
-              width: '320px' 
-            }}
-            className="pointer-events-auto bg-[var(--bg-surface)] rounded-[4px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[var(--border-default)] max-h-[450px] flex flex-col animate-in fade-in zoom-in-95 duration-150 overflow-hidden"
-          >
-            {/* Tabs */}
-            {showAggregates && (
-              <div className="flex p-1 gap-1 border-b border-[var(--border-default)] bg-white/[0.02]">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('fields')}
-                  className={clsx(
-                    'flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded-[2px] transition-all',
-                    activeTab === 'fields'
-                      ? 'bg-[var(--accent)] text-white shadow-sm'
-                      : 'text-[var(--text-muted)] hover:bg-white/5'
-                  )}
-                >
-                  Fields
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('aggregates')}
-                  className={clsx(
-                    'flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded-[2px] transition-all',
-                    activeTab === 'aggregates'
-                      ? 'bg-[var(--accent)] text-white shadow-sm'
-                      : 'text-[var(--text-muted)] hover:bg-white/5'
-                  )}
-                >
-                  Aggregates
-                </button>
-              </div>
-            )}
-
-            {/* Search Header */}
-            <div className="p-2 bg-white/[0.01]">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text-muted)]" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={activeTab === 'fields' ? 'Search data fields...' : 'Search for functions...'}
-                  className="w-full pl-8 pr-8 py-1.5 bg-[var(--bg-widget)] border border-[var(--border-default)] text-[11px] text-[var(--text-primary)] rounded-[4px] focus:outline-none focus:border-[var(--accent)] transition-colors"
-                />
-                {searchQuery && (
+            {/* Popover */}
+            <div
+              style={{
+                position: 'absolute',
+                top: `${coords.top + 4}px`,
+                left: `${coords.left - 240}px`, // Adjust to float left of the button
+                width: '320px',
+              }}
+              className="pointer-events-auto bg-[var(--bg-surface)] rounded-[4px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-[var(--border-default)] max-h-[450px] flex flex-col animate-in fade-in zoom-in-95 duration-150 overflow-hidden"
+            >
+              {/* Tabs */}
+              {showAggregates && (
+                <div className="flex p-1 gap-1 border-b border-[var(--border-default)] bg-white/[0.02]">
                   <button
                     type="button"
-                    onClick={handleClearSearch}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    onClick={() => setActiveTab('fields')}
+                    className={clsx(
+                      'flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded-[2px] transition-all',
+                      activeTab === 'fields'
+                        ? 'bg-[var(--accent)] text-white shadow-sm'
+                        : 'text-[var(--text-muted)] hover:bg-white/5'
+                    )}
                   >
-                    <X className="w-3 h-3" />
+                    Fields
                   </button>
-                )}
-              </div>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('aggregates')}
+                    className={clsx(
+                      'flex-1 py-1 text-[9px] font-bold uppercase tracking-wider rounded-[2px] transition-all',
+                      activeTab === 'aggregates'
+                        ? 'bg-[var(--accent)] text-white shadow-sm'
+                        : 'text-[var(--text-muted)] hover:bg-white/5'
+                    )}
+                  >
+                    Aggregates
+                  </button>
+                </div>
+              )}
 
-            {/* Content List */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide min-h-[100px]">
-              {isEmpty ? (
-                <div className="text-center py-10 opacity-50">
-                  <Braces className="w-8 h-8 mx-auto mb-2 text-[var(--accent)] opacity-20" />
-                  <p className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-muted)]">No Data Bindings</p>
+              {/* Search Header */}
+              <div className="p-2 bg-white/[0.01]">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text-muted)]" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={
+                      activeTab === 'fields' ? 'Search data fields...' : 'Search for functions...'
+                    }
+                    className="w-full pl-8 pr-8 py-1.5 bg-[var(--bg-widget)] border border-[var(--border-default)] text-[11px] text-[var(--text-primary)] rounded-[4px] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
-              ) : groupedPaths.length === 0 ? (
-                <div className="text-center py-10 opacity-50">
-                  <Search className="w-8 h-8 mx-auto mb-2 text-[var(--text-muted)]" />
-                  <p className="text-[10px] font-medium">No results found</p>
-                </div>
-              ) : activeTab === 'fields' ? (
-                <div className="space-y-1">
-                  {groupedPaths.map((group) => (
-                    <PathGroup
-                      key={group.name}
-                      group={group}
-                      sampleData={sampleData}
-                      onSelect={(p) => handleSelect(p)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2 p-1">
-                  {allPaths
-                    .filter((p) => getValueType(sampleData, p) === 'number' || p.includes('[*]'))
-                    .map((path) => (
-                      <AggregateItem
-                        key={path}
-                        path={path}
-                        onSelect={(f) => handleSelect(path, f)}
+              </div>
+
+              {/* Content List */}
+              <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide min-h-[100px]">
+                {isEmpty ? (
+                  <div className="text-center py-10 opacity-50">
+                    <Braces className="w-8 h-8 mx-auto mb-2 text-[var(--accent)] opacity-20" />
+                    <p className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-muted)]">
+                      No Data Bindings
+                    </p>
+                  </div>
+                ) : groupedPaths.length === 0 ? (
+                  <div className="text-center py-10 opacity-50">
+                    <Search className="w-8 h-8 mx-auto mb-2 text-[var(--text-muted)]" />
+                    <p className="text-[10px] font-medium">No results found</p>
+                  </div>
+                ) : activeTab === 'fields' ? (
+                  <div className="space-y-1">
+                    {groupedPaths.map((group) => (
+                      <PathGroup
+                        key={group.name}
+                        group={group}
+                        sampleData={sampleData}
+                        onSelect={(p) => handleSelect(p)}
                       />
                     ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2 p-1">
+                    {allPaths
+                      .filter((p) => getValueType(sampleData, p) === 'number' || p.includes('[*]'))
+                      .map((path) => (
+                        <AggregateItem
+                          key={path}
+                          path={path}
+                          onSelect={(f) => handleSelect(path, f)}
+                        />
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Summary */}
+              {!isEmpty && (
+                <div className="px-3 py-2 border-t border-[var(--border-default)] bg-white/[0.01] flex items-center justify-between">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">
+                    {activeTab === 'fields' ? 'Data Path Explorer' : 'Function Aggregator'}
+                  </span>
+                  <span className="text-[8px] font-mono text-[var(--accent)] font-bold">
+                    {allPaths.length} AVAILABLE
+                  </span>
                 </div>
               )}
             </div>
-
-            {/* Footer Summary */}
-            {!isEmpty && (
-              <div className="px-3 py-2 border-t border-[var(--border-default)] bg-white/[0.01] flex items-center justify-between">
-                <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">
-                  {activeTab === 'fields' ? 'Data Path Explorer' : 'Function Aggregator'}
-                </span>
-                <span className="text-[8px] font-mono text-[var(--accent)] font-bold">
-                  {allPaths.length} AVAILABLE
-                </span>
-              </div>
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

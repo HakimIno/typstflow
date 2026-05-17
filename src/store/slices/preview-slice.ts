@@ -3,11 +3,7 @@ import type { DesignerState } from '../store-types';
 
 export type PreviewSlice = Pick<
   DesignerState,
-  | 'sampleData'
-  | 'previewPages'
-  | 'previewStatus'
-  | 'previewError'
-  | 'setSampleData'
+  'sampleData' | 'previewPages' | 'previewStatus' | 'previewError' | 'setSampleData'
 >;
 
 export const createPreviewSlice: StateCreator<DesignerState, [], [], PreviewSlice> = (

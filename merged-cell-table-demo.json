@@ -13,9 +13,7 @@
         "right": "15mm"
       }
     },
-    "fonts": [
-      { "family": "Sarabun", "role": "body", "size": 10, "embedded": true }
-    ],
+    "fonts": [{ "family": "Sarabun", "role": "body", "size": 10, "embedded": true }],
     "zones": {
       "header": {
         "id": "header",
@@ -60,11 +58,41 @@
                   "id": "hdr-row-0",
                   "type": "header",
                   "cells": [
-                    { "id": "hdr-0-0", "content": "", "rowspan": 1, "colspan": 1, "align": "center" },
-                    { "id": "hdr-0-1", "content": "", "rowspan": 1, "colspan": 1, "align": "center" },
-                    { "id": "hdr-0-2", "content": "cell 2 Hdr", "rowspan": 1, "colspan": 1, "align": "center" },
-                    { "id": "hdr-0-3", "content": "", "rowspan": 1, "colspan": 1, "align": "center" },
-                    { "id": "hdr-0-4", "content": "cell 3 Hdr", "rowspan": 1, "colspan": 1, "align": "center" }
+                    {
+                      "id": "hdr-0-0",
+                      "content": "",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "center"
+                    },
+                    {
+                      "id": "hdr-0-1",
+                      "content": "",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "center"
+                    },
+                    {
+                      "id": "hdr-0-2",
+                      "content": "cell 2 Hdr",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "center"
+                    },
+                    {
+                      "id": "hdr-0-3",
+                      "content": "",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "center"
+                    },
+                    {
+                      "id": "hdr-0-4",
+                      "content": "cell 3 Hdr",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "center"
+                    }
                   ]
                 }
               ],
@@ -73,21 +101,78 @@
                   "id": "data-row-0",
                   "type": "data",
                   "cells": [
-                    { "id": "data-0-0", "content": "ZERO", "rowspan": 2, "colspan": 1, "align": "center", "textDirection": "vertical" },
-                    { "id": "data-0-1", "content": "R1 C1", "rowspan": 1, "colspan": 1, "align": "center", "textDirection": "vertical" },
-                    { "id": "data-0-2", "content": "R1 C2", "rowspan": 1, "colspan": 1, "align": "center" },
-                    { "id": "data-0-3", "content": "", "rowspan": 1, "colspan": 1, "align": "center" },
-                    { "id": "data-0-4", "content": "R1 C3", "rowspan": 1, "colspan": 1, "align": "right" }
+                    {
+                      "id": "data-0-0",
+                      "content": "ZERO",
+                      "rowspan": 2,
+                      "colspan": 1,
+                      "align": "center",
+                      "textDirection": "vertical"
+                    },
+                    {
+                      "id": "data-0-1",
+                      "content": "R1 C1",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "center",
+                      "textDirection": "vertical"
+                    },
+                    {
+                      "id": "data-0-2",
+                      "content": "R1 C2",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "center"
+                    },
+                    {
+                      "id": "data-0-3",
+                      "content": "",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "center"
+                    },
+                    {
+                      "id": "data-0-4",
+                      "content": "R1 C3",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "right"
+                    }
                   ]
                 },
                 {
                   "id": "data-row-1",
                   "type": "data",
                   "cells": [
-                    { "id": "data-1-1", "content": "R2 C1", "rowspan": 1, "colspan": 1, "align": "center", "textDirection": "vertical" },
-                    { "id": "data-1-2", "content": "R2 C2", "rowspan": 1, "colspan": 1, "align": "center" },
-                    { "id": "data-1-3", "content": "", "rowspan": 1, "colspan": 1, "align": "center" },
-                    { "id": "data-1-4", "content": "R2 C3", "rowspan": 1, "colspan": 1, "align": "right" }
+                    {
+                      "id": "data-1-1",
+                      "content": "R2 C1",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "center",
+                      "textDirection": "vertical"
+                    },
+                    {
+                      "id": "data-1-2",
+                      "content": "R2 C2",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "center"
+                    },
+                    {
+                      "id": "data-1-3",
+                      "content": "",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "center"
+                    },
+                    {
+                      "id": "data-1-4",
+                      "content": "R2 C3",
+                      "rowspan": 1,
+                      "colspan": 1,
+                      "align": "right"
+                    }
                   ]
                 }
               ],

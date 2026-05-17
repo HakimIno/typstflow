@@ -23,9 +23,7 @@ export interface FontSliceActions {
 
 export type FontSlice = FontSliceState & FontSliceActions;
 
-const BUILT_IN_FONTS: InstalledFont[] = [
-  { family: 'Sarabun', installedAt: 0 },
-];
+const BUILT_IN_FONTS: InstalledFont[] = [{ family: 'Sarabun', installedAt: 0 }];
 
 export function createFontSlice(): StateCreator<DesignerState, [], [], FontSlice> {
   return (set, get) => ({
@@ -46,7 +44,9 @@ export function createFontSlice(): StateCreator<DesignerState, [], [], FontSlice
         loadingFonts: s.loadingFonts.filter((f) => f !== family),
         // Always refresh installedAt so per-font selectors detect the change on re-registration
         installedFonts: s.installedFonts.some((f) => f.family === family)
-          ? s.installedFonts.map((f) => (f.family === family ? { ...f, installedAt: Date.now() } : f))
+          ? s.installedFonts.map((f) =>
+              f.family === family ? { ...f, installedAt: Date.now() } : f
+            )
           : [...s.installedFonts, { family, installedAt: Date.now() }],
         fontLoadedAt: Date.now(),
       }));

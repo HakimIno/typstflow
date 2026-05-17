@@ -24,8 +24,8 @@ export const EditorOverlay = memo(function EditorOverlay({
     <div
       ref={editorContainerRef}
       className={clsx(
-        "w-full bg-transparent overflow-hidden",
-        autoHeight ? "relative" : "absolute inset-0 h-full"
+        'w-full bg-transparent overflow-hidden',
+        autoHeight ? 'relative' : 'absolute inset-0 h-full'
       )}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}

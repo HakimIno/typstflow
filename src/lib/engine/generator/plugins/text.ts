@@ -44,7 +44,10 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
     const contentBlock =
       format !== 'text'
         ? `[#fmt_${format.replace(/-/g, '_')}("${escapeStringLiteral(content)}")]`
-        : `[${escapeTypst(content)}]`;
+        : `[${content
+            .split('\n')
+            .map((line) => escapeTypst(line))
+            .join('#linebreak()')}]`;
 
     let body =
       `#set align(${align})\n` +
@@ -58,6 +61,14 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
       body = `#block(fill: ${bgColor}, width: 100%, height: 100%, inset: 5pt)[${body}]`;
     }
 
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
+    let finalBody = body;
+    if (ctx.flowMode) {
+      const halfLeadingPt = Math.max((leading / 2) * size, 0);
+      if (halfLeadingPt > 0.01) {
+        finalBody = `#block(inset: (top: ${halfLeadingPt.toFixed(3)}pt, bottom: ${halfLeadingPt.toFixed(3)}pt))[${body}]`;
+      }
+    }
+
+    return wrapPlacement(comp, finalBody, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
   },
 };

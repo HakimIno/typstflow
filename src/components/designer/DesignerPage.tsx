@@ -6,10 +6,10 @@ import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { Trash2 } from 'lucide-react';
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import { SelectionMarquee } from './SelectionMarquee';
-import { SelectionToolbar } from './SelectionToolbar';
 import { SelectionOverlay } from './SelectionOverlay';
+import { SelectionToolbar } from './SelectionToolbar';
 import { SnapGuides } from './SnapGuides';
 import { Zone } from './Zone';
 

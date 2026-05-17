@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const family = searchParams.get('family');
-  const weight = parseInt(searchParams.get('weight') || '400', 10);
+  const weight = Number.parseInt(searchParams.get('weight') || '400', 10);
 
   if (!family) {
     return NextResponse.json({ error: 'family is required' }, { status: 400 });
@@ -42,7 +42,9 @@ export async function GET(request: Request) {
   }
 
   if (buffer.byteLength < 4000) {
-    console.error(`[fonts API] File too small (${buffer.byteLength} bytes) — likely an error page: ${url}`);
+    console.error(
+      `[fonts API] File too small (${buffer.byteLength} bytes) — likely an error page: ${url}`
+    );
     return NextResponse.json({ error: 'Font data too small' }, { status: 502 });
   }
 

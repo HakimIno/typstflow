@@ -10,9 +10,12 @@
  * The old bug used zone-local y directly, causing a jump equal to zoneOffset at drag start.
  */
 
+import {
+  getComponentById,
+  getComponentPosition,
+} from '@/components/designer/component-wrapper/utils';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import type { CoordinateContext } from '@/lib/engine/layout-engine';
-import { getComponentById, getComponentPosition } from '@/components/designer/component-wrapper/utils';
 import { describe, expect, it } from 'vitest';
 
 // ─── Shared test schema ───────────────────────────────────────────────────────
@@ -28,17 +31,13 @@ const makeSchema = () => ({
     header: {
       minHeight: `${HEADER_H}mm`,
       repeatOnEveryPage: true,
-      components: [
-        { id: 'h1', type: 'text', x: 10, y: 5, width: 50, height: 8 },
-      ],
+      components: [{ id: 'h1', type: 'text', x: 10, y: 5, width: 50, height: 8 }],
     },
     footer: {
       minHeight: `${FOOTER_H}mm`,
       repeatOnEveryPage: true,
       showOnLastPageOnly: false,
-      components: [
-        { id: 'f1', type: 'text', x: 10, y: 3, width: 50, height: 6 },
-      ],
+      components: [{ id: 'f1', type: 'text', x: 10, y: 3, width: 50, height: 6 }],
     },
   },
   pages: [
@@ -54,9 +53,7 @@ const makeSchema = () => ({
     {
       id: 'page-2',
       body: {
-        components: [
-          { id: 'b3', type: 'text', x: 5, y: 8, width: 40, height: 10 },
-        ],
+        components: [{ id: 'b3', type: 'text', x: 5, y: 8, width: 40, height: 10 }],
       },
     },
   ],
@@ -109,7 +106,7 @@ function computeDragOffset(grabMm: { x: number; y: number }, zoom: number) {
 function componentViewportPos(
   paperLeft: number,
   paperTop: number,
-  compX: number,   // mm, page-absolute x
+  compX: number, // mm, page-absolute x
   compAbsY: number, // mm, page-absolute y (includes zoneOffset)
   grabMm: { x: number; y: number },
   zoom: number
@@ -227,8 +224,8 @@ describe('Zero-jump invariant — ty must be 0 at drag start', () => {
 
   function runZeroJumpTest(params: {
     zoneKey: 'header' | 'body' | 'footer';
-    compX: number;  // zone-local x (mm)
-    compY: number;  // zone-local y (mm)
+    compX: number; // zone-local x (mm)
+    compY: number; // zone-local y (mm)
     grabMm: { x: number; y: number };
     zoom: number;
     pageId: string;
@@ -241,10 +238,21 @@ describe('Zero-jump invariant — ty must be 0 at drag start', () => {
     const context = makePaperContext(PAPER_LEFT, PAPER_TOP, zoom);
     const { dragOffsetXpx, dragOffsetYpx } = computeDragOffset(grabMm, zoom);
     const { clientX, clientY } = componentViewportPos(
-      PAPER_LEFT, PAPER_TOP, compX, initialAbsoluteY, grabMm, zoom
+      PAPER_LEFT,
+      PAPER_TOP,
+      compX,
+      initialAbsoluteY,
+      grabMm,
+      zoom
     );
 
-    const pos = LayoutEngine.calculateDropPosition(clientX, clientY, context, dragOffsetXpx, dragOffsetYpx);
+    const pos = LayoutEngine.calculateDropPosition(
+      clientX,
+      clientY,
+      context,
+      dragOffsetXpx,
+      dragOffsetYpx
+    );
     const ty = LayoutEngine.mmToPx(pos.rawY - initialAbsoluteY);
 
     return { rawY: pos.rawY, initialAbsoluteY, ty };
@@ -252,56 +260,84 @@ describe('Zero-jump invariant — ty must be 0 at drag start', () => {
 
   it('header component, zoom=1: ty=0 at drag start', () => {
     const { ty } = runZeroJumpTest({
-      zoneKey: 'header', compX: 10, compY: 5,
-      grabMm: { x: 5, y: 2 }, zoom: 1, pageId: 'page-1',
+      zoneKey: 'header',
+      compX: 10,
+      compY: 5,
+      grabMm: { x: 5, y: 2 },
+      zoom: 1,
+      pageId: 'page-1',
     });
     expect(ty).toBeCloseTo(0, 3);
   });
 
   it('body component, zoom=1: ty=0 at drag start', () => {
     const { ty } = runZeroJumpTest({
-      zoneKey: 'body', compX: 30, compY: 15,
-      grabMm: { x: 10, y: 4 }, zoom: 1, pageId: 'page-1',
+      zoneKey: 'body',
+      compX: 30,
+      compY: 15,
+      grabMm: { x: 10, y: 4 },
+      zoom: 1,
+      pageId: 'page-1',
     });
     expect(ty).toBeCloseTo(0, 3);
   });
 
   it('body component, zoom=1.5: ty=0 at drag start (zoom-independent)', () => {
     const { ty } = runZeroJumpTest({
-      zoneKey: 'body', compX: 30, compY: 15,
-      grabMm: { x: 10, y: 4 }, zoom: 1.5, pageId: 'page-1',
+      zoneKey: 'body',
+      compX: 30,
+      compY: 15,
+      grabMm: { x: 10, y: 4 },
+      zoom: 1.5,
+      pageId: 'page-1',
     });
     expect(ty).toBeCloseTo(0, 3);
   });
 
   it('body component, zoom=0.5: ty=0 at drag start', () => {
     const { ty } = runZeroJumpTest({
-      zoneKey: 'body', compX: 30, compY: 15,
-      grabMm: { x: 10, y: 4 }, zoom: 0.5, pageId: 'page-1',
+      zoneKey: 'body',
+      compX: 30,
+      compY: 15,
+      grabMm: { x: 10, y: 4 },
+      zoom: 0.5,
+      pageId: 'page-1',
     });
     expect(ty).toBeCloseTo(0, 3);
   });
 
   it('footer component, zoom=1: ty=0 at drag start', () => {
     const { ty } = runZeroJumpTest({
-      zoneKey: 'footer', compX: 10, compY: 3,
-      grabMm: { x: 5, y: 1 }, zoom: 1, pageId: 'page-1',
+      zoneKey: 'footer',
+      compX: 10,
+      compY: 3,
+      grabMm: { x: 5, y: 1 },
+      zoom: 1,
+      pageId: 'page-1',
     });
     expect(ty).toBeCloseTo(0, 3);
   });
 
   it('footer component, zoom=2: ty=0 at drag start', () => {
     const { ty } = runZeroJumpTest({
-      zoneKey: 'footer', compX: 10, compY: 3,
-      grabMm: { x: 5, y: 1 }, zoom: 2, pageId: 'page-1',
+      zoneKey: 'footer',
+      compX: 10,
+      compY: 3,
+      grabMm: { x: 5, y: 1 },
+      zoom: 2,
+      pageId: 'page-1',
     });
     expect(ty).toBeCloseTo(0, 3);
   });
 
   it('body component top-left grab (0,0): ty=0 at drag start', () => {
     const { ty } = runZeroJumpTest({
-      zoneKey: 'body', compX: 0, compY: 0,
-      grabMm: { x: 0, y: 0 }, zoom: 1, pageId: 'page-1',
+      zoneKey: 'body',
+      compX: 0,
+      compY: 0,
+      grabMm: { x: 0, y: 0 },
+      zoom: 1,
+      pageId: 'page-1',
     });
     expect(ty).toBeCloseTo(0, 3);
   });
@@ -315,7 +351,7 @@ describe('Regression: old zone-local y formula causes jump at drag start', () =>
 
   it('OLD formula (snap.y - zone-local-y) gives zoneOffset at drag start, NOT 0', () => {
     const schema = makeSchema();
-    const compY_zoneLocal = 15;   // zone-local y of body component
+    const compY_zoneLocal = 15; // zone-local y of body component
     const zoneOffset = LayoutEngine.calculateZoneOffset('body', schema, 'page-1'); // = HEADER_H = 20
     const initialAbsoluteY = compY_zoneLocal + zoneOffset; // = 35
 
@@ -324,10 +360,21 @@ describe('Regression: old zone-local y formula causes jump at drag start', () =>
     const context = makePaperContext(PAPER_LEFT, PAPER_TOP, zoom);
     const { dragOffsetXpx, dragOffsetYpx } = computeDragOffset(grabMm, zoom);
     const { clientX, clientY } = componentViewportPos(
-      PAPER_LEFT, PAPER_TOP, 30, initialAbsoluteY, grabMm, zoom
+      PAPER_LEFT,
+      PAPER_TOP,
+      30,
+      initialAbsoluteY,
+      grabMm,
+      zoom
     );
 
-    const pos = LayoutEngine.calculateDropPosition(clientX, clientY, context, dragOffsetXpx, dragOffsetYpx);
+    const pos = LayoutEngine.calculateDropPosition(
+      clientX,
+      clientY,
+      context,
+      dragOffsetXpx,
+      dragOffsetYpx
+    );
 
     // OLD (buggy): ty = mmToPx(snap.y - zone-local-y) — non-zero jump
     const ty_old = LayoutEngine.mmToPx(pos.rawY - compY_zoneLocal);
@@ -335,7 +382,7 @@ describe('Regression: old zone-local y formula causes jump at drag start', () =>
     const ty_new = LayoutEngine.mmToPx(pos.rawY - initialAbsoluteY);
 
     expect(ty_old).toBeCloseTo(LayoutEngine.mmToPx(zoneOffset), 2); // OLD: jumped by headerHeight!
-    expect(ty_new).toBeCloseTo(0, 3);                                 // NEW: no jump ✓
+    expect(ty_new).toBeCloseTo(0, 3); // NEW: no jump ✓
   });
 
   it('body component with large header (40mm) — old formula jumps 40mm at start', () => {
@@ -356,7 +403,13 @@ describe('Regression: old zone-local y formula causes jump at drag start', () =>
     const { dragOffsetXpx, dragOffsetYpx } = computeDragOffset(grabMm, zoom);
     const { clientX, clientY } = componentViewportPos(100, 50, 20, initialAbsoluteY, grabMm, zoom);
 
-    const pos = LayoutEngine.calculateDropPosition(clientX, clientY, context, dragOffsetXpx, dragOffsetYpx);
+    const pos = LayoutEngine.calculateDropPosition(
+      clientX,
+      clientY,
+      context,
+      dragOffsetXpx,
+      dragOffsetYpx
+    );
 
     const ty_old = LayoutEngine.mmToPx(pos.rawY - compY_zoneLocal); // buggy
     const ty_new = LayoutEngine.mmToPx(pos.rawY - initialAbsoluteY); // fixed
@@ -383,13 +436,22 @@ describe('Drag delta: component movement equals mouse delta in logical px', () =
     const context = makePaperContext(PAPER_LEFT, PAPER_TOP, zoom);
     const { dragOffsetXpx, dragOffsetYpx } = computeDragOffset(grabMm, zoom);
     const { clientX: startX, clientY: startY } = componentViewportPos(
-      PAPER_LEFT, PAPER_TOP, 30, initialAbsoluteY, grabMm, zoom
+      PAPER_LEFT,
+      PAPER_TOP,
+      30,
+      initialAbsoluteY,
+      grabMm,
+      zoom
     );
 
     // Move mouse 20mm right (visual = 20mm * zoom = 20px at zoom=1)
     const deltaVisualPx = LayoutEngine.mmToPx(20) * zoom;
     const pos = LayoutEngine.calculateDropPosition(
-      startX + deltaVisualPx, startY, context, dragOffsetXpx, dragOffsetYpx
+      startX + deltaVisualPx,
+      startY,
+      context,
+      dragOffsetXpx,
+      dragOffsetYpx
     );
     const tx = LayoutEngine.mmToPx(pos.rawX - 30); // comp.x = 30mm
 
@@ -407,13 +469,22 @@ describe('Drag delta: component movement equals mouse delta in logical px', () =
     const context = makePaperContext(PAPER_LEFT, PAPER_TOP, zoom);
     const { dragOffsetXpx, dragOffsetYpx } = computeDragOffset(grabMm, zoom);
     const { clientX: startX, clientY: startY } = componentViewportPos(
-      PAPER_LEFT, PAPER_TOP, 30, initialAbsoluteY, grabMm, zoom
+      PAPER_LEFT,
+      PAPER_TOP,
+      30,
+      initialAbsoluteY,
+      grabMm,
+      zoom
     );
 
     // Move mouse 10mm down visually (visual px = 10mm * zoom)
     const deltaVisualPx = LayoutEngine.mmToPx(10) * zoom;
     const pos = LayoutEngine.calculateDropPosition(
-      startX, startY + deltaVisualPx, context, dragOffsetXpx, dragOffsetYpx
+      startX,
+      startY + deltaVisualPx,
+      context,
+      dragOffsetXpx,
+      dragOffsetYpx
     );
     const ty = LayoutEngine.mmToPx(pos.rawY - initialAbsoluteY);
 
@@ -431,13 +502,22 @@ describe('Drag delta: component movement equals mouse delta in logical px', () =
     const context = makePaperContext(PAPER_LEFT, PAPER_TOP, zoom);
     const { dragOffsetXpx, dragOffsetYpx } = computeDragOffset(grabMm, zoom);
     const { clientX: startX, clientY: startY } = componentViewportPos(
-      PAPER_LEFT, PAPER_TOP, 30, initialAbsoluteY, grabMm, zoom
+      PAPER_LEFT,
+      PAPER_TOP,
+      30,
+      initialAbsoluteY,
+      grabMm,
+      zoom
     );
 
     const moveMm = 15;
     const deltaVisualPx = LayoutEngine.mmToPx(moveMm) * zoom;
     const pos = LayoutEngine.calculateDropPosition(
-      startX, startY + deltaVisualPx, context, dragOffsetXpx, dragOffsetYpx
+      startX,
+      startY + deltaVisualPx,
+      context,
+      dragOffsetXpx,
+      dragOffsetYpx
     );
     const ty = LayoutEngine.mmToPx(pos.rawY - initialAbsoluteY);
 
@@ -562,7 +642,7 @@ describe('calculateMagneticSnap', () => {
 
   it('nearest target wins when multiple in range', () => {
     const close = { x: 50.5, y: 80.5, width: 30, height: 10 }; // 0.5mm away
-    const far = { x: 51.5, y: 81.5, width: 30, height: 10 };   // 1.5mm away
+    const far = { x: 51.5, y: 81.5, width: 30, height: 10 }; // 1.5mm away
     const snap = LayoutEngine.calculateMagneticSnap(dragging, [close, far], 2);
     expect(snap.x).toBe(50.5); // closer target wins
     expect(snap.y).toBe(80.5);

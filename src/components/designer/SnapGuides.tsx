@@ -14,16 +14,22 @@ import { useShallow } from 'zustand/react/shallow';
  * Renders vertical and horizontal guide lines when snapping is active during drag.
  */
 export const SnapGuides = memo(function SnapGuides({ pageId }: Props) {
-  const { activeGuides, spacingIndicators, isDragging } = useDesignerStore(useShallow((state) => ({
-    activeGuides: state.dragState.activeGuides,
-    spacingIndicators: state.dragState.spacingIndicators,
-    isDragging: state.dragState.isDragging,
-  })));
-  const zoom = useDesignerStore((state) => state.zoom);
+  const { activeGuides, spacingIndicators, isDragging } = useDesignerStore(
+    useShallow((state) => ({
+      activeGuides: state.dragState.activeGuides,
+      spacingIndicators: state.dragState.spacingIndicators,
+      isDragging: state.dragState.isDragging,
+    }))
+  );
+  const _zoom = useDesignerStore((state) => state.zoom);
 
   if (!isDragging) return null;
 
-  if (!activeGuides.vertical.length && !activeGuides.horizontal.length && !spacingIndicators.length) {
+  if (
+    !activeGuides.vertical.length &&
+    !activeGuides.horizontal.length &&
+    !spacingIndicators.length
+  ) {
     return null;
   }
 
@@ -38,9 +44,9 @@ export const SnapGuides = memo(function SnapGuides({ pageId }: Props) {
             width: '1px',
           }}
         >
-           <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-blue-500 text-[8px] text-white px-1 rounded-b-sm whitespace-nowrap">
-             {x.toFixed(1)}mm
-           </div>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-blue-500 text-[8px] text-white px-1 rounded-b-sm whitespace-nowrap">
+            {x.toFixed(1)}mm
+          </div>
         </div>
       ))}
       {activeGuides.horizontal.map((y, i) => (
@@ -53,8 +59,8 @@ export const SnapGuides = memo(function SnapGuides({ pageId }: Props) {
           }}
         >
           <div className="absolute left-0 top-1/2 -translate-y-1/2 bg-blue-500 text-[8px] text-white px-1 rounded-r-sm whitespace-nowrap">
-             {y.toFixed(1)}mm
-           </div>
+            {y.toFixed(1)}mm
+          </div>
         </div>
       ))}
 
@@ -62,7 +68,7 @@ export const SnapGuides = memo(function SnapGuides({ pageId }: Props) {
       {spacingIndicators.map((ind, i) => {
         const isHorizontal = ind.side === 'left' || ind.side === 'right';
         const length = Math.abs(ind.lineEnd - ind.lineStart);
-        
+
         return (
           <div
             key={`spacing-${i}`}
@@ -77,36 +83,36 @@ export const SnapGuides = memo(function SnapGuides({ pageId }: Props) {
             }}
           >
             {/* T-Bar Ends */}
-            <div 
-              className="absolute bg-red-500" 
-              style={{ 
-                width: isHorizontal ? '1px' : '6px', 
-                height: isHorizontal ? '6px' : '1px', 
-                left: 0, 
-                top: isHorizontal ? '-3px' : 0 
-              }} 
+            <div
+              className="absolute bg-red-500"
+              style={{
+                width: isHorizontal ? '1px' : '6px',
+                height: isHorizontal ? '6px' : '1px',
+                left: 0,
+                top: isHorizontal ? '-3px' : 0,
+              }}
             />
-            <div 
-              className="absolute bg-red-500" 
-              style={{ 
-                width: isHorizontal ? '1px' : '6px', 
-                height: isHorizontal ? '6px' : '1px', 
-                right: isHorizontal ? 0 : 'auto', 
+            <div
+              className="absolute bg-red-500"
+              style={{
+                width: isHorizontal ? '1px' : '6px',
+                height: isHorizontal ? '6px' : '1px',
+                right: isHorizontal ? 0 : 'auto',
                 bottom: isHorizontal ? 'auto' : 0,
                 left: isHorizontal ? 'auto' : '-3px',
-                top: isHorizontal ? '-3px' : 'auto'
-              }} 
+                top: isHorizontal ? '-3px' : 'auto',
+              }}
             />
 
             {/* Distance Badge */}
-            <div 
+            <div
               className="absolute bg-red-500 text-white text-[9px] px-1 rounded-sm font-medium z-10"
               style={{
                 transform: isHorizontal ? 'translateY(-100%)' : 'translateX(8px)',
                 top: isHorizontal ? '-2px' : '50%',
                 left: isHorizontal ? '50%' : 'auto',
                 marginTop: isHorizontal ? 0 : '-6px',
-                marginLeft: isHorizontal ? '-15px' : 0
+                marginLeft: isHorizontal ? '-15px' : 0,
               }}
             >
               {ind.distance.toFixed(1)}

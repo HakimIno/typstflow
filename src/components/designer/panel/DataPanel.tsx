@@ -10,10 +10,10 @@ import {
 } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { Icon } from '@iconify/react';
 import { Editor } from '@monaco-editor/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { clsx } from 'clsx';
-import { Icon } from '@iconify/react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
@@ -73,7 +73,7 @@ export const DataPanel = memo(function DataPanel() {
     }
   };
 
-  const handleFromSchema = useCallback(() => {
+  const _handleFromSchema = useCallback(() => {
     let result: Record<string, unknown> = {};
     for (const field of schema.dataSchema) {
       const defaultVal =
@@ -181,68 +181,68 @@ export const DataPanel = memo(function DataPanel() {
 
   const loadExample = () => {
     const example = {
-      "invoice": {
-        "number": "INV-2567-00142",
-        "date": "4 พฤษภาคม 2567",
-        "dueDate": "4 มิถุนายน 2567",
-        "subtotal": "85,500.00",
-        "vat": "5,985.00",
-        "total": "91,485.00",
-        "remark": "กรุณาชำระเงินภายในวันที่กำหนด หากมีข้อสงสัยติดต่อ accounting@techsolutions.co.th",
-        "paymentTerms": "Net 30 วัน | โอนเงินผ่านบัญชี ธ.กสิกรไทย 123-4-56789-0"
+      invoice: {
+        number: 'INV-2567-00142',
+        date: '4 พฤษภาคม 2567',
+        dueDate: '4 มิถุนายน 2567',
+        subtotal: '85,500.00',
+        vat: '5,985.00',
+        total: '91,485.00',
+        remark: 'กรุณาชำระเงินภายในวันที่กำหนด หากมีข้อสงสัยติดต่อ accounting@techsolutions.co.th',
+        paymentTerms: 'Net 30 วัน | โอนเงินผ่านบัญชี ธ.กสิกรไทย 123-4-56789-0',
       },
-      "company": {
-        "name": "บริษัท เทคโซลูชันส์ จำกัด",
-        "address": "88/8 อาคารสาทรซิตี้ ชั้น 12 ถนนสาทรเหนือ แขวงสีลม เขตบางรัก กรุงเทพฯ 10500",
-        "taxId": "0105567089234",
-        "phone": "02-234-5678",
-        "email": "info@techsolutions.co.th"
+      company: {
+        name: 'บริษัท เทคโซลูชันส์ จำกัด',
+        address: '88/8 อาคารสาทรซิตี้ ชั้น 12 ถนนสาทรเหนือ แขวงสีลม เขตบางรัก กรุงเทพฯ 10500',
+        taxId: '0105567089234',
+        phone: '02-234-5678',
+        email: 'info@techsolutions.co.th',
       },
-      "customer": {
-        "name": "บริษัท ไพศาล โลจิสติกส์ จำกัด (มหาชน)",
-        "address": "200 ถนนนวมินทร์ แขวงนวมินทร์ เขตบึงกุ่ม กรุงเทพฯ 10240",
-        "taxId": "0107548002156",
-        "contact": "คุณสมชาย วงศ์ประเสริฐ",
-        "phone": "081-234-5678"
+      customer: {
+        name: 'บริษัท ไพศาล โลจิสติกส์ จำกัด (มหาชน)',
+        address: '200 ถนนนวมินทร์ แขวงนวมินทร์ เขตบึงกุ่ม กรุงเทพฯ 10240',
+        taxId: '0107548002156',
+        contact: 'คุณสมชาย วงศ์ประเสริฐ',
+        phone: '081-234-5678',
       },
-      "items": [
+      items: [
         {
-          "no": "1",
-          "description": "บริการพัฒนาระบบ ERP Module การเงินและบัญชี",
-          "unit": "งาน",
-          "qty": "1",
-          "unitPrice": "35,000.00",
-          "amount": "35,000.00"
+          no: '1',
+          description: 'บริการพัฒนาระบบ ERP Module การเงินและบัญชี',
+          unit: 'งาน',
+          qty: '1',
+          unitPrice: '35,000.00',
+          amount: '35,000.00',
         },
         {
-          "no": "2",
-          "description": "ค่าบำรุงรักษาระบบรายปี (Annual Maintenance)",
-          "unit": "ปี",
-          "qty": "1",
-          "unitPrice": "18,000.00",
-          "amount": "18,000.00"
+          no: '2',
+          description: 'ค่าบำรุงรักษาระบบรายปี (Annual Maintenance)',
+          unit: 'ปี',
+          qty: '1',
+          unitPrice: '18,000.00',
+          amount: '18,000.00',
         },
         {
-          "no": "3",
-          "description": "ใบอนุญาตซอฟต์แวร์ Enterprise License (50 users)",
-          "unit": "ชุด",
-          "qty": "1",
-          "unitPrice": "24,500.00",
-          "amount": "24,500.00"
+          no: '3',
+          description: 'ใบอนุญาตซอฟต์แวร์ Enterprise License (50 users)',
+          unit: 'ชุด',
+          qty: '1',
+          unitPrice: '24,500.00',
+          amount: '24,500.00',
         },
         {
-          "no": "4",
-          "description": "อบรมการใช้งานระบบ (Training 2 วัน)",
-          "unit": "ครั้ง",
-          "qty": "2",
-          "unitPrice": "4,000.00",
-          "amount": "8,000.00"
-        }
+          no: '4',
+          description: 'อบรมการใช้งานระบบ (Training 2 วัน)',
+          unit: 'ครั้ง',
+          qty: '2',
+          unitPrice: '4,000.00',
+          amount: '8,000.00',
+        },
       ],
-      "page": {
-        "current": "1",
-        "total": "1"
-      }
+      page: {
+        current: '1',
+        total: '1',
+      },
     };
     handleJsonChange(JSON.stringify(example, null, 2));
   };
@@ -264,13 +264,16 @@ export const DataPanel = memo(function DataPanel() {
                 type="button"
                 onClick={handleCopyAll}
                 className={clsx(
-                  "flex items-center gap-1.5 p-1 font-bold uppercase tracking-wider border px-2 py-0.5 rounded-[4px] transition-all",
+                  'flex items-center gap-1.5 p-1 font-bold uppercase tracking-wider border px-2 py-0.5 rounded-[4px] transition-all',
                   copiedAll
-                    ? "text-green-500 border-green-500/40 bg-green-500/10"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] border-[var(--border-subtle)] hover:bg-white/5"
+                    ? 'text-green-500 border-green-500/40 bg-green-500/10'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] border-[var(--border-subtle)] hover:bg-white/5'
                 )}
               >
-                <Icon icon={copiedAll ? "lucide:check-circle-2" : "lucide:copy"} className="w-2.5 h-2.5" />
+                <Icon
+                  icon={copiedAll ? 'lucide:check-circle-2' : 'lucide:copy'}
+                  className="w-2.5 h-2.5"
+                />
               </button>
             )}
             <button
@@ -407,7 +410,10 @@ export const DataPanel = memo(function DataPanel() {
                 onChange={(v: string) => setSearchQuery(v)}
                 className="pr-8"
               />
-              <Icon icon="lucide:search" className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
+              <Icon
+                icon="lucide:search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors"
+              />
             </div>
           </div>
           <div ref={parentRef} className="flex-1 overflow-y-auto scrollbar-hide">
@@ -535,7 +541,10 @@ function ExplorerHeader({
             !isCollapsed && 'rotate-90'
           )}
         />
-        <Icon icon={iconName} className="w-3 h-3 text-[var(--text-muted)] group-hover/header:text-[var(--text-secondary)] transition-colors" />
+        <Icon
+          icon={iconName}
+          className="w-3 h-3 text-[var(--text-muted)] group-hover/header:text-[var(--text-secondary)] transition-colors"
+        />
         <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.15em] group-hover/header:text-[var(--text-secondary)] transition-colors">
           {label}
         </span>
@@ -617,7 +626,10 @@ function ExplorerItem({
       onMouseLeave={onLeave}
     >
       <div className="w-5 h-5 p-0.5 rounded-full bg-[var(--bg-widget)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] transition-all ">
-        <Icon icon={iconName} className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors" />
+        <Icon
+          icon={iconName}
+          className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors"
+        />
       </div>
 
       <div className="flex-1 min-w-0">
@@ -632,17 +644,17 @@ function ExplorerItem({
       <button
         type="button"
         className={clsx(
-          "p-1.5 rounded-md transition-all shrink-0",
+          'p-1.5 rounded-md transition-all shrink-0',
           copied
-            ? "opacity-100 text-green-500 bg-green-500/10"
-            : "opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-surface)]"
+            ? 'opacity-100 text-green-500 bg-green-500/10'
+            : 'opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-surface)]'
         )}
         onClick={(e) => {
           e.stopPropagation();
           handleCopy();
         }}
       >
-        <Icon icon={copied ? "lucide:check-circle-2" : "lucide:copy"} className="w-3.5 h-3.5" />
+        <Icon icon={copied ? 'lucide:check-circle-2' : 'lucide:copy'} className="w-3.5 h-3.5" />
       </button>
     </div>
   );

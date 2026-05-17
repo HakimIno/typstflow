@@ -1,8 +1,8 @@
 'use client';
 
+import { Icon } from '@iconify/react';
 import { clsx } from 'clsx';
 import { memo } from 'react';
-import { Icon } from '@iconify/react';
 
 interface DesignerToggleProps {
   value: boolean | string;
@@ -45,10 +45,12 @@ export const DesignerToggle = memo(function DesignerToggle({
 
       {isExpression ? (
         <div className="flex-1 flex items-center gap-1 bg-[var(--bg-surface)] px-1.5 py-0.5 rounded border border-[var(--accent)]/30 overflow-hidden">
-          <Icon icon="solar:code-bold-duotone" className="w-2.5 h-2.5 text-[var(--accent)] shrink-0" />
+          <Icon
+            icon="solar:code-bold-duotone"
+            className="w-2.5 h-2.5 text-[var(--accent)] shrink-0"
+          />
           <input
             type="text"
-            autoFocus
             value={value as string}
             onChange={(e) => onChange(e.target.value)}
             className="flex-1 bg-transparent border-none outline-none text-[9px] font-mono text-[var(--accent)] min-w-0"

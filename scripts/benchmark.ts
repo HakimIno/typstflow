@@ -9,7 +9,7 @@
  * Run: bun scripts/benchmark.ts
  */
 
-import { mapComponentInSchema, batchMapComponentsInSchema } from '../src/lib/utils/schema-mutators';
+import { batchMapComponentsInSchema, mapComponentInSchema } from '../src/lib/utils/schema-mutators';
 import type { ComponentNode, LayoutSchema } from '../src/types/schema';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -46,7 +46,11 @@ function makeSchema(pageCount: number, compsPerPage: number): LayoutSchema {
     id: 'bench-schema',
     name: 'Benchmark',
     version: '1.0.0',
-    page: { size: 'A4', orientation: 'portrait', margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' } },
+    page: {
+      size: 'A4',
+      orientation: 'portrait',
+      margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' },
+    },
     fonts: [],
     zones: {
       header: { id: 'header', minHeight: '20mm', components: [] },
@@ -95,7 +99,7 @@ function benchSchemaMutations() {
 
     console.log(`  ── ${n} components selected, ${PAGES} pages:`);
     const oldMs = bench(`    OLD: sequential mapComponentInSchema × ${n}`, oldFn, 500);
-    const newMs = bench(`    NEW: batchMapComponentsInSchema (single pass)`, newFn, 500);
+    const newMs = bench('    NEW: batchMapComponentsInSchema (single pass)', newFn, 500);
     const speedup = oldMs / newMs;
     console.log(`    → Speedup: ${speedup.toFixed(2)}× faster\n`);
   }
@@ -132,12 +136,16 @@ function equalSpacingJS(
   const snaps: { axis: string; val: number }[] = [];
   for (const s of siblings) {
     for (const gap of gapsX) {
-      if (Math.abs(x - (s.x + s.w + gap)) < THRESHOLD) snaps.push({ axis: 'x', val: s.x + s.w + gap });
-      if (Math.abs(x - (s.x - width - gap)) < THRESHOLD) snaps.push({ axis: 'x', val: s.x - width - gap });
+      if (Math.abs(x - (s.x + s.w + gap)) < THRESHOLD)
+        snaps.push({ axis: 'x', val: s.x + s.w + gap });
+      if (Math.abs(x - (s.x - width - gap)) < THRESHOLD)
+        snaps.push({ axis: 'x', val: s.x - width - gap });
     }
     for (const gap of gapsY) {
-      if (Math.abs(y - (s.y + s.h + gap)) < THRESHOLD) snaps.push({ axis: 'y', val: s.y + s.h + gap });
-      if (Math.abs(y - (s.y - height - gap)) < THRESHOLD) snaps.push({ axis: 'y', val: s.y - height - gap });
+      if (Math.abs(y - (s.y + s.h + gap)) < THRESHOLD)
+        snaps.push({ axis: 'y', val: s.y + s.h + gap });
+      if (Math.abs(y - (s.y - height - gap)) < THRESHOLD)
+        snaps.push({ axis: 'y', val: s.y - height - gap });
     }
   }
   return snaps;
@@ -157,9 +165,13 @@ function benchSnapEngine() {
       h: 10,
     }));
 
-    const avgMs = bench(`    JS equal-spacing, ${n} siblings`.padEnd(52), () => {
-      equalSpacingJS(150, 100, 20, 10, siblings);
-    }, 2000);
+    const avgMs = bench(
+      `    JS equal-spacing, ${n} siblings`.padEnd(52),
+      () => {
+        equalSpacingJS(150, 100, 20, 10, siblings);
+      },
+      2000
+    );
 
     const framesAt60fps = 1000 / 60; // 16.67ms budget per frame
     const pct = ((avgMs / framesAt60fps) * 100).toFixed(1);
@@ -173,13 +185,18 @@ function benchSnapEngine() {
 // ─── 3. Spacing Indicators (pure JS) ────────────────────────────────────────
 
 function spacingIndicatorsJS(
-  x: number, y: number, width: number, height: number,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
   siblings: { x: number; y: number; w: number; h: number }[]
 ) {
   const dragRight = x + width;
   const dragBottom = y + height;
-  let nearestLeft = Infinity, nearestRight = Infinity;
-  let nearestTop = Infinity, nearestBottom = Infinity;
+  let nearestLeft = Number.POSITIVE_INFINITY;
+  let nearestRight = Number.POSITIVE_INFINITY;
+  let nearestTop = Number.POSITIVE_INFINITY;
+  let nearestBottom = Number.POSITIVE_INFINITY;
 
   for (const s of siblings) {
     const sRight = s.x + s.w;
@@ -213,9 +230,13 @@ function benchSpacingIndicators() {
       h: 10,
     }));
 
-    bench(`    JS spacing-indicators, ${n} siblings`, () => {
-      spacingIndicatorsJS(500, 300, 20, 10, siblings);
-    }, 5000);
+    bench(
+      `    JS spacing-indicators, ${n} siblings`,
+      () => {
+        spacingIndicatorsJS(500, 300, 20, 10, siblings);
+      },
+      5000
+    );
   }
   console.log('\n  In WASM (Rust): same O(N) but no GC pressure — estimates 5–15× faster\n');
 }
@@ -234,33 +255,47 @@ function benchChunkSize() {
   const newMessages = Math.ceil(PAGE_COUNT / NEW_CHUNK);
   const reduction = (((oldMessages - newMessages) / oldMessages) * 100).toFixed(0);
 
-  console.log(`  OLD chunk size: ${OLD_CHUNK} pages → ${oldMessages} postMessage calls for ${PAGE_COUNT} pages`);
-  console.log(`  NEW chunk size: ${NEW_CHUNK} pages → ${newMessages} postMessage calls for ${PAGE_COUNT} pages`);
-  console.log(`  → ${reduction}% fewer worker messages = ${reduction}% fewer RAF-batched state updates\n`);
+  console.log(
+    `  OLD chunk size: ${OLD_CHUNK} pages → ${oldMessages} postMessage calls for ${PAGE_COUNT} pages`
+  );
+  console.log(
+    `  NEW chunk size: ${NEW_CHUNK} pages → ${newMessages} postMessage calls for ${PAGE_COUNT} pages`
+  );
+  console.log(
+    `  → ${reduction}% fewer worker messages = ${reduction}% fewer RAF-batched state updates\n`
+  );
 
   // Simulate the actual accumulation work
   const pages = Array.from({ length: PAGE_COUNT }, (_, i) => `<svg id="${i}"/>`);
 
-  bench('  OLD: accumulate with chunk=10  (setState per chunk)', () => {
-    const acc: string[] = [];
-    for (let i = 0; i < pages.length; i += OLD_CHUNK) {
-      const chunk = pages.slice(i, i + OLD_CHUNK);
-      for (let j = 0; j < chunk.length; j++) acc[i + j] = chunk[j];
-      // Simulates: setSvgContent([...acc]) — shallow copy
-      const _ = [...acc];
-    }
-  }, 200);
+  bench(
+    '  OLD: accumulate with chunk=10  (setState per chunk)',
+    () => {
+      const acc: string[] = [];
+      for (let i = 0; i < pages.length; i += OLD_CHUNK) {
+        const chunk = pages.slice(i, i + OLD_CHUNK);
+        for (let j = 0; j < chunk.length; j++) acc[i + j] = chunk[j];
+        // Simulates: setSvgContent([...acc]) — shallow copy
+        const _ = [...acc];
+      }
+    },
+    200
+  );
 
-  bench('  NEW: accumulate with chunk=25  (RAF-batched setState)', () => {
-    const acc: string[] = [];
-    for (let i = 0; i < pages.length; i += NEW_CHUNK) {
-      const chunk = pages.slice(i, i + NEW_CHUNK);
-      for (let j = 0; j < chunk.length; j++) acc[i + j] = chunk[j];
-      // In browser: RAF coalesces multiple chunks before setState
-      // In Node.js: just measure accumulation cost
-      const _ = [...acc];
-    }
-  }, 200);
+  bench(
+    '  NEW: accumulate with chunk=25  (RAF-batched setState)',
+    () => {
+      const acc: string[] = [];
+      for (let i = 0; i < pages.length; i += NEW_CHUNK) {
+        const chunk = pages.slice(i, i + NEW_CHUNK);
+        for (let j = 0; j < chunk.length; j++) acc[i + j] = chunk[j];
+        // In browser: RAF coalesces multiple chunks before setState
+        // In Node.js: just measure accumulation cost
+        const _ = [...acc];
+      }
+    },
+    200
+  );
 }
 
 // ─── 5. buildComponentRegistry ───────────────────────────────────────────────
@@ -289,12 +324,18 @@ function benchRegistry() {
 
   for (const { pages, comps } of configs) {
     const schema = makeSchema(pages, comps);
-    bench(`  buildRegistry: ${pages} pages × ${comps} comps = ${pages * comps} total`, () => {
-      buildRegistry(schema);
-    }, 1000);
+    bench(
+      `  buildRegistry: ${pages} pages × ${comps} comps = ${pages * comps} total`,
+      () => {
+        buildRegistry(schema);
+      },
+      1000
+    );
   }
 
-  console.log('\n  At these speeds, adding async WASM overhead (JS↔WASM marshal) would be slower.\n');
+  console.log(
+    '\n  At these speeds, adding async WASM overhead (JS↔WASM marshal) would be slower.\n'
+  );
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -302,7 +343,9 @@ function benchRegistry() {
 console.log('');
 console.log('╔══════════════════════════════════════════════════════════════════════╗');
 console.log('║           TypstFlow Performance Benchmark                           ║');
-console.log('║           Bun ' + process.version + ' — ' + new Date().toLocaleString('th-TH') + '                    ║');
+console.log(
+  `║           Bun ${process.version} — ${new Date().toLocaleString('th-TH')}                    ║`
+);
 console.log('╚══════════════════════════════════════════════════════════════════════╝');
 
 benchSchemaMutations();

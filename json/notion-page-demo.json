@@ -382,7 +382,14 @@
                       {
                         "width": "20mm",
                         "components": [
-                          { "id": "edu-1-y1", "type": "text", "x": 0, "y": 0, "content": "20XX -", "style": { "fontWeight": "bold" } },
+                          {
+                            "id": "edu-1-y1",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "20XX -",
+                            "style": { "fontWeight": "bold" }
+                          },
                           { "id": "edu-1-y2", "type": "text", "x": 0, "y": 0, "content": "20XX" }
                         ]
                       },
@@ -420,7 +427,14 @@
                       {
                         "width": "20mm",
                         "components": [
-                          { "id": "edu-2-y1", "type": "text", "x": 0, "y": 0, "content": "20XX -", "style": { "fontWeight": "bold" } },
+                          {
+                            "id": "edu-2-y1",
+                            "type": "text",
+                            "x": 0,
+                            "y": 0,
+                            "content": "20XX -",
+                            "style": { "fontWeight": "bold" }
+                          },
                           { "id": "edu-2-y2", "type": "text", "x": 0, "y": 0, "content": "20XX" }
                         ]
                       },

@@ -2,12 +2,12 @@
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { insertColumn, insertStructuredRow, mergeStructuredCells } from '@/lib/utils/table-utils';
+import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
-import type { TableComponent, TableRow, TableCell as TCell } from '@/types/schema';
+import type { TableCell as TCell, TableComponent, TableRow } from '@/types/schema';
 import { clsx } from 'clsx';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { TableActionToolbar } from './TableActionToolbar';
-import { parseTypstUnit } from '@/lib/utils/units';
 
 // ─── Inline Cell Editor ─────────────────────────────────────────────────────
 function InlineCellInput({
@@ -88,20 +88,32 @@ export function TablePreview({ component }: Props) {
   const headerRows: TableRow[] = component.headerRows?.length
     ? component.headerRows
     : component.showHeader !== false
-      ? [{
-          id: 'synthetic-header',
-          type: 'header',
-          cells: component.columns.map((c) => ({
-            id: c.id,
-            content: c.header || '',
-            align: c.align || 'left',
-          })),
-        }]
+      ? [
+          {
+            id: 'synthetic-header',
+            type: 'header',
+            cells: component.columns.map((c) => ({
+              id: c.id,
+              content: c.header || '',
+              align: c.align || 'left',
+            })),
+          },
+        ]
       : [];
 
   // Build preview body: group header → detail rows → subtotal → summary footer
-  const buildPreviewRows = (): { rows: TableRow[]; sectionKey: string; section: SectionType; isHeader: boolean }[] => {
-    const sections: { rows: TableRow[]; sectionKey: string; section: SectionType; isHeader: boolean }[] = [];
+  const buildPreviewRows = (): {
+    rows: TableRow[];
+    sectionKey: string;
+    section: SectionType;
+    isHeader: boolean;
+  }[] => {
+    const sections: {
+      rows: TableRow[];
+      sectionKey: string;
+      section: SectionType;
+      isHeader: boolean;
+    }[] = [];
 
     const hasGroupBy = !!component.groupBy;
 
@@ -110,29 +122,38 @@ export function TablePreview({ component }: Props) {
       const groupHeaderRow: TableRow = {
         id: 'preview-group-header',
         type: 'group-header',
-        cells: [{
-          id: 'gh-cell-0',
-          content: component.groupHeaderFormat || `Group: {{${component.groupBy}}}`,
-          colspan: component.columns.length,
-          align: 'left',
-          // No fill/style here — renderCell reads from component.groupHeaderStyle directly
-        }],
+        cells: [
+          {
+            id: 'gh-cell-0',
+            content: component.groupHeaderFormat || `Group: {{${component.groupBy}}}`,
+            colspan: component.columns.length,
+            align: 'left',
+            // No fill/style here — renderCell reads from component.groupHeaderStyle directly
+          },
+        ],
       };
-      sections.push({ rows: [groupHeaderRow], sectionKey: 'detailRows', section: 'data', isHeader: false });
+      sections.push({
+        rows: [groupHeaderRow],
+        sectionKey: 'detailRows',
+        section: 'data',
+        isHeader: false,
+      });
     }
 
     // 2. Detail rows (from schema or synthetic)
     const detailRows: TableRow[] = component.detailRows?.length
       ? component.detailRows
-      : [{
-          id: 'synthetic-detail',
-          type: 'data',
-          cells: component.columns.map((c) => ({
-            id: `detail-${c.id}`,
-            content: c.field ? `{{${c.field}}}` : '',
-            align: c.align || 'left',
-          })),
-        }];
+      : [
+          {
+            id: 'synthetic-detail',
+            type: 'data',
+            cells: component.columns.map((c) => ({
+              id: `detail-${c.id}`,
+              content: c.field ? `{{${c.field}}}` : '',
+              align: c.align || 'left',
+            })),
+          },
+        ];
     sections.push({ rows: detailRows, sectionKey: 'detailRows', section: 'data', isHeader: false });
 
     // 3. Auto Group Footer / Subtotal row
@@ -142,20 +163,28 @@ export function TablePreview({ component }: Props) {
         type: 'group-footer',
         cells: component.columns.map((col, idx) => ({
           id: `gf-cell-${idx}`,
-          content: idx === 0
-            ? (component.autoGroupFooterLabel || 'Subtotal')
-            : (col.footerExpr || ''),
+          content: idx === 0 ? component.autoGroupFooterLabel || 'Subtotal' : col.footerExpr || '',
           align: col.align || 'left',
           // No fill/style here — renderCell reads from component.groupFooterStyle directly
         })),
       };
-      sections.push({ rows: [subtotalRow], sectionKey: 'detailRows', section: 'data', isHeader: false });
+      sections.push({
+        rows: [subtotalRow],
+        sectionKey: 'detailRows',
+        section: 'data',
+        isHeader: false,
+      });
     }
 
     // 4. Summary footer rows (footerRows)
     const footerRows: TableRow[] = component.footerRows || [];
     if (footerRows.length > 0) {
-      sections.push({ rows: footerRows, sectionKey: 'footerRows', section: 'footer', isHeader: false });
+      sections.push({
+        rows: footerRows,
+        sectionKey: 'footerRows',
+        section: 'footer',
+        isHeader: false,
+      });
     }
 
     return sections;
@@ -196,11 +225,21 @@ export function TablePreview({ component }: Props) {
 
   // ─── Cell selection ───────────────────────────────────────────────────
   const isCellSelected = (section: SectionType, rowId: string, cellIdx: number) => {
-    if (!selectedCells || selectedCells.tableId !== component.id || selectedCells.section !== section) return false;
+    if (
+      !selectedCells ||
+      selectedCells.tableId !== component.id ||
+      selectedCells.section !== section
+    )
+      return false;
     return selectedCells.rowIds.includes(rowId) && selectedCells.cellIndices.includes(cellIdx);
   };
 
-  const handleCellMouseDown = (section: SectionType, rowId: string, cellIdx: number, e: React.MouseEvent) => {
+  const handleCellMouseDown = (
+    section: SectionType,
+    rowId: string,
+    cellIdx: number,
+    e: React.MouseEvent
+  ) => {
     e.stopPropagation();
     setIsSelecting(true);
     setSelectionStart({ rowId, cellIdx, section });
@@ -209,7 +248,8 @@ export function TablePreview({ component }: Props) {
 
   const handleCellMouseEnter = (section: SectionType, rowId: string, cellIdx: number) => {
     if (!isSelecting || !selectionStart || selectionStart.section !== section) return;
-    const sectionKey = section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
+    const sectionKey =
+      section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
     const rows = component[sectionKey] || [];
     const startRowIdx = rows.findIndex((r) => r.id === selectionStart.rowId);
     const endRowIdx = rows.findIndex((r) => r.id === rowId);
@@ -236,11 +276,24 @@ export function TablePreview({ component }: Props) {
   // ─── Merge / Split / Delete / Insert ──────────────────────────────────
   const handleMerge = () => {
     if (!selectedCells) return;
-    const sectionKey = selectedCells.section === 'header' ? 'headerRows' : selectedCells.section === 'footer' ? 'footerRows' : 'detailRows';
+    const sectionKey =
+      selectedCells.section === 'header'
+        ? 'headerRows'
+        : selectedCells.section === 'footer'
+          ? 'footerRows'
+          : 'detailRows';
     const rows = component[sectionKey] || [];
-    const rowIndices = selectedCells.rowIds.map((id) => rows.findIndex((r) => r.id === id)).sort((a, b) => a - b);
+    const rowIndices = selectedCells.rowIds
+      .map((id) => rows.findIndex((r) => r.id === id))
+      .sort((a, b) => a - b);
     const colIndices = [...selectedCells.cellIndices].sort((a, b) => a - b);
-    const newRows = mergeStructuredCells(rows, rowIndices[0], rowIndices[rowIndices.length - 1], colIndices[0], colIndices[colIndices.length - 1]);
+    const newRows = mergeStructuredCells(
+      rows,
+      rowIndices[0],
+      rowIndices[rowIndices.length - 1],
+      colIndices[0],
+      colIndices[colIndices.length - 1]
+    );
     updateComponent(component.id, { [sectionKey]: newRows } as any);
     setSelectedCell(null);
   };
@@ -248,7 +301,8 @@ export function TablePreview({ component }: Props) {
   const handleSplit = () => {
     if (!selectedCell) return;
     const { section, rowId, cellIdx } = selectedCell;
-    const sectionKey = section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
+    const sectionKey =
+      section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
     const rows = [...(component[sectionKey] || [])];
     const rowIdx = rows.findIndex((r) => r.id === rowId);
     if (rowIdx === -1) return;
@@ -271,7 +325,8 @@ export function TablePreview({ component }: Props) {
       const newCols = component.columns.filter((_, idx) => !cellIndices.includes(idx));
       updateComponent(component.id, { columns: newCols } as any);
     } else {
-      const sectionKey = section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
+      const sectionKey =
+        section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
       const rows = component[sectionKey] || [];
       const newRows = rows.filter((r) => !rowIds.includes(r.id));
       updateComponent(component.id, { [sectionKey]: newRows } as any);
@@ -281,11 +336,21 @@ export function TablePreview({ component }: Props) {
 
   const handleInsertRow = () => {
     if (!selectedCells) return;
-    const sectionKey = selectedCells.section === 'header' ? 'headerRows' : selectedCells.section === 'footer' ? 'footerRows' : 'detailRows';
+    const sectionKey =
+      selectedCells.section === 'header'
+        ? 'headerRows'
+        : selectedCells.section === 'footer'
+          ? 'footerRows'
+          : 'detailRows';
     const rows = component[sectionKey] || [];
     const lastRowId = selectedCells.rowIds[selectedCells.rowIds.length - 1];
     const index = rows.findIndex((r) => r.id === lastRowId);
-    const newRows = insertStructuredRow(rows, index, component.columns.length, selectedCells.section as any);
+    const newRows = insertStructuredRow(
+      rows,
+      index,
+      component.columns.length,
+      selectedCells.section as any
+    );
     updateComponent(component.id, { [sectionKey]: newRows } as any);
   };
 
@@ -299,7 +364,14 @@ export function TablePreview({ component }: Props) {
   // ─── Style helpers ────────────────────────────────────────────────────
   const style = component.style || {};
   const isStaticTable = component.isStatic ?? false;
-  const sides = style.borderSides ?? { top: true, bottom: true, left: true, right: true, innerH: true, innerV: true };
+  const sides = style.borderSides ?? {
+    top: true,
+    bottom: true,
+    left: true,
+    right: true,
+    innerH: true,
+    innerV: true,
+  };
   const cellPaddingPx = LayoutEngine.mmToPx(parseTypstUnit(style.inset || '2mm'));
 
   const headerBg = style.headerBackground || '#f1f5f9';
@@ -318,21 +390,34 @@ export function TablePreview({ component }: Props) {
   const obWidth = LayoutEngine.mmToPx(parseTypstUnit(style.borderWidth || '0.5pt'));
   const obColor = style.borderColor || '#cbd5e1';
   // Inner horizontal (between rows)
-  const ihWidth = LayoutEngine.mmToPx(parseTypstUnit(style.innerHBorderWidth || style.borderWidth || '0.5pt'));
+  const ihWidth = LayoutEngine.mmToPx(
+    parseTypstUnit(style.innerHBorderWidth || style.borderWidth || '0.5pt')
+  );
   const ihColor = style.innerHBorderColor || style.borderColor || '#cbd5e1';
   const ihDash = style.horizontalDash || 'solid';
   // Inner vertical (between cols)
-  const ivWidth = LayoutEngine.mmToPx(parseTypstUnit(style.innerVBorderWidth || style.borderWidth || '0.5pt'));
+  const ivWidth = LayoutEngine.mmToPx(
+    parseTypstUnit(style.innerVBorderWidth || style.borderWidth || '0.5pt')
+  );
   const ivColor = style.innerVBorderColor || style.borderColor || '#cbd5e1';
   const ivDash = style.verticalDash || 'solid';
   // Header separator (bottom of last header row)
-  const hsBorderWidth = LayoutEngine.mmToPx(parseTypstUnit(style.headerBorderWidth || style.borderWidth || '0.5pt'));
+  const hsBorderWidth = LayoutEngine.mmToPx(
+    parseTypstUnit(style.headerBorderWidth || style.borderWidth || '0.5pt')
+  );
   const hsBorderColor = style.headerBorderColor || style.borderColor || '#cbd5e1';
 
-  const toCssDash = (d: string) => d === 'dashed' ? 'dashed' : d === 'dotted' ? 'dotted' : 'solid';
+  const toCssDash = (d: string) =>
+    d === 'dashed' ? 'dashed' : d === 'dotted' ? 'dotted' : 'solid';
 
   // ─── Save cell content ────────────────────────────────────────────────
-  const handleCellSave = (sectionKey: string, rows: TableRow[], rowIdx: number, cellId: string, newVal: string) => {
+  const handleCellSave = (
+    sectionKey: string,
+    rows: TableRow[],
+    rowIdx: number,
+    cellId: string,
+    newVal: string
+  ) => {
     const newRows = [...rows];
     const newCells = [...newRows[rowIdx].cells];
     const idx = newCells.findIndex((c) => c.id === cellId);
@@ -351,7 +436,7 @@ export function TablePreview({ component }: Props) {
     sectionKey: string,
     section: SectionType,
     isHeader: boolean,
-    totalDataRows: number,
+    _totalDataRows: number
   ) => {
     const isGroupHeader = row.type === 'group-header';
     const isGroupFooter = row.type === 'group-footer' || (row.type === 'footer' && !isHeader);
@@ -378,23 +463,47 @@ export function TablePreview({ component }: Props) {
     // Text styling — reads from user-configured styles only
     const ghStyle = component.groupHeaderStyle as any;
     const gfStyle = component.groupFooterStyle as any;
-    const textColor = cellStyle?.color
-      || (isHeader ? headerColor : isGroupHeader ? ghStyle?.color : isGroupFooter ? gfStyle?.color : undefined)
-      || bodyColor;
-    const fontSize = cellStyle?.fontSize
-      || (isHeader ? headerFontSize : isGroupHeader ? ghStyle?.fontSize : isGroupFooter ? gfStyle?.fontSize : undefined)
-      || bodyFontSize;
-    const fontWeight = cellStyle?.fontWeight
-      || (isHeader ? headerFontWeight : isGroupHeader ? ghStyle?.fontWeight : isGroupFooter ? gfStyle?.fontWeight : undefined)
-      || 'normal';
-    const isItalic = cellStyle?.italic ?? (isGroupFooter ? !!(gfStyle?.italic) : isGroupHeader ? !!(ghStyle?.italic) : false);
-    const isUnderline = cellStyle?.underline ?? (isGroupFooter ? !!(gfStyle?.underline) : false);
+    const textColor =
+      cellStyle?.color ||
+      (isHeader
+        ? headerColor
+        : isGroupHeader
+          ? ghStyle?.color
+          : isGroupFooter
+            ? gfStyle?.color
+            : undefined) ||
+      bodyColor;
+    const fontSize =
+      cellStyle?.fontSize ||
+      (isHeader
+        ? headerFontSize
+        : isGroupHeader
+          ? ghStyle?.fontSize
+          : isGroupFooter
+            ? gfStyle?.fontSize
+            : undefined) ||
+      bodyFontSize;
+    const fontWeight =
+      cellStyle?.fontWeight ||
+      (isHeader
+        ? headerFontWeight
+        : isGroupHeader
+          ? ghStyle?.fontWeight
+          : isGroupFooter
+            ? gfStyle?.fontWeight
+            : undefined) ||
+      'normal';
+    const isItalic =
+      cellStyle?.italic ??
+      (isGroupFooter ? !!gfStyle?.italic : isGroupHeader ? !!ghStyle?.italic : false);
+    const isUnderline = cellStyle?.underline ?? (isGroupFooter ? !!gfStyle?.underline : false);
     const cellFontFamily = cellStyle?.fontFamily || style.fontFamily;
     const resolvedAlign = cell.align || 'left';
     const textDirection = cell.textDirection || 'horizontal';
     const isVertical = textDirection === 'vertical';
     // Group header/footer rows have actual content — don't show binding placeholder
-    const placeholder = (isHeader || isGroupHeader || isGroupFooter) ? '' : (isStaticTable ? '' : '{{binding}}');
+    const placeholder =
+      isHeader || isGroupHeader || isGroupFooter ? '' : isStaticTable ? '' : '{{binding}}';
 
     // ─── Structural border calculation ────────────────────────────────
     // Determine position in the rendered section
@@ -411,7 +520,7 @@ export function TablePreview({ component }: Props) {
     const isFirstCol = cellIdx === 0;
     const isLastCol = cellIdx + (cell.colspan || 1) === component.columns.length;
     const isLastHeaderRow = isHeader && isFirstRow; // single header section — treat as last
-    const isHeaderBoundary = isLastHeaderRow && !isHeader; // not used here but guard
+    const _isHeaderBoundary = isLastHeaderRow && !isHeader; // not used here but guard
 
     const makeBorder = (show: boolean, w: number, c: string, dash = 'solid') =>
       show ? `${w}px ${toCssDash(dash)} ${c}` : 'none';
@@ -423,7 +532,7 @@ export function TablePreview({ component }: Props) {
         : makeBorder(sides.innerH, ihWidth, ihColor, ihDash),
       // Bottom edge: outer bottom for last rows + header separator
       borderBottom: isLastHeaderRow
-        ? makeBorder(true, hsBorderWidth, hsBorderColor)  // header separator always shown
+        ? makeBorder(true, hsBorderWidth, hsBorderColor) // header separator always shown
         : isLastRow
           ? makeBorder(sides.bottom, obWidth, obColor)
           : makeBorder(sides.innerH, ihWidth, ihColor, ihDash),
@@ -456,7 +565,9 @@ export function TablePreview({ component }: Props) {
           padding: `${cellPaddingPx}px`,
           textAlign: resolvedAlign as any,
           verticalAlign: cell.verticalAlign || 'middle',
-          ...(isVertical ? { writingMode: 'vertical-rl' as any, textOrientation: 'mixed' as any } : {}),
+          ...(isVertical
+            ? { writingMode: 'vertical-rl' as any, textOrientation: 'mixed' as any }
+            : {}),
         }}
       >
         <InlineCellInput
@@ -470,14 +581,24 @@ export function TablePreview({ component }: Props) {
             fontStyle: isItalic ? 'italic' : 'normal',
             textDecoration: isUnderline ? 'underline' : 'none',
             lineHeight: 1.4,
-            ...(isVertical ? { writingMode: 'vertical-rl' as any, textOrientation: 'mixed' as any, width: 'auto', height: '100%' } : {}),
+            ...(isVertical
+              ? {
+                  writingMode: 'vertical-rl' as any,
+                  textOrientation: 'mixed' as any,
+                  width: 'auto',
+                  height: '100%',
+                }
+              : {}),
           }}
           initialValue={cell.content || ''}
           placeholder={placeholder}
           onSave={(newVal) => {
             if (newVal === cell.content) return;
             // Legacy column-based tables
-            if (!component[sectionKey as keyof TableComponent] || (component[sectionKey as keyof TableComponent] as any)?.length === 0) {
+            if (
+              !component[sectionKey as keyof TableComponent] ||
+              (component[sectionKey as keyof TableComponent] as any)?.length === 0
+            ) {
               if (isHeader) {
                 const newCols = [...component.columns];
                 if (newCols[cellIdx]) newCols[cellIdx].header = newVal;
@@ -490,7 +611,13 @@ export function TablePreview({ component }: Props) {
               }
               return;
             }
-            handleCellSave(sectionKey, component[sectionKey as keyof TableComponent] as TableRow[], rowIdx, cell.id, newVal);
+            handleCellSave(
+              sectionKey,
+              component[sectionKey as keyof TableComponent] as TableRow[],
+              rowIdx,
+              cell.id,
+              newVal
+            );
           }}
         />
 
@@ -499,7 +626,9 @@ export function TablePreview({ component }: Props) {
           onMouseDown={(e) => handleColResizeStart(e, cellIdx + (cell.colspan || 1) - 1)}
           className={clsx(
             'absolute top-0 right-0 w-1.5 h-full cursor-col-resize z-20 transition-colors',
-            resizingColIndex === cellIdx ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent)] opacity-0 hover:opacity-100'
+            resizingColIndex === cellIdx
+              ? 'bg-[var(--accent)]'
+              : 'hover:bg-[var(--accent)] opacity-0 hover:opacity-100'
           )}
         />
       </Tag>
@@ -507,9 +636,16 @@ export function TablePreview({ component }: Props) {
   };
 
   // ─── Render row helper ────────────────────────────────────────────────
-  const renderRows = (rows: TableRow[], sectionKey: string, section: SectionType, isHeader: boolean) => {
+  const renderRows = (
+    rows: TableRow[],
+    sectionKey: string,
+    section: SectionType,
+    isHeader: boolean
+  ) => {
     return rows.map((row, rowIdx) => {
-      const rowHeight = row.height ? `${LayoutEngine.mmToPx(parseTypstUnit(row.height))}px` : undefined;
+      const rowHeight = row.height
+        ? `${LayoutEngine.mmToPx(parseTypstUnit(row.height))}px`
+        : undefined;
       return (
         <tr key={row.id} style={{ height: rowHeight }}>
           {row.cells.map((cell, cellIdx) =>
@@ -558,13 +694,11 @@ export function TablePreview({ component }: Props) {
         </colgroup>
 
         {headerRows.length > 0 && (
-          <thead>
-            {renderRows(headerRows, 'headerRows', 'header', true)}
-          </thead>
+          <thead>{renderRows(headerRows, 'headerRows', 'header', true)}</thead>
         )}
 
         <tbody>
-          {previewSections.map((sec, i) =>
+          {previewSections.map((sec, _i) =>
             renderRows(sec.rows, sec.sectionKey, sec.section, sec.isHeader)
           )}
         </tbody>

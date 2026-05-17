@@ -54,8 +54,7 @@ export const createUISlice: StateCreator<DesignerState, [], [], UISlice> = (set,
   setViewMode: (mode: 'design' | 'preview' | 'split') =>
     set((state) => ({
       viewMode: mode,
-      isRightSidebarOpen:
-        mode === 'preview' || mode === 'split' ? true : state.isRightSidebarOpen,
+      isRightSidebarOpen: mode === 'preview' || mode === 'split' ? true : state.isRightSidebarOpen,
     })),
   setActiveTab: (tab: 'palette' | 'outline' | 'data' | 'ai') =>
     set({ activeTab: tab, isSidebarOpen: true }),

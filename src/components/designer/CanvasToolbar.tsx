@@ -1,18 +1,12 @@
 'use client';
 
-import { useDesignerStore } from '@/store/designer-store';
-import {
-  Maximize2,
-  Minus,
-  Plus,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react';
-import { memo, useEffect, useMemo, useState } from 'react';
-import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
-import { motion, AnimatePresence } from 'framer-motion';
+import { getPaperDimensions } from '@/lib/utils/paper-sizes';
+import { useDesignerStore } from '@/store/designer-store';
 import clsx from 'clsx';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus } from 'lucide-react';
+import { memo, useEffect, useMemo, useState } from 'react';
 
 interface CanvasToolbarProps {
   mode?: 'design' | 'preview';
@@ -40,8 +34,8 @@ export const CanvasToolbar = memo(function CanvasToolbar({
   const [currentPageInput, setCurrentPageInput] = useState('1');
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  
-  const displayActivePage = customActivePage ?? (pageIds.indexOf(activePageId || '') + 1);
+
+  const displayActivePage = customActivePage ?? pageIds.indexOf(activePageId || '') + 1;
   const displayTotalPages = customTotalPageCount ?? pageIds.length;
 
   useEffect(() => {
@@ -79,9 +73,11 @@ export const CanvasToolbar = memo(function CanvasToolbar({
   const handleResetZoom = () => setZoom(1);
 
   const handleFitToWidth = () => {
-    const container = mode === 'preview'
-      ? document.querySelector('.PreviewPane [data-canvas-scroll-container]')
-      : document.querySelector('.Canvas [data-canvas-scroll-container]') || document.querySelector('[data-canvas-scroll-container]');
+    const container =
+      mode === 'preview'
+        ? document.querySelector('.PreviewPane [data-canvas-scroll-container]')
+        : document.querySelector('.Canvas [data-canvas-scroll-container]') ||
+          document.querySelector('[data-canvas-scroll-container]');
 
     if (!container) return;
 
@@ -96,7 +92,7 @@ export const CanvasToolbar = memo(function CanvasToolbar({
 
   const handlePageSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const idx = parseInt(currentPageInput) - 1;
+    const idx = Number.parseInt(currentPageInput) - 1;
     if (idx >= 0 && idx < displayTotalPages) {
       if (onPageChange) {
         onPageChange(idx);
@@ -108,17 +104,30 @@ export const CanvasToolbar = memo(function CanvasToolbar({
     }
   };
 
-  const ButtonToolbar = ({ children, onClick, disabled, className }: { children: React.ReactNode, onClick: () => void, disabled?: boolean, className?: string }) => {
+  const ButtonToolbar = ({
+    children,
+    onClick,
+    disabled,
+    className,
+  }: {
+    children: React.ReactNode;
+    onClick: () => void;
+    disabled?: boolean;
+    className?: string;
+  }) => {
     return (
       <button
         onClick={onClick}
         disabled={disabled}
-        className={clsx("p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-950 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer", className)}
+        className={clsx(
+          'p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-950 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer',
+          className
+        )}
       >
         {children}
       </button>
-    )
-  }
+    );
+  };
 
   return (
     <div
@@ -136,7 +145,8 @@ export const CanvasToolbar = memo(function CanvasToolbar({
           height: isVisible || isHovered ? 42 : 4,
           borderRadius: isVisible || isHovered ? 24 : 2,
           y: isVisible || isHovered ? 0 : 8,
-          backgroundColor: isVisible || isHovered ? 'rgba(0, 0, 0, 0.9)' : 'rgba(148, 163, 184, 0.3)',
+          backgroundColor:
+            isVisible || isHovered ? 'rgba(0, 0, 0, 0.9)' : 'rgba(148, 163, 184, 0.3)',
         }}
         transition={{
           type: 'spring',
@@ -169,7 +179,10 @@ export const CanvasToolbar = memo(function CanvasToolbar({
                   <Minus className="w-4 h-4" />
                 </ButtonToolbar>
 
-                <ButtonToolbar onClick={handleResetZoom} className="font-bold text-[11px] min-w-[50px] text-white">
+                <ButtonToolbar
+                  onClick={handleResetZoom}
+                  className="font-bold text-[11px] min-w-[50px] text-white"
+                >
                   {Math.round(zoom * 100)}%
                 </ButtonToolbar>
 

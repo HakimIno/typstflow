@@ -12,9 +12,7 @@
       "right": "10mm"
     }
   },
-  "fonts": [
-    { "family": "Inter", "role": "body", "size": 9, "embedded": true }
-  ],
+  "fonts": [{ "family": "Inter", "role": "body", "size": 9, "embedded": true }],
   "zones": {
     "header": { "id": "h1", "components": [], "minHeight": "20mm" },
     "footer": { "id": "f1", "components": [], "minHeight": "15mm" }
@@ -30,7 +28,9 @@
           {
             "id": "title-text",
             "type": "text",
-            "x": 0, "y": 0, "width": 277,
+            "x": 0,
+            "y": 0,
+            "width": 277,
             "content": "UNLIQUIDATED CASH ADVANCES\nAs of March 31, 2019",
             "style": {
               "fontSize": 12,
@@ -43,7 +43,9 @@
           {
             "id": "municipality-text",
             "type": "text",
-            "x": 0, "y": 10, "width": 100,
+            "x": 0,
+            "y": 10,
+            "width": 100,
             "content": "Municipality : Miagao",
             "style": { "fontSize": 10 },
             "marginBottom": 5
@@ -51,7 +53,9 @@
           {
             "id": "main-table",
             "type": "table",
-            "x": 0, "y": 20, "width": 277,
+            "x": 0,
+            "y": 20,
+            "width": 277,
             "dataSource": "{{items}}",
             "groupBy": "fund",
             "groupHeaderFormat": "{{fund}}",
@@ -65,15 +69,63 @@
             "repeatHeaderOnPage": true,
             "columns": [
               { "id": "c1", "header": "Name of Debtor", "field": "debtor", "width": "50mm" },
-              { "id": "c2", "header": "Amount Balance", "field": "balance", "width": "25mm", "align": "right" },
-              { "id": "c3", "header": "Date Granted", "field": "date", "width": "25mm", "align": "center" },
+              {
+                "id": "c2",
+                "header": "Amount Balance",
+                "field": "balance",
+                "width": "25mm",
+                "align": "right"
+              },
+              {
+                "id": "c3",
+                "header": "Date Granted",
+                "field": "date",
+                "width": "25mm",
+                "align": "center"
+              },
               { "id": "c4", "header": "Purpose", "field": "purpose", "width": "40mm" },
-              { "id": "c5", "header": "L30D", "field": "current_30", "width": "20mm", "align": "right" },
-              { "id": "c6", "header": "31-90D", "field": "current_90", "width": "20mm", "align": "right" },
-              { "id": "c7", "header": "91-365D", "field": "current_365", "width": "20mm", "align": "right" },
-              { "id": "c8", "header": "O1Y", "field": "past_1y", "width": "20mm", "align": "right" },
-              { "id": "c9", "header": "O2Y", "field": "past_2y", "width": "20mm", "align": "right" },
-              { "id": "c10", "header": "O3Y", "field": "past_3y", "width": "20mm", "align": "right" },
+              {
+                "id": "c5",
+                "header": "L30D",
+                "field": "current_30",
+                "width": "20mm",
+                "align": "right"
+              },
+              {
+                "id": "c6",
+                "header": "31-90D",
+                "field": "current_90",
+                "width": "20mm",
+                "align": "right"
+              },
+              {
+                "id": "c7",
+                "header": "91-365D",
+                "field": "current_365",
+                "width": "20mm",
+                "align": "right"
+              },
+              {
+                "id": "c8",
+                "header": "O1Y",
+                "field": "past_1y",
+                "width": "20mm",
+                "align": "right"
+              },
+              {
+                "id": "c9",
+                "header": "O2Y",
+                "field": "past_2y",
+                "width": "20mm",
+                "align": "right"
+              },
+              {
+                "id": "c10",
+                "header": "O3Y",
+                "field": "past_3y",
+                "width": "20mm",
+                "align": "right"
+              },
               { "id": "c11", "header": "Remarks", "field": "remarks", "width": "auto" }
             ],
             "headerRows": [
@@ -81,7 +133,12 @@
                 "id": "hr1",
                 "type": "header",
                 "cells": [
-                  { "id": "hrc1", "content": "Name of Debtor\n(In alphabetical order)", "rowspan": 3, "align": "center" },
+                  {
+                    "id": "hrc1",
+                    "content": "Name of Debtor\n(In alphabetical order)",
+                    "rowspan": 3,
+                    "align": "center"
+                  },
                   { "id": "hrc2", "content": "Amount\nBalance", "rowspan": 3, "align": "center" },
                   { "id": "hrc3", "content": "Date Granted", "rowspan": 3, "align": "center" },
                   { "id": "hrc4", "content": "Purpose", "rowspan": 3, "align": "center" },

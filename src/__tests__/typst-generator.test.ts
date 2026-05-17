@@ -205,7 +205,9 @@ describe('TypstGenerator — line component', () => {
 
   it('renders #line() with stroke', () => {
     const output = generate(schema);
-    expect(output).toContain('#line(start: (0%, 50%), end: (100%, 50%), stroke: (paint: rgb("#000000"), thickness: 1pt, cap: "butt"))');
+    expect(output).toContain(
+      '#line(start: (0%, 50%), end: (100%, 50%), stroke: (paint: rgb("#000000"), thickness: 1pt, cap: "butt"))'
+    );
   });
 });
 
@@ -327,26 +329,28 @@ describe('TypstGenerator — flow zone mode', () => {
   it('uses #block() without #place() in flow mode', () => {
     const schema: LayoutSchema = {
       ...MINIMAL_SCHEMA,
-      pages: [{
-        id: 'page-1',
-        name: 'Page 1',
-        body: {
-          id: 'body',
-          layoutMode: 'flow',
-          components: [
-            {
-              id: 'text-1',
-              type: 'text',
-              content: 'Hello',
-              x: 10,
-              y: 10,
-              width: 80,
-              height: 10,
-              style: {},
-            },
-          ],
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            layoutMode: 'flow',
+            components: [
+              {
+                id: 'text-1',
+                type: 'text',
+                content: 'Hello',
+                x: 10,
+                y: 10,
+                width: 80,
+                height: 10,
+                style: {},
+              },
+            ],
+          },
         },
-      }],
+      ],
     };
     const output = new TypstGenerator().generate(schema, {});
     // x=10 → pad left; width=80 → sized inner block; outer block suppresses spacing
@@ -359,19 +363,39 @@ describe('TypstGenerator — flow zone mode', () => {
   it('adds gap (#v) between flow components', () => {
     const schema: LayoutSchema = {
       ...MINIMAL_SCHEMA,
-      pages: [{
-        id: 'page-1',
-        name: 'Page 1',
-        body: {
-          id: 'body',
-          layoutMode: 'flow',
-          flowGap: '3mm',
-          components: [
-            { id: 'text-1', type: 'text', content: 'A', x: 0, y: 0, width: 80, height: 10, style: {} },
-            { id: 'text-2', type: 'text', content: 'B', x: 0, y: 20, width: 80, height: 10, style: {} },
-          ],
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            layoutMode: 'flow',
+            flowGap: '3mm',
+            components: [
+              {
+                id: 'text-1',
+                type: 'text',
+                content: 'A',
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                style: {},
+              },
+              {
+                id: 'text-2',
+                type: 'text',
+                content: 'B',
+                x: 0,
+                y: 20,
+                width: 80,
+                height: 10,
+                style: {},
+              },
+            ],
+          },
         },
-      }],
+      ],
     };
     const output = new TypstGenerator().generate(schema, {});
     expect(output).toContain('#v(3mm)');
@@ -380,18 +404,38 @@ describe('TypstGenerator — flow zone mode', () => {
   it('uses no gap (#v) when flowGap not set (default 0mm matches designer)', () => {
     const schema: LayoutSchema = {
       ...MINIMAL_SCHEMA,
-      pages: [{
-        id: 'page-1',
-        name: 'Page 1',
-        body: {
-          id: 'body',
-          layoutMode: 'flow',
-          components: [
-            { id: 'text-1', type: 'text', content: 'A', x: 0, y: 0, width: 80, height: 10, style: {} },
-            { id: 'text-2', type: 'text', content: 'B', x: 0, y: 20, width: 80, height: 10, style: {} },
-          ],
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            layoutMode: 'flow',
+            components: [
+              {
+                id: 'text-1',
+                type: 'text',
+                content: 'A',
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                style: {},
+              },
+              {
+                id: 'text-2',
+                type: 'text',
+                content: 'B',
+                x: 0,
+                y: 20,
+                width: 80,
+                height: 10,
+                style: {},
+              },
+            ],
+          },
         },
-      }],
+      ],
     };
     const output = new TypstGenerator().generate(schema, {});
     expect(output).not.toContain('#v(2mm)');
@@ -404,17 +448,28 @@ describe('TypstGenerator — flow zone mode', () => {
         header: { id: 'header', minHeight: '30mm', components: [] },
         footer: { id: 'footer', minHeight: '15mm', components: [] },
       },
-      pages: [{
-        id: 'page-1',
-        name: 'Page 1',
-        body: {
-          id: 'body',
-          layoutMode: 'flow',
-          components: [
-            { id: 'text-1', type: 'text', content: 'Hello', x: 0, y: 0, width: 80, height: 10, style: {} },
-          ],
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            layoutMode: 'flow',
+            components: [
+              {
+                id: 'text-1',
+                type: 'text',
+                content: 'Hello',
+                x: 0,
+                y: 0,
+                width: 80,
+                height: 10,
+                style: {},
+              },
+            ],
+          },
         },
-      }],
+      ],
     };
     const output = new TypstGenerator().generate(schema, {});
     expect(output).toContain('margin: (top: 30mm, bottom: 15mm');
@@ -429,16 +484,27 @@ describe('TypstGenerator — flow zone mode', () => {
   it('absolute mode (default) still uses #place()', () => {
     const schema: LayoutSchema = {
       ...MINIMAL_SCHEMA,
-      pages: [{
-        id: 'page-1',
-        name: 'Page 1',
-        body: {
-          id: 'body',
-          components: [
-            { id: 'text-1', type: 'text', content: 'Hello', x: 10, y: 10, width: 80, height: 10, style: {} },
-          ],
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              {
+                id: 'text-1',
+                type: 'text',
+                content: 'Hello',
+                x: 10,
+                y: 10,
+                width: 80,
+                height: 10,
+                style: {},
+              },
+            ],
+          },
         },
-      }],
+      ],
     };
     const output = new TypstGenerator().generate(schema, {});
     expect(output).toContain('#place(');

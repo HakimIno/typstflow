@@ -97,7 +97,6 @@ export const AI_MODELS: AiModel[] = [
     tier: 'fast',
     description: 'Fast for design task',
   },
-
 ];
 
 export const DEFAULT_AI_MODEL = 'google/gemini-3-pro-preview';

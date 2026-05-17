@@ -1,43 +1,47 @@
 'use client';
 
+import {
+  DropdownMenu,
+  DropdownMenuHeader,
+  DropdownMenuItem,
+} from '@/components/shared/DropdownMenu';
 import { type AgentMessage, useAiAgent } from '@/hooks/use-ai-agent';
+import { AI_MODELS } from '@/lib/utils/ai-models';
+import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import {
-  MessageCircle,
-  ListTodo,
-  Zap,
-  Layers,
-  Type,
-  Table,
-  Image,
-  Minus,
-  Space,
-  Pencil,
-  Trash2,
-  Database,
+  AlertTriangle,
   CheckCircle2,
-  XCircle,
+  ChevronDown,
+  ChevronRight,
+  Database,
+  History,
+  Image,
+  Layers,
+  ListChecks,
+  ListTodo,
   Loader2,
-  Sparkles,
+  MessageCircle,
+  Mic,
+  Minus,
+  Pencil,
+  PlayCircle,
+  PlusCircle,
   PlusSquare,
   RefreshCw,
-  PlayCircle,
-  User,
-  AlertTriangle,
-  History,
-  ChevronRight,
-  PlusCircle,
-  ChevronDown,
-  ListChecks,
-  Mic,
   Send,
+  Space,
+  Sparkles,
+  Table,
+  Trash2,
+  Type,
+  User,
+  XCircle,
+  Zap,
 } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { BasePanel } from './BasePanel';
 import { PanelHeader } from './PanelHeader';
-import { useDesignerStore } from '@/store/designer-store';
-import { AI_MODELS } from '@/lib/utils/ai-models';
-import { DropdownMenu, DropdownMenuItem, DropdownMenuHeader } from '@/components/shared/DropdownMenu';
 
 const MODE_BADGE: Record<
   NonNullable<AgentMessage['mode']>,
@@ -172,7 +176,11 @@ export const AiPanel = memo(function AiPanel() {
                   <User className="w-3 h-3 text-[var(--text-secondary)]" />
                 ) : (
                   <div className="rounded-full bg-white">
-                    <img className="w-5 h-5 rounded-full overflow-hidden" src="/logo.png" alt="TypstFlow" />
+                    <img
+                      className="w-5 h-5 rounded-full overflow-hidden"
+                      src="/logo.png"
+                      alt="TypstFlow"
+                    />
                   </div>
                 )}
               </div>
@@ -213,7 +221,12 @@ export const AiPanel = memo(function AiPanel() {
                     const BadgeIcon = MODE_BADGE[msg.mode].icon;
                     return <BadgeIcon className={clsx('w-3 h-3', MODE_BADGE[msg.mode].color)} />;
                   })()}
-                  <span className={clsx('text-[9px] font-bold uppercase tracking-widest', MODE_BADGE[msg.mode].color)}>
+                  <span
+                    className={clsx(
+                      'text-[9px] font-bold uppercase tracking-widest',
+                      MODE_BADGE[msg.mode].color
+                    )}
+                  >
                     {MODE_BADGE[msg.mode].label}
                   </span>
                 </div>
@@ -255,7 +268,10 @@ export const AiPanel = memo(function AiPanel() {
         {isLoading && (
           <div className="m-2 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-500 relative overflow-hidden">
             {/* Glowing background effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--accent-glow)] to-transparent opacity-30 animate-shimmer" style={{ width: '200%' }} />
+            <div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--accent-glow)] to-transparent opacity-30 animate-shimmer"
+              style={{ width: '200%' }}
+            />
 
             <div className="flex items-center gap-3 relative z-10">
               <div className="relative flex items-center justify-center w-4 h-4">
@@ -339,8 +355,9 @@ export const AiPanel = memo(function AiPanel() {
                     className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-white/5 rounded-lg transition-colors group"
                   >
                     <span className="text-[10px] font-bold text-[var(--text-muted)] group-hover:text-[var(--text-primary)]">
-                      {AI_MODELS.find((m) => m.id === aiModel)?.label.toLowerCase().replace(/\s+/g, '-') ||
-                        aiModel.split('/').pop()}
+                      {AI_MODELS.find((m) => m.id === aiModel)
+                        ?.label.toLowerCase()
+                        .replace(/\s+/g, '-') || aiModel.split('/').pop()}
                     </span>
                     <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />
                   </button>
@@ -431,4 +448,3 @@ export const AiPanel = memo(function AiPanel() {
     </BasePanel>
   );
 });
-

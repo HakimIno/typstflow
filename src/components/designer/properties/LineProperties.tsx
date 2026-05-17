@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { Circle, Minus, MoreHorizontal, MoreVertical, Square, Type } from 'lucide-react';
+import { Circle, Minus, MoreHorizontal, MoreVertical, Square } from 'lucide-react';
 import { ColorPicker } from '../../shared/ColorPicker';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { PropertyRow, SectionHeader } from './Shared';
@@ -24,7 +24,7 @@ export function LineProperties({ component, onUpdate }: LinePropertiesProps) {
 
   const handleOrientationChange = (orientation: 'horizontal' | 'vertical') => {
     if (component.orientation === orientation) return;
-    
+
     // Swap width and height for better UX
     onUpdate({
       orientation,
@@ -152,4 +152,3 @@ export function LineProperties({ component, onUpdate }: LinePropertiesProps) {
     </section>
   );
 }
-

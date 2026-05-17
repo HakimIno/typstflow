@@ -5,8 +5,8 @@ import {
   pxToMmAtCurrentDpi,
   updateDpiRatio,
 } from '../constants';
-import { parseTypstUnit } from '../utils/units';
 import { getPaperDimensions } from '../utils/paper-sizes';
+import { parseTypstUnit } from '../utils/units';
 
 /**
  * Enhanced coordinate system information for accurate position calculations.
@@ -267,18 +267,21 @@ export const LayoutEngine = {
         schema.page.size,
         schema.page.orientation
       );
-      
+
       // Determine if footer is actually shown on this page
       const pageIndex = schema.pages.findIndex((p: any) => p.id === pageId);
       const pIdx = pageIndex >= 0 ? pageIndex : 0;
       const isFooterRepeated = schema.zones.footer?.repeatOnEveryPage === true;
       const showOnLastPageOnly = schema.zones.footer?.showOnLastPageOnly === true;
       const isLastPage = pIdx === schema.pages.length - 1;
-      
-      const isFooterVisible = isFooterRepeated || (showOnLastPageOnly && isLastPage) || (!isFooterRepeated && !showOnLastPageOnly && pIdx === 0);
-      
+
+      const isFooterVisible =
+        isFooterRepeated ||
+        (showOnLastPageOnly && isLastPage) ||
+        (!isFooterRepeated && !showOnLastPageOnly && pIdx === 0);
+
       if (!isFooterVisible) return 0; // Or pageHeightMm, if it's hidden it shouldn't accept drops realistically.
-      
+
       const footerHeight = parseTypstUnit(schema.zones.footer?.minHeight || '0mm');
       return pageHeightMm - footerHeight;
     }
@@ -329,18 +332,21 @@ export const LayoutEngine = {
         schema.page.size,
         schema.page.orientation
       );
-      
+
       let bottomOffset = pageHeightMm;
-      
+
       // Subtract the main Footer height if it's visible on this page
       const pageIndex = schema.pages.findIndex((p: any) => p.id === pageId);
       const pIdx = pageIndex >= 0 ? pageIndex : 0;
       const isFooterRepeated = schema.zones.footer?.repeatOnEveryPage === true;
       const showOnLastPageOnly = schema.zones.footer?.showOnLastPageOnly === true;
       const isLastPage = pIdx === schema.pages.length - 1;
-      
-      const isFooterVisible = isFooterRepeated || (showOnLastPageOnly && isLastPage) || (!isFooterRepeated && !showOnLastPageOnly && pIdx === 0);
-      
+
+      const isFooterVisible =
+        isFooterRepeated ||
+        (showOnLastPageOnly && isLastPage) ||
+        (!isFooterRepeated && !showOnLastPageOnly && pIdx === 0);
+
       if (isFooterVisible) {
         bottomOffset -= parseTypstUnit(schema.zones.footer?.minHeight || '0mm');
       }
@@ -491,7 +497,7 @@ export const LayoutEngine = {
   calculateMagneticSnap(
     rect: { x: number; y: number; width: number; height: number },
     targets: { x: number; y: number; width: number; height: number }[],
-    threshold: number = 2
+    threshold = 2
   ) {
     const guides = { vertical: [] as number[], horizontal: [] as number[] };
     let snappedX = rect.x;

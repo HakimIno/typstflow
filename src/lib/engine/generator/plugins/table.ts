@@ -20,25 +20,44 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     // ── Stroke ────────────────────────────────────────────────────────────────
     const borderWidth = style?.borderWidth ?? '0.5pt';
     const borderColor = formatColor(style?.borderColor ?? '#cbd5e1');
-    
+
     // Header specific
     const hBorderWidth = style?.headerBorderWidth ?? borderWidth;
     const hBorderColor = formatColor(style?.headerBorderColor ?? borderColor);
-    
+
     // Inner Body specific
     const innerHWidth = style?.innerHBorderWidth ?? borderWidth;
     const innerHColor = formatColor(style?.innerHBorderColor ?? borderColor);
     const innerVWidth = style?.innerVBorderWidth ?? borderWidth;
     const innerVColor = formatColor(style?.innerVBorderColor ?? borderColor);
 
-    const hDash = style?.horizontalDash && style.horizontalDash !== 'solid' ? `, dash: "${style.horizontalDash}"` : '';
-    const vDash = style?.verticalDash && style.verticalDash !== 'solid' ? `, dash: "${style.verticalDash}"` : '';
-    
-    const hHeaderDash = style?.headerHorizontalDash && style.headerHorizontalDash !== 'solid' ? `, dash: "${style.headerHorizontalDash}"` : '';
-    const vHeaderDash = style?.headerVerticalDash && style.headerVerticalDash !== 'solid' ? `, dash: "${style.headerVerticalDash}"` : '';
-    
-    const sides = style?.borderSides ?? { top: true, bottom: true, left: true, right: true, innerH: true, innerV: true };
-    
+    const hDash =
+      style?.horizontalDash && style.horizontalDash !== 'solid'
+        ? `, dash: "${style.horizontalDash}"`
+        : '';
+    const vDash =
+      style?.verticalDash && style.verticalDash !== 'solid'
+        ? `, dash: "${style.verticalDash}"`
+        : '';
+
+    const hHeaderDash =
+      style?.headerHorizontalDash && style.headerHorizontalDash !== 'solid'
+        ? `, dash: "${style.headerHorizontalDash}"`
+        : '';
+    const vHeaderDash =
+      style?.headerVerticalDash && style.headerVerticalDash !== 'solid'
+        ? `, dash: "${style.headerVerticalDash}"`
+        : '';
+
+    const sides = style?.borderSides ?? {
+      top: true,
+      bottom: true,
+      left: true,
+      right: true,
+      innerH: true,
+      innerV: true,
+    };
+
     // We'll use a stroke function to handle granular control
     const strokeStr = `(x, y) => (
     top: if y == 0 { if ${sides.top} { (paint: ${borderColor}, thickness: ${borderWidth}) } else { none } } 
@@ -51,11 +70,6 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     bottom: none, // handled by hline for better reliability
     right: none,  // handled by vline for better reliability
   )`;
-
-    // Note: Typst table stroke function doesn't easily know if it's the last row/col 
-    // unless we pass the counts. We'll use hline/vline for the outermost bottom/right borders 
-    // if the stroke function approach is too complex for them.
-    // Actually, we can just set bottom/right to none in the function and add them via hline/vline.
 
     // ── Fill pattern ─────────────────────────────────────────────────────────
     const fillPattern = style?.fillPattern ?? 'header-only';
@@ -72,6 +86,20 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     const bodyFontSize = style?.bodyFontSize ?? 10;
     const bodyColor = formatColor(style?.bodyColor ?? '#334155');
 
+    // ── Global Table Font Setups ──────────────────────────────────────────────
+    if (style?.fontFamily || style?.fontSize || style?.fontWeight || style?.lineHeight) {
+      const textArgs: string[] = [];
+      if (style.fontSize) textArgs.push(`size: ${style.fontSize}pt`);
+      if (style.fontWeight) textArgs.push(`weight: ${formatWeight(style.fontWeight)}`);
+      if (style.fontFamily) textArgs.push(`font: "${style.fontFamily}"`);
+      if (textArgs.length > 0) {
+        parts.push(`#set text(${textArgs.join(', ')})\n`);
+      }
+      if (style.lineHeight) {
+        parts.push(`#set par(leading: ${style.lineHeight - 1}em)\n`);
+      }
+    }
+
     // ── Table args ────────────────────────────────────────────────────────────
     const inset = style?.inset ?? style?.cellPadding ?? '7pt';
     const tableArgs = [`columns: (${colWidths})`, `inset: ${inset}`, `stroke: ${strokeStr}`];
@@ -83,14 +111,26 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     const repeat = comp.repeatHeaderOnPage !== false;
     if (comp.headerRows && comp.headerRows.length > 0) {
       parts.push(`  table.header(repeat: ${repeat},\n`);
-      for (const row of comp.headerRows) {
-        for (const cell of row.cells) {
+      for (let y = 0; y < comp.headerRows.length; y++) {
+        const row = comp.headerRows[y];
+        for (let x = 0; x < row.cells.length; x++) {
+          const cell = row.cells[x];
+          const val = resolveBinding(cell.content, ctx.local, ctx.global);
+          const cellKey = `header:${x}`;
+          const specificKey = `header:${y}:${x}`;
           parts.push(
-            renderStructuredCell(cell, {
-              size: headerFontSize,
-              color: headerColor,
-              weight: headerWeight,
-            })
+            renderStructuredCell(
+              cell,
+              {
+                size: headerFontSize,
+                color: headerColor,
+                weight: headerWeight,
+              },
+              val,
+              cellKey,
+              specificKey,
+              style?.cellStyles
+            )
           );
         }
       }
@@ -103,18 +143,32 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         const col = cols[x];
         const cs = col.colspan ?? 1;
         const rs = col.rowspan ?? 1;
-        const align = col.align ?? 'center';
-        const header = escapeTypst(col.header);
+        const headerText = escapeTypst(col.header);
 
-        const content = `[\n      #set text(size: ${headerFontSize}pt, fill: ${headerColor}, weight: ${formatWeight(headerWeight)})\n      #set align(${align})\n      ${header}\n    ]`;
+        // Build a virtual cell object from TableColumn to pass to renderStructuredCell
+        const virtualCell = {
+          colspan: cs,
+          rowspan: rs,
+          fill: col.background || style?.headerBackground || '#f1f5f9',
+          align: col.align || 'center',
+          style: col.style,
+        };
 
-        if (cs === 1 && rs === 1) {
-          parts.push(`    ${content},\n`);
-        } else {
-          parts.push(
-            `    table.cell(x: ${x}, y: 0, colspan: ${cs}, rowspan: ${rs})${content},\n`
-          );
-        }
+        const cellKey = `header:${x}`;
+        parts.push(
+          renderStructuredCell(
+            virtualCell,
+            {
+              size: headerFontSize,
+              color: headerColor,
+              weight: headerWeight,
+            },
+            headerText,
+            cellKey,
+            undefined,
+            style?.cellStyles
+          )
+        );
         for (let i = 1; i < cs; i++) covered.add(x + i);
       }
       parts.push('  ),\n');
@@ -147,12 +201,22 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
 
     const renderRow = (item: any) => {
       if (comp.detailRows && comp.detailRows.length > 0) {
-        for (const row of comp.detailRows) {
-          for (const cell of row.cells) {
+        for (let y = 0; y < comp.detailRows.length; y++) {
+          const row = comp.detailRows[y];
+          for (let x = 0; x < row.cells.length; x++) {
+            const cell = row.cells[x];
             const val = resolveBinding(cell.content, item as Record<string, unknown>, ctx.global);
-            const content = `[${escapeTypst(val)}]`;
+            const cellKey = `data:${x}`;
+            const specificKey = `data:${y}:${x}`;
             parts.push(
-              renderStructuredCell(cell, { size: bodyFontSize, color: bodyColor, weight: 'regular' }, content)
+              renderStructuredCell(
+                cell,
+                { size: bodyFontSize, color: bodyColor, weight: 'regular' },
+                val,
+                cellKey,
+                specificKey,
+                style?.cellStyles
+              )
             );
           }
         }
@@ -168,22 +232,29 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           const fmt = col.format ?? 'text';
           const content =
             fmt !== 'text'
-              ? `[#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(valStr)}")]`
-              : `[${escapeTypst(valStr)}]`;
-          const align = col.align ?? 'left';
-          const bg = col.background ? formatColor(col.background) : null;
+              ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(valStr)}")`
+              : escapeTypst(valStr);
 
-          const cellText = `[\n    #set text(size: ${bodyFontSize}pt, fill: ${bodyColor})\n    #set align(${align})\n    ${content.slice(1, -1)}\n  ]`;
+          // Build a virtual cell from TableColumn
+          const virtualCell = {
+            colspan: cs,
+            rowspan: rs,
+            fill: col.background,
+            align: col.align,
+            style: col.style,
+          };
 
-          if (cs === 1 && rs === 1 && !bg) {
-            parts.push(`  ${cellText},\n`);
-          } else {
-            const args: string[] = [`x: ${x}`];
-            if (cs > 1) args.push(`colspan: ${cs}`);
-            if (rs > 1) args.push(`rowspan: ${rs}`);
-            if (bg) args.push(`fill: ${bg}`);
-            parts.push(`  table.cell(${args.join(', ')})${cellText},\n`);
-          }
+          const cellKey = `data:${x}`;
+          parts.push(
+            renderStructuredCell(
+              virtualCell,
+              { size: bodyFontSize, color: bodyColor, weight: 'regular' },
+              content,
+              cellKey,
+              undefined,
+              style?.cellStyles
+            )
+          );
           for (let i = 1; i < cs; i++) covered.add(x + i);
         }
       }
@@ -203,8 +274,8 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         const ghColor = formatColor(gh?.color || '#000000');
         const ghSize = gh?.fontSize || 10;
         const ghText = resolveBinding(
-          comp.groupHeaderFormat || '{{group}}', 
-          { group: groupKey, ...items[0] }, 
+          comp.groupHeaderFormat || '{{group}}',
+          { group: groupKey, ...items[0] },
           ctx.global,
           items // Pass the group items for aggregates like {{SUM(...)}}
         );
@@ -217,29 +288,60 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
 
         for (const item of items) renderRow(item);
 
-        // --- Auto Group Footer (New: Auto-aligned subtotal row) ---
+        // --- Auto Group Footer (Structured Subtotal Row) ---
         if (comp.autoGroupFooter) {
           for (let x = 0; x < cols.length; x++) {
             const col = cols[x];
             let cellContent = '';
-            
-            if (x === 0) {
-              cellContent = 'Subtotal';
+
+            if (col.footerExpr) {
+              cellContent = col.footerExpr;
+            } else if (x === 0) {
+              cellContent = comp.autoGroupFooterLabel || 'Subtotal';
             } else if (col.field) {
               cellContent = `{{SUM(${col.field})}}`;
+            }
+
+            if (!cellContent) {
+              const gfBg = formatColor(comp.groupFooterStyle?.background || 'white.darken(3%)');
+              parts.push(`  table.cell(fill: ${gfBg})[],\n`);
+              continue;
             }
 
             const val = resolveBinding(cellContent, items[0], ctx.global, items);
             const align = col.align || 'left';
             const fmt = col.format || 'text';
             const isSum = cellContent.includes('SUM');
-            const displayVal = (fmt !== 'text' && isSum) 
-              ? `#fmt_${fmt.replace(/-/g, '_')}("${val}")`
-              : escapeTypst(val);
+            const displayVal =
+              fmt !== 'text' && isSum
+                ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(val)}")`
+                : escapeTypst(val);
 
-            // Render subtotal cell with a distinct style (bold and subtle fill)
+            // Styling overrides for footer
+            const gf = comp.groupFooterStyle;
+            const cellFill = gf?.background || 'white.darken(3%)';
+            const textStyle = {
+              size: gf?.fontSize || bodyFontSize,
+              color: gf?.color || '#000000',
+              weight: gf?.fontWeight || 'bold',
+            };
+
+            const virtualCell = {
+              fill: cellFill,
+              align: align,
+              style: gf,
+            };
+
+            const cellKey = `footer:${x}`;
             parts.push(
-              `  table.cell(fill: white.darken(3%))[\n    #set text(size: ${bodyFontSize}pt, weight: "bold")\n    #set align(${align})\n    ${displayVal}\n  ],\n`
+              renderStructuredCell(
+                virtualCell,
+                textStyle,
+                displayVal,
+                cellKey,
+                undefined,
+                style?.cellStyles
+              )
             );
           }
         }
@@ -260,9 +362,9 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         if (row.separator) parts.push('  table.hline(stroke: 1pt + black),\n');
         // If we have groupItems, use them for aggregates, otherwise use global context
         const val = resolveBinding(
-          row.value, 
-          ctx.local, 
-          ctx.global, 
+          row.value,
+          ctx.local,
+          ctx.global,
           groupItems || dataItems // Use group specific items if available
         );
         const weight = row.style?.fontWeight === 'bold' ? 'bold' : 'regular';
@@ -281,11 +383,23 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     if (comp.footerRows && comp.footerRows.length > 0) {
       const repeatFooter = comp.footerRows[0].repeat !== false;
       parts.push(`  table.footer(repeat: ${repeatFooter},\n`);
-      for (const row of comp.footerRows) {
-        for (const cell of row.cells) {
-          const val = resolveBinding(cell.content, ctx.local, ctx.global);
-          const content = escapeTypst(val);
-          parts.push(renderStructuredCell(cell, { size: bodyFontSize, color: bodyColor, weight: 'bold' }, `[*${content}*]`));
+      for (let y = 0; y < comp.footerRows.length; y++) {
+        const row = comp.footerRows[y];
+        for (let x = 0; x < row.cells.length; x++) {
+          const cell = row.cells[x];
+          const val = resolveBinding(cell.content, ctx.local, ctx.global, dataItems);
+          const cellKey = `footer:${x}`;
+          const specificKey = `footer:${y}:${x}`;
+          parts.push(
+            renderStructuredCell(
+              cell,
+              { size: bodyFontSize, color: bodyColor, weight: 'bold' },
+              val,
+              cellKey,
+              specificKey,
+              style?.cellStyles
+            )
+          );
         }
       }
       parts.push('  ),\n');
@@ -293,10 +407,14 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
 
     // ── Outermost Bottom/Right Borders ────────────────────────────────────────
     if (style?.borderSides?.bottom !== false) {
-       parts.push(`  table.hline(y: ${totalRows}, stroke: (paint: ${borderColor}, thickness: ${borderWidth})),\n`);
+      parts.push(
+        `  table.hline(y: ${totalRows}, stroke: (paint: ${borderColor}, thickness: ${borderWidth})),\n`
+      );
     }
     if (style?.borderSides?.right !== false) {
-       parts.push(`  table.vline(x: ${cols.length}, stroke: (paint: ${borderColor}, thickness: ${borderWidth})),\n`);
+      parts.push(
+        `  table.vline(x: ${cols.length}, stroke: (paint: ${borderColor}, thickness: ${borderWidth})),\n`
+      );
     }
 
     // ── hlines / vlines (Manual overrides) ────────────────────────────────────
@@ -305,10 +423,10 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         const args = [`y: ${hl.y}`];
         if (hl.start && hl.start > 0) args.push(`start: ${hl.start}`);
         if (hl.end) args.push(`end: ${hl.end}`);
-        
+
         let s = hl.stroke ? formatColor(hl.stroke) : `${borderWidth} + ${borderColor}`;
         if (hl.dash && hl.dash !== 'solid') {
-           s = `(paint: ${hl.stroke ? formatColor(hl.stroke) : borderColor}, thickness: ${borderWidth}, dash: "${hl.dash}")`;
+          s = `(paint: ${hl.stroke ? formatColor(hl.stroke) : borderColor}, thickness: ${borderWidth}, dash: "${hl.dash}")`;
         }
         args.push(`stroke: ${s}`);
         if (hl.position) args.push(`position: ${hl.position}`);
@@ -322,7 +440,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         if (vl.end) args.push(`end: ${vl.end}`);
         let s = vl.stroke ? formatColor(vl.stroke) : `${borderWidth} + ${borderColor}`;
         if (vl.dash && vl.dash !== 'solid') {
-           s = `(paint: ${vl.stroke ? formatColor(vl.stroke) : borderColor}, thickness: ${borderWidth}, dash: "${vl.dash}")`;
+          s = `(paint: ${vl.stroke ? formatColor(vl.stroke) : borderColor}, thickness: ${borderWidth}, dash: "${vl.dash}")`;
         }
         args.push(`stroke: ${s}`);
         if (vl.position) args.push(`position: ${vl.position}`);
@@ -331,7 +449,14 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     }
 
     parts.push(')\n');
-    return wrapPlacement(comp, parts.join(''), ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
+    return wrapPlacement(
+      comp,
+      parts.join(''),
+      ctx.offsetX,
+      ctx.offsetY,
+      ctx.flowMode,
+      ctx.fillWidth
+    );
   },
 };
 
@@ -360,24 +485,77 @@ function buildFillFn(
 
 function renderStructuredCell(
   cell: any,
-  textStyle: { size: number; color: string; weight: string | number },
-  contentOverride?: string
+  textStyle: {
+    size: number;
+    color: string;
+    weight: string | number;
+    align?: 'left' | 'center' | 'right' | 'justify';
+  },
+  contentOverride?: string,
+  cellKey?: string,
+  specificKey?: string,
+  cellStyles?: Record<string, any>
 ): string {
   const cs = cell.colspan ?? 1;
   const rs = cell.rowspan ?? 1;
+
+  let cellStyle = cell.style;
+  let cellFill = cell.fill;
+  let cellAlign = cell.align;
+  let cellVAlign = cell.verticalAlign;
+  let cellDir = cell.textDirection;
+  let cellInset = cell.inset;
+
+  // Apply cellStyles overrides if available
+  if (cellStyles) {
+    const override = (specificKey && cellStyles[specificKey]) || (cellKey && cellStyles[cellKey]);
+    if (override) {
+      if (override.size !== undefined) {
+        cellStyle = { ...cellStyle, fontSize: override.size };
+      }
+      if (override.weight !== undefined) {
+        cellStyle = { ...cellStyle, fontWeight: override.weight };
+      }
+      if (override.color !== undefined) {
+        cellStyle = { ...cellStyle, color: override.color };
+      }
+      if (override.fill !== undefined) {
+        cellFill = override.fill;
+      }
+      if (override.align !== undefined) {
+        cellAlign = override.align;
+      }
+    }
+  }
+
   const args: string[] = [];
   if (cs > 1) args.push(`colspan: ${cs}`);
   if (rs > 1) args.push(`rowspan: ${rs}`);
-  if (cell.fill) args.push(`fill: ${formatColor(cell.fill)}`);
-  if (cell.align) args.push(`align: ${cell.align}`);
-  if (cell.inset) args.push(`inset: ${cell.inset}`);
+  if (cellFill) args.push(`fill: ${formatColor(cellFill)}`);
 
-  const color = formatColor(cell.style?.color || textStyle.color);
-  const size = cell.style?.fontSize || textStyle.size;
-  const weight = formatWeight(cell.style?.fontWeight ?? textStyle.weight);
-  const leading = cell.style?.lineHeight ? cell.style.lineHeight - 1 : 0.2;
+  // Combine horizontal and vertical alignment
+  const hAlign = cellAlign || textStyle.align || 'left';
+  const vAlign = cellVAlign || 'horizon';
+  const vAlignTypst = vAlign === 'top' ? 'top' : vAlign === 'bottom' ? 'bottom' : 'horizon';
+  args.push(`align: ${hAlign} + ${vAlignTypst}`);
 
-  const inner = contentOverride ? contentOverride.slice(1, -1) : escapeTypst(cell.content);
+  if (cellInset) args.push(`inset: ${cellInset}`);
+
+  const color = formatColor(cellStyle?.color || textStyle.color);
+  const size = cellStyle?.fontSize || textStyle.size;
+  const weight = formatWeight(cellStyle?.fontWeight ?? textStyle.weight);
+  const leading = cellStyle?.lineHeight ? cellStyle.lineHeight - 1 : 0.2;
+
+  let inner = contentOverride !== undefined ? contentOverride : escapeTypst(cell.content);
+  if (inner.startsWith('[') && inner.endsWith(']')) {
+    inner = inner.slice(1, -1);
+  }
+
+  // Handle vertical text direction
+  if (cellDir === 'vertical') {
+    inner = `#rotate(-90deg, reflow: true)[${inner}]`;
+  }
+
   const wrapped = `[\n    #set par(leading: ${leading}em)\n    #set text(size: ${size}pt, fill: ${color}, weight: ${weight})\n    ${inner}\n  ]`;
 
   if (args.length === 0) return `    ${wrapped},\n`;

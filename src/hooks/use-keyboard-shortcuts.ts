@@ -1,6 +1,5 @@
-import { useDesignerStore } from '@/store/designer-store';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
-import { parseTypstUnit } from '@/lib/utils/units';
+import { useDesignerStore } from '@/store/designer-store';
 import { useEffect } from 'react';
 
 export function useKeyboardShortcuts() {
@@ -121,7 +120,10 @@ export function useKeyboardShortcuts() {
       if (isMod && isShift && (e.key === 'H' || e.key === 'h') && selectedComponentIds.length > 0) {
         e.preventDefault();
         const store = useDesignerStore.getState();
-        const { width: pageW } = getPaperDimensions(store.schema.page.size, store.schema.page.orientation);
+        const { width: pageW } = getPaperDimensions(
+          store.schema.page.size,
+          store.schema.page.orientation
+        );
         for (const id of selectedComponentIds) {
           const comp = store.componentRegistry[id];
           if (comp) {
@@ -134,21 +136,44 @@ export function useKeyboardShortcuts() {
         e.preventDefault();
         alignToPage('page-center-v');
       }
-      
+
       // Alignment Shortcuts: Alt + Key
       if (e.altKey && selectedComponentIds.length > 1) {
         switch (e.key.toLowerCase()) {
-          case 'l': e.preventDefault(); alignSelected('left'); break;
-          case 'c': e.preventDefault(); alignSelected('center'); break;
-          case 'r': e.preventDefault(); alignSelected('right'); break;
-          case 't': e.preventDefault(); alignSelected('top'); break;
-          case 'm': e.preventDefault(); alignSelected('middle'); break;
-          case 'b': e.preventDefault(); alignSelected('bottom'); break;
-          case 'h': e.preventDefault(); distributeSelected('dist-h'); break;
-          case 'v': e.preventDefault(); distributeSelected('dist-v'); break;
+          case 'l':
+            e.preventDefault();
+            alignSelected('left');
+            break;
+          case 'c':
+            e.preventDefault();
+            alignSelected('center');
+            break;
+          case 'r':
+            e.preventDefault();
+            alignSelected('right');
+            break;
+          case 't':
+            e.preventDefault();
+            alignSelected('top');
+            break;
+          case 'm':
+            e.preventDefault();
+            alignSelected('middle');
+            break;
+          case 'b':
+            e.preventDefault();
+            alignSelected('bottom');
+            break;
+          case 'h':
+            e.preventDefault();
+            distributeSelected('dist-h');
+            break;
+          case 'v':
+            e.preventDefault();
+            distributeSelected('dist-v');
+            break;
         }
       }
-
     };
 
     window.addEventListener('keydown', handleKeyDown);

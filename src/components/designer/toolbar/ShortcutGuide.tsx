@@ -22,11 +22,7 @@ interface Props {
   minimal?: boolean;
 }
 
-export const ShortcutGuide = memo(function ShortcutGuide({
-  forcedOpen,
-  onClose,
-  minimal,
-}: Props) {
+export const ShortcutGuide = memo(function ShortcutGuide({ forcedOpen, onClose, minimal }: Props) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = forcedOpen ?? internalOpen;
 

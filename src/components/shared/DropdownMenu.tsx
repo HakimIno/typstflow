@@ -56,7 +56,7 @@ export const DropdownMenu = memo(function DropdownMenu({
       setCoords({
         top: side === 'bottom' ? rect.bottom + window.scrollY : rect.top + window.scrollY,
         left: align === 'left' ? rect.left + window.scrollX : rect.right + window.scrollX,
-        width: rect.width
+        width: rect.width,
       });
     }
     setIsOpen(!isOpen);
@@ -82,32 +82,28 @@ export const DropdownMenu = memo(function DropdownMenu({
   return (
     <DropdownContext.Provider value={{ isOpen, setIsOpen }}>
       <div className={clsx('inline-block', className)} ref={containerRef}>
-        <div
-          className="w-full h-full cursor-pointer"
-          onClick={toggleMenu}
-        >
+        <div className="w-full h-full cursor-pointer" onClick={toggleMenu}>
           {trigger}
         </div>
 
-        {isOpen && createPortal(
-          <div
-            ref={menuRef}
-            style={{
-              position: 'absolute',
-              top: `${coords.top}px`,
-              left: align === 'left' ? `${coords.left}px` : 'auto',
-              right: align === 'right' ? `${window.innerWidth - coords.left}px` : 'auto',
-              transform: side === 'top' ? 'translateY(calc(-100% - 6px))' : 'translateY(6px)',
-              zIndex: 9999
-            }}
-            className={clsx(
-              'min-w-[180px] pro-panel z-[9999] flex flex-col p-1 '
-            )}
-          >
-            {children}
-          </div>,
-          document.body
-        )}
+        {isOpen &&
+          createPortal(
+            <div
+              ref={menuRef}
+              style={{
+                position: 'absolute',
+                top: `${coords.top}px`,
+                left: align === 'left' ? `${coords.left}px` : 'auto',
+                right: align === 'right' ? `${window.innerWidth - coords.left}px` : 'auto',
+                transform: side === 'top' ? 'translateY(calc(-100% - 6px))' : 'translateY(6px)',
+                zIndex: 9999,
+              }}
+              className={clsx('min-w-[180px] pro-panel z-[9999] flex flex-col p-1 ')}
+            >
+              {children}
+            </div>,
+            document.body
+          )}
       </div>
     </DropdownContext.Provider>
   );

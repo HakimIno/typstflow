@@ -1,17 +1,12 @@
 import type { TableComponent } from '@/types/schema';
 import { clsx } from 'clsx';
-import {
-  Columns3,
-  Database,
-  Paintbrush,
-  Settings2
-} from 'lucide-react';
+import { Columns3, Database, Paintbrush, Settings2 } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
+import { TableAdvancedSection } from './properties/table/TableAdvancedSection';
 import { TableColumnsSection } from './properties/table/TableColumnsSection';
 import { TableDataSection } from './properties/table/TableDataSection';
 import { TableVisualSection } from './properties/table/TableVisualSection';
-import { TableAdvancedSection } from './properties/table/TableAdvancedSection';
 
 type TableTab = 'columns' | 'data' | 'style' | 'advanced';
 

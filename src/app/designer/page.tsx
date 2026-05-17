@@ -11,8 +11,8 @@ import { LayersPanel } from '@/components/designer/panel/LayersPanel';
 import { Palette } from '@/components/designer/panel/Palette';
 import { AlertDialog } from '@/components/shared/AlertDialog';
 import { DesignerErrorBoundary } from '@/components/shared/ErrorBoundary';
-import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useFontInstaller } from '@/hooks/use-font-installer';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';

@@ -15,12 +15,29 @@ interface ColorPickerProps {
 
 const PRESET_COLORS = [
   // Row 1: Grayscale & Core
-  '#000000', '#4B5563', '#9CA3AF', '#D1D5DB', '#FFFFFF', '#EF4444', '#F97316', '#F5A524',
+  '#000000',
+  '#4B5563',
+  '#9CA3AF',
+  '#D1D5DB',
+  '#FFFFFF',
+  '#EF4444',
+  '#F97316',
+  '#F5A524',
   // Row 2: Vivid Colors
-  '#EAB308', '#84CC16', '#22C55E', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899',
+  '#EAB308',
+  '#84CC16',
+  '#22C55E',
+  '#06B6D4',
+  '#3B82F6',
+  '#6366F1',
+  '#8B5CF6',
+  '#EC4899',
 ];
 
-const ColorPickerContent = ({ color, onChange }: { color: string, onChange: (color: string) => void }) => {
+const ColorPickerContent = ({
+  color,
+  onChange,
+}: { color: string; onChange: (color: string) => void }) => {
   const { setIsOpen } = useDropdown();
   const [inputValue, setInputValue] = useState(color);
 
@@ -28,13 +45,16 @@ const ColorPickerContent = ({ color, onChange }: { color: string, onChange: (col
     setInputValue(color);
   }, [color]);
 
-  const handleHexChange = useCallback((val: string) => {
-    setInputValue(val);
-    if (/^#?([0-9A-F]{3}){1,2}$/i.test(val)) {
-      const formatted = val.startsWith('#') ? val : `#${val}`;
-      onChange(formatted);
-    }
-  }, [onChange]);
+  const handleHexChange = useCallback(
+    (val: string) => {
+      setInputValue(val);
+      if (/^#?([0-9A-F]{3}){1,2}$/i.test(val)) {
+        const formatted = val.startsWith('#') ? val : `#${val}`;
+        onChange(formatted);
+      }
+    },
+    [onChange]
+  );
 
   return (
     <div className="p-2 w-[200px] flex flex-col gap-2">
@@ -50,15 +70,18 @@ const ColorPickerContent = ({ color, onChange }: { color: string, onChange: (col
             }}
             className={clsx(
               'w-full aspect-square rounded-[3px] border border-black/10 transition-all hover:scale-110 active:scale-95 flex items-center justify-center relative',
-              color.toUpperCase() === preset.toUpperCase() && 'ring-1 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg-surface)] z-10'
+              color.toUpperCase() === preset.toUpperCase() &&
+                'ring-1 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg-surface)] z-10'
             )}
             style={{ backgroundColor: preset }}
           >
             {color.toUpperCase() === preset.toUpperCase() && (
-              <Check className={clsx(
-                "w-2 h-2",
-                preset.toLowerCase() === '#ffffff' ? "text-black" : "text-white"
-              )} />
+              <Check
+                className={clsx(
+                  'w-2 h-2',
+                  preset.toLowerCase() === '#ffffff' ? 'text-black' : 'text-white'
+                )}
+              />
             )}
           </button>
         ))}
@@ -106,8 +129,8 @@ export const ColorPicker = memo(function ColorPicker({
         <button
           type="button"
           className={clsx(
-            "w-full flex items-center bg-[var(--bg-widget)] hover:bg-[var(--bg-hover)] border border-[var(--border-default)] rounded transition-all group",
-            compact ? "h-7 justify-center px-1" : "gap-1.5 px-1.5 py-1 h-7"
+            'w-full flex items-center bg-[var(--bg-widget)] hover:bg-[var(--bg-hover)] border border-[var(--border-default)] rounded transition-all group',
+            compact ? 'h-7 justify-center px-1' : 'gap-1.5 px-1.5 py-1 h-7'
           )}
         >
           <div

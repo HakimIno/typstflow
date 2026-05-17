@@ -1,12 +1,5 @@
 'use client';
 
-import { useFontInstaller } from '@/hooks/use-font-installer';
-import { CATEGORY_LABELS, FONT_CATALOG } from '@/lib/font-catalog';
-import { fontManager } from '@/lib/font-manager';
-import { clsx } from 'clsx';
-import { Check, Download, Loader2, Plus, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import {
   Select,
   SelectContent,
@@ -14,6 +7,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/Select';
+import { useFontInstaller } from '@/hooks/use-font-installer';
+import { CATEGORY_LABELS, FONT_CATALOG } from '@/lib/font-catalog';
+import { fontManager } from '@/lib/font-manager';
+import { clsx } from 'clsx';
+import { Check, Download, Loader2, Plus, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface FontFamilyPickerProps {
   value: string;
@@ -95,7 +95,9 @@ function FontInstallPanel({
                         <div
                           className="text-[11px] text-[var(--text-primary)] truncate"
                           style={{
-                            fontFamily: installed ? `${font.family}, Sarabun, sans-serif` : 'inherit',
+                            fontFamily: installed
+                              ? `${font.family}, Sarabun, sans-serif`
+                              : 'inherit',
                           }}
                         >
                           {font.sampleText || font.label}
@@ -174,7 +176,10 @@ export function FontFamilyPicker({ value, onChange, mixed = false }: FontFamilyP
   return (
     <div className="relative flex items-center gap-1 w-full">
       <div className="relative flex-1">
-        <Select value={mixed ? 'mixed-internal-value' : value || 'Sarabun'} onValueChange={handleChange}>
+        <Select
+          value={mixed ? 'mixed-internal-value' : value || 'Sarabun'}
+          onValueChange={handleChange}
+        >
           <SelectTrigger
             className="w-full h-7 bg-[var(--bg-widget)] border-[var(--border-default)] text-[10px] text-[var(--text-primary)] hover:border-[var(--text-muted)] transition-all"
             style={{ fontFamily: mixed ? 'inherit' : `${value || 'Sarabun'}, Sarabun, sans-serif` }}

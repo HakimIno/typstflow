@@ -34,7 +34,13 @@ export function getComponentPosition(
 export function getComponentById(
   id: string,
   schema: LayoutSchema
-): { component: any; zoneKey: string; pageId?: string; groupId?: string; groupType?: 'header' | 'footer' } | null {
+): {
+  component: any;
+  zoneKey: string;
+  pageId?: string;
+  groupId?: string;
+  groupType?: 'header' | 'footer';
+} | null {
   // Check global zones
   for (const zKey of ['header', 'footer'] as const) {
     const found = schema.zones[zKey].components.find((c: any) => c.id === id);
@@ -51,10 +57,22 @@ export function getComponentById(
   if (schema.groups) {
     for (const group of schema.groups) {
       const headerFound = group.header.components.find((c: any) => c.id === id);
-      if (headerFound) return { component: headerFound, zoneKey: 'header', groupId: group.id, groupType: 'header' };
-      
+      if (headerFound)
+        return {
+          component: headerFound,
+          zoneKey: 'header',
+          groupId: group.id,
+          groupType: 'header',
+        };
+
       const footerFound = group.footer.components.find((c: any) => c.id === id);
-      if (footerFound) return { component: footerFound, zoneKey: 'footer', groupId: group.id, groupType: 'footer' };
+      if (footerFound)
+        return {
+          component: footerFound,
+          zoneKey: 'footer',
+          groupId: group.id,
+          groupType: 'footer',
+        };
     }
   }
 

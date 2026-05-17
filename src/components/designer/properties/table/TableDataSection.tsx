@@ -1,12 +1,12 @@
+import { ColorPicker } from '@/components/shared/ColorPicker';
+import { DesignerToggle } from '@/components/shared/DesignerToggle';
 import { useDesignerStore } from '@/store/designer-store';
 import type { TableComponent } from '@/types/schema';
-import { Minus, Plus, Italic, Underline, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
+import { clsx } from 'clsx';
+import { AlignCenter, AlignLeft, AlignRight, Italic, Minus, Plus, Underline } from 'lucide-react';
+import { FontWeightSelect } from '../../ui/FontWeightSelect';
 import { ControlField, PropertyGrid, SectionHeader } from '../Shared';
 import { MiniInput } from './TableShared';
-import { DesignerToggle } from '@/components/shared/DesignerToggle';
-import { ColorPicker } from '@/components/shared/ColorPicker';
-import { FontWeightSelect } from '../../ui/FontWeightSelect';
-import { clsx } from 'clsx';
 
 interface Props {
   component: TableComponent;
@@ -69,7 +69,9 @@ export const TableDataSection = ({ component }: Props) => {
 
           {/* Group Header Styling Sub-section */}
           <div className="bg-[var(--bg-surface)] px-2 py-1.5 border-b border-[var(--border-default)]">
-            <span className="text-[8px] font-black uppercase tracking-[0.1em] text-[var(--text-muted)]">Group Header Style</span>
+            <span className="text-[8px] font-black uppercase tracking-[0.1em] text-[var(--text-muted)]">
+              Group Header Style
+            </span>
           </div>
 
           <PropertyGrid cols={2}>
@@ -78,7 +80,9 @@ export const TableDataSection = ({ component }: Props) => {
                 color={component.groupHeaderStyle?.background || '#f1f5f9'}
                 onChange={(v) => {
                   const s = component.groupHeaderStyle || {};
-                  updateComponent(component.id, { groupHeaderStyle: { ...s, background: v } } as any);
+                  updateComponent(component.id, {
+                    groupHeaderStyle: { ...s, background: v },
+                  } as any);
                 }}
               />
             </ControlField>
@@ -97,7 +101,9 @@ export const TableDataSection = ({ component }: Props) => {
                 value={component.groupHeaderStyle?.fontSize || 9}
                 onChange={(v) => {
                   const s = component.groupHeaderStyle || {};
-                  updateComponent(component.id, { groupHeaderStyle: { ...s, fontSize: Number.parseInt(v) || 9 } } as any);
+                  updateComponent(component.id, {
+                    groupHeaderStyle: { ...s, fontSize: Number.parseInt(v) || 9 },
+                  } as any);
                 }}
                 className="w-full h-7"
               />
@@ -107,7 +113,9 @@ export const TableDataSection = ({ component }: Props) => {
                 value={component.groupHeaderStyle?.fontWeight || 'bold'}
                 onChange={(v) => {
                   const s = component.groupHeaderStyle || {};
-                  updateComponent(component.id, { groupHeaderStyle: { ...s, fontWeight: v } } as any);
+                  updateComponent(component.id, {
+                    groupHeaderStyle: { ...s, fontWeight: v },
+                  } as any);
                 }}
               />
             </ControlField>
@@ -118,13 +126,15 @@ export const TableDataSection = ({ component }: Props) => {
                 <button
                   onClick={() => {
                     const s = component.groupHeaderStyle || {};
-                    updateComponent(component.id, { groupHeaderStyle: { ...s, italic: !s.italic } } as any);
+                    updateComponent(component.id, {
+                      groupHeaderStyle: { ...s, italic: !s.italic },
+                    } as any);
                   }}
                   className={clsx(
-                    "flex-1 h-7 flex items-center justify-center rounded border transition-all",
+                    'flex-1 h-7 flex items-center justify-center rounded border transition-all',
                     component.groupHeaderStyle?.italic
-                      ? "bg-[var(--accent)] text-white border-[var(--accent)]"
-                      : "bg-[var(--bg-widget)] border-[var(--border-default)] text-[var(--text-muted)] "
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                      : 'bg-[var(--bg-widget)] border-[var(--border-default)] text-[var(--text-muted)] '
                   )}
                 >
                   <Italic className="w-3 h-3" />
@@ -132,13 +142,15 @@ export const TableDataSection = ({ component }: Props) => {
                 <button
                   onClick={() => {
                     const s = component.groupHeaderStyle || {};
-                    updateComponent(component.id, { groupHeaderStyle: { ...s, underline: !s.underline } } as any);
+                    updateComponent(component.id, {
+                      groupHeaderStyle: { ...s, underline: !s.underline },
+                    } as any);
                   }}
                   className={clsx(
-                    "flex-1 h-7 flex items-center justify-center rounded border transition-all",
+                    'flex-1 h-7 flex items-center justify-center rounded border transition-all',
                     component.groupHeaderStyle?.underline
-                      ? "bg-[var(--accent)] text-white border-[var(--accent)]"
-                      : "bg-[var(--bg-widget)] border-[var(--border-default)] text-[var(--text-muted)] "
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                      : 'bg-[var(--bg-widget)] border-[var(--border-default)] text-[var(--text-muted)] '
                   )}
                 >
                   <Underline className="w-3 h-3" />
@@ -150,7 +162,8 @@ export const TableDataSection = ({ component }: Props) => {
             <ControlField label="Align" className="col-span-1">
               <div className="flex border border-[var(--border-default)] rounded overflow-hidden h-6 bg-[var(--bg-widget)]">
                 {(['left', 'center', 'right'] as const).map((align) => {
-                  const Icon = align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : AlignRight;
+                  const Icon =
+                    align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : AlignRight;
                   return (
                     <button
                       key={align}
@@ -159,10 +172,10 @@ export const TableDataSection = ({ component }: Props) => {
                         updateComponent(component.id, { groupHeaderStyle: { ...s, align } } as any);
                       }}
                       className={clsx(
-                        "flex-1 flex items-center justify-center transition-colors",
+                        'flex-1 flex items-center justify-center transition-colors',
                         (component.groupHeaderStyle?.align || 'left') === align
-                          ? "bg-[var(--accent)] text-white"
-                          : "text-[var(--text-muted)] "
+                          ? 'bg-[var(--accent)] text-white'
+                          : 'text-[var(--text-muted)] '
                       )}
                     >
                       <Icon className="w-4 h-4" />
@@ -179,7 +192,6 @@ export const TableDataSection = ({ component }: Props) => {
       <section>
         <SectionHeader label="Summaries & Totals" />
         <div className="p-0.5 space-y-px bg-[var(--border-default)]">
-
           {/* Toggles */}
           <PropertyGrid cols={1}>
             <ControlField label="Auto Subtotal">
@@ -195,7 +207,9 @@ export const TableDataSection = ({ component }: Props) => {
               <ControlField label="Footer Label">
                 <MiniInput
                   value={component.autoGroupFooterLabel ?? 'Subtotal'}
-                  onChange={(v) => updateComponent(component.id, { autoGroupFooterLabel: v } as any)}
+                  onChange={(v) =>
+                    updateComponent(component.id, { autoGroupFooterLabel: v } as any)
+                  }
                   placeholder="Subtotal"
                   className="w-full h-7"
                 />
@@ -206,7 +220,9 @@ export const TableDataSection = ({ component }: Props) => {
               <div className="flex justify-end w-full">
                 <DesignerToggle
                   value={component.repeatSummaryOnGroup || false}
-                  onChange={(v) => updateComponent(component.id, { repeatSummaryOnGroup: v } as any)}
+                  onChange={(v) =>
+                    updateComponent(component.id, { repeatSummaryOnGroup: v } as any)
+                  }
                 />
               </div>
             </ControlField>
@@ -214,12 +230,17 @@ export const TableDataSection = ({ component }: Props) => {
 
           {/* Manual Summary Rows */}
           <div className="bg-[var(--bg-surface)] px-2 py-1.5 border-b border-[var(--border-default)]">
-            <span className="text-[8px] font-black uppercase tracking-[0.1em] text-[var(--text-muted)]">Manual Summary Rows</span>
+            <span className="text-[8px] font-black uppercase tracking-[0.1em] text-[var(--text-muted)]">
+              Manual Summary Rows
+            </span>
           </div>
 
           <div className="bg-[var(--bg-surface)] p-2 space-y-1.5">
             {(component.summaryRows || []).map((row, idx) => (
-              <div key={idx} className="flex items-center gap-1.5 group/row animate-in fade-in slide-in-from-left-2">
+              <div
+                key={idx}
+                className="flex items-center gap-1.5 group/row animate-in fade-in slide-in-from-left-2"
+              >
                 <div className="flex-1 grid grid-cols-[80px_1fr] gap-px bg-[var(--border-default)] border border-[var(--border-default)] rounded overflow-hidden shadow-sm">
                   <MiniInput
                     value={row.label}
@@ -257,7 +278,10 @@ export const TableDataSection = ({ component }: Props) => {
 
             <button
               onClick={() => {
-                const rows = [...(component.summaryRows || []), { label: '', value: '', separator: false }];
+                const rows = [
+                  ...(component.summaryRows || []),
+                  { label: '', value: '', separator: false },
+                ];
                 updateComponent(component.id, { summaryRows: rows } as any);
               }}
               className="w-full h-8 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest border border-dashed border-[var(--border-default)] rounded text-[var(--text-muted)] hover:border-[var(--accent)]/50 hover:text-[var(--accent)] hover:bg-[var(--accent)]/5 transition-all mt-2"

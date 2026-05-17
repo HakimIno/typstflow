@@ -15,9 +15,16 @@ export function resolvePath(path: string, obj: unknown): unknown {
 
 /** Compute a numeric aggregate over an array of items. */
 export function calculateAggregate(func: string, path: string, items: unknown[]): string {
+  const cleanPath = path
+    .trim()
+    .replace(/items\./gi, '')
+    .replace(/items,/gi, '')
+    .replace(/['"]/g, '')
+    .trim();
+
   if (!items.length) return '0';
   const values = items.map((item) => {
-    const v = resolvePath(path, item);
+    const v = resolvePath(cleanPath, item);
     return typeof v === 'number' ? v : Number.parseFloat(String(v)) || 0;
   });
   const sum = values.reduce((a, b) => a + b, 0);

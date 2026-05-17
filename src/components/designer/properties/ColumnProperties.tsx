@@ -5,6 +5,7 @@ import type {
   TextComponent,
   TextStyle,
 } from '@/types/schema';
+import { clsx } from 'clsx';
 import {
   Bold,
   ChevronDown,
@@ -19,7 +20,6 @@ import {
   Underline,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { clsx } from 'clsx';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { PropertyRow, SectionHeader } from './Shared';
 
@@ -38,20 +38,29 @@ function getComponentLabel(c: ComponentNode): string {
       const txt = (c as TextComponent).content || '';
       return txt.length > 30 ? `${txt.slice(0, 30)}...` : txt || 'Empty text';
     }
-    case 'image': return 'Image';
-    case 'line': return 'Line';
-    case 'table': return 'Table';
-    case 'spacer': return 'Spacer';
-    default: return c.type;
+    case 'image':
+      return 'Image';
+    case 'line':
+      return 'Line';
+    case 'table':
+      return 'Table';
+    case 'spacer':
+      return 'Spacer';
+    default:
+      return c.type;
   }
 }
 
 function getComponentIcon(type: string) {
   switch (type) {
-    case 'text': return Type;
-    case 'image': return Paintbrush;
-    case 'line': return Minus;
-    default: return Type;
+    case 'text':
+      return Type;
+    case 'image':
+      return Paintbrush;
+    case 'line':
+      return Minus;
+    default:
+      return Type;
   }
 }
 
@@ -68,9 +77,7 @@ export function ColumnProperties({ component }: Props) {
 
   const handleColumnWidthChange = useCallback(
     (index: number, width: string) => {
-      const newColumns = component.columns.map((col, i) =>
-        i === index ? { ...col, width } : col
-      );
+      const newColumns = component.columns.map((col, i) => (i === index ? { ...col, width } : col));
       updateComponent(component.id, { columns: newColumns } as any);
     },
     [component.id, component.columns, updateComponent]
@@ -99,9 +106,7 @@ export function ColumnProperties({ component }: Props) {
         if (i !== colIdx) return col;
         return {
           ...col,
-          components: col.components.map((c) =>
-            c.id === childId ? { ...c, ...updates } : c
-          ),
+          components: col.components.map((c) => (c.id === childId ? { ...c, ...updates } : c)),
         };
       });
       updateComponent(component.id, { columns: newColumns } as any);
@@ -196,10 +201,7 @@ export function ColumnProperties({ component }: Props) {
 
         <div className="px-2 pb-2 space-y-1">
           {component.columns.map((col, idx) => (
-            <div
-              key={idx}
-              className="flex items-center gap-1.5 group"
-            >
+            <div key={idx} className="flex items-center gap-1.5 group">
               <GripVertical className="w-3 h-3 text-[var(--text-muted)] opacity-30 shrink-0" />
               <div className="flex items-center gap-1 flex-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded px-1.5 py-1">
                 <Columns className="w-3 h-3 text-[var(--accent)] opacity-60 shrink-0" />
@@ -282,17 +284,21 @@ export function ColumnProperties({ component }: Props) {
                         className="flex items-center gap-1.5 px-2 py-1 cursor-pointer hover:bg-white/[0.03] transition-colors"
                         onClick={() => setExpandedChild(isExpanded ? null : child.id)}
                       >
-                        {isExpanded
-                          ? <ChevronDown className="w-3 h-3 text-[var(--accent)] shrink-0" />
-                          : <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
-                        }
+                        {isExpanded ? (
+                          <ChevronDown className="w-3 h-3 text-[var(--accent)] shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+                        )}
                         <Icon className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
                         <span className="text-[8px] text-[var(--text-secondary)] flex-1 truncate">
                           {getComponentLabel(child)}
                         </span>
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); removeChild(colIdx, child.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeChild(colIdx, child.id);
+                          }}
                           className="p-0.5 rounded hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
                           title="Remove"
                         >
@@ -359,7 +365,9 @@ function ChildTextEditor({
           <input
             type="number"
             value={style.fontSize ?? 10}
-            onChange={(e) => onUpdateStyle(colIdx, child.id, { fontSize: Number(e.target.value) || 10 })}
+            onChange={(e) =>
+              onUpdateStyle(colIdx, child.id, { fontSize: Number(e.target.value) || 10 })
+            }
             className="w-8 bg-transparent text-[9px] text-center text-[var(--text-primary)] focus:outline-none font-mono"
             min={4}
             max={72}
@@ -369,9 +377,11 @@ function ChildTextEditor({
         {/* Font Weight */}
         <button
           type="button"
-          onClick={() => onUpdateStyle(colIdx, child.id, {
-            fontWeight: style.fontWeight === 'bold' ? 'regular' : 'bold',
-          })}
+          onClick={() =>
+            onUpdateStyle(colIdx, child.id, {
+              fontWeight: style.fontWeight === 'bold' ? 'regular' : 'bold',
+            })
+          }
           className={clsx(
             'p-1 rounded transition-colors border',
             style.fontWeight === 'bold'

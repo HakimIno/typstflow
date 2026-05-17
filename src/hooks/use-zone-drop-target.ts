@@ -2,9 +2,9 @@
 
 import { dragSnapState } from '@/lib/engine/drag-snap-state';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { getZoneComponents } from '@/lib/utils/schema-mutators';
 import { useDesignerStore } from '@/store/designer-store';
 import type { ZoneKey } from '@/types/schema';
-import { getZoneComponents } from '@/lib/utils/schema-mutators';
 import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { useEffect, useState } from 'react';
 
@@ -31,7 +31,7 @@ function resolveFlowY(
   for (let i = 0; i < components.length; i++) {
     const domEl = domEls[i];
     const heightPx = domEl
-      ? domEl.getBoundingClientRect().height / zoom  // layout pixels
+      ? domEl.getBoundingClientRect().height / zoom // layout pixels
       : LayoutEngine.mmToPx(components[i].height ?? 10);
     const heightMm = LayoutEngine.pxToMm(heightPx);
     rows.push({ startMm: cumulativeY, heightMm, endMm: cumulativeY + heightMm });
@@ -80,9 +80,14 @@ export function useZoneDropTarget(
       onDrag: ({ location }) => {
         if (!isFlowMode) return;
         // Broadcast cursor position so Zone.tsx can highlight the correct row
-        window.dispatchEvent(new CustomEvent('flow-drag-move', {
-          detail: { clientX: location.current.input.clientX, clientY: location.current.input.clientY },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('flow-drag-move', {
+            detail: {
+              clientX: location.current.input.clientX,
+              clientY: location.current.input.clientY,
+            },
+          })
+        );
       },
       onDragLeave: () => {
         setIsDraggedOver(false);
@@ -111,7 +116,13 @@ export function useZoneDropTarget(
         const resolveY = (rawAbsY: number): number => {
           if (!isFlowMode) return rawAbsY - zoneOffsetMm;
           if (contentRef.current) {
-            return resolveFlowY(location.current.input.clientY, contentRef.current, state.schema, zoneKey, pageId);
+            return resolveFlowY(
+              location.current.input.clientY,
+              contentRef.current,
+              state.schema,
+              zoneKey,
+              pageId
+            );
           }
           return Math.max(0, rawAbsY - zoneOffsetMm);
         };
@@ -131,13 +142,15 @@ export function useZoneDropTarget(
           );
         } else if (data.id) {
           if (data.group && data.group.length > 1) {
-            const moves = (data.group as Array<{
-              id: string;
-              sourceZoneKey: string;
-              sourcePageId: string | undefined;
-              offsetX: number;
-              offsetY: number;
-            }>).map((item) => ({
+            const moves = (
+              data.group as Array<{
+                id: string;
+                sourceZoneKey: string;
+                sourcePageId: string | undefined;
+                offsetX: number;
+                offsetY: number;
+              }>
+            ).map((item) => ({
               id: item.id,
               fromZone: (item.sourceZoneKey ?? data.zoneKey) as any,
               toZone: zoneKey,

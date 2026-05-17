@@ -4,11 +4,7 @@ import { pushHistory } from '../store-utils';
 
 export type PageSlice = Pick<
   DesignerState,
-  | 'addPage'
-  | 'removePage'
-  | 'reorderPage'
-  | 'setPageCount'
-  | 'updatePageDataSource'
+  'addPage' | 'removePage' | 'reorderPage' | 'setPageCount' | 'updatePageDataSource'
 >;
 
 export const createPageSlice: StateCreator<DesignerState, [], [], PageSlice> = (set, _get) => ({
@@ -79,9 +75,7 @@ export const createPageSlice: StateCreator<DesignerState, [], [], PageSlice> = (
   updatePageDataSource: (pageId, dataSource) => {
     set((state) => {
       const newSchema = { ...state.schema };
-      newSchema.pages = newSchema.pages.map((p) =>
-        p.id === pageId ? { ...p, dataSource } : p
-      );
+      newSchema.pages = newSchema.pages.map((p) => (p.id === pageId ? { ...p, dataSource } : p));
       return pushHistory(state, newSchema);
     });
   },

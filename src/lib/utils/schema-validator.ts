@@ -25,18 +25,18 @@ function deepCleanComponent(comp: any): any {
 
   // 1b. Coerce dimension properties
   if (typeof result.width === 'string') {
-    result.width = parseFloat(result.width) || 0;
+    result.width = Number.parseFloat(result.width) || 0;
   }
   if (typeof result.height === 'string') {
-    result.height = parseFloat(result.height) || 0;
+    result.height = Number.parseFloat(result.height) || 0;
   }
 
   // 2. Coerce margin properties
   if (typeof result.marginBottom === 'string') {
-    result.marginBottom = parseFloat(result.marginBottom) || 0;
+    result.marginBottom = Number.parseFloat(result.marginBottom) || 0;
   }
   if (typeof result.marginTop === 'string') {
-    result.marginTop = parseFloat(result.marginTop) || 0;
+    result.marginTop = Number.parseFloat(result.marginTop) || 0;
   }
 
   // 3. Coerce style properties
@@ -49,10 +49,10 @@ function deepCleanComponent(comp: any): any {
       result.style.cellPadding = `${result.style.cellPadding}pt`;
     }
     if (typeof result.style.lineHeight === 'string') {
-      result.style.lineHeight = parseFloat(result.style.lineHeight) || 1.2;
+      result.style.lineHeight = Number.parseFloat(result.style.lineHeight) || 1.2;
     }
     if (typeof result.style.fontSize === 'string') {
-      result.style.fontSize = parseFloat(result.style.fontSize) || 10;
+      result.style.fontSize = Number.parseFloat(result.style.fontSize) || 10;
     }
   }
 
@@ -88,33 +88,39 @@ function deepCleanComponent(comp: any): any {
  * Zod Schema for LayoutSchema validation.
  * Ensures the document structure is intact and prevents crashes from corrupted data.
  */
-export const ComponentSchema = z
-  .preprocess((val: unknown) => deepCleanComponent(val), z.object({
-    id: z.string(),
-    type: z.string(),
-    x: z.number().optional().default(0),
-    y: z.number().optional().default(0),
-    width: z.number().optional(),
-    height: z.number().optional(),
-    name: z.string().optional(),
-    repeatHeaderOnPage: z.union([z.boolean(), z.string()]).optional(),
-    groupBy: z.string().optional(),
-    groupHeaderFormat: z.string().optional(),
-    groupHeaderStyle: z.any().optional(),
-  }).passthrough());
+export const ComponentSchema = z.preprocess(
+  (val: unknown) => deepCleanComponent(val),
+  z
+    .object({
+      id: z.string(),
+      type: z.string(),
+      x: z.number().optional().default(0),
+      y: z.number().optional().default(0),
+      width: z.number().optional(),
+      height: z.number().optional(),
+      name: z.string().optional(),
+      repeatHeaderOnPage: z.union([z.boolean(), z.string()]).optional(),
+      groupBy: z.string().optional(),
+      groupHeaderFormat: z.string().optional(),
+      groupHeaderStyle: z.any().optional(),
+    })
+    .passthrough()
+);
 
-export const ZoneSchema = z.object({
-  id: z.string(),
-  components: z.array(ComponentSchema),
-  minHeight: z.string().optional(),
-  background: z.string().optional(),
-  padding: z.string().optional(),
-  showOnFirstPageOnly: z.boolean().optional(),
-  showOnLastPageOnly: z.boolean().optional(),
-  repeatOnEveryPage: z.boolean().optional(),
-  layoutMode: z.enum(['absolute', 'flow']).optional(),
-  flowGap: z.string().optional(),
-}).passthrough();
+export const ZoneSchema = z
+  .object({
+    id: z.string(),
+    components: z.array(ComponentSchema),
+    minHeight: z.string().optional(),
+    background: z.string().optional(),
+    padding: z.string().optional(),
+    showOnFirstPageOnly: z.boolean().optional(),
+    showOnLastPageOnly: z.boolean().optional(),
+    repeatOnEveryPage: z.boolean().optional(),
+    layoutMode: z.enum(['absolute', 'flow']).optional(),
+    flowGap: z.string().optional(),
+  })
+  .passthrough();
 
 const DEFAULT_PAGE_FOOTER = { id: 'footer', minHeight: '20mm', components: [] };
 

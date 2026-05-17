@@ -1,10 +1,3 @@
-import { optimizeImage } from '@/lib/utils/image-optimizer';
-import type { ImageComponent } from '@/types/schema';
-import { clsx } from 'clsx';
-import { ImageIcon, Link, Loader2, Upload, X } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
-import { DesignerInput } from '../../shared/DesignerInput';
-import { PropertyRow, SectionHeader } from './Shared';
 import {
   Select,
   SelectContent,
@@ -12,6 +5,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/Select';
+import { optimizeImage } from '@/lib/utils/image-optimizer';
+import type { ImageComponent } from '@/types/schema';
+import { clsx } from 'clsx';
+import { ImageIcon, Link, Loader2, Upload, X } from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
+import { DesignerInput } from '../../shared/DesignerInput';
+import { PropertyRow, SectionHeader } from './Shared';
 
 interface ImagePropertiesProps {
   component: ImageComponent;

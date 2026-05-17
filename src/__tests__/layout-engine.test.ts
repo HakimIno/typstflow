@@ -153,10 +153,7 @@ describe('LayoutEngine.calculateZoneOffset', () => {
       header: { minHeight: '25mm', repeatOnEveryPage: false },
       footer: { minHeight: '20mm', repeatOnEveryPage: false, showOnLastPageOnly: false },
     },
-    pages: [
-      { id: 'page-1' },
-      { id: 'page-2' },
-    ],
+    pages: [{ id: 'page-1' }, { id: 'page-2' }],
     groups: [],
   };
 

@@ -223,11 +223,27 @@ export interface DesignerState extends FontSlice {
   moveUpMany: (ids: string[]) => void;
   moveDownMany: (ids: string[]) => void;
   updateLastSnapped: (x: number, y: number, pageId: string | null) => void;
-  updateComponents: (updatesMap: Record<string, Partial<ComponentNode>>, skipHistory?: boolean) => void;
-  alignSelected: (type: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom', pageId?: string) => void;
+  updateComponents: (
+    updatesMap: Record<string, Partial<ComponentNode>>,
+    skipHistory?: boolean
+  ) => void;
+  alignSelected: (
+    type: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom',
+    pageId?: string
+  ) => void;
   distributeSelected: (type: 'dist-h' | 'dist-v', pageId?: string) => void;
   stackSelected: (type: 'stack-h' | 'stack-v', gap: number, pageId?: string) => void;
-  alignToPage: (type: 'page-left' | 'page-center-h' | 'page-right' | 'page-top' | 'page-center-v' | 'page-bottom' | 'page-center-both', pageId?: string) => void;
+  alignToPage: (
+    type:
+      | 'page-left'
+      | 'page-center-h'
+      | 'page-right'
+      | 'page-top'
+      | 'page-center-v'
+      | 'page-bottom'
+      | 'page-center-both',
+    pageId?: string
+  ) => void;
 
   // Keyboard/Clipboard Actions
   copySelected: () => void;

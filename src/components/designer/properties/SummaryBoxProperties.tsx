@@ -1,6 +1,3 @@
-import { Plus, Trash2 } from 'lucide-react';
-import { DesignerInput } from '../../shared/DesignerInput';
-import { SectionHeader } from './Shared';
 import {
   Select,
   SelectContent,
@@ -8,6 +5,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/Select';
+import { Plus, Trash2 } from 'lucide-react';
+import { DesignerInput } from '../../shared/DesignerInput';
+import { SectionHeader } from './Shared';
 
 interface SummaryBoxPropertiesProps {
   component: any;

@@ -22,10 +22,18 @@ export const SelectionMarquee = memo(function SelectionMarquee({
   const selectRef = useRef(selectComponentsInRange);
   const clearRef = useRef(clearSelection);
 
-  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
-  useEffect(() => { schemaRef.current = schema; }, [schema]);
-  useEffect(() => { selectRef.current = selectComponentsInRange; }, [selectComponentsInRange]);
-  useEffect(() => { clearRef.current = clearSelection; }, [clearSelection]);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+  useEffect(() => {
+    schemaRef.current = schema;
+  }, [schema]);
+  useEffect(() => {
+    selectRef.current = selectComponentsInRange;
+  }, [selectComponentsInRange]);
+  useEffect(() => {
+    clearRef.current = clearSelection;
+  }, [clearSelection]);
 
   useEffect(() => {
     const selector = pageId
@@ -89,11 +97,7 @@ export const SelectionMarquee = memo(function SelectionMarquee({
         const currentSchema = schemaRef.current;
         for (const zoneKey of ['header', 'body', 'footer'] as const) {
           const zoneOffset = LayoutEngine.calculateZoneOffset(zoneKey, currentSchema, pageId);
-          selectRef.current(
-            { ...rectMm, y: rectMm.y - zoneOffset },
-            zoneKey,
-            pageId
-          );
+          selectRef.current({ ...rectMm, y: rectMm.y - zoneOffset }, zoneKey, pageId);
         }
 
         setStartPos(null);
@@ -134,7 +138,5 @@ export const SelectionMarquee = memo(function SelectionMarquee({
       <div className="absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 border-[var(--accent)]" />
       <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 border-[var(--accent)]" />
     </div>
-
-
   );
 });

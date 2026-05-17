@@ -7,14 +7,13 @@ import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { Plus } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 
+import { useCanvasZoom } from '@/hooks/use-canvas-zoom';
+import { CanvasToolbar } from './CanvasToolbar';
 import { DesignerPage } from './DesignerPage';
 import { DragMonitor } from './DragMonitor';
 import { Ruler } from './Ruler';
 import { TransientOverlay } from './TransientOverlay';
-import { CanvasToolbar } from './CanvasToolbar';
-import { useCanvasZoom } from '@/hooks/use-canvas-zoom';
 
 // Constants for virtualization
 const VISIBLE_PAGE_BUFFER = 4; // Increased for smoothness
@@ -33,12 +32,12 @@ export const Canvas = memo(function Canvas() {
   const scrollToPageId = useDesignerStore((state) => state.scrollToPageId);
   const setScrollToPageId = useDesignerStore((state) => state.setScrollToPageId);
   const setActivePage = useDesignerStore((state) => state.setActivePage);
-  
+
   const pages = useDesignerStore((state) => state.schema.pages);
   const pageIds = useMemo(() => pages.map((p) => p.id), [pages]);
   const [mounted, setMounted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const paperRef = useRef<HTMLDivElement>(null);
+  const _paperRef = useRef<HTMLDivElement>(null);
   const pendingScrollRef = useRef<string | null>(null);
   const [scrollPos, setScrollPos] = useState({ x: 0, y: 0 });
 
@@ -64,11 +63,10 @@ export const Canvas = memo(function Canvas() {
     // ✅ Calculate visible page range (Binary search equivalent)
     if (scrollRef.current) {
       const { scrollTop, clientHeight } = scrollRef.current;
-      const { height: pageHeightMm } = getPaperDimensions(
-        pageSize,
-        pageOrientation
+      const { height: pageHeightMm } = getPaperDimensions(pageSize, pageOrientation);
+      const currentGap = Math.round(
+        (canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom
       );
-      const currentGap = Math.round((canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom);
       const pageHeightPx = Math.round(LayoutEngine.mmToPx(pageHeightMm) * zoom);
       const totalPageHeight = pageHeightPx + currentGap;
       const pagesPerRow = canvasLayout === 'grid' ? 2 : 1;
@@ -158,7 +156,9 @@ export const Canvas = memo(function Canvas() {
     // Page is outside the rendered range — scroll to the math estimate and let Phase 2 correct.
     const { height: pageHeightMm } = getPaperDimensions(pageSize, pageOrientation);
     const pageHeightPx = Math.round(LayoutEngine.mmToPx(pageHeightMm) * zoom);
-    const currentGap = Math.round((canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom);
+    const currentGap = Math.round(
+      (canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom
+    );
     const rowIdx = Math.floor(pageIdx / (canvasLayout === 'grid' ? 2 : 1));
     const targetScrollTop = PADDING_TOP_PX + rowIdx * (pageHeightPx + currentGap);
     scrollRef.current.scrollTo({ top: targetScrollTop - 32, behavior: 'auto' });
@@ -194,7 +194,9 @@ export const Canvas = memo(function Canvas() {
     pageOrientation
   );
 
-  const currentGap = Math.round((canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom);
+  const currentGap = Math.round(
+    (canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom
+  );
   const pageHeightPx = Math.round(LayoutEngine.mmToPx(pageHeightMm) * zoom);
   const totalPageHeight = pageHeightPx + currentGap;
 
@@ -209,10 +211,10 @@ export const Canvas = memo(function Canvas() {
 
   if (!mounted) return <div className="flex-1 flex flex-col bg-[var(--bg-canvas)]" />;
 
-  const marginTop = parseTypstUnit(margin.top);
-  const marginBottom = parseTypstUnit(margin.bottom);
-  const marginLeft = parseTypstUnit(margin.left);
-  const marginRight = parseTypstUnit(margin.right);
+  const _marginTop = parseTypstUnit(margin.top);
+  const _marginBottom = parseTypstUnit(margin.bottom);
+  const _marginLeft = parseTypstUnit(margin.left);
+  const _marginRight = parseTypstUnit(margin.right);
 
   return (
     <div className="Canvas flex-1 flex flex-col overflow-hidden relative bg-[var(--bg-canvas)] contain-layout">
@@ -285,9 +287,7 @@ export const Canvas = memo(function Canvas() {
               <TransientOverlay />
 
               {pagesToRender.map(({ pageId, pIdx }) => {
-                return (
-                  <DesignerPage key={pageId} pageId={pageId} pIdx={pIdx} />
-                );
+                return <DesignerPage key={pageId} pageId={pageId} pIdx={pIdx} />;
               })}
 
               {/* Add Page Button */}
@@ -321,7 +321,7 @@ export const Canvas = memo(function Canvas() {
             )}
           </div>
         </div>
-        
+
         <CanvasToolbar mode="design" />
       </div>
     </div>

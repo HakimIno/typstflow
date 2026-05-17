@@ -7,10 +7,10 @@ import { BLANK_SCHEMA, pushHistory } from '../store-utils';
 export type IOSlice = Pick<DesignerState, 'exportSchema' | 'importSchema'>;
 
 // Reference to the store instance — set after store creation to allow exportSchema to call getState()
-let storeRef: (() => DesignerState) | null = null;
+let _storeRef: (() => DesignerState) | null = null;
 
 export const setStoreRef = (getState: () => DesignerState) => {
-  storeRef = getState;
+  _storeRef = getState;
 };
 
 export const createIOSlice: StateCreator<DesignerState, [], [], IOSlice> = (set, get) => ({
@@ -29,9 +29,9 @@ export const createIOSlice: StateCreator<DesignerState, [], [], IOSlice> = (set,
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    const filename = `${state.schema.name.toLowerCase().replace(/\s+/g, '-')}-bundle-${new Date()
-      .toISOString()
-      .split('T')[0]}.json`;
+    const filename = `${state.schema.name.toLowerCase().replace(/\s+/g, '-')}-bundle-${
+      new Date().toISOString().split('T')[0]
+    }.json`;
 
     link.href = url;
     link.download = filename;

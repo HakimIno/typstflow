@@ -95,9 +95,9 @@ export function isDifferentZone(
   zone2: { zoneKey: ZoneKey; pageId?: string; groupId?: string; groupType?: 'header' | 'footer' }
 ): boolean {
   return (
-    zone1.zoneKey !== zone2.zoneKey || 
-    zone1.pageId !== zone2.pageId || 
-    zone1.groupId !== zone2.groupId || 
+    zone1.zoneKey !== zone2.zoneKey ||
+    zone1.pageId !== zone2.pageId ||
+    zone1.groupId !== zone2.groupId ||
     zone1.groupType !== zone2.groupType
   );
 }

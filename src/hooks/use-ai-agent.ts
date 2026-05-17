@@ -119,9 +119,9 @@ function ensureTableIds(updates: AnyRecord): AnyRecord {
         ...row,
         cells: Array.isArray(row.cells)
           ? (row.cells as AnyRecord[]).map((cell, ci) => ({
-            id: cell.id ?? `cell-${ri}-${ci}-${Date.now()}`,
-            ...cell,
-          }))
+              id: cell.id ?? `cell-${ri}-${ci}-${Date.now()}`,
+              ...cell,
+            }))
           : row.cells,
       }));
     }
@@ -265,16 +265,16 @@ function execTool(name: string, args: Record<string, unknown>): string {
         cs.length === 0
           ? 'empty'
           : cs
-            .map((c) => {
-              const p = `${(c.x ?? 0).toFixed(0)},${(c.y ?? 0).toFixed(0)}`;
-              const sz = `${(c.width ?? 0).toFixed(0)}×${(c.height ?? 0).toFixed(0)}mm`;
-              if (c.type === 'text')
-                return `text(id:${c.id} @${p} ${sz} "${c.content.slice(0, 30)}")`;
-              if (c.type === 'table')
-                return `table(id:${c.id} @${p} ${sz} ${c.columns.length}cols)`;
-              return `${c.type}(id:${c.id} @${p} ${sz})`;
-            })
-            .join(' | ');
+              .map((c) => {
+                const p = `${(c.x ?? 0).toFixed(0)},${(c.y ?? 0).toFixed(0)}`;
+                const sz = `${(c.width ?? 0).toFixed(0)}×${(c.height ?? 0).toFixed(0)}mm`;
+                if (c.type === 'text')
+                  return `text(id:${c.id} @${p} ${sz} "${c.content.slice(0, 30)}")`;
+                if (c.type === 'table')
+                  return `table(id:${c.id} @${p} ${sz} ${c.columns.length}cols)`;
+                return `${c.type}(id:${c.id} @${p} ${sz})`;
+              })
+              .join(' | ');
       return [
         `Header: ${fmt(s.zones.header.components)}`,
         ...s.pages.map((p, i) => `Body p${i + 1}: ${fmt(p.body.components)}`),
@@ -329,7 +329,9 @@ function quickClassify(text: string): IntentMode | null {
 
   // Explicit planning vocabulary → plan
   if (
-    /ช่วยวางแผน|help me plan|let'?s plan|advise( me)?|what should (i|we) include|best (way|structure|approach) (to|for)|how should i (design|layout|structure)|planning|วางแผน|แนะนำ layout/.test(t)
+    /ช่วยวางแผน|help me plan|let'?s plan|advise( me)?|what should (i|we) include|best (way|structure|approach) (to|for)|how should i (design|layout|structure)|planning|วางแผน|แนะนำ layout/.test(
+      t
+    )
   ) {
     return 'plan';
   }
@@ -338,14 +340,21 @@ function quickClassify(text: string): IntentMode | null {
   // Pattern: short action on one specific element type
   const isShort = t.length <= 80;
   if (isShort) {
-    if (/^(เพิ่ม|add|insert|place)\s+(text|ข้อความ|image|รูป|line|เส้น|spacer|ช่องว่าง)/.test(t)) return 'quick';
+    if (/^(เพิ่ม|add|insert|place)\s+(text|ข้อความ|image|รูป|line|เส้น|spacer|ช่องว่าง)/.test(t))
+      return 'quick';
     if (/^(ลบ|delete|remove)\s/.test(t)) return 'quick';
-    if (/^(แก้ไข|update|change|edit|move|ย้าย|ปรับ)\s/.test(t) && !/(layout|ทั้งหมด|all|invoice|report)/.test(t)) return 'quick';
+    if (
+      /^(แก้ไข|update|change|edit|move|ย้าย|ปรับ)\s/.test(t) &&
+      !/(layout|ทั้งหมด|all|invoice|report)/.test(t)
+    )
+      return 'quick';
   }
 
   // Full layout / complex build → design (multi-round loop)
   if (
-    /^(create |build |make |สร้าง |ออกแบบ |design |load |โหลด |ทำ )(invoice|layout|report|template|รายงาน|ใบแจ้ง|ใบเสร็จ|เอกสาร)/.test(t) ||
+    /^(create |build |make |สร้าง |ออกแบบ |design |load |โหลด |ทำ )(invoice|layout|report|template|รายงาน|ใบแจ้ง|ใบเสร็จ|เอกสาร)/.test(
+      t
+    ) ||
     /invoice|layout|template|report|ใบแจ้ง|ใบเสร็จ|รายงาน/.test(t)
   ) {
     return 'design';
@@ -452,7 +461,7 @@ function persistMessages(msgs: AgentMessage[]): void {
 function persistMemory(mem: SessionMemory): void {
   try {
     localStorage.setItem(STORAGE_MEMORY_KEY, JSON.stringify(mem));
-  } catch { }
+  } catch {}
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -499,7 +508,7 @@ export function useAiAgent() {
       setThinkingStep('Analyzing request...');
 
       const assistantId = crypto.randomUUID();
-      
+
       const upsertAssistantMessage = (
         content: string,
         tools?: NonNullable<AgentMessage['toolCalls']>,
@@ -642,8 +651,15 @@ export function useAiAgent() {
             executedCalls.push({ name: tc.function.name, success, description: result });
           }
           const displayText = quickText || (executedCalls.length > 0 ? 'Done!' : '(no response)');
-          upsertAssistantMessage(displayText, executedCalls.length > 0 ? executedCalls : undefined, 'design');
-          setMessages((prev) => { persistMessages(prev); return prev; });
+          upsertAssistantMessage(
+            displayText,
+            executedCalls.length > 0 ? executedCalls : undefined,
+            'design'
+          );
+          setMessages((prev) => {
+            persistMessages(prev);
+            return prev;
+          });
           return;
         }
 
@@ -653,7 +669,9 @@ export function useAiAgent() {
         // Design mode: multi-round tool loop
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
           if (controller.signal.aborted) break;
-          setThinkingStep(round === 0 ? 'Executing initial plan...' : `Processing step ${round + 1}...`);
+          setThinkingStep(
+            round === 0 ? 'Executing initial plan...' : `Processing step ${round + 1}...`
+          );
 
           const { schema } = useDesignerStore.getState();
           const data = await callApi(
@@ -672,7 +690,10 @@ export function useAiAgent() {
           // Stream text update to UI (strip intent block before displaying)
           const displayText = stripIntentBlock(finalText);
           if (displayText || toolCalls.length > 0) {
-            upsertAssistantMessage(displayText, allToolCalls.length > 0 ? [...allToolCalls] : undefined);
+            upsertAssistantMessage(
+              displayText,
+              allToolCalls.length > 0 ? [...allToolCalls] : undefined
+            );
           }
 
           if (toolCalls.length === 0) break;
@@ -696,7 +717,12 @@ export function useAiAgent() {
           }
 
           // Update UI with accumulated tool badges (include checkpoint so Rewind appears during generation)
-          upsertAssistantMessage(stripIntentBlock(finalText) || 'Working...', [...allToolCalls], 'design', checkpoint);
+          upsertAssistantMessage(
+            stripIntentBlock(finalText) || 'Working...',
+            [...allToolCalls],
+            'design',
+            checkpoint
+          );
 
           // Append assistant turn + tool results to conversation
           apiMessages = [
@@ -770,7 +796,7 @@ export function useAiAgent() {
             ? `${lastDisplayText} (Stopped)`
             : 'Generation cancelled.'
           : lastDisplayText || (allToolCalls.length > 0 ? 'Done!' : '(no response)');
-        
+
         upsertAssistantMessage(
           finalContent,
           allToolCalls.length > 0 ? allToolCalls : undefined,
@@ -789,7 +815,7 @@ export function useAiAgent() {
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);
         upsertAssistantMessage(`Error: ${msg}`);
-        setMessages(prev => {
+        setMessages((prev) => {
           persistMessages(prev);
           return prev;
         });
