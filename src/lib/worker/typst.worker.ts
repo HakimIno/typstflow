@@ -1,8 +1,10 @@
+import { TypstGenerator } from '../engine/generator';
 import init, { TypstBridge } from '../wasm-bridge/typst_bridge';
 
 let bridge: TypstBridge | null = null;
 
 const imageCache = new Map<string, string>();
+const compressedImageCache = new Map<string, string>();
 let lastImagesHash = '';
 
 // IDs of in-flight SVG streams that have been cancelled by the main thread.
@@ -115,6 +117,10 @@ function detectAlpha(ctx: OffscreenCanvasRenderingContext2D, w: number, h: numbe
  * - Return original if compressed result is not meaningfully smaller (< 5% gain)
  */
 async function compressImageForPdf(dataUrl: string): Promise<string> {
+  const cacheKey = `${dataUrl.length}:${dataUrl.slice(0, 100)}`;
+  const cached = compressedImageCache.get(cacheKey);
+  if (cached) return cached;
+
   try {
     const resp = await fetch(dataUrl);
     const blob = await resp.blob();
@@ -156,7 +162,9 @@ async function compressImageForPdf(dataUrl: string): Promise<string> {
     for (let i = 0; i < bytes.length; i += 8192) {
       parts.push(String.fromCharCode(...bytes.subarray(i, Math.min(i + 8192, bytes.length))));
     }
-    return `data:${outType};base64,${btoa(parts.join(''))}`;
+    const result = `data:${outType};base64,${btoa(parts.join(''))}`;
+    compressedImageCache.set(cacheKey, result);
+    return result;
   } catch {
     return dataUrl; // Graceful fallback — never break export on compression error
   }
@@ -354,7 +362,9 @@ self.onmessage = async (e: MessageEvent) => {
         const now = new Date();
         bridge.set_today(now.getFullYear(), now.getMonth() + 1, now.getDate());
         const preparedSchema = injectImagesIntoSchema(schema);
-        const svg = bridge.render_report_svg(JSON.stringify(preparedSchema), JSON.stringify(data));
+        const generator = new TypstGenerator();
+        const typstCode = generator.generate(preparedSchema, data);
+        const svg = bridge.render_svg(typstCode);
         self.postMessage({ id, type: 'success', payload: svg });
         break;
       }
@@ -369,10 +379,9 @@ self.onmessage = async (e: MessageEvent) => {
         const now = new Date();
         bridge.set_today(now.getFullYear(), now.getMonth() + 1, now.getDate());
         const preparedSchema = injectImagesIntoSchema(schema);
-        const svgString = bridge.render_report_svg(
-          JSON.stringify(preparedSchema),
-          JSON.stringify(data)
-        );
+        const generator = new TypstGenerator();
+        const typstCode = generator.generate(preparedSchema, data);
+        const svgString = bridge.render_svg(typstCode);
         const pages = svgString
           .split('<!-- PAGE_BREAK -->')
           .filter((s: string) => s.trim().length > 0);
@@ -414,7 +423,9 @@ self.onmessage = async (e: MessageEvent) => {
         // Stage 2: compile Typst → PDF via WASM
         self.postMessage({ id, type: 'stage', payload: 'compiling' });
         const preparedSchema = injectImagesIntoSchema(schema);
-        const pdf = bridge.render_report_pdf(JSON.stringify(preparedSchema), JSON.stringify(data));
+        const generator = new TypstGenerator();
+        const typstCode = generator.generate(preparedSchema, data);
+        const pdf = bridge.render_pdf(typstCode);
 
         self.postMessage({ id, type: 'success', payload: pdf }, {
           transfer: [pdf.buffer],
@@ -423,7 +434,8 @@ self.onmessage = async (e: MessageEvent) => {
       }
       case 'GENERATE_REPORT_TYPST': {
         const { schema, data } = payload;
-        const source = bridge.generate_report_typst(JSON.stringify(schema), JSON.stringify(data));
+        const generator = new TypstGenerator();
+        const source = generator.generate(schema, data);
         self.postMessage({ id, type: 'success', payload: source });
         break;
       }

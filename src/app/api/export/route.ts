@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { schemaToTypst } from '@/lib/schema-to-typst';
+import { TypstGenerator } from '@/lib/engine/generator';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = exportSchema.parse(body);
 
-    const typstCode = schemaToTypst(validated.schema, validated.data);
+    const generator = new TypstGenerator();
+    const typstCode = generator.generate(validated.schema, validated.data);
 
     // Create tmp directory if not exists
     const tmpDir = path.join(process.cwd(), '.tmp');

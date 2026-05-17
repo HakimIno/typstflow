@@ -1,9 +1,5 @@
 import { parseTypstUnit } from '@/lib/utils/units';
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('@/lib/utils/units', () => ({
-  parseTypstUnit: (val: string) => Number.parseInt(val),
-}));
+import { describe, expect, it } from 'vitest';
 
 describe('Virtualization Coordinate Logic', () => {
   it('should calculate correct absolute Y for components across pages', () => {

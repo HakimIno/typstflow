@@ -205,8 +205,7 @@ describe('TypstGenerator — line component', () => {
 
   it('renders #line() with stroke', () => {
     const output = generate(schema);
-    expect(output).toContain('#line(length: 100%');
-    expect(output).toContain('1pt +');
+    expect(output).toContain('#line(start: (0%, 50%), end: (100%, 50%), stroke: (paint: rgb("#000000"), thickness: 1pt, cap: "butt"))');
   });
 });
 
@@ -350,10 +349,10 @@ describe('TypstGenerator — flow zone mode', () => {
       }],
     };
     const output = new TypstGenerator().generate(schema, {});
-    // x=10 → pad left; width=80, height=10 → sized inner block; outer block suppresses spacing
+    // x=10 → pad left; width=80 → sized inner block; outer block suppresses spacing
     expect(output).toContain('#pad(left: 10mm)');
-    expect(output).toContain('#block(width: 80mm, height: 10mm, clip: false)');
-    expect(output).toContain('above: 0pt, below: 0pt');
+    expect(output).toContain('#block(width: 80mm, clip: false)');
+    expect(output).toContain('above: 0pt, below: 2pt');
     expect(output).not.toContain('#place(');
   });
 

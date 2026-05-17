@@ -8,9 +8,7 @@ use typst::Library;
 use typst::LibraryExt;
 use wasm_bindgen::prelude::*;
 
-mod generator;
 mod parsers;
-mod schema;
 mod world;
 pub mod layout_engine;
 pub mod table_engine;
@@ -185,24 +183,6 @@ impl TypstBridge {
             .map_err(|err| JsValue::from_str(&format!("PDF generation failed: {:?}", err)))
     }
 
-    pub fn render_report_svg(&self, schema_json: &str, data_json: &str) -> Result<String, JsValue> {
-        let source_code = self.build_typst_source(schema_json, data_json)?;
-        self.render_svg(&source_code)
-    }
-
-    pub fn render_report_pdf(&self, schema_json: &str, data_json: &str) -> Result<Vec<u8>, JsValue> {
-        let source_code = self.build_typst_source(schema_json, data_json)?;
-        self.render_pdf(&source_code)
-    }
-
-    pub fn generate_report_typst(
-        &self,
-        schema_json: &str,
-        data_json: &str,
-    ) -> Result<String, JsValue> {
-        self.build_typst_source(schema_json, data_json)
-    }
-
     pub fn parse_csv(&self, csv_data: &str) -> Result<String, JsValue> {
         parsers::parse_csv_bytes(csv_data.as_bytes())
     }
@@ -213,31 +193,5 @@ impl TypstBridge {
 
     pub fn parse_xlsx(&self, data: &[u8]) -> Result<String, JsValue> {
         parsers::parse_xlsx_bytes(data)
-    }
-}
-
-impl TypstBridge {
-    fn build_typst_source(
-        &self,
-        schema_json: &str,
-        data_json: &str,
-    ) -> Result<String, JsValue> {
-        let schema: schema::LayoutSchema = serde_json::from_str(schema_json).map_err(|e| {
-            JsValue::from_str(&format!(
-                "Schema parse error: {} (line {}, col {})",
-                e,
-                e.line(),
-                e.column()
-            ))
-        })?;
-        let data: serde_json::Value = serde_json::from_str(data_json).map_err(|e| {
-            JsValue::from_str(&format!(
-                "Data parse error: {} (line {}, col {})",
-                e,
-                e.line(),
-                e.column()
-            ))
-        })?;
-        Ok(generator::generate_typst(&schema, &data))
     }
 }
