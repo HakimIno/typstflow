@@ -31,7 +31,7 @@ import { memo, useRef } from 'react';
 interface ActionBarProps {
   component: ComponentNode;
   isSelected: boolean;
-  selectedIds: string[];
+  selectedCount: number;
   isDragging: boolean;
   flowMode?: boolean;
   handleDuplicate: (e: React.MouseEvent) => void;
@@ -42,7 +42,7 @@ interface ActionBarProps {
 export const ActionBar = memo(function ActionBar({
   component,
   isSelected,
-  selectedIds,
+  selectedCount,
   isDragging,
   flowMode = false,
   handleDuplicate,
@@ -223,7 +223,7 @@ export const ActionBar = memo(function ActionBar({
     window.addEventListener('pointerup', handleUp);
   };
 
-  const isVisible = isSelected && !isDragging && selectedIds.length === 1;
+  const isVisible = isSelected && !isDragging && selectedCount === 1;
   if (!isVisible) return null;
 
   const isNearTop = (component.y || 0) < 20;
@@ -319,7 +319,8 @@ export const ActionBar = memo(function ActionBar({
           icon={Trash2}
           title="Delete Component"
           onClick={() => {
-            if (selectedIds.length > 1) removeComponents(selectedIds);
+            if (selectedCount > 1)
+              removeComponents(useDesignerStore.getState().selectedComponentIds);
             else removeComponent(component.id);
           }}
           className="hover:bg-red-500/20 text-red-500/70 hover:text-red-400"

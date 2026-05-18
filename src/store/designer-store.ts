@@ -42,19 +42,10 @@ export const useDesignerStore = create<DesignerState>()(
       name: 'designer-storage',
       storage: createJSONStorage(() => indexedDBStorage),
       partialize: (state: DesignerState) => {
-        const {
-          dragState,
-          history,
-          historyIndex,
-          _hasHydrated,
-          dialog,
-          componentRegistry,
-          loadingFonts,
-          ...rest
-        } = state;
+        const { dragState, _hasHydrated, dialog, componentRegistry, loadingFonts, ...rest } = state;
         return rest;
       },
-      version: 3,
+      version: 4,
       migrate: (persistedState: any, version: number) => {
         const state = persistedState as any;
         if (version < 2) {
@@ -76,6 +67,13 @@ export const useDesignerStore = create<DesignerState>()(
             state.activePageId = 'page-1';
           }
         }
+        if (version < 4) {
+          // history was not persisted before v4 — seed from current schema
+          if (!Array.isArray(state.history) || state.history.length === 0) {
+            state.history = state.schema ? [state.schema] : [];
+            state.historyIndex = Math.max(0, state.history.length - 1);
+          }
+        }
         return state;
       },
       onRehydrateStorage: () => (state) => {
@@ -83,6 +81,22 @@ export const useDesignerStore = create<DesignerState>()(
           const validSchema = validateAndRepairSchema(state.schema, BLANK_SCHEMA);
           if (validSchema !== state.schema) state.schema = validSchema;
           state.componentRegistry = buildComponentRegistry(state.schema);
+          // Validate persisted history — clamp index or seed from schema if corrupt/empty.
+          if (!Array.isArray(state.history) || state.history.length === 0) {
+            state.history = [state.schema];
+            state.historyIndex = 0;
+          } else {
+            state.historyIndex = Math.min(
+              Math.max(0, state.historyIndex),
+              state.history.length - 1
+            );
+          }
+          // Keep localStorage in sync so the blocking theme script has correct
+          // values on the very next page load (avoids flash even before React mounts).
+          try {
+            localStorage.setItem('typstflow-theme', state.theme);
+            localStorage.setItem('typstflow-primary-color', state.primaryColor);
+          } catch {}
           agentLogger.log({
             source: 'system',
             level: 'info',

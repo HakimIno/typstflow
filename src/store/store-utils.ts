@@ -3,6 +3,22 @@ import type { DesignerState } from './store-types';
 
 export const MAX_HISTORY = 50;
 
+/** Returns a smaller history limit for large schemas to prevent memory buildup. */
+export const getMaxHistory = (schema: LayoutSchema): number => {
+  const componentCount =
+    schema.zones.header.components.length +
+    schema.zones.footer.components.length +
+    schema.pages.reduce((sum, p) => sum + p.body.components.length, 0) +
+    (schema.groups ?? []).reduce(
+      (sum, g) => sum + g.header.components.length + g.footer.components.length,
+      0
+    );
+  if (componentCount > 500) return 10;
+  if (componentCount > 200) return 20;
+  if (componentCount > 100) return 30;
+  return MAX_HISTORY;
+};
+
 export const buildComponentRegistry = (schema: LayoutSchema): Record<string, ComponentNode> => {
   const registry: Record<string, ComponentNode> = {};
 

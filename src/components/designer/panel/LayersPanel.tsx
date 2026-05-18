@@ -43,29 +43,29 @@ type RenderItem =
   | { type: 'page-separator'; pageId: string; index: number }
   | { type: 'global-separator'; label: string }
   | {
-      type: 'zone-header';
-      zoneKey: string;
-      label: string;
-      pageId?: string;
-      count: number;
-      groupId?: string;
-      groupType?: 'header' | 'footer';
-    }
+    type: 'zone-header';
+    zoneKey: string;
+    label: string;
+    pageId?: string;
+    count: number;
+    groupId?: string;
+    groupType?: 'header' | 'footer';
+  }
   | {
-      type: 'component';
-      component: ComponentNode;
-      zoneKey: string;
-      index: number;
-      pageId?: string;
-      groupId?: string;
-      groupType?: 'header' | 'footer';
-    };
+    type: 'component';
+    component: ComponentNode;
+    zoneKey: string;
+    index: number;
+    pageId?: string;
+    groupId?: string;
+    groupType?: 'header' | 'footer';
+  };
 
 // --- Components ---
 
 const ComponentIcon = memo(({ type, isSelected }: { type: string; isSelected?: boolean }) => {
   const iconClass = clsx(
-    'w-4 h-4 transition-transform duration-200 group-hover:scale-110',
+    'w-3.5 h-3.5 transition-transform duration-200',
     isSelected
       ? 'text-[var(--accent)]'
       : 'text-[var(--text-muted)] group-hover:text-[var(--accent)]'
@@ -189,7 +189,7 @@ const LayerItem = memo(
       <div
         ref={ref}
         className={clsx(
-          'w-full group relative flex items-center gap-3 px-3 py-0 cursor-pointer select-none',
+          'w-full group relative flex items-center gap-3 px-4  cursor-pointer select-none',
           isSelected && 'bg-white/5',
           isDragging && 'opacity-40 grayscale',
           isHidden && 'opacity-50'

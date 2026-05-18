@@ -63,8 +63,18 @@ export const createUISlice: StateCreator<DesignerState, [], [], UISlice> = (set,
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
   setRightSidebarOpen: (open: boolean) => set({ isRightSidebarOpen: open }),
   toggleRightSidebar: () => set((state) => ({ isRightSidebarOpen: !state.isRightSidebarOpen })),
-  setTheme: (theme: 'dark' | 'light') => set({ theme }),
-  setPrimaryColor: (color: string) => set({ primaryColor: color }),
+  setTheme: (theme: 'dark' | 'light') => {
+    try {
+      localStorage.setItem('typstflow-theme', theme);
+    } catch {}
+    set({ theme });
+  },
+  setPrimaryColor: (color: string) => {
+    try {
+      localStorage.setItem('typstflow-primary-color', color);
+    } catch {}
+    set({ primaryColor: color });
+  },
   setCanvasLayout: (layout: 'vertical' | 'grid') => set({ canvasLayout: layout }),
   setAiModel: (model: string) => set({ aiModel: model }),
   setAiMode: (mode: 'plan' | 'act') => set({ aiMode: mode }),

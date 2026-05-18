@@ -16,8 +16,8 @@ import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
+import { AlertCircle, AlertTriangle, Info, Terminal, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Terminal, Trash2, X, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 
 export default function DesignerPage() {
   const [mounted, setMounted] = useState(false);
@@ -106,7 +106,19 @@ export default function DesignerPage() {
     setMounted(true);
   }, []);
 
-  if (!mounted || !_hasHydrated) return null;
+  if (!mounted || !_hasHydrated) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[var(--bg-app)]">
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin"
+            style={{ borderColor: 'var(--accent) transparent transparent transparent' }}
+          />
+          <span className="text-[11px] text-white/25 tracking-wide">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   const renderLeftPanel = () => {
     switch (activeTab) {
@@ -165,7 +177,7 @@ export default function DesignerPage() {
                 className={clsx(
                   'flex-1 overflow-auto bg-[var(--bg-canvas)] flex justify-center p-0 transition-all duration-300',
                   viewMode === 'split' &&
-                  'border-r-2 border-[var(--border-default)] shadow-2xl z-10'
+                    'border-r-2 border-[var(--border-default)] shadow-2xl z-10'
                 )}
               >
                 <DesignerErrorBoundary componentName="Designer Canvas">
@@ -266,8 +278,14 @@ export default function DesignerPage() {
               {/* Log List */}
               <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5 custom-scrollbar select-text">
                 {logs.map((log, i) => {
-                  const isError = log.includes('[ERROR]') || log.includes('[UNCAUGHT]') || log.includes('error') || log.includes('Error') || log.includes('failed');
-                  const isWarn = log.includes('[WARN]') || log.includes('warn') || log.includes('Warning');
+                  const isError =
+                    log.includes('[ERROR]') ||
+                    log.includes('[UNCAUGHT]') ||
+                    log.includes('error') ||
+                    log.includes('Error') ||
+                    log.includes('failed');
+                  const isWarn =
+                    log.includes('[WARN]') || log.includes('warn') || log.includes('Warning');
 
                   return (
                     <div
@@ -298,7 +316,9 @@ export default function DesignerPage() {
                 {logs.length === 0 && (
                   <div className="text-zinc-600 italic py-16 text-center text-[9px] flex flex-col items-center justify-center gap-2 select-none">
                     <Terminal className="w-6 h-6 text-zinc-800" />
-                    <span>No logs generated yet. Perform canvas actions to trigger compiler events.</span>
+                    <span>
+                      No logs generated yet. Perform canvas actions to trigger compiler events.
+                    </span>
                   </div>
                 )}
               </div>

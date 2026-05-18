@@ -67,18 +67,38 @@ export const SelectionMarquee = memo(function SelectionMarquee({
       // between React re-render and next paint.
       let curX = startX;
       let curY = startY;
+      let pendingClientX = e.clientX;
+      let pendingClientY = e.clientY;
+      let moveRafId: number | null = null;
 
-      const handleMouseMove = (me: MouseEvent) => {
+      const flushMove = () => {
         const z = zoomRef.current;
         const r = paper.getBoundingClientRect();
-        curX = (me.clientX - r.left) / z;
-        curY = (me.clientY - r.top) / z;
+        curX = (pendingClientX - r.left) / z;
+        curY = (pendingClientY - r.top) / z;
         setCurrentPos({ x: curX, y: curY });
+      };
+
+      const handleMouseMove = (me: MouseEvent) => {
+        pendingClientX = me.clientX;
+        pendingClientY = me.clientY;
+        // Batch DOM reads to one per animation frame — avoids forced reflow on every mousemove
+        if (moveRafId !== null) return;
+        moveRafId = requestAnimationFrame(() => {
+          moveRafId = null;
+          flushMove();
+        });
       };
 
       const handleMouseUp = () => {
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
+        // Flush any pending move so curX/curY are up-to-date before computing selection rect
+        if (moveRafId !== null) {
+          cancelAnimationFrame(moveRafId);
+          moveRafId = null;
+          flushMove();
+        }
 
         const x = Math.min(startX, curX);
         const y = Math.min(startY, curY);

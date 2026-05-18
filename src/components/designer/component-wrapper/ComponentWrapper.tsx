@@ -6,7 +6,6 @@ import { clsx } from 'clsx';
 import { Lock } from 'lucide-react';
 import type React from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 
 import { useResizable } from '@/hooks/use-resizable';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
@@ -41,19 +40,15 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const previewRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
-  // ✅ High-Performance Granular Subscription
+  // ✅ Per-primitive selectors — each returns a scalar so Zustand only re-renders
+  // when THIS component's specific state changes, not on every selection event.
   const component = useDesignerStore((s) => s.componentRegistry[componentId]);
-
-  const { isSelected, selectedIds, isHidden, isLocked, totalPages, sampleData } = useDesignerStore(
-    useShallow((s) => ({
-      isSelected: s.selectedComponentIds.includes(componentId),
-      selectedIds: s.selectedComponentIds,
-      isHidden: s.hiddenComponentIds.includes(componentId),
-      isLocked: s.lockedComponentIds.includes(componentId),
-      totalPages: s.schema.pages.length,
-      sampleData: s.sampleData,
-    }))
-  );
+  const isSelected = useDesignerStore((s) => s.selectedComponentIds.includes(componentId));
+  const selectedCount = useDesignerStore((s) => s.selectedComponentIds.length);
+  const isHidden = useDesignerStore((s) => s.hiddenComponentIds.includes(componentId));
+  const isLocked = useDesignerStore((s) => s.lockedComponentIds.includes(componentId));
+  const totalPages = useDesignerStore((s) => s.schema.pages.length);
+  const sampleData = useDesignerStore((s) => s.sampleData);
 
   // If component was deleted but React hasn't unmounted this wrapper yet
   if (!component) return null;
@@ -878,8 +873,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const isMoving =
     dragStateRef.current?.isActive &&
     dragStateRef.current?.hasStartedDrag &&
-    (dragStateRef.current.primaryId === componentId ||
-      selectedIds.includes(dragStateRef.current.primaryId));
+    (dragStateRef.current.primaryId === componentId || isSelected);
 
   const handleDuplicate = useCallback(
     (_e: React.MouseEvent) => {
@@ -1000,7 +994,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           <ActionBar
             component={component}
             isSelected={isSelected}
-            selectedIds={selectedIds}
+            selectedCount={selectedCount}
             isDragging={flowDragging}
             flowMode={true}
             handleDuplicate={handleDuplicate}
@@ -1076,7 +1070,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         <ActionBar
           component={component}
           isSelected={isSelected}
-          selectedIds={selectedIds}
+          selectedCount={selectedCount}
           isDragging={!!dragStateRef.current?.isActive}
           handleDuplicate={handleDuplicate}
         />
