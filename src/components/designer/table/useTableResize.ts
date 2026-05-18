@@ -53,7 +53,7 @@ export function useTableResize(
       ghostEl.style.left = `${initialGhostLeft}px`;
       ghostEl.classList.remove('hidden');
     }
-    const dividerEl = tableEl.querySelector<HTMLElement>(`[data-col-divider="${index}"]`);
+    const dividerEl = containerEl.querySelector<HTMLElement>(`[data-col-divider="${index}"]`);
     if (dividerEl) dividerEl.style.backgroundColor = 'var(--accent)';
 
     const lastWidths = [...initialWidths];

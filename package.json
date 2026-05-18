@@ -29,6 +29,7 @@
     "@tanstack/react-virtual": "^3.13.24",
     "@types/three": "^0.184.1",
     "clsx": "^2.1.1",
+    "exceljs": "^4.4.0",
     "lucide-react": "^1.7.0",
     "motion": "^12.38.0",
     "next": "16.2.3",

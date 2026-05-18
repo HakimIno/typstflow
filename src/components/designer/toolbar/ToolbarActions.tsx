@@ -2,7 +2,7 @@
 
 import type { PdfExportStage } from '@/lib/typst-wasm';
 import { useDesignerStore } from '@/store/designer-store';
-import { Download, PanelRight, Play } from 'lucide-react';
+import { Download, FileSpreadsheet, PanelRight, Play } from 'lucide-react';
 import { memo, useState } from 'react';
 import { ToolbarButton } from './ToolbarButton';
 
@@ -22,6 +22,25 @@ export const ToolbarActions = memo(function ToolbarActions() {
 
   const [exportState, setExportState] = useState<ExportState>('idle');
   const isExporting = exportState !== 'idle';
+  const [isExcelExporting, setIsExcelExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    setIsExcelExporting(true);
+    try {
+      const { exportSchemaToExcel } = await import('@/lib/excel-export');
+      await exportSchemaToExcel(schema, sampleData);
+    } catch (error) {
+      console.error('Export Excel failed:', error);
+      useDesignerStore.getState().showDialog({
+        title: 'Export Excel Failed',
+        message: error instanceof Error ? error.message : 'Failed to export table data to Excel.',
+        variant: 'danger',
+        confirmLabel: 'Close',
+      });
+    } finally {
+      setIsExcelExporting(false);
+    }
+  };
 
   const handleExport = async () => {
     const { renderReportToPdf } = await import('@/lib/typst-wasm');
@@ -84,10 +103,24 @@ export const ToolbarActions = memo(function ToolbarActions() {
       />
 
       <ToolbarButton
+        icon={isExcelExporting ? undefined : FileSpreadsheet}
+        label={isExcelExporting ? 'Exporting...' : 'Export Excel'}
+        onClick={handleExportExcel}
+        disabled={isExcelExporting || isExporting}
+        variant="toolbar-item"
+        title="Export tables data to Excel (.xlsx)"
+        className="!h-7 !px-3 opacity-80 hover:opacity-100"
+      >
+        {isExcelExporting && (
+          <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin mr-1.5" />
+        )}
+      </ToolbarButton>
+
+      <ToolbarButton
         icon={isExporting ? undefined : Play}
         label={EXPORT_LABEL[exportState]}
         onClick={handleExport}
-        disabled={isExporting}
+        disabled={isExporting || isExcelExporting}
         variant="primary"
         title="Generate optimized PDF"
         className="!h-7 !px-3 shadow-sm shadow-[var(--accent-glow)]"

@@ -7,7 +7,7 @@ import { useDesignerStore } from '@/store/designer-store';
 import type { TableCell as TCell, TableComponent, TableRow } from '@/types/schema';
 import { clsx } from 'clsx';
 import type React from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { CellEditor } from './table/CellEditor';
 import type { SectionType } from './table/useCellSelection';
 import { useCellSelection } from './table/useCellSelection';
@@ -30,6 +30,7 @@ export function TablePreview({ component }: { component: TableComponent }) {
   const rowGhostRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
+  const resizeOverlayRef = useRef<HTMLDivElement>(null);
 
   // ─── Auto-fit component height to actual table height ──────────────────
   useEffect(() => {
@@ -46,6 +47,22 @@ export function TablePreview({ component }: { component: TableComponent }) {
     observer.observe(tableRef.current);
     return () => observer.disconnect();
   }, [component.id, component.height, updateComponent]);
+
+  // Sync row-divider tops to actual <tr> bottom positions after every commit
+  useLayoutEffect(() => {
+    const overlay = resizeOverlayRef.current;
+    const table = tableRef.current;
+    if (!overlay || !table) return;
+    const tableRect = table.getBoundingClientRect();
+    for (const tr of Array.from(table.querySelectorAll<HTMLElement>('tr[data-row-id]'))) {
+      const rowId = tr.getAttribute('data-row-id');
+      const divider = rowId
+        ? overlay.querySelector<HTMLElement>(`[data-row-divider="${rowId}"]`)
+        : null;
+      if (!divider) continue;
+      divider.style.top = `${tr.getBoundingClientRect().bottom - tableRect.top - 3}px`;
+    }
+  });
 
   // ─── Hooks ────────────────────────────────────────────────────────────
   const { handleColResizeStart, handleRowResizeStart } = useTableResize(
@@ -174,6 +191,29 @@ export function TablePreview({ component }: { component: TableComponent }) {
   };
 
   const previewSections = buildPreviewSections();
+
+  // ─── Flat row list for overlay dividers ──────────────────────────────────
+  const allRenderedRows: {
+    rowId: string;
+    sectionKey: string;
+    rowIdx: number;
+    isGroupRow: boolean;
+  }[] = [
+    ...headerRows.map((row, i) => ({
+      rowId: row.id,
+      sectionKey: 'headerRows',
+      rowIdx: i,
+      isGroupRow: false,
+    })),
+    ...previewSections.flatMap((sec) =>
+      sec.rows.map((row, i) => ({
+        rowId: row.id,
+        sectionKey: sec.sectionKey,
+        rowIdx: i,
+        isGroupRow: row.type === 'group-header' || row.type === 'group-footer',
+      }))
+    ),
+  ];
 
   // ─── Style helpers ────────────────────────────────────────────────────
   const style = component.style || {};
@@ -389,35 +429,6 @@ export function TablePreview({ component }: { component: TableComponent }) {
             handleCellSave(sectionKey, schemaRows, rowIdx, cell.id, newVal);
           }}
         />
-
-        {/* Column resize handle — at the right edge of this cell's last spanned column */}
-        {isTableSelected && logicalCol + (cell.colspan || 1) - 1 < component.columns.length - 1 && (
-          <div
-            onMouseDown={(e) => handleColResizeStart(e, logicalCol + (cell.colspan || 1) - 1)}
-            className="absolute top-0 -right-[3px] w-1.5 h-full cursor-col-resize z-[25] group/colresizer"
-          >
-            <div
-              data-col-divider={logicalCol + (cell.colspan || 1) - 1}
-              className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[1.5px] h-full bg-transparent group-hover/colresizer:bg-[var(--accent)] transition-colors"
-            />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-[1.5px] border-[var(--accent)] bg-white shadow-sm opacity-0 group-hover/colresizer:opacity-100 transition-opacity pointer-events-none z-30" />
-          </div>
-        )}
-
-        {/* Row height resize handle */}
-        {isTableSelected && !isGroupHeader && !isGroupFooter && (
-          <div
-            onMouseDown={(e) => handleRowResizeStart(e, sectionKey, rowIdx)}
-            className="absolute -bottom-[3px] left-0 right-0 h-1.5 cursor-row-resize z-[25] group/rowresizer"
-          >
-            <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[1.5px] bg-transparent group-hover/rowresizer:bg-[var(--accent)] transition-colors" />
-            {logicalCol === Math.floor(component.columns.length / 2) && (
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border-[1.5px] border-[var(--accent)] w-5 h-1.5 rounded-full shadow-sm opacity-0 group-hover/rowresizer:opacity-100 transition-opacity pointer-events-none z-30 flex items-center justify-center">
-                <div className="w-2 h-[1px] bg-[var(--accent)]" />
-              </div>
-            )}
-          </div>
-        )}
       </Tag>
     );
   };
@@ -477,6 +488,15 @@ export function TablePreview({ component }: { component: TableComponent }) {
     });
   })();
 
+  // Cumulative column percentages — used to position column dividers in the overlay
+  const cumColWidths = (() => {
+    let cum = 0;
+    return colWidths.map((w) => {
+      cum += w ? Number.parseFloat(w) : 0;
+      return cum;
+    });
+  })();
+
   return (
     <div ref={tableContainerRef} className="w-full h-full relative">
       <table
@@ -504,6 +524,40 @@ export function TablePreview({ component }: { component: TableComponent }) {
           )}
         </tbody>
       </table>
+
+      {/* Resize handle overlay — one handle spanning the full table per column/row boundary */}
+      <div ref={resizeOverlayRef} className="absolute inset-0 pointer-events-none z-[20]">
+        {isTableSelected &&
+          cumColWidths.slice(0, -1).map((cum, i) => (
+            <div
+              key={`col-divider-${i}`}
+              className="absolute top-0 bottom-0 pointer-events-auto cursor-col-resize group/colresizer"
+              style={{ left: `calc(${cum}% - 3px)`, width: '6px' }}
+              onMouseDown={(e) => handleColResizeStart(e, i)}
+            >
+              <div
+                data-col-divider={i}
+                className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1.5px] bg-transparent group-hover/colresizer:bg-[var(--accent)] transition-colors"
+              />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-[1.5px] border-[var(--accent)] bg-white shadow-sm opacity-0 group-hover/colresizer:opacity-100 transition-opacity pointer-events-none z-30" />
+            </div>
+          ))}
+        {isTableSelected &&
+          allRenderedRows.map((row) =>
+            row.isGroupRow ? null : (
+              <div
+                key={`row-divider-${row.rowId}`}
+                data-row-divider={row.rowId}
+                className="absolute left-0 right-0 pointer-events-auto cursor-row-resize group/rowresizer"
+                style={{ top: '0px', height: '6px' }}
+                onMouseDown={(e) => handleRowResizeStart(e, row.sectionKey, row.rowIdx)}
+              >
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1.5px] bg-transparent group-hover/rowresizer:bg-[var(--accent)] transition-colors" />
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border-[1.5px] border-[var(--accent)] w-5 h-1.5 rounded-full shadow-sm opacity-0 group-hover/rowresizer:opacity-100 transition-opacity pointer-events-none z-30" />
+              </div>
+            )
+          )}
+      </div>
 
       {/* Ghost guide lines — always mounted, shown/hidden via direct DOM */}
       <div
