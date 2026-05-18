@@ -9,6 +9,8 @@ export function useFontInstaller() {
   const markFontLoading = useDesignerStore((s) => s.markFontLoading);
   const markFontInstalled = useDesignerStore((s) => s.markFontInstalled);
   const markFontFailed = useDesignerStore((s) => s.markFontFailed);
+  const markFontsLoadingBatch = useDesignerStore((s) => s.markFontsLoadingBatch);
+  const markFontsInstalledBatch = useDesignerStore((s) => s.markFontsInstalledBatch);
   const installedFonts = useDesignerStore((s) => s.installedFonts);
   const loadingFonts = useDesignerStore((s) => s.loadingFonts);
   const customFonts = useDesignerStore((s) => s.customFonts);
@@ -35,16 +37,21 @@ export function useFontInstaller() {
         console.error('[useFontInstaller] Failed to fetch custom fonts registry:', e);
       }
 
-      // 2. Install all persisted fonts (standard & custom)
+      // 2. Install all persisted fonts in parallel — avoids serial N×latency and N Typst recompiles.
       const families = installedFonts
         .filter((f) => f.family !== 'Sarabun' && !fontManager.isWasmLoaded(f.family))
         .map((f) => f.family);
 
-      for (const family of families) {
-        markFontLoading(family);
-        const success = await fontManager.installFont(family);
-        if (success) markFontInstalled(family);
-        else markFontFailed(family);
+      if (families.length > 0) {
+        markFontsLoadingBatch(families);
+        const results = await Promise.allSettled(families.map((f) => fontManager.installFont(f)));
+        const succeeded: string[] = [];
+        for (let i = 0; i < results.length; i++) {
+          const r = results[i];
+          if (r.status === 'fulfilled' && r.value) succeeded.push(families[i]);
+          else markFontFailed(families[i]);
+        }
+        markFontsInstalledBatch(succeeded);
       }
     })();
   }, [_hasHydrated]);

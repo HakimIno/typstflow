@@ -28,6 +28,10 @@ export interface FontSliceActions {
   markFontLoading: (family: string) => void;
   markFontInstalled: (family: string) => void;
   markFontFailed: (family: string) => void;
+  /** Mark multiple fonts as loading in a single state update to avoid N re-renders. */
+  markFontsLoadingBatch: (families: string[]) => void;
+  /** Mark multiple fonts as installed and update fontLoadedAt exactly once — avoids N Typst recompiles. */
+  markFontsInstalledBatch: (families: string[]) => void;
   uninstallFont: (family: string) => void;
   isFontInstalled: (family: string) => boolean;
   setCustomFonts: (fonts: CustomFontInfo[]) => void;
@@ -69,6 +73,34 @@ export function createFontSlice(): StateCreator<DesignerState, [], [], FontSlice
 
     markFontFailed: (family) => {
       set((s) => ({ loadingFonts: s.loadingFonts.filter((f) => f !== family) }));
+    },
+
+    markFontsLoadingBatch: (families) => {
+      set((s) => {
+        const toAdd = families.filter((f) => !s.loadingFonts.includes(f));
+        if (toAdd.length === 0) return {};
+        return { loadingFonts: [...s.loadingFonts, ...toAdd] };
+      });
+    },
+
+    markFontsInstalledBatch: (families) => {
+      if (families.length === 0) return;
+      set((s) => {
+        const now = Date.now();
+        const familySet = new Set(families);
+        const existingFamilies = new Set(s.installedFonts.map((f) => f.family));
+        const updated = s.installedFonts.map((f) =>
+          familySet.has(f.family) ? { ...f, installedAt: now } : f
+        );
+        for (const family of families) {
+          if (!existingFamilies.has(family)) updated.push({ family, installedAt: now });
+        }
+        return {
+          loadingFonts: s.loadingFonts.filter((f) => !familySet.has(f)),
+          installedFonts: updated,
+          fontLoadedAt: now,
+        };
+      });
     },
 
     uninstallFont: (family) => {

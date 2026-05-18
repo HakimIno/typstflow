@@ -82,10 +82,10 @@ export const PreviewPane = memo(function PreviewPane() {
   // so we don't pile up cancellations while the user is actively editing.
   const debounceMs = useMemo(() => {
     const n = schema.pages.length;
-    if (n <= 10) return 150;
-    if (n <= 100) return 300;
-    if (n <= 500) return 500;
-    return 800;
+    if (n <= 10) return 200;
+    if (n <= 100) return 500;
+    if (n <= 500) return 1000;
+    return 2000;
   }, [schema.pages.length]);
 
   // fontLoadedAt triggers a re-render when a font loads but isn't referenced inside the body.
