@@ -313,23 +313,23 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   {(selectedZoneKey === 'body'
                     ? activePage?.body.layoutMode
                     : zones[selectedZoneKey as 'header' | 'footer']?.layoutMode) === 'flow' && (
-                    <PropertyRow label="Gap">
-                      <DesignerInput
-                        type="text"
-                        variant="mini"
-                        value={
-                          (selectedZoneKey === 'body'
-                            ? activePage?.body.flowGap
-                            : zones[selectedZoneKey as 'header' | 'footer']?.flowGap) ?? '2mm'
-                        }
-                        onChange={(v) =>
-                          updateZone(selectedZoneKey, { flowGap: v }, activePageId ?? undefined)
-                        }
-                        placeholder="2mm"
-                        mono
-                      />
-                    </PropertyRow>
-                  )}
+                      <PropertyRow label="Gap">
+                        <DesignerInput
+                          type="text"
+                          variant="mini"
+                          value={
+                            (selectedZoneKey === 'body'
+                              ? activePage?.body.flowGap
+                              : zones[selectedZoneKey as 'header' | 'footer']?.flowGap) ?? '2mm'
+                          }
+                          onChange={(v) =>
+                            updateZone(selectedZoneKey, { flowGap: v }, activePageId ?? undefined)
+                          }
+                          placeholder="2mm"
+                          mono
+                        />
+                      </PropertyRow>
+                    )}
                 </div>
               </section>
             )}
@@ -383,11 +383,11 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 isTable(selectedComponent) ||
                 isPageNumber(selectedComponent) ||
                 isChecklist(selectedComponent)) && (
-                <TypographyProperties
-                  style={(selectedComponent as any).style}
-                  onUpdateStyle={handleStyleUpdate}
-                />
-              )}
+                  <TypographyProperties
+                    style={(selectedComponent as any).style}
+                    onUpdateStyle={handleStyleUpdate}
+                  />
+                )}
               {isLine(selectedComponent) && (
                 <LineProperties
                   component={selectedComponent}

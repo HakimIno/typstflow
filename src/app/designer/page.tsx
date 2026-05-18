@@ -22,7 +22,7 @@ import { Terminal, Trash2, X, AlertTriangle, AlertCircle, Info } from 'lucide-re
 export default function DesignerPage() {
   const [mounted, setMounted] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
-  const [showLogPanel, setShowLogPanel] = useState(true);
+  const [showLogPanel, setShowLogPanel] = useState(false);
 
   useKeyboardShortcuts();
   useFontInstaller(); // Re-register persisted fonts on hydration
@@ -165,7 +165,7 @@ export default function DesignerPage() {
                 className={clsx(
                   'flex-1 overflow-auto bg-[var(--bg-canvas)] flex justify-center p-0 transition-all duration-300',
                   viewMode === 'split' &&
-                    'border-r-2 border-[var(--border-default)] shadow-2xl z-10'
+                  'border-r-2 border-[var(--border-default)] shadow-2xl z-10'
                 )}
               >
                 <DesignerErrorBoundary componentName="Designer Canvas">
