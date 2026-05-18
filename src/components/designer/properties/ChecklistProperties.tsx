@@ -159,6 +159,34 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
               />
             </div>
 
+            {/* Theme Style (Solid vs Outline) */}
+            <div className="space-y-0.5">
+              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+                Theme Style
+              </span>
+              <div className="flex gap-1">
+                {(
+                  [
+                    { value: 'solid', label: 'Solid' },
+                    { value: 'outline', label: 'Outline (Light)' },
+                  ] as const
+                ).map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => onUpdate({ checkboxStyle: value })}
+                    className={`flex-1 h-6 rounded text-[10px] font-medium border transition-all ${
+                      (component.checkboxStyle ?? 'solid') === value
+                        ? 'bg-[var(--accent)] border-[var(--accent)] text-white'
+                        : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-[var(--accent)]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Mark style + size */}
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-0.5">
@@ -241,6 +269,58 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
               />
             </div>
           )}
+
+          <div className="space-y-0.5">
+            <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+              Vertical Alignment
+            </span>
+            <Select
+              value={component.alignItems ?? 'start'}
+              onValueChange={(v) => onUpdate({ alignItems: v as 'start' | 'center' })}
+            >
+              <SelectTrigger className="h-6 text-[10px] bg-[var(--bg-surface)] border-[var(--border-default)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="start">↑ Top (First Line)</SelectItem>
+                <SelectItem value="center">↕ Center (Middle)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </section>
+
+      {/* Completed Item Effects */}
+      <section>
+        <SectionHeader label="Completed Item Effects" />
+        <div className="p-2 space-y-2">
+          <div className="flex gap-2">
+            <button
+              key="strikethrough"
+              type="button"
+              onClick={() => onUpdate({ checkedStrikethrough: !component.checkedStrikethrough })}
+              className={`flex-1 flex items-center justify-center gap-1 py-1 px-1.5 h-7 rounded text-[9px] font-bold uppercase tracking-wider border transition-all ${
+                component.checkedStrikethrough
+                  ? 'bg-[var(--accent)] border-[var(--accent)] text-white font-black'
+                  : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-accent)]'
+              }`}
+            >
+              <s>Strikethrough</s>
+            </button>
+
+            <button
+              key="mute"
+              type="button"
+              onClick={() => onUpdate({ checkedMuted: !component.checkedMuted })}
+              className={`flex-1 flex items-center justify-center gap-1 py-1 px-1.5 h-7 rounded text-[9px] font-bold uppercase tracking-wider border transition-all ${
+                component.checkedMuted
+                  ? 'bg-[var(--accent)] border-[var(--accent)] text-white font-black'
+                  : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-accent)]'
+              }`}
+            >
+              <span className="opacity-70">Dim / Mute</span>
+            </button>
+          </div>
         </div>
       </section>
 

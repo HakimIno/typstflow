@@ -43,6 +43,7 @@ function CheckboxMark({
   checkMark = 'x',
   shape = 'rounded',
   size,
+  checkboxStyle = 'solid',
 }: {
   checked: boolean;
   color: string;
@@ -50,8 +51,9 @@ function CheckboxMark({
   checkMark?: string;
   shape?: string;
   size?: number;
+  checkboxStyle?: 'solid' | 'outline';
 }) {
-  const dim = size !== undefined ? `${size}pt` : '0.85em';
+  const dim = size !== undefined ? `${size}pt` : '0.75em';
   const borderRadius = shapeToCssRadius(shape);
   const border = `0.07em solid ${color}`;
 
@@ -66,6 +68,7 @@ function CheckboxMark({
     border,
     flexShrink: 0,
     boxSizing: 'border-box',
+    position: 'relative',
   };
 
   if (!checked) {
@@ -73,8 +76,29 @@ function CheckboxMark({
     return <span style={{ ...base, backgroundColor: fill }} />;
   }
 
+  const isOutline = checkboxStyle === 'outline';
+
   if (checkMark === '/') {
-    // incomplete-sym: left half filled with color, right half with fill
+    // incomplete-sym
+    if (isOutline) {
+      // In outline style, it's an empty box divided by a vertical line in the middle
+      return (
+        <span style={{ ...base, backgroundColor: fill }}>
+          <span
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: 0,
+              width: '0.07em',
+              height: '100%',
+              backgroundColor: color,
+              transform: 'translateX(-50%)',
+            }}
+          />
+        </span>
+      );
+    }
+    // Solid: left half filled with color, right half with fill
     return (
       <span style={{ ...base, backgroundColor: fill, overflow: 'hidden' }}>
         <span
@@ -93,19 +117,23 @@ function CheckboxMark({
   }
 
   if (checkMark === '-') {
-    // canceled-sym: filled box with white horizontal bar
+    // canceled-sym: filled or outline box with horizontal bar
+    const barBg = isOutline ? color : fill;
+    const boxBg = isOutline ? fill : color;
     return (
-      <span style={{ ...base, backgroundColor: color }}>
+      <span style={{ ...base, backgroundColor: boxBg }}>
         <span
-          style={{ display: 'block', width: '55%', height: '13%', backgroundColor: '#ffffff' }}
+          style={{ display: 'block', width: '55%', height: '13%', backgroundColor: barBg }}
         />
       </span>
     );
   }
 
-  // Default 'x': checked-sym — filled box with SVG checkmark
+  // Default 'x': checked-sym — filled or outline box with SVG checkmark
+  const boxBg = isOutline ? fill : color;
+  const markStroke = isOutline ? color : fill;
   return (
-    <span style={{ ...base, backgroundColor: color }}>
+    <span style={{ ...base, backgroundColor: boxBg }}>
       <svg
         viewBox="0 0 10 10"
         style={{ width: '60%', height: '60%' }}
@@ -115,7 +143,7 @@ function CheckboxMark({
         <polyline
           points="1.5,5 4,7.5 8.5,2.5"
           fill="none"
-          stroke="#ffffff"
+          stroke={markStroke}
           strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -155,8 +183,13 @@ export const ChecklistPreview = memo(function ChecklistPreview({ component, samp
     checkMark = 'x',
     checkboxSize,
     checkboxShape = 'rounded',
+    checkboxStyle = 'solid',
     direction = 'vertical',
     columns = 2,
+    indent = 5,
+    alignItems = 'start',
+    checkedStrikethrough = false,
+    checkedMuted = false,
   } = component;
 
   // Resolve display items
@@ -201,8 +234,9 @@ export const ChecklistPreview = memo(function ChecklistPreview({ component, samp
   const markGap = checkboxSize !== undefined ? `${checkboxSize * 0.4}pt` : '0.35em';
 
   const renderMark = (i: number, checked: boolean) => {
+    let markElement: React.ReactNode;
     if (listStyle === 'checkbox') {
-      return (
+      markElement = (
         <CheckboxMark
           checked={checked}
           color={checkboxColor}
@@ -210,43 +244,75 @@ export const ChecklistPreview = memo(function ChecklistPreview({ component, samp
           checkMark={checkMark}
           shape={checkboxShape}
           size={checkboxSize}
+          checkboxStyle={checkboxStyle}
         />
       );
+    } else {
+      const char =
+        listStyle === 'numbered'
+          ? `${i + 1}.`
+          : listStyle === 'alpha'
+            ? `${String.fromCharCode(97 + i)}.`
+            : listStyle === 'roman'
+              ? `${toRoman(i + 1)}.`
+              : listStyle === 'dash'
+                ? '–'
+                : listStyle === 'custom'
+                  ? (marker ?? '→')
+                  : '•';
+      markElement = <BulletMark char={char} />;
     }
-    const char =
-      listStyle === 'numbered'
-        ? `${i + 1}.`
-        : listStyle === 'alpha'
-          ? `${String.fromCharCode(97 + i)}.`
-          : listStyle === 'roman'
-            ? `${toRoman(i + 1)}.`
-            : listStyle === 'dash'
-              ? '–'
-              : listStyle === 'custom'
-                ? (marker ?? '→')
-                : '•';
-    return <BulletMark char={char} />;
+
+    const isCheckbox = listStyle === 'checkbox';
+    // Precise vertical offsets using relative em values to align perfectly with first line baseline/cap-height
+    const topOffset = isCheckbox ? '0.22em' : '0.05em';
+
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          marginTop: alignItems === 'start' ? topOffset : 0,
+        }}
+      >
+        {markElement}
+      </span>
+    );
+  };
+
+  const getItemTextStyle = (checked: boolean): CSSProperties => {
+    const textDecs: string[] = [];
+    if (style?.underline) textDecs.push('underline');
+    if (style?.strikethrough || (checked && checkedStrikethrough)) textDecs.push('line-through');
+
+    return {
+      lineHeight,
+      textDecoration: textDecs.length > 0 ? textDecs.join(' ') : 'none',
+      opacity: checked && checkedMuted ? 0.55 : 1,
+      transition: 'opacity 0.2s ease, text-decoration 0.2s ease',
+      wordBreak: 'break-word',
+    };
   };
 
   /**
-   * Row item: line-height: 1 + explicit gap between mark and label
-   * ensures the checkbox is vertically centered with the first text line.
+   * Row item: alignment based on alignItems
+   * ensures the checkbox/bullet aligns beautifully.
    */
   const renderItem = (item: { label: string; checked: boolean }, i: number) => (
     <div
       key={i}
       style={{
         display: 'flex',
-        alignItems: 'center',
+        alignItems: alignItems === 'start' ? 'flex-start' : 'center',
         lineHeight: 1,
         gap: markGap,
         marginBottom: direction === 'vertical' ? itemGap : 0,
       }}
     >
       {renderMark(i, item.checked)}
-      <span
-        style={{ lineHeight, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-      >
+      <span style={getItemTextStyle(item.checked)}>
         {item.label || <span style={{ opacity: 0.3 }}>…</span>}
       </span>
     </div>
@@ -260,6 +326,7 @@ export const ChecklistPreview = memo(function ChecklistPreview({ component, samp
     textDecoration,
     color: textColor,
     letterSpacing,
+    paddingLeft: `${indent}mm`,
   };
 
   let content: React.ReactNode;
@@ -272,14 +339,14 @@ export const ChecklistPreview = memo(function ChecklistPreview({ component, samp
             key={i}
             style={{
               display: 'flex',
-              alignItems: 'center',
+              alignItems: alignItems === 'start' ? 'flex-start' : 'center',
               lineHeight: 1,
               gap: markGap,
               flexShrink: 0,
             }}
           >
             {renderMark(i, item.checked)}
-            <span style={{ lineHeight }}>
+            <span style={getItemTextStyle(item.checked)}>
               {item.label || <span style={{ opacity: 0.3 }}>…</span>}
             </span>
           </div>

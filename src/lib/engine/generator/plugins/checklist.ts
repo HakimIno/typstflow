@@ -4,11 +4,11 @@ import { isVisible, resolveBinding, resolvePath } from '../binding';
 import { formatColor, formatFontFamily, formatWeight, wrapPlacement } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
-/** Returns the cheq function name for a given checkMark character. */
+/** Returns the custom function name for a given checkMark character. */
 function cheqSymFn(mark: string): string {
-  if (mark === '/') return 'incomplete-sym';
-  if (mark === '-') return 'canceled-sym';
-  return 'checked-sym';
+  if (mark === '/') return 'my-incomplete-sym';
+  if (mark === '-') return 'my-canceled-sym';
+  return 'my-checked-sym';
 }
 
 /** Maps shape preset → Typst radius string */
@@ -16,6 +16,26 @@ function shapeToTypstRadius(shape: string): string {
   if (shape === 'square') return '0em';
   if (shape === 'circle') return '0.5em';
   return '0.15em'; // rounded
+}
+
+/** Helper to convert numbers to roman numerals */
+function toRoman(num: number): string {
+  const map: [number, string][] = [
+    [10, 'x'],
+    [9, 'ix'],
+    [5, 'v'],
+    [4, 'iv'],
+    [1, 'i'],
+  ];
+  let result = '';
+  let remaining = num;
+  for (const [val, sym] of map) {
+    while (remaining >= val) {
+      result += sym;
+      remaining -= val;
+    }
+  }
+  return result;
 }
 
 /**
@@ -27,18 +47,25 @@ function cheqSymCode(
   stroke: string,
   fill: string,
   radius: string,
+  checkboxStyle: string,
   size?: number
 ): string {
-  const call = `${fn}(stroke: rgb("${stroke}"), fill: rgb("${fill}"), radius: ${radius})`;
-  return size !== undefined ? `text(size: ${size}pt)[#${call}]` : call;
+  const call = `${fn}(stroke: rgb("${stroke}"), fill: rgb("${fill}"), radius: ${radius}, style: "${checkboxStyle}")`;
+  
+  // Wrap in text block so that it scales beautifully with text size
+  const sizeArg = size !== undefined ? `size: ${size}pt, ` : '';
+  return `text(${sizeArg}font: "Liberation Sans")[#${call}]`;
 }
 
-/** For a given sym function, returns the correct `fill` value.
- *  unchecked-sym + incomplete-sym → box background (checkboxFill)
- *  checked-sym + canceled-sym    → mark/bar color (white)
- */
-function fillForSym(fn: string, checkboxFill: string): string {
-  return fn === 'unchecked-sym' || fn === 'incomplete-sym' ? checkboxFill : '#ffffff';
+function symStrokeAndFill(
+  _fn: string,
+  checkboxColor: string,
+  checkboxFill: string
+): { stroke: string; fill: string } {
+  // Always return the standard mapping. 
+  // For checked-sym/canceled-sym: stroke controls the solid box container, fill controls the inner checkmark/dash.
+  // For unchecked-sym/incomplete-sym: stroke controls the outline, fill controls the background fill.
+  return { stroke: checkboxColor, fill: checkboxFill };
 }
 
 export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
@@ -47,7 +74,7 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
     if (!isVisible(comp.visible, ctx.local, ctx.global)) return '';
 
     const spacing = comp.spacing ?? 4;
-    const indent = comp.indent ?? 5;
+    const indent = comp.indent ?? 0;
     const s = comp.style;
     const size = s?.fontSize ?? 10;
     const weight = formatWeight(s?.fontWeight);
@@ -58,9 +85,14 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
     const checkboxFill = comp.checkboxFill ?? '#ffffff';
     const checkMark = comp.checkMark ?? 'x';
     const checkboxSize = comp.checkboxSize;
+    const resolvedCheckboxSize = checkboxSize ?? (size * 0.85);
     const checkboxShape = comp.checkboxShape ?? 'rounded';
+    const checkboxStyle = comp.checkboxStyle ?? 'solid';
     const direction = comp.direction ?? 'vertical';
     const columns = Math.max(1, comp.columns ?? 2);
+    const alignItems = comp.alignItems ?? 'start';
+    const checkedStrikethrough = comp.checkedStrikethrough ?? false;
+    const checkedMuted = comp.checkedMuted ?? false;
 
     const radiusTypst = shapeToTypstRadius(checkboxShape);
 
@@ -92,7 +124,7 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
       if (s?.underline) {
         label = `#underline[${label}]`;
       }
-      if (s?.strikethrough) {
+      if (s?.strikethrough || (it.checked && checkedStrikethrough)) {
         label = `#strike[${label}]`;
       }
       if (s?.smallcaps) {
@@ -100,6 +132,9 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
       }
       if (s?.italic) {
         label = `#skew(ax: -12deg)[${label}]`;
+      }
+      if (it.checked && checkedMuted) {
+        label = `#text(fill: ${color}.mix(rgb("#ffffff")))[${label}]`;
       }
       return { ...it, label };
     });
@@ -115,106 +150,117 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
       );
     }
 
-    const gridCols = direction === 'horizontal' ? resolvedItems.length : columns;
+    // Grid columns configuration
+    const gridCols = direction === 'grid' ? columns : 1;
+    const cellAlign = alignItems === 'start' ? 'top + left' : 'horizon + left';
+    const isCheckboxStyle = listStyle === 'checkbox';
+    const symOffset = alignItems === 'start' ? (isCheckboxStyle ? '0.18em' : '0.03em') : '0em';
 
-    // All cheq imports needed
-    const allImports = 'checked-sym, unchecked-sym, incomplete-sym, canceled-sym';
-
-    let body: string;
-
-    if (listStyle === 'checkbox') {
-      const checkedFn = cheqSymFn(checkMark);
-
-      if (direction === 'vertical') {
-        const lines = itemsWithDecorations
-          .map((it) => `- [${it.checked ? checkMark : ' '}] ${it.label}`)
-          .join('\n');
-
-        // Always use marker-map so we can control fill + radius + optional size
-        const checkedSym = cheqSymCode(
-          checkedFn,
-          checkboxColor,
-          fillForSym(checkedFn, checkboxFill),
-          radiusTypst,
-          checkboxSize
-        );
-        const uncheckedSym = cheqSymCode(
-          'unchecked-sym',
-          checkboxColor,
-          checkboxFill,
-          radiusTypst,
-          checkboxSize
-        );
-        body =
-          `#import "@preview/cheq:0.2.2": checklist, ${allImports}\n${textSet}` +
-          `#set list(indent: ${indent}mm, spacing: ${spacing}pt)\n` +
-          `#show: checklist.with(fill: rgb("${checkboxFill}"), stroke: rgb("${checkboxColor}"), radius: ${radiusTypst}, marker-map: (\n` +
-          `  "${checkMark}": ${checkedSym},\n` +
-          `  " ": ${uncheckedSym},\n` +
-          `))\n${lines}`;
+    // Helper to generate a single item's markup
+    const renderItemMarkup = (it: (typeof itemsWithDecorations)[0], i: number, colsDef: string) => {
+      let symArg = '';
+      if (listStyle === 'checkbox') {
+        const checkedFn = cheqSymFn(checkMark);
+        const fn = it.checked ? checkedFn : 'my-unchecked-sym';
+        const colors = symStrokeAndFill(fn, checkboxColor, checkboxFill);
+        symArg = cheqSymCode(fn, colors.stroke, colors.fill, radiusTypst, checkboxStyle, resolvedCheckboxSize);
       } else {
-        // Grid/horizontal: each cell = inner 2-col grid(sym, label) for proper row alignment
-        const cellLines = itemsWithDecorations
-          .map((it) => {
-            const fn = it.checked ? checkedFn : 'unchecked-sym';
-            const symFill = fillForSym(fn, checkboxFill);
-            const symArg = cheqSymCode(fn, checkboxColor, symFill, radiusTypst, checkboxSize);
-            return `  [#grid(columns: (auto, 1fr), column-gutter: 0.35em, align: horizon + left, ${symArg}, [${it.label}])],`;
-          })
-          .join('\n');
-        body =
-          `#import "@preview/cheq:0.2.2": ${allImports}\n${textSet}` +
-          `#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)`;
+        const char =
+          listStyle === 'numbered'
+            ? `${i + 1}.`
+            : listStyle === 'alpha'
+              ? `${String.fromCharCode(97 + i)}.`
+              : listStyle === 'roman'
+                ? `${toRoman(i + 1)}.`
+                : listStyle === 'dash'
+                  ? '–'
+                  : listStyle === 'custom'
+                    ? (comp.marker ?? '→')
+                    : '•';
+        symArg = `[${escapeTypst(char)}]`;
       }
-    } else if (listStyle === 'numbered' || listStyle === 'alpha' || listStyle === 'roman') {
-      const numbering = listStyle === 'alpha' ? '"a."' : listStyle === 'roman' ? '"i."' : '"1."';
-      if (direction === 'vertical') {
-        const itemLines = itemsWithDecorations.map((it) => `  [${it.label}],`).join('\n');
-        body =
-          `${textSet}#enum(\n  numbering: ${numbering},\n  spacing: ${spacing}pt,\n` +
-          `  indent: ${indent}mm,\n${itemLines}\n)`;
-      } else {
-        const cellLines = itemsWithDecorations
-          .map((it, i) => {
-            const num =
-              listStyle === 'alpha'
-                ? `${String.fromCharCode(97 + i)}.`
-                : listStyle === 'roman'
-                  ? `${'i'.repeat(i + 1)}.`
-                  : `${i + 1}.`;
-            return `  [${escapeTypst(num)} ${it.label}],`;
-          })
-          .join('\n');
-        body = `${textSet}#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)`;
-      }
-    } else if (listStyle === 'dash') {
-      if (direction === 'vertical') {
-        const itemLines = itemsWithDecorations.map((it) => `  [${it.label}],`).join('\n');
-        body = `${textSet}#list(marker: [-],\n  spacing: ${spacing}pt,\n  indent: ${indent}mm,\n${itemLines}\n)`;
-      } else {
-        const cellLines = itemsWithDecorations.map((it) => `  [– ${it.label}],`).join('\n');
-        body = `${textSet}#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)`;
-      }
-    } else if (listStyle === 'custom') {
-      const mk = escapeTypst(comp.marker ?? '→');
-      if (direction === 'vertical') {
-        const itemLines = itemsWithDecorations.map((it) => `  [${it.label}],`).join('\n');
-        body = `${textSet}#list(marker: [${mk}],\n  spacing: ${spacing}pt,\n  indent: ${indent}mm,\n${itemLines}\n)`;
-      } else {
-        const cellLines = itemsWithDecorations
-          .map((it) => `  [${mk} ${it.label}],`)
-          .join('\n');
-        body = `${textSet}#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)`;
-      }
+
+      const symArgWrapped = symOffset !== '0em' ? `box(dy: ${symOffset})[${symArg}]` : symArg;
+      return `#grid(columns: ${colsDef}, column-gutter: 0.35em, align: ${cellAlign}, ${symArgWrapped}, [${it.label}])`;
+    };
+
+    // Custom pure drawing-based symbols. 
+    // They align mathematically perfectly to the geometric center and are completely immune to custom font metrics distortion!
+    const customSymDefs = `
+#let my-unchecked-sym(fill: white, stroke: rgb("#616161"), radius: .1em, style: "solid") = {
+  box(
+    stroke: .05em + stroke,
+    fill: fill,
+    height: .8em,
+    width: .8em,
+    radius: radius,
+  )
+}
+
+#let my-checked-sym(fill: white, stroke: rgb("#616161"), radius: .1em, style: "solid") = {
+  let boxBg = if style == "outline" { fill } else { stroke }
+  let markStroke = if style == "outline" { stroke } else { fill }
+  box(
+    stroke: .05em + stroke,
+    fill: boxBg,
+    height: .8em,
+    width: .8em,
+    radius: radius,
+    place(center + horizon, dy: 0.02em)[
+      #place(center + horizon, dx: -0.16em, dy: 0.08em)[#rotate(45deg)[#line(length: 0.24em, stroke: markStroke + .08em)]]
+      #place(center + horizon, dx: 0.06em, dy: -0.02em)[#rotate(-45deg)[#line(length: 0.42em, stroke: markStroke + .08em)]]
+    ]
+  )
+}
+
+#let my-incomplete-sym(fill: white, stroke: rgb("#616161"), radius: .1em, style: "solid") = {
+  box(
+    stroke: .05em + stroke,
+    fill: fill,
+    height: .8em,
+    width: .8em,
+    radius: radius,
+    if style == "outline" {
+      place(center + horizon)[
+        #line(start: (0em, -0.38em), end: (0em, 0.38em), stroke: .05em + stroke)
+      ]
     } else {
-      // bullet (default)
-      if (direction === 'vertical') {
-        const itemLines = itemsWithDecorations.map((it) => `  [${it.label}],`).join('\n');
-        body = `${textSet}#list(\n  spacing: ${spacing}pt,\n  indent: ${indent}mm,\n${itemLines}\n)`;
-      } else {
-        const cellLines = itemsWithDecorations.map((it) => `  [• ${it.label}],`).join('\n');
-        body = `${textSet}#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)`;
-      }
+      place(left + top, dx: -0.01em, dy: -0.01em)[
+        #rect(fill: stroke, height: 0.82em, width: 0.41em, radius: (top-left: radius, bottom-left: radius), stroke: none)
+      ]
+    }
+  )
+}
+
+#let my-canceled-sym(fill: white, stroke: rgb("#616161"), radius: .1em, style: "solid") = {
+  let boxBg = if style == "outline" { fill } else { stroke }
+  let markBg = if style == "outline" { stroke } else { fill }
+  box(
+    stroke: .05em + stroke,
+    fill: boxBg,
+    height: .8em,
+    width: .8em,
+    radius: radius,
+    place(center + horizon)[
+      #rect(height: .12em, width: 0.52em, fill: markBg, radius: 0.02em, stroke: none)
+    ]
+  )
+}
+`;
+
+    let body = '';
+    if (direction === 'horizontal') {
+      const horizontalItems = itemsWithDecorations
+        .map((it, i) => `#box[${renderItemMarkup(it, i, '(auto, auto)')}]`)
+        .join(` #h(${spacing}pt) `);
+
+      body = `${customSymDefs}${textSet}#pad(left: ${indent}mm)[#set par(leading: ${spacing}pt)\n${horizontalItems}]`;
+    } else {
+      const cellLines = itemsWithDecorations
+        .map((it, i) => `  [${renderItemMarkup(it, i, '(auto, 1fr)')}],`)
+        .join('\n');
+
+      body = `${customSymDefs}${textSet}#pad(left: ${indent}mm)[#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)]`;
     }
 
     return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);

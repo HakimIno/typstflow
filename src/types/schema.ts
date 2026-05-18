@@ -444,8 +444,12 @@ export interface ChecklistComponent extends BaseComponent {
   checkMark?: ChecklistCheckMark; // x=✓  /=half  -=minus (default: x)
   checkboxSize?: number; // pt — checkbox size independent of text (default: auto = 0.8em)
   checkboxShape?: ChecklistCheckShape; // square | rounded | circle (default: rounded)
+  checkboxStyle?: 'solid' | 'outline'; // solid: filled background with white mark, outline: outline only with colored mark
   direction?: ChecklistDirection; // layout direction (default: vertical)
   columns?: number; // columns for grid direction (default: 2)
+  alignItems?: 'start' | 'center'; // vertical alignment of bullet/checkbox (default: 'start')
+  checkedStrikethrough?: boolean; // strikethrough checked item labels
+  checkedMuted?: boolean; // mute (dim) checked item labels
 }
 
 // --- Supporting Types ---
