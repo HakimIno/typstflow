@@ -8,7 +8,6 @@ import type { TableCell as TCell, TableComponent, TableRow } from '@/types/schem
 import { clsx } from 'clsx';
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import { TableActionToolbar } from './TableActionToolbar';
 import { CellEditor } from './table/CellEditor';
 import type { SectionType } from './table/useCellSelection';
 import { useCellSelection } from './table/useCellSelection';
@@ -70,14 +69,7 @@ export function TablePreview({ component }: { component: TableComponent }) {
     setSelectedCells as any
   );
 
-  const {
-    handleMerge,
-    handleSplit,
-    handleDelete,
-    handleInsertRow,
-    handleInsertCol,
-    handleCellSave,
-  } = useTableActions(
+  const { handleCellSave } = useTableActions(
     component,
     selectedCell as any,
     selectedCells as any,
@@ -337,13 +329,10 @@ export function TablePreview({ component }: { component: TableComponent }) {
         onMouseDown={(e) => handleCellMouseDown(section, row.id, logicalCol, e)}
         onMouseEnter={() => handleCellMouseEnter(section, row.id, logicalCol)}
         onClick={(e) => e.stopPropagation()}
-        className={clsx(
-          'relative group/cell cursor-cell',
-          isSelected && 'ring-2 ring-[var(--accent)] ring-inset z-10'
-        )}
+        className={clsx('relative group/cell cursor-cell', isSelected && 'z-10')}
         style={{
           ...borderStyle,
-          backgroundColor: isSelected ? 'rgba(59,130,246,0.06)' : cellFill,
+          backgroundColor: cellFill,
           padding: `${cellPaddingPx}px`,
           textAlign: resolvedAlign as any,
           verticalAlign: cell.verticalAlign || 'middle',
@@ -352,6 +341,14 @@ export function TablePreview({ component }: { component: TableComponent }) {
             : {}),
         }}
       >
+        {/* Selection overlay — keeps original background, adds accent ring on top */}
+        {isSelected && (
+          <div
+            aria-hidden
+            className="absolute inset-0 pointer-events-none z-[5] bg-[var(--accent)]/[0.10]"
+            style={{ boxShadow: 'inset 0 0 0 2px var(--accent)' }}
+          />
+        )}
         <CellEditor
           className="w-full bg-transparent border-none focus:ring-0 outline-none placeholder:text-slate-300/60"
           style={{
@@ -482,18 +479,6 @@ export function TablePreview({ component }: { component: TableComponent }) {
 
   return (
     <div ref={tableContainerRef} className="w-full h-full relative">
-      {selectedCells?.tableId === component.id && (
-        <TableActionToolbar
-          component={component}
-          selectedCells={selectedCells as any}
-          onMerge={handleMerge}
-          onSplit={handleSplit}
-          onDelete={handleDelete}
-          onInsertRow={handleInsertRow}
-          onInsertCol={handleInsertCol}
-        />
-      )}
-
       <table
         ref={tableRef}
         className="w-full"
