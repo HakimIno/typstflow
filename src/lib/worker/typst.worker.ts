@@ -27,6 +27,11 @@ async function initialize() {
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
+function workerLog(type: 'log' | 'warn' | 'error', ...args: any[]) {
+  const msg = args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+  self.postMessage({ type: 'worker_log', logType: type, payload: msg });
+}
+
 function getMimeFromDataUrl(dataUrl: string): string | undefined {
   const match = dataUrl.match(/^data:([^;]+);/);
   return match ? match[1] : undefined;
@@ -381,6 +386,7 @@ self.onmessage = async (e: MessageEvent) => {
         const preparedSchema = injectImagesIntoSchema(schema);
         const generator = new TypstGenerator();
         const typstCode = generator.generate(preparedSchema, data);
+        workerLog('log', 'RENDER_REPORT_SVG_STREAM. Generated Typst Code:\n', typstCode, '\nFonts loaded in WASM:', Array.from(bridge.get_font_names() as string[]));
         const svgString = bridge.render_svg(typstCode);
         const pages = svgString
           .split('<!-- PAGE_BREAK -->')
@@ -442,6 +448,7 @@ self.onmessage = async (e: MessageEvent) => {
       case 'REGISTER_FONT': {
         const bytes = new Uint8Array(payload as ArrayBuffer);
         const success = bridge.register_font(bytes);
+        workerLog('log', 'REGISTER_FONT success:', success, 'Current WASM fonts:', Array.from(bridge.get_font_names() as string[]));
         self.postMessage({ id, type: 'success', payload: success });
         break;
       }

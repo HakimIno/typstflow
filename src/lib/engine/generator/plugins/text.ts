@@ -1,7 +1,7 @@
 import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { TextComponent } from '@/types/schema';
 import { isVisible, resolveBinding } from '../binding';
-import { escapeStringLiteral, formatColor, formatWeight, wrapPlacement } from '../placement';
+import { escapeStringLiteral, formatColor, formatFontFamily, formatWeight, wrapPlacement } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
 function applyTextTransform(s: string, transform: string | undefined): string {
@@ -36,9 +36,12 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
     const tracking = s?.letterSpacing || '0pt';
     const justify = s?.justify ?? false;
     const color = formatColor(s?.color ?? '#000000');
-    const font = s?.fontFamily ?? 'Sarabun';
-    const fontStyle = s?.italic ? 'italic' : 'normal';
+    const font = formatFontFamily(s?.fontFamily ?? 'Sarabun');
+    const fontStyle = 'normal'; // Use skew for reliable faux italics across all custom fonts
     const underline = s?.underline ?? false;
+    const strikethrough = s?.strikethrough ?? false;
+    const smallcaps = s?.smallcaps ?? false;
+    const highlight = s?.highlight ? formatColor(s.highlight) : undefined;
     const format = comp.format ?? 'text';
 
     const innerContent =
@@ -49,13 +52,45 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
             .map((line) => escapeTypst(line))
             .join(' #linebreak() ');
 
-    const mainContent = underline ? `#underline[${innerContent}]` : innerContent;
+    let mainContent = innerContent;
+    if (underline) {
+      mainContent = `#underline[${mainContent}]`;
+    }
+    if (strikethrough) {
+      mainContent = `#strike[${mainContent}]`;
+    }
+    if (smallcaps) {
+      mainContent = `#smallcaps[${mainContent}]`;
+    }
+    if (highlight) {
+      mainContent = `#highlight(fill: ${highlight})[${mainContent}]`;
+    }
+    if (s?.italic) {
+      mainContent = `#skew(ax: -12deg)[${mainContent}]`;
+    }
+
+    const textArgs: string[] = [
+      `size: ${size}pt`,
+      `font: ("${font}", "Sarabun", "sans-serif")`,
+      `weight: ${weight}`,
+      `style: "${fontStyle}"`,
+      `fill: ${color}`,
+      `tracking: ${tracking}`,
+    ];
+
+    if (s?.strokeColor) {
+      const strokeW = s.strokeWidth || '0.5pt';
+      textArgs.push(`stroke: ${strokeW} + ${formatColor(s.strokeColor)}`);
+    }
+
+    if (s?.hyphenate !== undefined) {
+      textArgs.push(`hyphenate: ${s.hyphenate}`);
+    }
 
     let body =
       `#set align(${align})\n` +
       `#set par(leading: ${leading}em, justify: ${justify})\n` +
-      `#set text(size: ${size}pt, font: ("${font}", "Sarabun", "sans-serif"), ` +
-      `weight: ${weight}, style: "${fontStyle}", fill: ${color}, tracking: ${tracking})\n` +
+      `#set text(${textArgs.join(', ')})\n` +
       `${mainContent}`;
 
     if (s?.background) {

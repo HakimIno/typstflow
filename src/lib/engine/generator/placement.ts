@@ -118,3 +118,15 @@ export function formatColor(color: string | undefined): string {
 export function escapeStringLiteral(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
+
+/**
+ * Resolves or normalizes a font family name for Typst.
+ * Handles legacy names or mismatches between UI and binary-parsed Typst names.
+ */
+export function formatFontFamily(font: string | undefined): string {
+  const f = (font ?? '').trim();
+  if (!f || f === 'Sarabun') return 'Sarabun';
+  // Legacy map: "LINE Seed Sans TH" -> "LINE Seed Sans"
+  if (f === 'LINE Seed Sans TH') return 'LINE Seed Sans';
+  return f;
+}

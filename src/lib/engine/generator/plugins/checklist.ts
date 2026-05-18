@@ -1,7 +1,7 @@
 import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { ChecklistComponent } from '@/types/schema';
 import { isVisible, resolveBinding, resolvePath } from '../binding';
-import { formatColor, formatWeight, wrapPlacement } from '../placement';
+import { formatColor, formatFontFamily, formatWeight, wrapPlacement } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
 /** Returns the cheq function name for a given checkMark character. */
@@ -52,7 +52,7 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
     const size = s?.fontSize ?? 10;
     const weight = formatWeight(s?.fontWeight);
     const color = formatColor(s?.color ?? '#000000');
-    const font = s?.fontFamily ?? 'Sarabun';
+    const font = formatFontFamily(s?.fontFamily ?? 'Sarabun');
     const listStyle = comp.listStyle ?? 'bullet';
     const checkboxColor = comp.checkboxColor ?? '#616161';
     const checkboxFill = comp.checkboxFill ?? '#ffffff';
@@ -87,6 +87,23 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
       }));
     }
 
+    const itemsWithDecorations = resolvedItems.map((it) => {
+      let label = escapeTypst(it.label);
+      if (s?.underline) {
+        label = `#underline[${label}]`;
+      }
+      if (s?.strikethrough) {
+        label = `#strike[${label}]`;
+      }
+      if (s?.smallcaps) {
+        label = `#smallcaps[${label}]`;
+      }
+      if (s?.italic) {
+        label = `#skew(ax: -12deg)[${label}]`;
+      }
+      return { ...it, label };
+    });
+
     if (resolvedItems.length === 0) {
       return wrapPlacement(
         comp,
@@ -109,8 +126,8 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
       const checkedFn = cheqSymFn(checkMark);
 
       if (direction === 'vertical') {
-        const lines = resolvedItems
-          .map((it) => `- [${it.checked ? checkMark : ' '}] ${escapeTypst(it.label)}`)
+        const lines = itemsWithDecorations
+          .map((it) => `- [${it.checked ? checkMark : ' '}] ${it.label}`)
           .join('\n');
 
         // Always use marker-map so we can control fill + radius + optional size
@@ -137,12 +154,12 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
           `))\n${lines}`;
       } else {
         // Grid/horizontal: each cell = inner 2-col grid(sym, label) for proper row alignment
-        const cellLines = resolvedItems
+        const cellLines = itemsWithDecorations
           .map((it) => {
             const fn = it.checked ? checkedFn : 'unchecked-sym';
             const symFill = fillForSym(fn, checkboxFill);
             const symArg = cheqSymCode(fn, checkboxColor, symFill, radiusTypst, checkboxSize);
-            return `  [#grid(columns: (auto, 1fr), column-gutter: 0.35em, align: horizon + left, ${symArg}, [${escapeTypst(it.label)}])],`;
+            return `  [#grid(columns: (auto, 1fr), column-gutter: 0.35em, align: horizon + left, ${symArg}, [${it.label}])],`;
           })
           .join('\n');
         body =
@@ -152,12 +169,12 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
     } else if (listStyle === 'numbered' || listStyle === 'alpha' || listStyle === 'roman') {
       const numbering = listStyle === 'alpha' ? '"a."' : listStyle === 'roman' ? '"i."' : '"1."';
       if (direction === 'vertical') {
-        const itemLines = resolvedItems.map((it) => `  [${escapeTypst(it.label)}],`).join('\n');
+        const itemLines = itemsWithDecorations.map((it) => `  [${it.label}],`).join('\n');
         body =
           `${textSet}#enum(\n  numbering: ${numbering},\n  spacing: ${spacing}pt,\n` +
           `  indent: ${indent}mm,\n${itemLines}\n)`;
       } else {
-        const cellLines = resolvedItems
+        const cellLines = itemsWithDecorations
           .map((it, i) => {
             const num =
               listStyle === 'alpha'
@@ -165,37 +182,37 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
                 : listStyle === 'roman'
                   ? `${'i'.repeat(i + 1)}.`
                   : `${i + 1}.`;
-            return `  [${escapeTypst(num)} ${escapeTypst(it.label)}],`;
+            return `  [${escapeTypst(num)} ${it.label}],`;
           })
           .join('\n');
         body = `${textSet}#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)`;
       }
     } else if (listStyle === 'dash') {
       if (direction === 'vertical') {
-        const itemLines = resolvedItems.map((it) => `  [${escapeTypst(it.label)}],`).join('\n');
+        const itemLines = itemsWithDecorations.map((it) => `  [${it.label}],`).join('\n');
         body = `${textSet}#list(marker: [-],\n  spacing: ${spacing}pt,\n  indent: ${indent}mm,\n${itemLines}\n)`;
       } else {
-        const cellLines = resolvedItems.map((it) => `  [– ${escapeTypst(it.label)}],`).join('\n');
+        const cellLines = itemsWithDecorations.map((it) => `  [– ${it.label}],`).join('\n');
         body = `${textSet}#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)`;
       }
     } else if (listStyle === 'custom') {
       const mk = escapeTypst(comp.marker ?? '→');
       if (direction === 'vertical') {
-        const itemLines = resolvedItems.map((it) => `  [${escapeTypst(it.label)}],`).join('\n');
+        const itemLines = itemsWithDecorations.map((it) => `  [${it.label}],`).join('\n');
         body = `${textSet}#list(marker: [${mk}],\n  spacing: ${spacing}pt,\n  indent: ${indent}mm,\n${itemLines}\n)`;
       } else {
-        const cellLines = resolvedItems
-          .map((it) => `  [${mk} ${escapeTypst(it.label)}],`)
+        const cellLines = itemsWithDecorations
+          .map((it) => `  [${mk} ${it.label}],`)
           .join('\n');
         body = `${textSet}#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)`;
       }
     } else {
       // bullet (default)
       if (direction === 'vertical') {
-        const itemLines = resolvedItems.map((it) => `  [${escapeTypst(it.label)}],`).join('\n');
+        const itemLines = itemsWithDecorations.map((it) => `  [${it.label}],`).join('\n');
         body = `${textSet}#list(\n  spacing: ${spacing}pt,\n  indent: ${indent}mm,\n${itemLines}\n)`;
       } else {
-        const cellLines = resolvedItems.map((it) => `  [• ${escapeTypst(it.label)}],`).join('\n');
+        const cellLines = itemsWithDecorations.map((it) => `  [• ${it.label}],`).join('\n');
         body = `${textSet}#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)`;
       }
     }

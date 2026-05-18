@@ -35,6 +35,14 @@ function getWorker(): Worker {
   worker.onmessage = (e) => {
     const { type, id, payload } = e.data;
 
+    if (type === 'worker_log') {
+      const { logType, payload: msg } = e.data;
+      if (logType === 'error') console.error(`[Worker] ${msg}`);
+      else if (logType === 'warn') console.warn(`[Worker] ${msg}`);
+      else console.log(`[Worker] ${msg}`);
+      return;
+    }
+
     if (type === 'READY') {
       resolveWorkerReady?.();
       isWorkerReady = true;

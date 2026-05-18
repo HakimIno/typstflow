@@ -29,14 +29,36 @@ export const PageNumberPreview = memo(function PageNumberPreview({
     .replace(/\{\{page\}\}/g, (pageIndex + 1).toString())
     .replace(/\{\{pageTotal\}\}/g, totalPages.toString());
 
+  const decorations: string[] = [];
+  if (component.style?.underline) decorations.push('underline');
+  if (component.style?.strikethrough) decorations.push('line-through');
+  const textDecoration = decorations.length > 0 ? decorations.join(' ') : 'none';
+
+  const fontWeight = (() => {
+    const w = component.style?.fontWeight;
+    if (!w) return 'normal';
+    if (typeof w === 'number') return String(w);
+    switch (w) {
+      case 'thin': return '100';
+      case 'light': return '300';
+      case 'regular': return 'normal';
+      case 'medium': return '500';
+      case 'semibold': return '600';
+      case 'bold': return 'bold';
+      case 'extrabold': return '800';
+      case 'black': return '900';
+      default: return 'normal';
+    }
+  })();
+
   return (
     <div
       className="w-full h-full"
       style={{
         fontSize: `${component.style?.fontSize || 9}pt`,
-        fontWeight: component.style?.fontWeight || 'regular',
+        fontWeight,
         fontStyle: component.style?.italic ? 'italic' : 'normal',
-        textDecoration: component.style?.underline ? 'underline' : 'none',
+        textDecoration,
         color: component.style?.color || '#0f172a',
         textAlign: component.align || 'center',
         fontFamily: `${fontFamily || 'Sarabun'}, "Noto Sans Thai", sans-serif`,

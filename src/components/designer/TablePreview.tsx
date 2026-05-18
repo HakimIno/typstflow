@@ -312,7 +312,7 @@ export function TablePreview({ component }: { component: TableComponent }) {
             ? gfStyle?.fontSize
             : undefined) ||
       bodyFontSize;
-    const fontWeight =
+    const fontWeightRaw =
       cellStyle?.fontWeight ||
       (isHeader
         ? headerFontWeight
@@ -322,10 +322,36 @@ export function TablePreview({ component }: { component: TableComponent }) {
             ? gfStyle?.fontWeight
             : undefined) ||
       'normal';
+
+    const fontWeight = (() => {
+      const w = fontWeightRaw;
+      if (!w) return 'normal';
+      if (typeof w === 'number') return String(w);
+      switch (w) {
+        case 'thin': return '100';
+        case 'light': return '300';
+        case 'regular': return 'normal';
+        case 'medium': return '500';
+        case 'semibold': return '600';
+        case 'bold': return 'bold';
+        case 'extrabold': return '800';
+        case 'black': return '900';
+        default: return w;
+      }
+    })();
     const isItalic =
       cellStyle?.italic ??
       (isGroupFooter ? !!gfStyle?.italic : isGroupHeader ? !!ghStyle?.italic : false);
     const isUnderline = cellStyle?.underline ?? (isGroupFooter ? !!gfStyle?.underline : false);
+    const isStrikethrough =
+      cellStyle?.strikethrough ??
+      (isGroupFooter ? !!gfStyle?.strikethrough : isGroupHeader ? !!ghStyle?.strikethrough : false);
+
+    const cellDecorations: string[] = [];
+    if (isUnderline) cellDecorations.push('underline');
+    if (isStrikethrough) cellDecorations.push('line-through');
+    const cellTextDecoration = cellDecorations.length > 0 ? cellDecorations.join(' ') : 'none';
+
     const cellFontFamily = cellStyle?.fontFamily || style.fontFamily;
     const resolvedAlign = cell.align || 'left';
     const isVertical = (cell.textDirection || 'horizontal') === 'vertical';
@@ -398,7 +424,7 @@ export function TablePreview({ component }: { component: TableComponent }) {
             fontSize: `${fontSize}pt`,
             fontWeight,
             fontStyle: isItalic ? 'italic' : 'normal',
-            textDecoration: isUnderline ? 'underline' : 'none',
+            textDecoration: cellTextDecoration,
             lineHeight: 1.4,
             ...(isVertical
               ? {

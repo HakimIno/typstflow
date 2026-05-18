@@ -1,4 +1,5 @@
 import type { LayoutSchema } from '@/types/schema';
+import { formatFontFamily } from './placement';
 
 /** Returns the Typst `#set page(...)` block. Margin is always 0mm so that
  *  `#place(dx, dy)` coordinates map 1-to-1 with the designer's mm coordinate
@@ -15,7 +16,8 @@ export function generatePageSetup(schema: LayoutSchema): string {
 export function generateFonts(schema: LayoutSchema): string {
   const font = schema.fonts.find((f) => f.role === 'body') ?? schema.fonts[0];
   if (!font) return '';
-  return `#set text(font: ("${font.family}", "Sarabun", "sans-serif"), size: ${font.size}pt, lang: "th")\n#set par(leading: 0.75em, justify: false)\n\n`;
+  const family = formatFontFamily(font.family);
+  return `#set text(font: ("${family}", "Sarabun", "sans-serif"), size: ${font.size}pt, lang: "th")\n#set par(leading: 0.75em, justify: false)\n\n`;
 }
 
 /** Import block for bundled packages (codetastic for QR / barcodes). */

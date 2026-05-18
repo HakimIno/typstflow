@@ -17,11 +17,53 @@ import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { useEffect, useState } from 'react';
+import { Terminal, Trash2, X, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 
 export default function DesignerPage() {
   const [mounted, setMounted] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [showLogPanel, setShowLogPanel] = useState(true);
+
   useKeyboardShortcuts();
   useFontInstaller(); // Re-register persisted fonts on hydration
+
+  useEffect(() => {
+    const handleLog = (type: string, ...args: any[]) => {
+      const msg = `[${type.toUpperCase()}] ${args
+        .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
+        .join(' ')}`;
+      setLogs((prev) => [...prev.slice(-99), msg]);
+    };
+
+    const originalLog = console.log;
+    const originalWarn = console.warn;
+    const originalError = console.error;
+
+    console.log = (...args) => {
+      originalLog(...args);
+      handleLog('log', ...args);
+    };
+    console.warn = (...args) => {
+      originalWarn(...args);
+      handleLog('warn', ...args);
+    };
+    console.error = (...args) => {
+      originalError(...args);
+      handleLog('error', ...args);
+    };
+
+    const handleError = (e: ErrorEvent) => {
+      handleLog('uncaught', e.message);
+    };
+    window.addEventListener('error', handleError);
+
+    return () => {
+      console.log = originalLog;
+      console.warn = originalWarn;
+      console.error = originalError;
+      window.removeEventListener('error', handleError);
+    };
+  }, []);
 
   // Granular Selectors - Optimized for high performance
   const _hasHydrated = useDesignerStore((state) => state._hasHydrated);
@@ -176,6 +218,94 @@ export default function DesignerPage() {
       </footer>
 
       <AlertDialog />
+
+      {/* Floating Diagnostic Panel (Development Only) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-8 right-8 z-[9999] flex flex-col items-end gap-2 select-none pointer-events-auto">
+          <button
+            type="button"
+            onClick={() => setShowLogPanel(!showLogPanel)}
+            className="flex items-center gap-2 bg-zinc-900/85 hover:bg-zinc-900 border border-zinc-800/80 text-zinc-400 hover:text-zinc-200 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider shadow-2xl backdrop-blur-md active:scale-95 transition-all"
+          >
+            <Terminal className="w-3.5 h-3.5 text-zinc-500" />
+            <span>Dev Console</span>
+            <span className="flex items-center justify-center bg-zinc-800/80 px-1.5 py-0.5 rounded text-[8px] font-semibold text-zinc-300 font-mono">
+              {logs.length}
+            </span>
+          </button>
+
+          {showLogPanel && (
+            <div className="w-[580px] h-[360px] bg-zinc-950/95 text-zinc-300 font-mono text-[10px] p-4 rounded-xl overflow-hidden border border-zinc-800/60 shadow-[0_20px_50px_rgba(0,0,0,0.65)] flex flex-col backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200">
+              {/* Header */}
+              <div className="flex justify-between items-center border-b border-zinc-800/60 pb-2.5 mb-2.5 text-zinc-400 font-bold text-[8.5px] uppercase tracking-wider shrink-0 select-none">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-3.5 h-3.5 text-zinc-500" />
+                  <span className="text-zinc-300 font-bold">System Diagnostics</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setLogs([])}
+                    className="flex items-center gap-1 hover:text-zinc-200 transition-colors text-[8px]"
+                    title="Clear Console"
+                  >
+                    <Trash2 className="w-3 h-3 text-zinc-500" />
+                    <span>Clear</span>
+                  </button>
+                  <div className="w-px h-2.5 bg-zinc-800" />
+                  <button
+                    type="button"
+                    onClick={() => setShowLogPanel(false)}
+                    className="hover:text-zinc-200 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5 text-zinc-500" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Log List */}
+              <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5 custom-scrollbar select-text">
+                {logs.map((log, i) => {
+                  const isError = log.includes('[ERROR]') || log.includes('[UNCAUGHT]') || log.includes('error') || log.includes('Error') || log.includes('failed');
+                  const isWarn = log.includes('[WARN]') || log.includes('warn') || log.includes('Warning');
+
+                  return (
+                    <div
+                      key={i}
+                      className={clsx(
+                        'flex gap-2 p-1.5 rounded border text-[9.5px] break-all leading-relaxed font-mono transition-all',
+                        isError
+                          ? 'bg-red-500/5 border-red-500/10 text-red-300/90'
+                          : isWarn
+                            ? 'bg-amber-500/5 border-amber-500/10 text-amber-300/90'
+                            : 'bg-zinc-900/10 border-zinc-800/20 text-zinc-300/85'
+                      )}
+                    >
+                      <div className="flex-shrink-0 mt-0.5">
+                        {isError ? (
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                        ) : isWarn ? (
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                        ) : (
+                          <Info className="w-3.5 h-3.5 text-zinc-500" />
+                        )}
+                      </div>
+                      <div className="flex-1">{log}</div>
+                    </div>
+                  );
+                })}
+
+                {logs.length === 0 && (
+                  <div className="text-zinc-600 italic py-16 text-center text-[9px] flex flex-col items-center justify-center gap-2 select-none">
+                    <Terminal className="w-6 h-6 text-zinc-800" />
+                    <span>No logs generated yet. Perform canvas actions to trigger compiler events.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -187,7 +187,10 @@ export const ChecklistPreview = memo(function ChecklistPreview({ component, samp
     return 'normal';
   })();
   const fontStyle = style?.italic ? 'italic' : 'normal';
-  const textDecoration = style?.underline ? 'underline' : 'none';
+  const decorations: string[] = [];
+  if (style?.underline) decorations.push('underline');
+  if (style?.strikethrough) decorations.push('line-through');
+  const textDecoration = decorations.length > 0 ? decorations.join(' ') : 'none';
   const textColor = style?.color ?? '#0f172a';
   const fontFamily = `${style?.fontFamily ?? 'Sarabun'}, "Geist", "Noto Sans Thai", sans-serif`;
   const lineHeight = style?.lineHeight ?? 1.4;

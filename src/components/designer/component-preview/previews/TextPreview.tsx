@@ -38,14 +38,36 @@ export const TextPreview = memo(function TextPreview({
   const hasBinding = (component.content || '').includes('{{');
   const displayValue = hasBinding ? formatValue(resolvedValue, component.format) : resolvedValue;
 
+  const decorations: string[] = [];
+  if (component.style?.underline) decorations.push('underline');
+  if (component.style?.strikethrough) decorations.push('line-through');
+  const textDecoration = decorations.length > 0 ? decorations.join(' ') : 'none';
+
+  const fontWeight = (() => {
+    const w = component.style?.fontWeight;
+    if (!w) return 'normal';
+    if (typeof w === 'number') return String(w);
+    switch (w) {
+      case 'thin': return '100';
+      case 'light': return '300';
+      case 'regular': return 'normal';
+      case 'medium': return '500';
+      case 'semibold': return '600';
+      case 'bold': return 'bold';
+      case 'extrabold': return '800';
+      case 'black': return '900';
+      default: return 'normal';
+    }
+  })();
+
   return (
     <div
       className={autoHeight ? 'w-full' : 'w-full h-full overflow-hidden'}
       style={{
         fontSize: `${component.style?.fontSize || 10}pt`,
-        fontWeight: component.style?.fontWeight === 'bold' ? 'bold' : 'normal',
+        fontWeight,
         fontStyle: component.style?.italic ? 'italic' : 'normal',
-        textDecoration: component.style?.underline ? 'underline' : 'none',
+        textDecoration,
         color: component.style?.color || '#0f172a',
         textAlign: component.align || 'left',
         lineHeight: component.style?.lineHeight || '1.4',

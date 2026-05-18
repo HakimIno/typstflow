@@ -129,12 +129,18 @@ export interface TextStyle {
   color?: string; // hex
   italic?: boolean;
   underline?: boolean;
+  strikethrough?: boolean;
+  smallcaps?: boolean;
+  highlight?: string; // hex background highlight for inline text
+  strokeColor?: string; // outline/stroke color
+  strokeWidth?: string; // outline/stroke width (e.g. "0.5pt")
   textTransform?: 'none' | 'upper' | 'lower' | 'title';
   lineHeight?: number; // scale: 1.2
   letterSpacing?: string; // e.g. "0.05em"
   justify?: boolean;
   align?: 'left' | 'center' | 'right' | 'justify'; // New: Text alignment within container
   background?: string; // hex
+  hyphenate?: boolean;
 }
 
 // --- Stroke Configuration (maps to Typst stroke dictionary) ---

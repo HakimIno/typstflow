@@ -1,6 +1,6 @@
 import type { PageNumberComponent } from '@/types/schema';
 import { isVisible } from '../binding';
-import { formatColor, formatWeight, wrapPlacement } from '../placement';
+import { formatColor, formatFontFamily, formatWeight, wrapPlacement } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
 export const pageNumberPlugin: ComponentPlugin<PageNumberComponent> = {
@@ -16,16 +16,26 @@ export const pageNumberPlugin: ComponentPlugin<PageNumberComponent> = {
     const align = comp.align ?? 'left';
     const size = s?.fontSize ?? 10;
     const weight = formatWeight(s?.fontWeight);
-    const font = s?.fontFamily ?? 'Sarabun';
+    const font = formatFontFamily(s?.fontFamily ?? 'Sarabun');
     const color = formatColor(s?.color ?? '#000000');
-    const fontStyle = s?.italic ? 'italic' : 'normal';
     const underline = s?.underline ?? false;
+    const strikethrough = s?.strikethrough ?? false;
+    const italic = s?.italic ?? false;
 
-    const displayWithStyle = underline ? `#underline[${display}]` : display;
+    let displayWithStyle = display;
+    if (underline) {
+      displayWithStyle = `#underline[${displayWithStyle}]`;
+    }
+    if (strikethrough) {
+      displayWithStyle = `#strike[${displayWithStyle}]`;
+    }
+    if (italic) {
+      displayWithStyle = `#skew(ax: -12deg)[${displayWithStyle}]`;
+    }
 
     const body =
       `#set align(${align})\n` +
-      `#set text(font: "${font}", size: ${size}pt, weight: ${weight}, style: "${fontStyle}", fill: ${color})\n` +
+      `#set text(font: "${font}", size: ${size}pt, weight: ${weight}, style: "normal", fill: ${color})\n` +
       `#context [${displayWithStyle}]`;
 
     return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);

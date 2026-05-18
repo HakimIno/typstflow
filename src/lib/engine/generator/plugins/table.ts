@@ -1,7 +1,7 @@
 import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { TableComponent } from '@/types/schema';
 import { isVisible, resolveBinding, resolvePath } from '../binding';
-import { escapeStringLiteral, formatColor, formatWeight, wrapPlacement } from '../placement';
+import { escapeStringLiteral, formatColor, formatFontFamily, formatWeight, wrapPlacement } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
 export const tablePlugin: ComponentPlugin<TableComponent> = {
@@ -91,7 +91,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
       const textArgs: string[] = [];
       if (style.fontSize) textArgs.push(`size: ${style.fontSize}pt`);
       if (style.fontWeight) textArgs.push(`weight: ${formatWeight(style.fontWeight)}`);
-      if (style.fontFamily) textArgs.push(`font: "${style.fontFamily}"`);
+      if (style.fontFamily) textArgs.push(`font: "${formatFontFamily(style.fontFamily)}"`);
       if (textArgs.length > 0) {
         parts.push(`#set text(${textArgs.join(', ')})\n`);
       }
@@ -620,6 +620,24 @@ function renderStructuredCell(
   let inner = contentOverride !== undefined ? contentOverride : escapeTypst(cell.content);
   if (inner.startsWith('[') && inner.endsWith(']')) {
     inner = inner.slice(1, -1);
+  }
+
+  const underline = cellStyle?.underline ?? false;
+  const strikethrough = cellStyle?.strikethrough ?? false;
+  const smallcaps = cellStyle?.smallcaps ?? false;
+  const italic = cellStyle?.italic ?? false;
+
+  if (underline) {
+    inner = `#underline[${inner}]`;
+  }
+  if (strikethrough) {
+    inner = `#strike[${inner}]`;
+  }
+  if (smallcaps) {
+    inner = `#smallcaps[${inner}]`;
+  }
+  if (italic) {
+    inner = `#skew(ax: -12deg)[${inner}]`;
   }
 
   // Handle vertical text direction

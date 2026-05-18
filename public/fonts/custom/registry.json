@@ -1,0 +1,34 @@
+[
+  {
+    "id": "line-seed-sans-th-900",
+    "family": "LINE Seed Sans TH",
+    "weight": 900,
+    "fileName": "line-seed-sans-th-900.ttf",
+    "url": "/api/fonts/custom/file?fileName=line-seed-sans-th-900.ttf",
+    "uploadedAt": 1779088652850
+  },
+  {
+    "id": "line-seed-sans-th-400",
+    "family": "LINE Seed Sans TH",
+    "weight": 400,
+    "fileName": "line-seed-sans-th-400.ttf",
+    "url": "/api/fonts/custom/file?fileName=line-seed-sans-th-400.ttf",
+    "uploadedAt": 1779088652853
+  },
+  {
+    "id": "line-seed-sans-th-100",
+    "family": "LINE Seed Sans TH",
+    "weight": 100,
+    "fileName": "line-seed-sans-th-100.ttf",
+    "url": "/api/fonts/custom/file?fileName=line-seed-sans-th-100.ttf",
+    "uploadedAt": 1779088652856
+  },
+  {
+    "id": "line-seed-sans-th-700",
+    "family": "LINE Seed Sans TH",
+    "weight": 700,
+    "fileName": "line-seed-sans-th-700.ttf",
+    "url": "/api/fonts/custom/file?fileName=line-seed-sans-th-700.ttf",
+    "uploadedAt": 1779088652859
+  }
+]
