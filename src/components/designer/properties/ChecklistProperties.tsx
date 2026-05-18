@@ -5,6 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/Select';
+import { useDesignerStore } from '@/store/designer-store';
 import type { ChecklistComponent, ChecklistItem } from '@/types/schema';
 import { GripVertical, Plus, Trash2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
@@ -21,6 +22,21 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
   const items: ChecklistItem[] = component.items ?? [];
   const listStyle = component.listStyle ?? 'bullet';
   const direction = component.direction ?? 'vertical';
+
+  const sampleData = useDesignerStore((state) => state.sampleData || {});
+
+  // Find all array keys in sampleData for binding suggestions
+  const suggestedKeys = Object.keys(sampleData).filter((key) => Array.isArray(sampleData[key]));
+
+  // If a data source is selected, inspect the first item to find object fields
+  const activeArrayKey = (component.dataSource ?? '')
+    .replace(/\{\{|\}\}/g, '')
+    .trim();
+  const activeArray = sampleData[activeArrayKey];
+  const firstItem = Array.isArray(activeArray) && activeArray.length > 0 ? activeArray[0] : null;
+  const objectFields = firstItem && typeof firstItem === 'object' && firstItem !== null
+    ? Object.keys(firstItem)
+    : [];
 
   const updateItem = (idx: number, updates: Partial<ChecklistItem>) => {
     const next = [...items];
@@ -338,9 +354,37 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
               placeholder="{{tasks}}"
               mono
             />
+            {/* Array key suggestions */}
+            {suggestedKeys.length > 0 && (
+              <div className="space-y-1 mt-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5 animate-in fade-in duration-200">
+                <span className="text-[7.5px] font-bold text-[var(--text-muted)] uppercase block">
+                  Quick Bind Data Source:
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {suggestedKeys.map((key) => {
+                    const braceKey = `{{${key}}}`;
+                    const isSelected = component.dataSource === braceKey;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => onUpdate({ dataSource: isSelected ? undefined : braceKey })}
+                        className={`text-[8.5px] font-mono px-1.5 py-0.5 rounded border transition-all ${
+                          isSelected
+                            ? 'bg-[var(--accent)] border-[var(--accent)] text-white'
+                            : 'bg-[var(--bg-widget)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--text-secondary)]'
+                        }`}
+                      >
+                        {key}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
           {component.dataSource && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-1 duration-200">
               <div className="space-y-0.5">
                 <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
                   Label Field
@@ -351,6 +395,30 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
                   placeholder="label"
                   mono
                 />
+                {/* Field suggestions */}
+                {objectFields.length > 0 && (
+                  <div className="space-y-1 mt-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1 animate-in fade-in duration-200">
+                    <span className="text-[7.5px] font-bold text-[var(--text-muted)] uppercase block">
+                      Suggestions:
+                    </span>
+                    <div className="flex flex-wrap gap-0.5">
+                      {objectFields.map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => onUpdate({ labelField: f })}
+                          className={`text-[7.5px] font-mono px-1 py-0.2 rounded border transition-all ${
+                            component.labelField === f
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                              : 'bg-[var(--bg-widget)] text-[var(--text-muted)] border-[var(--border-default)] hover:border-[var(--accent)] hover:text-[var(--text-secondary)]'
+                          }`}
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               {isCheckbox && (
                 <div className="space-y-0.5">
@@ -363,6 +431,30 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
                     placeholder="checked"
                     mono
                   />
+                  {/* Field suggestions */}
+                  {objectFields.length > 0 && (
+                    <div className="space-y-1 mt-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1 animate-in fade-in duration-200">
+                      <span className="text-[7.5px] font-bold text-[var(--text-muted)] uppercase block">
+                        Suggestions:
+                      </span>
+                      <div className="flex flex-wrap gap-0.5">
+                        {objectFields.map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => onUpdate({ checkedField: f })}
+                            className={`text-[7.5px] font-mono px-1 py-0.2 rounded border transition-all ${
+                              component.checkedField === f
+                                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                                : 'bg-[var(--bg-widget)] text-[var(--text-muted)] border-[var(--border-default)] hover:border-[var(--accent)] hover:text-[var(--text-secondary)]'
+                            }`}
+                          >
+                            {f}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

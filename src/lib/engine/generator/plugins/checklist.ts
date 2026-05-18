@@ -106,12 +106,22 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
       const path = comp.dataSource.replace(/\{\{|\}\}/g, '').trim();
       const raw = resolvePath(path, ctx.local) ?? resolvePath(path, ctx.global);
       const arr = Array.isArray(raw) ? raw : [];
-      const labelField = comp.labelField ?? 'label';
-      const checkedField = comp.checkedField ?? 'checked';
-      resolvedItems = (arr as Record<string, unknown>[]).map((item) => ({
-        label: item?.[labelField] != null ? String(item[labelField]) : '',
-        checked: Boolean(item?.[checkedField]),
-      }));
+      resolvedItems = (arr as unknown[]).map((item) => {
+        if (typeof item === 'object' && item !== null) {
+          const lf = comp.labelField ?? 'label';
+          const cf = comp.checkedField ?? 'checked';
+          const obj = item as Record<string, unknown>;
+          const resolvedLabel = obj[lf] ?? obj['name'] ?? obj['title'] ?? obj['text'] ?? String(item);
+          return {
+            label: String(resolvedLabel),
+            checked: Boolean(obj[cf] ?? obj['status'] ?? obj['done'] ?? false),
+          };
+        }
+        return {
+          label: String(item),
+          checked: false,
+        };
+      });
     } else {
       resolvedItems = comp.items.map((item) => ({
         label: resolveBinding(item.label, ctx.local, ctx.global, ctx.groupItems),

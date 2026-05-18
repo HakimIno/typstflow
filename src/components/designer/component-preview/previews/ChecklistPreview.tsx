@@ -199,12 +199,22 @@ export const ChecklistPreview = memo(function ChecklistPreview({ component, samp
     let val: unknown = sampleData;
     for (const p of path.split('.')) val = (val as Record<string, unknown>)?.[p];
     const arr = Array.isArray(val) ? val : [];
-    const lf = labelField ?? 'label';
-    const cf = checkedField ?? 'checked';
-    displayItems = (arr as Record<string, unknown>[]).slice(0, 10).map((item) => ({
-      label: String(item?.[lf] ?? ''),
-      checked: Boolean(item?.[cf]),
-    }));
+    displayItems = (arr as unknown[]).slice(0, 15).map((item) => {
+      if (typeof item === 'object' && item !== null) {
+        const lf = labelField ?? 'label';
+        const cf = checkedField ?? 'checked';
+        const obj = item as Record<string, unknown>;
+        const resolvedLabel = obj[lf] ?? obj['name'] ?? obj['title'] ?? obj['text'] ?? String(item);
+        return {
+          label: String(resolvedLabel),
+          checked: Boolean(obj[cf] ?? obj['status'] ?? obj['done'] ?? false),
+        };
+      }
+      return {
+        label: String(item),
+        checked: false,
+      };
+    });
   } else {
     displayItems = (items ?? []).map((it) => ({ label: it.label, checked: it.checked ?? false }));
   }
