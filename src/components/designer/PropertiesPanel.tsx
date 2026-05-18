@@ -81,7 +81,25 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
   const sampleData = useDesignerStore((state) => state.sampleData);
   const activePageId = useDesignerStore((state) => state.activePageId);
   const lockedComponentIds = useDesignerStore(useShallow((state) => state.lockedComponentIds));
-  const componentRegistry = useDesignerStore(useShallow((state) => state.componentRegistry));
+  // Targeted selector: only re-renders when the primary selected component changes,
+  // not on every schema mutation (which would happen with a full registry subscription).
+  const selectedComponent = useDesignerStore((s) =>
+    s.selectedComponentIds.length > 0
+      ? (s.componentRegistry[s.selectedComponentIds[0]] ?? null)
+      : null
+  );
+
+  // Only active when selectedComponentIds.length > 1; useShallow prevents re-renders
+  // when the same components are selected with identical data.
+  const bulkSelectedComponents = useDesignerStore(
+    useShallow((s) =>
+      s.selectedComponentIds.length > 1
+        ? (s.selectedComponentIds
+            .map((id) => s.componentRegistry[id])
+            .filter(Boolean) as ComponentNode[])
+        : []
+    )
+  );
 
   const updateSchema = useDesignerStore((state) => state.updateSchema);
   const updateComponent = useDesignerStore((state) => state.updateComponent);
@@ -95,12 +113,6 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
     () => pages.find((p) => p.id === activePageId) ?? pages[0],
     [pages, activePageId]
   );
-
-  // Find first selected component using O(1) registry
-  const selectedComponent = useMemo(() => {
-    if (selectedComponentIds.length === 0) return null;
-    return componentRegistry[selectedComponentIds[0]] || null;
-  }, [selectedComponentIds, componentRegistry]);
 
   const isLocked = selectedComponent ? lockedComponentIds.includes(selectedComponent.id) : false;
 
@@ -313,23 +325,23 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                   {(selectedZoneKey === 'body'
                     ? activePage?.body.layoutMode
                     : zones[selectedZoneKey as 'header' | 'footer']?.layoutMode) === 'flow' && (
-                      <PropertyRow label="Gap">
-                        <DesignerInput
-                          type="text"
-                          variant="mini"
-                          value={
-                            (selectedZoneKey === 'body'
-                              ? activePage?.body.flowGap
-                              : zones[selectedZoneKey as 'header' | 'footer']?.flowGap) ?? '2mm'
-                          }
-                          onChange={(v) =>
-                            updateZone(selectedZoneKey, { flowGap: v }, activePageId ?? undefined)
-                          }
-                          placeholder="2mm"
-                          mono
-                        />
-                      </PropertyRow>
-                    )}
+                    <PropertyRow label="Gap">
+                      <DesignerInput
+                        type="text"
+                        variant="mini"
+                        value={
+                          (selectedZoneKey === 'body'
+                            ? activePage?.body.flowGap
+                            : zones[selectedZoneKey as 'header' | 'footer']?.flowGap) ?? '2mm'
+                        }
+                        onChange={(v) =>
+                          updateZone(selectedZoneKey, { flowGap: v }, activePageId ?? undefined)
+                        }
+                        placeholder="2mm"
+                        mono
+                      />
+                    </PropertyRow>
+                  )}
                 </div>
               </section>
             )}
@@ -341,10 +353,6 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
   // ---- 3. MULTIPLE SELECTION VIEW ----
   if (selectedComponentIds.length > 1) {
-    const bulkSelectedComponents = selectedComponentIds
-      .map((id) => componentRegistry[id])
-      .filter(Boolean) as ComponentNode[];
-
     const handleBulkUpdate = (updates: Partial<ComponentNode>) => {
       const updatesMap: Record<string, Partial<ComponentNode>> = {};
       for (const comp of bulkSelectedComponents) {
@@ -383,11 +391,11 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 isTable(selectedComponent) ||
                 isPageNumber(selectedComponent) ||
                 isChecklist(selectedComponent)) && (
-                  <TypographyProperties
-                    style={(selectedComponent as any).style}
-                    onUpdateStyle={handleStyleUpdate}
-                  />
-                )}
+                <TypographyProperties
+                  style={(selectedComponent as any).style}
+                  onUpdateStyle={handleStyleUpdate}
+                />
+              )}
               {isLine(selectedComponent) && (
                 <LineProperties
                   component={selectedComponent}

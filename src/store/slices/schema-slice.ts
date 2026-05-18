@@ -242,7 +242,8 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
       const selectedComps = resolveSelectedWithAbsY(
         state.selectedComponentIds,
         state.schema,
-        targetPageId
+        targetPageId,
+        state.componentRegistry
       );
       if (selectedComps.length <= 1) return state;
 
@@ -288,7 +289,8 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
       const selectedComps = resolveSelectedWithAbsY(
         state.selectedComponentIds,
         state.schema,
-        targetPageId
+        targetPageId,
+        state.componentRegistry
       );
 
       const minX = Math.min(...selectedComps.map((c) => c.x || 0));
@@ -328,7 +330,8 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
       const selectedComps = resolveSelectedWithAbsY(
         state.selectedComponentIds,
         state.schema,
-        targetPageId
+        targetPageId,
+        state.componentRegistry
       );
 
       const minX = Math.min(...selectedComps.map((c) => c.x || 0));
@@ -539,8 +542,26 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
         });
       }
 
-      if (skipHistory)
-        return { schema: currentSchema, componentRegistry: buildComponentRegistry(currentSchema) };
+      if (skipHistory) {
+        // Delta-update: only touch changed entries instead of O(n) full rebuild.
+        // Safe because the registry is a flat id→node map; zone membership isn't stored here.
+        const updatedRegistry = { ...state.componentRegistry };
+        for (const [id, upd] of Object.entries(updatesMap)) {
+          if (updatedRegistry[id])
+            updatedRegistry[id] = { ...updatedRegistry[id], ...upd } as ComponentNode;
+        }
+        for (const move of moves) {
+          const existing = state.componentRegistry[move.id];
+          if (existing) {
+            updatedRegistry[move.id] = {
+              ...existing,
+              ...(move.x !== undefined ? { x: move.x } : {}),
+              ...(move.y !== undefined ? { y: move.y } : {}),
+            } as ComponentNode;
+          }
+        }
+        return { schema: currentSchema, componentRegistry: updatedRegistry };
+      }
       return pushHistory(state, currentSchema);
     }),
 
@@ -699,10 +720,12 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
 function resolveSelectedWithAbsY(
   selectedIds: string[],
   schema: LayoutSchema,
-  targetPageId: string
+  targetPageId: string,
+  registry: Record<string, ComponentNode>
 ): (ComponentNode & { absY: number })[] {
   return selectedIds.flatMap((id) => {
-    const comp = findComponentInSchema(schema, id);
+    // O(1) registry lookup instead of O(n) tree traversal
+    const comp = registry[id] ?? findComponentInSchema(schema, id);
     if (!comp) return [];
     const zoneInfo = findComponentZone(schema, id);
     const zoneOffset = LayoutEngine.calculateZoneOffset(

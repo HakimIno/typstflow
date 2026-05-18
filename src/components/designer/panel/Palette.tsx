@@ -21,7 +21,7 @@ import {
   Table,
   Type,
 } from 'lucide-react';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { BasePanel } from './BasePanel';
 import { PanelHeader } from './PanelHeader';
 
@@ -68,14 +68,18 @@ const CATEGORIES = [
 export const Palette = memo(function Palette() {
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredCategories = CATEGORIES.map((cat) => ({
-    ...cat,
-    items: cat.items.filter(
-      (item) =>
-        item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.type.toLowerCase().includes(searchQuery.toLowerCase())
-    ),
-  })).filter((cat) => cat.items.length > 0);
+  const filteredCategories = useMemo(
+    () =>
+      CATEGORIES.map((cat) => ({
+        ...cat,
+        items: cat.items.filter(
+          (item) =>
+            item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.type.toLowerCase().includes(searchQuery.toLowerCase())
+        ),
+      })).filter((cat) => cat.items.length > 0),
+    [searchQuery]
+  );
 
   return (
     <BasePanel>

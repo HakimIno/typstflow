@@ -43,23 +43,23 @@ type RenderItem =
   | { type: 'page-separator'; pageId: string; index: number }
   | { type: 'global-separator'; label: string }
   | {
-    type: 'zone-header';
-    zoneKey: string;
-    label: string;
-    pageId?: string;
-    count: number;
-    groupId?: string;
-    groupType?: 'header' | 'footer';
-  }
+      type: 'zone-header';
+      zoneKey: string;
+      label: string;
+      pageId?: string;
+      count: number;
+      groupId?: string;
+      groupType?: 'header' | 'footer';
+    }
   | {
-    type: 'component';
-    component: ComponentNode;
-    zoneKey: string;
-    index: number;
-    pageId?: string;
-    groupId?: string;
-    groupType?: 'header' | 'footer';
-  };
+      type: 'component';
+      component: ComponentNode;
+      zoneKey: string;
+      index: number;
+      pageId?: string;
+      groupId?: string;
+      groupType?: 'header' | 'footer';
+    };
 
 // --- Components ---
 
@@ -293,6 +293,9 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
       return name.includes(query) || type.includes(query) || content.includes(query);
     };
 
+    // Pre-compute id→index maps per zone to avoid O(n²) findIndex calls inside loops
+    const indexMap = (comps: ComponentNode[]) => new Map(comps.map((c, i) => [c.id, i]));
+
     const items: RenderItem[] = [];
 
     // 1. Header
@@ -306,13 +309,14 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
         count: headerComps.length,
       });
       if ((!collapsedGroups.has('header') || query) && headerComps.length > 0) {
+        const idxMap = indexMap(schema.zones.header.components);
         const reversed = [...headerComps].reverse();
-        for (let i = 0; i < reversed.length; i++) {
+        for (const comp of reversed) {
           items.push({
             type: 'component',
-            component: reversed[i],
+            component: comp,
             zoneKey: 'header',
-            index: schema.zones.header.components.findIndex((c) => c.id === reversed[i].id),
+            index: idxMap.get(comp.id) ?? 0,
           });
         }
       }
@@ -332,13 +336,14 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
           count: gHeaderComps.length,
         });
         if ((!collapsedGroups.has(gHeaderKey) || query) && gHeaderComps.length > 0) {
+          const idxMap = indexMap(group.header.components);
           const reversed = [...gHeaderComps].reverse();
-          for (let i = 0; i < reversed.length; i++) {
+          for (const comp of reversed) {
             items.push({
               type: 'component',
-              component: reversed[i],
+              component: comp,
               zoneKey: 'header',
-              index: group.header.components.findIndex((c) => c.id === reversed[i].id),
+              index: idxMap.get(comp.id) ?? 0,
               groupId: group.id,
               groupType: 'header',
             });
@@ -367,13 +372,14 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
         });
 
         if ((!collapsedGroups.has(groupKey) || query) && bodyComps.length > 0) {
+          const idxMap = indexMap(page.body.components);
           const reversed = [...bodyComps].reverse();
-          for (let i = 0; i < reversed.length; i++) {
+          for (const comp of reversed) {
             items.push({
               type: 'component',
-              component: reversed[i],
+              component: comp,
               zoneKey: 'body',
-              index: page.body.components.findIndex((c) => c.id === reversed[i].id),
+              index: idxMap.get(comp.id) ?? 0,
               pageId: page.id,
             });
           }
@@ -397,13 +403,14 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
           count: gFooterComps.length,
         });
         if ((!collapsedGroups.has(gFooterKey) || query) && gFooterComps.length > 0) {
+          const idxMap = indexMap(group.footer.components);
           const reversed = [...gFooterComps].reverse();
-          for (let j = 0; j < reversed.length; j++) {
+          for (const comp of reversed) {
             items.push({
               type: 'component',
-              component: reversed[j],
+              component: comp,
               zoneKey: 'footer',
-              index: group.footer.components.findIndex((c) => c.id === reversed[j].id),
+              index: idxMap.get(comp.id) ?? 0,
               groupId: group.id,
               groupType: 'footer',
             });
@@ -429,13 +436,14 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
         count: footerComps.length,
       });
       if ((!collapsedGroups.has('footer') || query) && footerComps.length > 0) {
+        const idxMap = indexMap(schema.zones.footer.components);
         const reversed = [...footerComps].reverse();
-        for (let i = 0; i < reversed.length; i++) {
+        for (const comp of reversed) {
           items.push({
             type: 'component',
-            component: reversed[i],
+            component: comp,
             zoneKey: 'footer',
-            index: schema.zones.footer.components.findIndex((c) => c.id === reversed[i].id),
+            index: idxMap.get(comp.id) ?? 0,
           });
         }
       }
