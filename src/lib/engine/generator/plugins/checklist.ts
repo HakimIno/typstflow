@@ -54,7 +54,7 @@ function cheqSymCode(
   
   // Wrap in text block so that it scales beautifully with text size
   const sizeArg = size !== undefined ? `size: ${size}pt, ` : '';
-  return `text(${sizeArg}font: "Liberation Sans")[#${call}]`;
+  return `[#text(${sizeArg}font: "Liberation Sans")[#${call}]]`;
 }
 
 function symStrokeAndFill(
@@ -190,7 +190,7 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
         symArg = `[${escapeTypst(char)}]`;
       }
 
-      const symArgWrapped = symOffset !== '0em' ? `box(dy: ${symOffset})[${symArg}]` : symArg;
+      const symArgWrapped = symOffset !== '0em' ? `box(baseline: ${symOffset}, ${symArg})` : symArg;
       return `#grid(columns: ${colsDef}, column-gutter: 0.35em, align: ${cellAlign}, ${symArgWrapped}, [${it.label}])`;
     };
 

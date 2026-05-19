@@ -102,7 +102,7 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
     if (ctx.flowMode) {
       const halfLeadingPt = Math.max((leading / 2) * size, 0);
       if (halfLeadingPt > 0.01) {
-        finalBody = `#block(inset: (top: ${halfLeadingPt.toFixed(3)}pt, bottom: ${halfLeadingPt.toFixed(3)}pt))[${body}]`;
+        finalBody = `#block(width: 100%, inset: (top: ${halfLeadingPt.toFixed(3)}pt, bottom: ${halfLeadingPt.toFixed(3)}pt))[${body}]`;
       }
     }
 

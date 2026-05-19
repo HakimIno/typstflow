@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react';
 
 export default function DesignerPage() {
   const [mounted, setMounted] = useState(false);
+  const [fontsReady, setFontsReady] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [showLogPanel, setShowLogPanel] = useState(false);
 
@@ -104,9 +105,12 @@ export default function DesignerPage() {
 
   useEffect(() => {
     setMounted(true);
+    // Wait for all fonts (including Google Fonts via display=swap) before rendering the Canvas.
+    // Without this gate, Sarabun renders as the fallback font briefly, causing a weight flash.
+    document.fonts.ready.then(() => setFontsReady(true));
   }, []);
 
-  if (!mounted || !_hasHydrated) {
+  if (!mounted || !_hasHydrated || !fontsReady) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[var(--bg-app)]">
         <div className="flex flex-col items-center gap-3">
