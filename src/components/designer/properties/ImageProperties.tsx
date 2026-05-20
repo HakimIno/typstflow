@@ -11,7 +11,7 @@ import { clsx } from 'clsx';
 import { ImageIcon, Link, Loader2, Upload, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { DesignerInput } from '../../shared/DesignerInput';
-import { PropertyRow, SectionHeader } from './Shared';
+import { CollapsibleSection, PropertyRow } from './Shared';
 
 interface ImagePropertiesProps {
   component: ImageComponent;
@@ -21,25 +21,27 @@ interface ImagePropertiesProps {
 export function ImageProperties({ component, onUpdate }: ImagePropertiesProps) {
   return (
     <>
-      <SectionHeader label="Content & Image" />
-      <ImageUploader component={component} onUpdate={onUpdate} />
+      <CollapsibleSection label="Image Upload">
+        <ImageUploader component={component} onUpdate={onUpdate} />
+      </CollapsibleSection>
 
-      <SectionHeader label="Image Settings" />
-      <PropertyRow label="Fit Mode">
-        <Select
-          value={component.fit || 'contain'}
-          onValueChange={(val) => onUpdate({ fit: val as any })}
-        >
-          <SelectTrigger className="h-6 text-[11px] bg-[var(--bg-widget)] border-[var(--border-default)]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="contain">Contain</SelectItem>
-            <SelectItem value="cover">Cover</SelectItem>
-            <SelectItem value="stretch">Stretch</SelectItem>
-          </SelectContent>
-        </Select>
-      </PropertyRow>
+      <CollapsibleSection label="Image Layout">
+        <PropertyRow label="Fit Mode" inline={true}>
+          <Select
+            value={component.fit || 'contain'}
+            onValueChange={(val) => onUpdate({ fit: val as any })}
+          >
+            <SelectTrigger className="h-6 text-[10px] bg-[var(--bg-widget)] border-[var(--border-default)] w-32 shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="contain">Contain</SelectItem>
+              <SelectItem value="cover">Cover</SelectItem>
+              <SelectItem value="stretch">Stretch</SelectItem>
+            </SelectContent>
+          </Select>
+        </PropertyRow>
+      </CollapsibleSection>
     </>
   );
 }

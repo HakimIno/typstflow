@@ -2,11 +2,12 @@ import { clsx } from 'clsx';
 import React from 'react';
 
 export interface DesignerInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'prefix'> {
   value: string | number;
   onChange: (value: string) => void;
   variant?: 'default' | 'mini' | 'ghost';
   mono?: boolean;
+  prefix?: React.ReactNode;
   suffix?: string;
 }
 
@@ -18,6 +19,7 @@ export const DesignerInput = React.forwardRef<HTMLInputElement, DesignerInputPro
       type = 'text',
       variant = 'default',
       mono = false,
+      prefix,
       suffix,
       className,
       ...props
@@ -48,6 +50,7 @@ export const DesignerInput = React.forwardRef<HTMLInputElement, DesignerInputPro
               variant === 'ghost',
           },
 
+          prefix && 'pl-5',
           suffix && 'pr-6',
           className
         )}
@@ -55,14 +58,21 @@ export const DesignerInput = React.forwardRef<HTMLInputElement, DesignerInputPro
       />
     );
 
-    if (!suffix) return input;
+    if (!prefix && !suffix) return input;
 
     return (
       <div className="relative w-full flex items-center">
+        {prefix && (
+          <span className="absolute left-1.5 text-[8px] font-black text-[var(--text-muted)] uppercase pointer-events-none select-none opacity-50">
+            {prefix}
+          </span>
+        )}
         {input}
-        <span className="absolute right-1.5 text-[8px] font-bold text-[var(--text-muted)] uppercase pointer-events-none select-none">
-          {suffix}
-        </span>
+        {suffix && (
+          <span className="absolute right-1.5 text-[8px] font-bold text-[var(--text-muted)] uppercase pointer-events-none select-none">
+            {suffix}
+          </span>
+        )}
       </div>
     );
   }

@@ -23,6 +23,8 @@ export type SelectionSlice = Pick<
   | 'selectComponentsInRange'
   | 'setSelectedCell'
   | 'setSelectedCells'
+  | 'tableSheetEditId'
+  | 'setTableSheetEditId'
   | 'selectGroup'
   | 'setDragState'
   | 'copySelected'
@@ -40,6 +42,7 @@ export const createSelectionSlice: StateCreator<DesignerState, [], [], Selection
   clipboard: null as DesignerState['clipboard'],
   selectedCell: null as DesignerState['selectedCell'],
   selectedCells: null as DesignerState['selectedCells'],
+  tableSheetEditId: null as string | null,
   dragState: {
     isDragging: false,
     draggedComponentId: null,
@@ -65,6 +68,7 @@ export const createSelectionSlice: StateCreator<DesignerState, [], [], Selection
           selectedCell: null,
           selectedCells: null,
           selectedZone: null,
+          tableSheetEditId: null,
         };
 
       const zoneInfo = findComponentZone(state.schema, id);
@@ -86,6 +90,7 @@ export const createSelectionSlice: StateCreator<DesignerState, [], [], Selection
         selectedCell: null,
         selectedCells: null,
         selectedZone: zoneKey,
+        tableSheetEditId: null,
       };
     }),
 
@@ -103,7 +108,10 @@ export const createSelectionSlice: StateCreator<DesignerState, [], [], Selection
       selectedCell: null,
       selectedCells: null,
       selectedZone: null,
+      tableSheetEditId: null,
     }),
+
+  setTableSheetEditId: (id) => set({ tableSheetEditId: id }),
 
   selectComponentsInRange: (rect, zoneKey, pageId) =>
     set((state) => {

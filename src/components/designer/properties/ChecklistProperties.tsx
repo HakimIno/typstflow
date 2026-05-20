@@ -11,7 +11,7 @@ import { GripVertical, Plus, Trash2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { ColorPicker } from '../../shared/ColorPicker';
 import { DesignerInput } from '../../shared/DesignerInput';
-import { SectionHeader } from './Shared';
+import { CollapsibleSection } from './Shared';
 
 interface Props {
   component: ChecklistComponent;
@@ -29,14 +29,11 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
   const suggestedKeys = Object.keys(sampleData).filter((key) => Array.isArray(sampleData[key]));
 
   // If a data source is selected, inspect the first item to find object fields
-  const activeArrayKey = (component.dataSource ?? '')
-    .replace(/\{\{|\}\}/g, '')
-    .trim();
+  const activeArrayKey = (component.dataSource ?? '').replace(/\{\{|\}\}/g, '').trim();
   const activeArray = sampleData[activeArrayKey];
   const firstItem = Array.isArray(activeArray) && activeArray.length > 0 ? activeArray[0] : null;
-  const objectFields = firstItem && typeof firstItem === 'object' && firstItem !== null
-    ? Object.keys(firstItem)
-    : [];
+  const objectFields =
+    firstItem && typeof firstItem === 'object' && firstItem !== null ? Object.keys(firstItem) : [];
 
   const updateItem = (idx: number, updates: Partial<ChecklistItem>) => {
     const next = [...items];
@@ -57,9 +54,8 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
   return (
     <>
       {/* List Style */}
-      <section>
-        <SectionHeader label="List Style" />
-        <div className="p-2 space-y-2">
+      <CollapsibleSection label="List Style">
+        <div className="space-y-2.5">
           <Select
             value={listStyle}
             onValueChange={(v) => onUpdate({ listStyle: v as ChecklistComponent['listStyle'] })}
@@ -80,10 +76,11 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
 
           {listStyle === 'custom' && (
             <div className="space-y-0.5">
-              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                 Marker
               </span>
               <DesignerInput
+                variant="mini"
                 value={component.marker ?? '→'}
                 onChange={(v) => onUpdate({ marker: v })}
                 placeholder="→"
@@ -93,7 +90,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
 
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-0.5">
-              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                 Spacing (pt)
               </span>
               <DesignerInput
@@ -105,7 +102,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
               />
             </div>
             <div className="space-y-0.5">
-              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                 Indent (mm)
               </span>
               <DesignerInput
@@ -118,16 +115,17 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
             </div>
           </div>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Checkbox Options — only visible when style = checkbox */}
       {isCheckbox && (
-        <section>
-          <SectionHeader label="Checkbox Style" />
-          <div className="p-2 space-y-2">
+        <CollapsibleSection label="Checkbox Style">
+          <div className="space-y-2.5">
             {/* Color */}
             <div className="space-y-0.5">
-              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">Color</span>
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
+                Color
+              </span>
               <ColorPicker
                 color={component.checkboxColor ?? '#616161'}
                 onChange={(v) => onUpdate({ checkboxColor: v })}
@@ -137,7 +135,9 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
 
             {/* Shape */}
             <div className="space-y-0.5">
-              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">Shape</span>
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
+                Shape
+              </span>
               <div className="flex gap-1">
                 {(
                   [
@@ -165,7 +165,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
 
             {/* Fill color (unchecked box background) */}
             <div className="space-y-0.5">
-              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                 Unchecked Fill
               </span>
               <ColorPicker
@@ -177,7 +177,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
 
             {/* Theme Style (Solid vs Outline) */}
             <div className="space-y-0.5">
-              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                 Theme Style
               </span>
               <div className="flex gap-1">
@@ -206,7 +206,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
             {/* Mark style + size */}
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-0.5">
-                <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+                <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                   Checked Mark
                 </span>
                 <Select
@@ -226,7 +226,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
                 </Select>
               </div>
               <div className="space-y-0.5">
-                <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+                <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                   Size (pt)
                 </span>
                 <DesignerInput
@@ -243,15 +243,14 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
               </div>
             </div>
           </div>
-        </section>
+        </CollapsibleSection>
       )}
 
       {/* Layout */}
-      <section>
-        <SectionHeader label="Layout" />
-        <div className="p-2 space-y-2">
+      <CollapsibleSection label="List Layout">
+        <div className="space-y-2.5">
           <div className="space-y-0.5">
-            <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+            <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
               Direction
             </span>
             <Select
@@ -271,7 +270,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
 
           {direction === 'grid' && (
             <div className="space-y-0.5">
-              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                 Columns
               </span>
               <DesignerInput
@@ -287,7 +286,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
           )}
 
           <div className="space-y-0.5">
-            <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+            <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
               Vertical Alignment
             </span>
             <Select
@@ -304,51 +303,48 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
             </Select>
           </div>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Completed Item Effects */}
-      <section>
-        <SectionHeader label="Completed Item Effects" />
-        <div className="p-2 space-y-2">
-          <div className="flex gap-2">
-            <button
-              key="strikethrough"
-              type="button"
-              onClick={() => onUpdate({ checkedStrikethrough: !component.checkedStrikethrough })}
-              className={`flex-1 flex items-center justify-center gap-1 py-1 px-1.5 h-7 rounded text-[9px] font-bold uppercase tracking-wider border transition-all ${
-                component.checkedStrikethrough
-                  ? 'bg-[var(--accent)] border-[var(--accent)] text-white font-black'
-                  : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-accent)]'
-              }`}
-            >
-              <s>Strikethrough</s>
-            </button>
+      <CollapsibleSection label="Completed Item Effects" defaultOpen={false}>
+        <div className="flex gap-2.5">
+          <button
+            key="strikethrough"
+            type="button"
+            onClick={() => onUpdate({ checkedStrikethrough: !component.checkedStrikethrough })}
+            className={`flex-1 flex items-center justify-center gap-1 py-1 px-1.5 h-6 rounded text-[9px] font-bold uppercase tracking-wider border transition-all ${
+              component.checkedStrikethrough
+                ? 'bg-[var(--accent)] border-[var(--accent)] text-white font-black'
+                : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-accent)]'
+            }`}
+          >
+            <s>Strikethrough</s>
+          </button>
 
-            <button
-              key="mute"
-              type="button"
-              onClick={() => onUpdate({ checkedMuted: !component.checkedMuted })}
-              className={`flex-1 flex items-center justify-center gap-1 py-1 px-1.5 h-7 rounded text-[9px] font-bold uppercase tracking-wider border transition-all ${
-                component.checkedMuted
-                  ? 'bg-[var(--accent)] border-[var(--accent)] text-white font-black'
-                  : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-accent)]'
-              }`}
-            >
-              <span className="opacity-70">Dim / Mute</span>
-            </button>
-          </div>
+          <button
+            key="mute"
+            type="button"
+            onClick={() => onUpdate({ checkedMuted: !component.checkedMuted })}
+            className={`flex-1 flex items-center justify-center gap-1 py-1 px-1.5 h-6 rounded text-[9px] font-bold uppercase tracking-wider border transition-all ${
+              component.checkedMuted
+                ? 'bg-[var(--accent)] border-[var(--accent)] text-white font-black'
+                : 'bg-[var(--bg-surface)] border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-accent)]'
+            }`}
+          >
+            <span className="opacity-70">Dim / Mute</span>
+          </button>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Data Source (optional) */}
-      <section>
-        <SectionHeader label="Data Binding (optional)" />
-        <div className="p-2 space-y-2">
+      <CollapsibleSection label="Data Binding (optional)" defaultOpen={false}>
+        <div className="space-y-2.5">
           <div className="space-y-0.5">
-            <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+            <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
               Data Source
             </span>
             <DesignerInput
+              variant="mini"
               value={component.dataSource ?? ''}
               onChange={(v) => onUpdate({ dataSource: v.trim() || undefined })}
               placeholder="{{tasks}}"
@@ -357,7 +353,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
             {/* Array key suggestions */}
             {suggestedKeys.length > 0 && (
               <div className="space-y-1 mt-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1.5 animate-in fade-in duration-200">
-                <span className="text-[7.5px] font-bold text-[var(--text-muted)] uppercase block">
+                <span className="text-[7.5px] font-black text-[var(--text-muted)] uppercase block">
                   Quick Bind Data Source:
                 </span>
                 <div className="flex flex-wrap gap-1">
@@ -386,10 +382,11 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
           {component.dataSource && (
             <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-1 duration-200">
               <div className="space-y-0.5">
-                <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+                <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                   Label Field
                 </span>
                 <DesignerInput
+                  variant="mini"
                   value={component.labelField ?? ''}
                   onChange={(v) => onUpdate({ labelField: v.trim() || undefined })}
                   placeholder="label"
@@ -398,7 +395,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
                 {/* Field suggestions */}
                 {objectFields.length > 0 && (
                   <div className="space-y-1 mt-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1 animate-in fade-in duration-200">
-                    <span className="text-[7.5px] font-bold text-[var(--text-muted)] uppercase block">
+                    <span className="text-[7.5px] font-black text-[var(--text-muted)] uppercase block">
                       Suggestions:
                     </span>
                     <div className="flex flex-wrap gap-0.5">
@@ -422,10 +419,11 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
               </div>
               {isCheckbox && (
                 <div className="space-y-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+                  <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                     Checked Field
                   </span>
                   <DesignerInput
+                    variant="mini"
                     value={component.checkedField ?? ''}
                     onChange={(v) => onUpdate({ checkedField: v.trim() || undefined })}
                     placeholder="checked"
@@ -434,7 +432,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
                   {/* Field suggestions */}
                   {objectFields.length > 0 && (
                     <div className="space-y-1 mt-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded p-1 animate-in fade-in duration-200">
-                      <span className="text-[7.5px] font-bold text-[var(--text-muted)] uppercase block">
+                      <span className="text-[7.5px] font-black text-[var(--text-muted)] uppercase block">
                         Suggestions:
                       </span>
                       <div className="flex flex-wrap gap-0.5">
@@ -460,13 +458,12 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
             </div>
           )}
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Static Items */}
       {!component.dataSource && (
-        <section>
-          <SectionHeader label="Items" />
-          <div className="p-2 space-y-1.5">
+        <CollapsibleSection label="Items">
+          <div className="space-y-1.5">
             {items.map((item, idx) => (
               <div
                 key={item.id}
@@ -486,6 +483,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
                 )}
 
                 <DesignerInput
+                  variant="mini"
                   className="flex-1 min-w-0"
                   value={item.label}
                   onChange={(v) => updateItem(idx, { label: v })}
@@ -510,7 +508,7 @@ export function ChecklistProperties({ component, onUpdate }: Props) {
               <Plus className="w-3 h-3" /> Add Item
             </button>
           </div>
-        </section>
+        </CollapsibleSection>
       )}
     </>
   );

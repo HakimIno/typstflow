@@ -3,7 +3,7 @@ import { clsx } from 'clsx';
 import { ArrowDownAZ, ArrowUpAZ, Filter } from 'lucide-react';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { VariablePicker } from '../VariablePicker';
-import { PropertyRow, SectionHeader } from './Shared';
+import { CollapsibleSection, PropertyRow } from './Shared';
 
 export function GroupProperties({ groupId }: { groupId: string }) {
   const group = useDesignerStore((state) => state.schema.groups.find((g) => g.id === groupId));
@@ -14,17 +14,17 @@ export function GroupProperties({ groupId }: { groupId: string }) {
 
   return (
     <div className="flex flex-col gap-0">
-      <section>
-        <SectionHeader label="Group Information" />
+      <CollapsibleSection label="Group Information">
         <PropertyRow label="Group Name">
           <DesignerInput
+            variant="mini"
             value={group.name}
             onChange={(v) => updateGroup(groupId, { name: v })}
             placeholder="e.g. Customer Group"
           />
         </PropertyRow>
-        <div className="flex flex-col border-b border-[var(--border-default)]">
-          <div className="px-3 py-1 flex items-center justify-between text-[10px] bg-white/[0.01]">
+        <div className="flex flex-col pb-2">
+          <div className="py-1 flex items-center justify-between text-[10px]">
             <span className="font-bold text-[var(--text-secondary)] uppercase tracking-tighter">
               Group Expression
             </span>
@@ -38,55 +38,53 @@ export function GroupProperties({ groupId }: { groupId: string }) {
               showAggregates={false}
             />
           </div>
-          <div className="px-3 pb-2">
-            <DesignerInput
-              value={group.field}
-              onChange={(v) => updateGroup(groupId, { field: v })}
-              mono
-              placeholder="item.category"
-              className="w-full"
-            />
-          </div>
+          <DesignerInput
+            variant="mini"
+            value={group.field}
+            onChange={(v) => updateGroup(groupId, { field: v })}
+            mono
+            placeholder="item.category"
+            className="w-full"
+          />
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section>
-        <SectionHeader label="Sorting & Logic" />
+      <CollapsibleSection label="Sorting & Logic">
         <PropertyRow label="Sort Order">
-          <div className="flex items-center gap-1 bg-[var(--bg-widget)] p-0.5 rounded border border-[var(--border-default)]">
+          <div className="flex items-center gap-1 bg-[var(--bg-widget)] p-0.5 rounded border border-[var(--border-default)] w-full">
             <button
               type="button"
               onClick={() => updateGroup(groupId, { sortBy: 'asc' })}
               className={clsx(
-                'flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-[10px] font-bold transition-all',
+                'flex-1 flex items-center justify-center gap-1 py-1 rounded text-[9px] font-bold transition-all h-6',
                 group.sortBy === 'asc'
                   ? 'bg-[var(--accent)] text-white shadow-sm'
                   : 'hover:bg-white/5 text-[var(--text-muted)]'
               )}
             >
-              <ArrowDownAZ className="w-3 h-3" />
+              <ArrowDownAZ className="w-3.5 h-3.5" />
               ASC
             </button>
             <button
               type="button"
               onClick={() => updateGroup(groupId, { sortBy: 'desc' })}
               className={clsx(
-                'flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-[10px] font-bold transition-all',
+                'flex-1 flex items-center justify-center gap-1 py-1 rounded text-[9px] font-bold transition-all h-6',
                 group.sortBy === 'desc'
                   ? 'bg-[var(--accent)] text-white shadow-sm'
                   : 'hover:bg-white/5 text-[var(--text-muted)]'
               )}
             >
-              <ArrowUpAZ className="w-3 h-3" />
+              <ArrowUpAZ className="w-3.5 h-3.5" />
               DESC
             </button>
             <button
               type="button"
               onClick={() => updateGroup(groupId, { sortBy: undefined })}
               className={clsx(
-                'flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-[10px] font-bold transition-all',
+                'flex-1 flex items-center justify-center gap-1 py-1 rounded text-[9px] font-bold transition-all h-6',
                 !group.sortBy
-                  ? 'bg-[var(--bg-surface-solid)] text-white border border-[var(--border-default)]'
+                  ? 'bg-white/[0.08] text-white border border-[var(--border-default)]'
                   : 'hover:bg-white/5 text-[var(--text-muted)]'
               )}
             >
@@ -94,38 +92,36 @@ export function GroupProperties({ groupId }: { groupId: string }) {
             </button>
           </div>
         </PropertyRow>
-        <div className="flex flex-col border-b border-[var(--border-default)]">
-          <div className="px-3 py-1 flex items-center justify-between text-[10px] bg-white/[0.01]">
+        <div className="flex flex-col pb-2">
+          <div className="py-1 flex items-center justify-between text-[10px]">
             <div className="flex items-center gap-1.5">
-              <Filter className="w-3 h-3 text-[var(--accent)]" />
+              <Filter className="w-3.5 h-3.5 text-[var(--accent)]" />
               <span className="font-bold text-[var(--text-secondary)] uppercase tracking-tighter">
                 Filter Expression
               </span>
             </div>
           </div>
-          <div className="px-3 pb-2">
-            <DesignerInput
-              value={group.filterBy || ''}
-              onChange={(v) => updateGroup(groupId, { filterBy: v })}
-              mono
-              placeholder="e.g. item.price > 100"
-              className="w-full"
-            />
-            <p className="mt-1 text-[8px] text-[var(--text-muted)] leading-tight italic">
-              Optional: Only items matching this criteria will be included in the group.
-            </p>
-          </div>
+          <DesignerInput
+            variant="mini"
+            value={group.filterBy || ''}
+            onChange={(v) => updateGroup(groupId, { filterBy: v })}
+            mono
+            placeholder="e.g. item.price > 100"
+            className="w-full"
+          />
+          <p className="mt-1 text-[8px] text-[var(--text-muted)] leading-tight italic">
+            Optional: Only items matching this criteria will be included in the group.
+          </p>
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section>
-        <SectionHeader label="Behavior" />
-        <PropertyRow label="Repeat on Page">
+      <CollapsibleSection label="Behavior">
+        <PropertyRow label="Repeat Header">
           <button
             type="button"
             onClick={() => updateGroup(groupId, { repeatHeaderOnPage: !group.repeatHeaderOnPage })}
             className={clsx(
-              'px-3 py-1 rounded text-[10px] font-bold transition-all border',
+              'px-3 py-1 rounded text-[9px] font-bold transition-all border h-6',
               group.repeatHeaderOnPage
                 ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
                 : 'bg-white/5 text-[var(--text-muted)] border-[var(--border-default)] hover:border-[var(--text-muted)]'
@@ -134,7 +130,7 @@ export function GroupProperties({ groupId }: { groupId: string }) {
             {group.repeatHeaderOnPage ? 'ENABLED' : 'DISABLED'}
           </button>
         </PropertyRow>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

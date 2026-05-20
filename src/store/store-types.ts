@@ -61,6 +61,8 @@ export interface DesignerState extends FontSlice {
     rowIds: string[];
     cellIndices: number[];
   } | null;
+  /** Table in inline sheet edit mode — hides outer component resize handles */
+  tableSheetEditId: string | null;
 
   // Layers
   hiddenComponentIds: string[];
@@ -178,6 +180,7 @@ export interface DesignerState extends FontSlice {
   ) => void;
   setSelectedCell: (cell: DesignerState['selectedCell']) => void;
   setSelectedCells: (cells: DesignerState['selectedCells']) => void;
+  setTableSheetEditId: (id: string | null) => void;
   updateZone: (
     zoneKey: ZoneKey,
     updates: Partial<Zone>,

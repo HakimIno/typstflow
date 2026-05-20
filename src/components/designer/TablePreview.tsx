@@ -7,8 +7,10 @@ import { useDesignerStore } from '@/store/designer-store';
 import type { TableCell as TCell, TableComponent, TableRow } from '@/types/schema';
 import { clsx } from 'clsx';
 import type React from 'react';
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CellEditor } from './table/CellEditor';
+import { ColumnResizeHandle, RowResizeHandle } from './table/SheetResizeChrome';
+import type { HandleSegment } from './table/SheetResizeChrome';
 import type { SectionType } from './table/useCellSelection';
 import { useCellSelection } from './table/useCellSelection';
 import { useTableActions } from './table/useTableActions';
@@ -21,8 +23,50 @@ export function TablePreview({ component }: { component: TableComponent }) {
   const selectedCells = useDesignerStore((s) => s.selectedCells);
   const setSelectedCell = useDesignerStore((s) => s.setSelectedCell);
   const setSelectedCells = useDesignerStore((s) => s.setSelectedCells);
+  const setTableSheetEditId = useDesignerStore((s) => s.setTableSheetEditId);
   const isTableSelected = useDesignerStore((s) => s.selectedComponentIds.includes(component.id));
   const zoom = useDesignerStore((s) => s.zoom);
+
+  const [isTableEditing, setIsTableEditing] = useState(false);
+
+  // Merge-aware overlay segments — recomputed after each layout pass
+  const [colSegments, setColSegments] = useState<HandleSegment[][]>([]);
+  const [rowSegments, setRowSegments] = useState<Map<string, HandleSegment[]>>(new Map());
+  const segKeyRef = useRef<string>('');
+
+  // DOM-measured column handle positions (zoom-independent %, pixel-accurate)
+  const [domColPercents, setDomColPercents] = useState<number[]>([]);
+  const domColKeyRef = useRef<string>('');
+
+  useEffect(() => {
+    if (!isTableSelected) setIsTableEditing(false);
+  }, [isTableSelected]);
+
+  useEffect(() => {
+    if (isTableEditing) {
+      setTableSheetEditId(component.id);
+      return () => setTableSheetEditId(null);
+    }
+    if (useDesignerStore.getState().tableSheetEditId === component.id) {
+      setTableSheetEditId(null);
+    }
+  }, [isTableEditing, component.id, setTableSheetEditId]);
+
+  const [headerMidPx, setHeaderMidPx] = useState(20);
+
+  const handleTableDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsTableEditing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isTableEditing) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsTableEditing(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTableEditing]);
 
   const tableRef = useRef<HTMLTableElement>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -48,19 +92,167 @@ export function TablePreview({ component }: { component: TableComponent }) {
     return () => observer.disconnect();
   }, [component.id, component.height, updateComponent]);
 
-  // Sync row-divider tops to actual <tr> bottom positions after every commit
+  // Sync row-divider tops + header pill position to actual DOM layout, and compute
+  // merge-aware overlay segments for column/row handles.
   useLayoutEffect(() => {
     const overlay = resizeOverlayRef.current;
     const table = tableRef.current;
-    if (!overlay || !table) return;
+    const container = tableContainerRef.current;
+    if (!table || !container) return;
+
     const tableRect = table.getBoundingClientRect();
-    for (const tr of Array.from(table.querySelectorAll<HTMLElement>('tr[data-row-id]'))) {
+    const containerRect = container.getBoundingClientRect();
+    const containerW = containerRect.width;
+
+    // All BoundingClientRect values are in screen pixels.
+    // The overlay uses logical CSS pixels, so we divide by zoom throughout.
+    const headerRow = table.querySelector<HTMLElement>('thead tr[data-row-id]');
+    if (headerRow) {
+      const hRect = headerRow.getBoundingClientRect();
+      const topLogical = (hRect.top - containerRect.top) / zoom;
+      const heightLogical = hRect.height / zoom;
+      setHeaderMidPx(topLogical + heightLogical / 2);
+    } else {
+      setHeaderMidPx(12);
+    }
+
+    // Row logical positions (screen px ÷ zoom = logical CSS px)
+    const rowTopPx = new Map<string, number>();
+    const rowBottomPx = new Map<string, number>();
+    const allTrs = Array.from(table.querySelectorAll<HTMLElement>('tr[data-row-id]'));
+    for (const tr of allTrs) {
       const rowId = tr.getAttribute('data-row-id');
-      const divider = rowId
-        ? overlay.querySelector<HTMLElement>(`[data-row-divider="${rowId}"]`)
-        : null;
-      if (!divider) continue;
-      divider.style.top = `${tr.getBoundingClientRect().bottom - tableRect.top - 3}px`;
+      if (!rowId) continue;
+      const r = tr.getBoundingClientRect();
+      rowTopPx.set(rowId, (r.top - tableRect.top) / zoom);
+      rowBottomPx.set(rowId, (r.bottom - tableRect.top) / zoom);
+    }
+
+    // Update row-divider DOM positions (already in logical px)
+    if (overlay) {
+      for (const tr of allTrs) {
+        const rowId = tr.getAttribute('data-row-id');
+        const divider = rowId
+          ? overlay.querySelector<HTMLElement>(`[data-row-divider="${rowId}"]`)
+          : null;
+        if (!divider) continue;
+        divider.style.top = `${rowBottomPx.get(rowId!) ?? 0}px`;
+      }
+    }
+
+    // ── Column boundary positions from DOM (pixel-accurate, zoom-independent %) ──
+    // Using (screen_right - container_screen_left) / container_screen_width gives
+    // the same % in both screen and logical space, so no zoom division needed.
+    const totalCols = component.columns.length;
+    const newDomColPercents: number[] = [];
+    for (const tr of allTrs) {
+      const cells = Array.from(tr.querySelectorAll<HTMLElement>('th, td'));
+      const totalSpan = cells.reduce(
+        (s, c) => s + parseInt(c.getAttribute('colspan') || '1'),
+        0
+      );
+      if (totalSpan !== totalCols) continue;
+      // Reset before measuring this row (each eligible row re-measures from scratch)
+      newDomColPercents.length = 0;
+      for (let i = 0; i < cells.length - 1; i++) {
+        const right = cells[i].getBoundingClientRect().right;
+        newDomColPercents.push(((right - containerRect.left) / containerW) * 100);
+      }
+      // Only break when we have a full set of measurements
+      if (newDomColPercents.length === totalCols - 1) break;
+    }
+    const domColKey = newDomColPercents.map((p) => p.toFixed(3)).join(',');
+    if (domColKey !== domColKeyRef.current) {
+      domColKeyRef.current = domColKey;
+      setDomColPercents(
+        newDomColPercents.length === totalCols - 1 ? newDomColPercents : []
+      );
+    }
+
+    // Compute segments only when the sheet-edit overlay is active
+    if (!isTableSelected || !isTableEditing) return;
+
+    const allFlatRows: TableRow[] = [
+      ...headerRows,
+      ...previewSections.flatMap((sec) => sec.rows),
+    ];
+    if (totalCols < 2 || allFlatRows.length === 0) return;
+
+    // Use freshly measured col percents for segment edges (falls back to cumColWidths).
+    // When falling back, normalize to [0,100] range — cumColWidths can exceed 100% if
+    // component.width drifted from the sum of column mm widths after a resize.
+    const effectiveColPercents = (() => {
+      if (newDomColPercents.length === totalCols - 1) return [...newDomColPercents, 100];
+      const maxVal = cumColWidths[cumColWidths.length - 1] || 100;
+      return cumColWidths.map((p) => (p / maxVal) * 100);
+    })();
+
+    const grid = buildLogicalGrid(allFlatRows, totalCols);
+
+    // ── Column boundary segments (logical px top/bottom) ──────────────────────
+    const newColSegs: HandleSegment[][] = [];
+    for (let b = 0; b < totalCols - 1; b++) {
+      const raw: HandleSegment[] = [];
+      for (let ri = 0; ri < allFlatRows.length; ri++) {
+        const slotL = grid[ri]?.[b];
+        const slotR = grid[ri]?.[b + 1];
+        const merged =
+          slotL != null &&
+          slotR != null &&
+          slotL.ownerRowIdx === slotR.ownerRowIdx &&
+          slotL.ownerPhysIdx === slotR.ownerPhysIdx;
+        if (!merged) {
+          const top = Math.round(rowTopPx.get(allFlatRows[ri].id) ?? 0);
+          const bottom = Math.round(rowBottomPx.get(allFlatRows[ri].id) ?? 0);
+          raw.push({ start: top, end: bottom });
+        }
+      }
+      const segs: HandleSegment[] = [];
+      for (const s of raw) {
+        if (segs.length > 0 && s.start <= segs[segs.length - 1].end + 1) {
+          segs[segs.length - 1].end = Math.max(segs[segs.length - 1].end, s.end);
+        } else {
+          segs.push({ ...s });
+        }
+      }
+      newColSegs.push(segs);
+    }
+
+    // ── Row boundary segments (% left/right from DOM-measured col positions) ──
+    const newRowSegs = new Map<string, HandleSegment[]>();
+    for (let ri = 0; ri < allFlatRows.length - 1; ri++) {
+      const row = allFlatRows[ri];
+      const raw: HandleSegment[] = [];
+      for (let c = 0; c < totalCols; c++) {
+        const slotT = grid[ri]?.[c];
+        const slotB = grid[ri + 1]?.[c];
+        const merged =
+          slotT != null &&
+          slotB != null &&
+          slotT.ownerRowIdx === slotB.ownerRowIdx &&
+          slotT.ownerPhysIdx === slotB.ownerPhysIdx;
+        if (!merged) {
+          const left = Math.max(0, c === 0 ? 0 : (effectiveColPercents[c - 1] ?? 0));
+          const right = Math.min(100, effectiveColPercents[c] ?? 100);
+          raw.push({ start: left, end: right });
+        }
+      }
+      const segs: HandleSegment[] = [];
+      for (const s of raw) {
+        if (segs.length > 0 && s.start <= segs[segs.length - 1].end + 0.1) {
+          segs[segs.length - 1].end = Math.max(segs[segs.length - 1].end, s.end);
+        } else {
+          segs.push({ ...s });
+        }
+      }
+      newRowSegs.set(row.id, segs);
+    }
+
+    const newKey = JSON.stringify([newColSegs, [...newRowSegs.entries()]]);
+    if (newKey !== segKeyRef.current) {
+      segKeyRef.current = newKey;
+      setColSegments(newColSegs);
+      setRowSegments(newRowSegs);
     }
   });
 
@@ -273,6 +465,11 @@ export function TablePreview({ component }: { component: TableComponent }) {
     const isGroupHeader = row.type === 'group-header';
     const isGroupFooter = row.type === 'group-footer' || (row.type === 'footer' && !isHeader);
     const isSelected = isCellSelected(section, row.id, logicalCol);
+    const isActiveCell =
+      selectedCell?.tableId === component.id &&
+      selectedCell.section === section &&
+      selectedCell.rowId === row.id &&
+      selectedCell.cellIdx === logicalCol;
     const cellStyle = cell.style;
 
     // Background
@@ -395,7 +592,16 @@ export function TablePreview({ component }: { component: TableComponent }) {
         onMouseDown={(e) => handleCellMouseDown(section, row.id, logicalCol, e)}
         onMouseEnter={() => handleCellMouseEnter(section, row.id, logicalCol)}
         onClick={(e) => e.stopPropagation()}
-        className={clsx('relative group/cell cursor-cell', isSelected && 'z-10')}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          setIsTableEditing(true);
+        }}
+        className={clsx(
+          'relative group/cell',
+          isTableEditing ? 'cursor-text' : 'cursor-default',
+          isSelected && 'z-10',
+          isActiveCell && isTableEditing && 'z-20'
+        )}
         style={{
           ...borderStyle,
           backgroundColor: cellFill,
@@ -407,15 +613,26 @@ export function TablePreview({ component }: { component: TableComponent }) {
             : {}),
         }}
       >
-        {/* Selection overlay — keeps original background, adds accent ring on top */}
-        {isSelected && (
+        {/* Figma-style cell selection — thin outline on active cell only */}
+        {isSelected && isTableEditing && (
           <div
             aria-hidden
-            className="absolute inset-0 pointer-events-none z-[5] bg-[var(--accent)]/[0.10]"
-            style={{ boxShadow: 'inset 0 0 0 2px var(--accent)' }}
+            className={clsx(
+              'absolute inset-0 pointer-events-none z-[5]',
+              isActiveCell
+                ? 'outline outline-1 outline-[var(--accent)] -outline-offset-1 bg-[var(--accent)]/[0.04]'
+                : 'bg-[var(--accent)]/[0.03]'
+            )}
+          />
+        )}
+        {isSelected && !isTableEditing && (
+          <div
+            aria-hidden
+            className="absolute inset-0 pointer-events-none z-[5] bg-[var(--accent)]/[0.04]"
           />
         )}
         <CellEditor
+          readOnly={!isTableEditing}
           className="w-full bg-transparent border-none focus:ring-0 outline-none placeholder:text-slate-300/60"
           style={{
             textAlign: resolvedAlign as any,
@@ -524,7 +741,25 @@ export function TablePreview({ component }: { component: TableComponent }) {
   })();
 
   return (
-    <div ref={tableContainerRef} className="w-full h-full relative">
+    <div
+      ref={tableContainerRef}
+      className="w-full h-full relative"
+      data-table-editing={isTableEditing || undefined}
+      onDoubleClick={handleTableDoubleClick}
+    >
+      {isTableEditing && (
+        <span className="absolute -top-5 right-0 z-30 text-[10px] font-medium text-[var(--accent)] pointer-events-none select-none">
+          Sheet
+        </span>
+      )}
+
+      {isTableEditing && (
+        <div
+          aria-hidden
+          className="absolute inset-0 z-[12] pointer-events-none outline outline-1 outline-[var(--accent)]"
+        />
+      )}
+
       <table
         ref={tableRef}
         className="w-full"
@@ -551,36 +786,33 @@ export function TablePreview({ component }: { component: TableComponent }) {
         </tbody>
       </table>
 
-      {/* Resize handle overlay — one handle spanning the full table per column/row boundary */}
-      <div ref={resizeOverlayRef} className="absolute inset-0 pointer-events-none z-[20]">
+      <div ref={resizeOverlayRef} className="absolute inset-0 pointer-events-none z-[20] overflow-hidden">
         {isTableSelected &&
-          cumColWidths.slice(0, -1).map((cum, i) => (
-            <div
-              key={`col-divider-${i}`}
-              className="absolute top-0 bottom-0 pointer-events-auto cursor-col-resize group/colresizer"
-              style={{ left: `calc(${cum}% - 3px)`, width: '6px' }}
-              onMouseDown={(e) => handleColResizeStart(e, i)}
-            >
-              <div
-                data-col-divider={i}
-                className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[1.5px] bg-transparent group-hover/colresizer:bg-[var(--accent)] transition-colors"
+          isTableEditing &&
+          // Use DOM-measured positions when available (pixel-accurate after resize)
+          // Fall back to cumColWidths for the initial render before DOM is measured.
+          (domColPercents.length > 0 ? domColPercents : cumColWidths.slice(0, -1)).map(
+            (cum, i) => (
+              <ColumnResizeHandle
+                key={`col-divider-${i}`}
+                index={i}
+                cumPercent={cum}
+                headerMidPx={headerMidPx}
+                onMouseDown={(e) => handleColResizeStart(e, i)}
+                segments={colSegments[i]}
               />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-[1.5px] border-[var(--accent)] bg-white shadow-sm opacity-0 group-hover/colresizer:opacity-100 transition-opacity pointer-events-none z-30" />
-            </div>
-          ))}
+            )
+          )}
         {isTableSelected &&
+          isTableEditing &&
           allRenderedRows.map((row) =>
             row.isGroupRow ? null : (
-              <div
+              <RowResizeHandle
                 key={`row-divider-${row.rowId}`}
-                data-row-divider={row.rowId}
-                className="absolute left-0 right-0 pointer-events-auto cursor-row-resize group/rowresizer"
-                style={{ top: '0px', height: '6px' }}
+                rowId={row.rowId}
                 onMouseDown={(e) => handleRowResizeStart(e, row.sectionKey, row.rowIdx)}
-              >
-                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1.5px] bg-transparent group-hover/rowresizer:bg-[var(--accent)] transition-colors" />
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white border-[1.5px] border-[var(--accent)] w-5 h-1.5 rounded-full shadow-sm opacity-0 group-hover/rowresizer:opacity-100 transition-opacity pointer-events-none z-30" />
-              </div>
+                segments={rowSegments.get(row.rowId)}
+              />
             )
           )}
       </div>
@@ -596,7 +828,7 @@ export function TablePreview({ component }: { component: TableComponent }) {
       />
       <div
         ref={tooltipRef}
-        className="hidden absolute z-[70] bg-[var(--accent)] text-white text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded shadow-lg pointer-events-none whitespace-nowrap -translate-x-1/2 border border-white/20"
+        className="hidden absolute z-[70] px-1.5 py-0.5 rounded text-[10px] font-medium tabular-nums text-[var(--text-primary)] bg-[var(--bg-widget)] border border-[var(--border-default)] shadow-sm pointer-events-none whitespace-nowrap -translate-x-1/2"
       />
     </div>
   );

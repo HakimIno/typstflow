@@ -20,7 +20,7 @@ import { memo, useMemo } from 'react';
 import { ColorPicker } from '../../shared/ColorPicker';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { FontFamilyPicker } from './FontFamilyPicker';
-import { PropertyRow, SectionHeader } from './Shared';
+import { CollapsibleSection, PropertyRow } from './Shared';
 
 // ── Constants ────────────────────────────────────────────────────────────
 
@@ -196,36 +196,42 @@ export const BulkEditPanel = memo(function BulkEditPanel({
         </section>
 
         {/* ── Geometry ─────────────────────────────────────────────── */}
-        <section className="border-b border-[var(--border-default)] animate-in fade-in duration-200">
-          <SectionHeader label="Dimensions (mm)" />
-          <div className="grid grid-cols-2">
-            <PropertyRow label="Width">
+        <CollapsibleSection label="Dimensions">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-0.5">
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
+                Width (mm)
+              </span>
               <DesignerInput
                 type="number"
+                variant="mini"
                 step="1"
                 min={1}
                 value={isMixed(widthValue) ? '' : (widthValue ?? 0)}
                 onChange={handleWidthChange}
                 placeholder={isMixed(widthValue) ? '—' : undefined}
               />
-            </PropertyRow>
-            <PropertyRow label="Height">
+            </div>
+            <div className="space-y-0.5">
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
+                Height (mm)
+              </span>
               <DesignerInput
                 type="number"
+                variant="mini"
                 step="1"
                 min={1}
                 value={isMixed(heightValue) ? '' : (heightValue ?? 0)}
                 onChange={handleHeightChange}
                 placeholder={isMixed(heightValue) ? '—' : undefined}
               />
-            </PropertyRow>
+            </div>
           </div>
-        </section>
+        </CollapsibleSection>
 
         {/* ── Alignment ────────────────────────────────────────────── */}
-        <section className="border-b border-[var(--border-default)] animate-in fade-in duration-200">
-          <SectionHeader label="Alignment" />
-          <div className="p-1.5">
+        <CollapsibleSection label="Alignment">
+          <div className="space-y-1.5">
             <div className="flex border border-[var(--border-default)] rounded-[4px] overflow-hidden w-full bg-white/[0.02]">
               {(
                 [
@@ -256,170 +262,181 @@ export const BulkEditPanel = memo(function BulkEditPanel({
               </p>
             )}
           </div>
-        </section>
+        </CollapsibleSection>
 
         {/* ── Typography (conditional: all text/table) ─────────────── */}
         {allText && (
-          <section className="border-b border-[var(--border-default)] animate-in fade-in slide-in-from-top-1 duration-300">
-            <SectionHeader label="Typography" />
+          <CollapsibleSection label="Typography">
+            <div className="space-y-2.5">
+              <PropertyRow label="Font">
+                <FontFamilyPicker
+                  value={isMixed(fontFamily) ? '' : (fontFamily as string) || 'Sarabun'}
+                  onChange={(family) => onBulkStyleUpdate({ fontFamily: family })}
+                  mixed={isMixed(fontFamily)}
+                />
+              </PropertyRow>
 
-            <PropertyRow label="Font">
-              <FontFamilyPicker
-                value={isMixed(fontFamily) ? '' : (fontFamily as string) || 'Sarabun'}
-                onChange={(family) => onBulkStyleUpdate({ fontFamily: family })}
-                mixed={isMixed(fontFamily)}
-              />
-            </PropertyRow>
+              <PropertyRow label="Size (pt)">
+                <DesignerInput
+                  type="number"
+                  variant="mini"
+                  min={1}
+                  max={200}
+                  value={isMixed(fontSize) ? '' : (fontSize as number) || 10}
+                  onChange={(v) => onBulkStyleUpdate({ fontSize: Number.parseInt(v) || 10 })}
+                  placeholder={isMixed(fontSize) ? '—' : undefined}
+                />
+              </PropertyRow>
 
-            <PropertyRow label="Size (pt)">
-              <DesignerInput
-                type="number"
-                min={1}
-                max={200}
-                value={isMixed(fontSize) ? '' : (fontSize as number) || 10}
-                onChange={(v) => onBulkStyleUpdate({ fontSize: Number.parseInt(v) || 10 })}
-                placeholder={isMixed(fontSize) ? '—' : undefined}
-              />
-            </PropertyRow>
-
-            <PropertyRow label="Style">
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  title="Bold"
-                  onClick={() =>
-                    onBulkStyleUpdate({
-                      fontWeight:
-                        !isMixed(fontWeight) && fontWeight === 'bold' ? 'regular' : 'bold',
-                    })
-                  }
-                  className={clsx(
-                    'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
-                    !isMixed(fontWeight) && fontWeight === 'bold'
-                      ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-                      : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+              <PropertyRow label="Style">
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    title="Bold"
+                    onClick={() =>
+                      onBulkStyleUpdate({
+                        fontWeight:
+                          !isMixed(fontWeight) && fontWeight === 'bold' ? 'regular' : 'bold',
+                      })
+                    }
+                    className={clsx(
+                      'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
+                      !isMixed(fontWeight) && fontWeight === 'bold'
+                        ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                        : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+                    )}
+                  >
+                    <Bold className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Italic"
+                    onClick={() =>
+                      onBulkStyleUpdate({ italic: isMixed(isItalic) ? true : !isItalic })
+                    }
+                    className={clsx(
+                      'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
+                      !isMixed(isItalic) && isItalic
+                        ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                        : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+                    )}
+                  >
+                    <Italic className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Underline"
+                    onClick={() =>
+                      onBulkStyleUpdate({ underline: isMixed(isUnderline) ? true : !isUnderline })
+                    }
+                    className={clsx(
+                      'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
+                      !isMixed(isUnderline) && isUnderline
+                        ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                        : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
+                    )}
+                  >
+                    <Underline className="w-3 h-3" />
+                  </button>
+                  {(isMixed(fontWeight) || isMixed(isItalic) || isMixed(isUnderline)) && (
+                    <span className="text-[8px] text-[var(--text-muted)] flex items-center ml-1 italic opacity-50">
+                      mixed
+                    </span>
                   )}
-                >
-                  <Bold className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  title="Italic"
-                  onClick={() =>
-                    onBulkStyleUpdate({ italic: isMixed(isItalic) ? true : !isItalic })
-                  }
-                  className={clsx(
-                    'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
-                    !isMixed(isItalic) && isItalic
-                      ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-                      : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                  )}
-                >
-                  <Italic className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  title="Underline"
-                  onClick={() =>
-                    onBulkStyleUpdate({ underline: isMixed(isUnderline) ? true : !isUnderline })
-                  }
-                  className={clsx(
-                    'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
-                    !isMixed(isUnderline) && isUnderline
-                      ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-                      : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                  )}
-                >
-                  <Underline className="w-3 h-3" />
-                </button>
-                {(isMixed(fontWeight) || isMixed(isItalic) || isMixed(isUnderline)) && (
-                  <span className="text-[8px] text-[var(--text-muted)] flex items-center ml-1 italic opacity-50">
-                    mixed
-                  </span>
-                )}
-              </div>
-            </PropertyRow>
+                </div>
+              </PropertyRow>
 
-            <PropertyRow label="Color">
-              <ColorPicker
-                color={isMixed(textColor) ? '#000000' : (textColor as string) || '#000000'}
-                onChange={(color) => onBulkStyleUpdate({ color })}
-              />
-              {isMixed(textColor) && (
-                <span className="text-[8px] text-[var(--text-muted)] ml-1 italic opacity-50">
-                  mixed
-                </span>
-              )}
-            </PropertyRow>
+              <PropertyRow label="Color">
+                <div className="flex items-center gap-1.5 w-full">
+                  <div className="flex-1">
+                    <ColorPicker
+                      color={isMixed(textColor) ? '#000000' : (textColor as string) || '#000000'}
+                      onChange={(color) => onBulkStyleUpdate({ color })}
+                    />
+                  </div>
+                  {isMixed(textColor) && (
+                    <span className="text-[8px] text-[var(--text-muted)] italic opacity-50 shrink-0">
+                      mixed
+                    </span>
+                  )}
+                </div>
+              </PropertyRow>
 
-            <PropertyRow label="Line Height">
-              <DesignerInput
-                type="number"
-                step="0.1"
-                min={0.5}
-                max={3}
-                value={isMixed(lineHeight) ? '' : (lineHeight as number) || 1.4}
-                onChange={(v) => onBulkStyleUpdate({ lineHeight: Number.parseFloat(v) || 1.4 })}
-                placeholder={isMixed(lineHeight) ? '—' : undefined}
-              />
-            </PropertyRow>
-          </section>
+              <PropertyRow label="Line Height">
+                <DesignerInput
+                  type="number"
+                  variant="mini"
+                  step="0.1"
+                  min={0.5}
+                  max={3}
+                  value={isMixed(lineHeight) ? '' : (lineHeight as number) || 1.4}
+                  onChange={(v) => onBulkStyleUpdate({ lineHeight: Number.parseFloat(v) || 1.4 })}
+                  placeholder={isMixed(lineHeight) ? '—' : undefined}
+                />
+              </PropertyRow>
+            </div>
+          </CollapsibleSection>
         )}
 
         {/* ── Line Properties (conditional: all line) ──────────────── */}
         {allLine && (
-          <section className="border-b border-[var(--border-default)] animate-in fade-in slide-in-from-top-1 duration-300">
-            <SectionHeader label="Line Appearance" />
+          <CollapsibleSection label="Line Appearance">
+            <div className="space-y-2.5">
+              <PropertyRow label="Thickness">
+                <DesignerInput
+                  type="text"
+                  variant="mini"
+                  value={isMixed(lineThickness) ? '' : (lineThickness as string)}
+                  onChange={(v) => onBulkUpdate({ thickness: v } as any)}
+                  mono
+                  placeholder={isMixed(lineThickness) ? '— mixed —' : '1pt'}
+                />
+              </PropertyRow>
 
-            <PropertyRow label="Thickness">
-              <DesignerInput
-                type="text"
-                value={isMixed(lineThickness) ? '' : (lineThickness as string)}
-                onChange={(v) => onBulkUpdate({ thickness: v } as any)}
-                mono
-                placeholder={isMixed(lineThickness) ? '— mixed —' : '1pt'}
-              />
-            </PropertyRow>
+              <PropertyRow label="Color">
+                <div className="flex items-center gap-1.5 w-full">
+                  <div className="flex-1">
+                    <ColorPicker
+                      color={isMixed(lineColor) ? '#000000' : (lineColor as string)}
+                      onChange={(color) => onBulkUpdate({ color } as any)}
+                    />
+                  </div>
+                  {isMixed(lineColor) && (
+                    <span className="text-[8px] text-[var(--text-muted)] italic opacity-50 shrink-0">
+                      mixed
+                    </span>
+                  )}
+                </div>
+              </PropertyRow>
 
-            <PropertyRow label="Color">
-              <ColorPicker
-                color={isMixed(lineColor) ? '#000000' : (lineColor as string)}
-                onChange={(color) => onBulkUpdate({ color } as any)}
-              />
-              {isMixed(lineColor) && (
-                <span className="text-[8px] text-[var(--text-muted)] ml-1 italic opacity-50">
-                  mixed
-                </span>
-              )}
-            </PropertyRow>
-
-            <PropertyRow label="Style">
-              <div className="flex border border-[var(--border-default)] rounded-[4px] overflow-hidden w-full bg-white/[0.02]">
-                {(
-                  [
-                    { id: 'solid', icon: Minus, label: 'Solid' },
-                    { id: 'dashed', icon: MoreHorizontal, label: 'Dashed' },
-                    { id: 'dotted', icon: MoreVertical, label: 'Dotted' },
-                  ] as const
-                ).map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    title={item.label}
-                    onClick={() => onBulkUpdate({ style: item.id } as any)}
-                    className={clsx(
-                      'flex-1 py-1 flex items-center justify-center transition-all',
-                      !isMixed(lineStyle) && lineStyle === item.id
-                        ? 'bg-[var(--accent)] text-white'
-                        : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/[0.04]'
-                    )}
-                  >
-                    <item.icon className="w-3.5 h-3.5" />
-                  </button>
-                ))}
-              </div>
-            </PropertyRow>
-          </section>
+              <PropertyRow label="Style">
+                <div className="flex border border-[var(--border-default)] rounded-[4px] overflow-hidden w-full bg-white/[0.02]">
+                  {(
+                    [
+                      { id: 'solid', icon: Minus, label: 'Solid' },
+                      { id: 'dashed', icon: MoreHorizontal, label: 'Dashed' },
+                      { id: 'dotted', icon: MoreVertical, label: 'Dotted' },
+                    ] as const
+                  ).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      title={item.label}
+                      onClick={() => onBulkUpdate({ style: item.id } as any)}
+                      className={clsx(
+                        'flex-1 py-1 flex items-center justify-center transition-all',
+                        !isMixed(lineStyle) && lineStyle === item.id
+                          ? 'bg-[var(--accent)] text-white'
+                          : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/[0.04]'
+                      )}
+                    >
+                      <item.icon className="w-3.5 h-3.5" />
+                    </button>
+                  ))}
+                </div>
+              </PropertyRow>
+            </div>
+          </CollapsibleSection>
         )}
 
         {/* ── Danger Zone ──────────────────────────────────────────── */}

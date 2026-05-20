@@ -39,7 +39,6 @@ import {
 import { memo, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { DesignerInput } from '../shared/DesignerInput';
-import { TablePropertiesPanel } from './TablePropertiesPanel';
 import { TextEditor } from './TextEditor';
 import { VariablePicker } from './VariablePicker';
 import { AlignmentProperties } from './properties/AlignmentProperties';
@@ -51,9 +50,13 @@ import { GeometryProperties } from './properties/GeometryProperties';
 import { GroupProperties } from './properties/GroupProperties';
 import { ImageProperties } from './properties/ImageProperties';
 import { LineProperties } from './properties/LineProperties';
-import { ControlField, PropertyGrid, PropertyRow, SectionHeader } from './properties/Shared';
+import { CollapsibleSection, ControlField, PropertyGrid, PropertyRow, SectionHeader } from './properties/Shared';
 import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
 import { TypographyProperties } from './properties/TypographyProperties';
+import { TableAdvancedSection } from './properties/table/TableAdvancedSection';
+import { TableColumnsSection } from './properties/table/TableColumnsSection';
+import { TableDataSection } from './properties/table/TableDataSection';
+import { TableVisualSection } from './properties/table/TableVisualSection';
 
 // Type guards for safe component access
 const isText = (c: ComponentNode): c is TextComponent => c.type === 'text';
@@ -447,9 +450,12 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
             </section>
 
             {isTable(selectedComponent) && (
-              <div className="border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)]">
-                <TablePropertiesPanel component={selectedComponent} />
-              </div>
+              <>
+                <CollapsibleSection label="Table Columns" defaultOpen={true}>
+                  <TableColumnsSection component={selectedComponent} />
+                </CollapsibleSection>
+                <TableVisualSection component={selectedComponent} />
+              </>
             )}
 
             {isColumns(selectedComponent) && (
@@ -540,29 +546,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
               )}
 
               {isTable(selectedComponent) && (
-                <div className="space-y-3 bg-[var(--bg-widget)] p-3 rounded-[4px] border border-[var(--border-default)]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-[var(--text-primary)]">
-                      Data Connection
-                    </span>
-                    <VariablePicker
-                      sampleData={sampleData}
-                      onSelect={(_path, binding) =>
-                        updateComponent(selectedComponent.id, { dataSource: binding })
-                      }
-                    />
-                  </div>
-                  <PropertyRow label="Source Path">
-                    <DesignerInput
-                      type="text"
-                      value={selectedComponent.dataSource || ''}
-                      onChange={(v) => updateComponent(selectedComponent.id, { dataSource: v })}
-                      mono
-                      placeholder="{{path.to.array}}"
-                      className="bg-[var(--bg-surface)]"
-                    />
-                  </PropertyRow>
-                </div>
+                <TableDataSection component={selectedComponent} />
               )}
 
               {isBarcode(selectedComponent) && (
@@ -642,6 +626,10 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 </PropertyRow>
               </div>
             </section>
+
+            {isTable(selectedComponent) && (
+              <TableAdvancedSection component={selectedComponent} />
+            )}
 
             {/* <section className="bg-[var(--bg-widget)] rounded border border-[var(--border-default)] overflow-hidden">
               <SectionHeader label="Zone Configuration" />

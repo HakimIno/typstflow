@@ -427,13 +427,6 @@ export const DataPanel = memo(function DataPanel() {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setView('editor')}
-                    className="text-[9px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/20 transition-colors"
-                  >
-                    วาง JSON ที่นี่
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="text-[9px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-white/5 text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:bg-white/10 transition-colors flex items-center gap-1.5"
                   >

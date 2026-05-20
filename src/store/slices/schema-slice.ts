@@ -41,6 +41,10 @@ export type SchemaSlice = Pick<
   | 'updateLastSnapped'
   | 'setSelectedZone'
   | 'updateComponents'
+  | 'alignSelected'
+  | 'distributeSelected'
+  | 'stackSelected'
+  | 'alignToPage'
 >;
 
 export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice> = (set, get) => ({

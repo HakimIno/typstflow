@@ -5,7 +5,8 @@ import type { TableComponent } from '@/types/schema';
 import { clsx } from 'clsx';
 import { AlignCenter, AlignLeft, AlignRight, Italic, Minus, Plus, Underline } from 'lucide-react';
 import { FontWeightSelect } from '../../ui/FontWeightSelect';
-import { ControlField, PropertyGrid, SectionHeader } from '../Shared';
+import { CollapsibleSection, ControlField, PropertyGrid } from '../Shared';
+import { VariablePicker } from '../../VariablePicker';
 import { MiniInput } from './TableShared';
 
 interface Props {
@@ -14,22 +15,32 @@ interface Props {
 
 export const TableDataSection = ({ component }: Props) => {
   const updateComponent = useDesignerStore((state) => state.updateComponent);
+  const sampleData = useDesignerStore((state) => state.sampleData);
 
   return (
     <div className="bg-[var(--bg-widget)] animate-in fade-in duration-200">
       {/* 1. DATA SOURCE SECTION */}
-      <section>
-        <SectionHeader label="Data Source & Behavior" />
+      <CollapsibleSection label="Data Source & Behavior">
         <div className="p-0.5 space-y-px bg-[var(--border-default)]">
           <PropertyGrid cols={1}>
             <ControlField label="Data Path">
-              <MiniInput
-                value={component.dataSource || ''}
-                onChange={(v) => updateComponent(component.id, { dataSource: v } as any)}
-                placeholder="{{items}}"
-                mono
-                className="w-full h-7"
-              />
+              <div className="flex items-center gap-1.5 w-full">
+                <div className="flex-1">
+                  <MiniInput
+                    value={component.dataSource || ''}
+                    onChange={(v) => updateComponent(component.id, { dataSource: v } as any)}
+                    placeholder="{{items}}"
+                    mono
+                    className="w-full h-7"
+                  />
+                </div>
+                <VariablePicker
+                  sampleData={sampleData}
+                  onSelect={(_path, binding) =>
+                    updateComponent(component.id, { dataSource: binding } as any)
+                  }
+                />
+              </div>
             </ControlField>
             <ControlField label="Repeat Header">
               <div className="flex justify-end w-full">
@@ -41,29 +52,49 @@ export const TableDataSection = ({ component }: Props) => {
             </ControlField>
           </PropertyGrid>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* 2. GROUPING SECTION */}
-      <section>
-        <SectionHeader label="Data Grouping" />
+      <CollapsibleSection label="Data Grouping" defaultOpen={false}>
         <div className="p-0.5 space-y-px bg-[var(--border-default)]">
           <PropertyGrid cols={2}>
             <ControlField label="Group By">
-              <MiniInput
-                value={component.groupBy || ''}
-                onChange={(v) => updateComponent(component.id, { groupBy: v } as any)}
-                placeholder="e.g. department"
-                mono
-                className="w-full h-7"
-              />
+              <div className="flex items-center gap-1.5 w-full">
+                <div className="flex-1">
+                  <MiniInput
+                    value={component.groupBy || ''}
+                    onChange={(v) => updateComponent(component.id, { groupBy: v } as any)}
+                    placeholder="e.g. department"
+                    mono
+                    className="w-full h-7"
+                  />
+                </div>
+                <VariablePicker
+                  sampleData={sampleData}
+                  onSelect={(_path, binding) =>
+                    updateComponent(component.id, { groupBy: binding } as any)
+                  }
+                />
+              </div>
             </ControlField>
             <ControlField label="Header Text">
-              <MiniInput
-                value={component.groupHeaderFormat || ''}
-                onChange={(v) => updateComponent(component.id, { groupHeaderFormat: v } as any)}
-                placeholder="แผนก: {{department}}"
-                className="w-full h-7"
-              />
+              <div className="flex items-center gap-1.5 w-full">
+                <div className="flex-1">
+                  <MiniInput
+                    value={component.groupHeaderFormat || ''}
+                    onChange={(v) => updateComponent(component.id, { groupHeaderFormat: v } as any)}
+                    placeholder="แผนก: {{department}}"
+                    className="w-full h-7"
+                  />
+                </div>
+                <VariablePicker
+                  sampleData={sampleData}
+                  onSelect={(_path, binding) => {
+                    const format = component.groupHeaderFormat || '';
+                    updateComponent(component.id, { groupHeaderFormat: format + binding } as any);
+                  }}
+                />
+              </div>
             </ControlField>
           </PropertyGrid>
 
@@ -186,11 +217,10 @@ export const TableDataSection = ({ component }: Props) => {
             </ControlField>
           </PropertyGrid>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* 3. SUMMARY SECTION */}
-      <section>
-        <SectionHeader label="Summaries & Totals" />
+      <CollapsibleSection label="Summaries & Totals" defaultOpen={false}>
         <div className="p-0.5 space-y-px bg-[var(--border-default)]">
           {/* Toggles */}
           <PropertyGrid cols={1}>
@@ -290,7 +320,7 @@ export const TableDataSection = ({ component }: Props) => {
             </button>
           </div>
         </div>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 };

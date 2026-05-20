@@ -47,6 +47,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const selectedCount = useDesignerStore((s) => s.selectedComponentIds.length);
   const isHidden = useDesignerStore((s) => s.hiddenComponentIds.includes(componentId));
   const isLocked = useDesignerStore((s) => s.lockedComponentIds.includes(componentId));
+  const tableSheetEditId = useDesignerStore((s) => s.tableSheetEditId);
+  const isTableSheetMode = component?.type === 'table' && tableSheetEditId === componentId;
   const totalPages = useDesignerStore((s) => s.schema.pages.length);
   const sampleData = useDesignerStore((s) => s.sampleData);
 
@@ -923,7 +925,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         'transition-none cursor-default select-none group focus:outline-none high-perf-gpu',
         isSelected
           ? clsx(
-              'z-50 ring-2 ring-[var(--accent)] ring-inset shadow-md',
+              component.type === 'table'
+                ? isTableSheetMode
+                  ? 'z-50 ring-0'
+                  : 'z-50 ring-1 ring-[var(--accent)]/40 ring-inset'
+                : 'z-50 ring-2 ring-[var(--accent)] ring-inset shadow-md',
               component.type === 'text' ? 'bg-white/[0.02]' : 'bg-white/10'
             )
           : clsx(
@@ -934,7 +940,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         isMoving && 'is-moving z-[100] ring-2 ring-[var(--accent)] shadow-lg',
         isResizing && 'ring-2 ring-[var(--accent)] shadow-lg z-[100]'
       ),
-    [isSelected, isLocked, isMoving, isResizing, component.type]
+    [isSelected, isLocked, isMoving, isResizing, component.type, isTableSheetMode]
   );
 
   // Flow mode: render as block in document flow (no absolute positioning).
@@ -974,7 +980,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             ? 'cursor-grabbing opacity-80 ring-2 ring-[var(--accent)] shadow-xl'
             : 'cursor-grab',
           isSelected && !flowDragging
-            ? 'ring-2 ring-[var(--accent)] ring-inset shadow-md bg-white/10'
+            ? component.type === 'table'
+              ? 'ring-1 ring-[var(--accent)]/50 ring-inset bg-white/5'
+              : 'ring-2 ring-[var(--accent)] ring-inset shadow-md bg-white/10'
             : !flowDragging &&
                 'ring-inset hover:ring-1 hover:ring-white/20 bg-white/5 hover:bg-white/10',
           isHidden && 'opacity-40'
@@ -1003,7 +1011,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           />
         )}
 
-        {isSelected && !isLocked && <ResizeHandles onResizeStart={handleResizeStart} />}
+        {isSelected && !isLocked && !isTableSheetMode && (
+          <ResizeHandles onResizeStart={handleResizeStart} />
+        )}
 
         {isEditing && component.type === 'text' ? (
           <EditorOverlay
@@ -1090,7 +1100,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         </div>
       )}
 
-      {isSelected && !isLocked && <ResizeHandles onResizeStart={handleResizeStart} />}
+      {isSelected && !isLocked && !isTableSheetMode && <ResizeHandles onResizeStart={handleResizeStart} />}
     </div>
   );
 });

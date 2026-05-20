@@ -58,9 +58,14 @@ export function useTableResize(
 
     const lastWidths = [...initialWidths];
 
+    const handleWrapper = containerEl.querySelector<HTMLElement>(
+      `[data-col-handle-idx="${index}"]`
+    );
+
     const onMouseMove = (ev: MouseEvent) => {
       const rawDeltaMm = LayoutEngine.pxToMm((ev.clientX - e.clientX) / zoom);
       const siblingIdx = index + 1;
+      let newGhostLeft = initialGhostLeft;
 
       if (siblingIdx < colEls.length) {
         const clampedTarget = Math.max(5, initialWidths[index] + rawDeltaMm);
@@ -71,19 +76,22 @@ export function useTableResize(
         lastWidths[siblingIdx] = clampedSibling;
         colEls[index].style.width = `${(lastWidths[index] / totalMm) * 100}%`;
         colEls[siblingIdx].style.width = `${(lastWidths[siblingIdx] / totalMm) * 100}%`;
-        if (ghostEl) ghostEl.style.left = `${initialGhostLeft + LayoutEngine.mmToPx(finalDelta)}px`;
+        newGhostLeft = initialGhostLeft + LayoutEngine.mmToPx(finalDelta);
       } else {
         lastWidths[index] = Math.max(5, initialWidths[index] + rawDeltaMm);
         const actualDelta = lastWidths[index] - initialWidths[index];
         colEls[index].style.width = `${(lastWidths[index] / totalMm) * 100}%`;
-        if (ghostEl)
-          ghostEl.style.left = `${initialGhostLeft + LayoutEngine.mmToPx(actualDelta)}px`;
+        newGhostLeft = initialGhostLeft + LayoutEngine.mmToPx(actualDelta);
       }
+
+      if (ghostEl) ghostEl.style.left = `${newGhostLeft}px`;
+      // Move the overlay handle wrapper directly so it tracks the drag in real-time
+      if (handleWrapper) handleWrapper.style.left = `${newGhostLeft - 4}px`;
 
       const tooltip = refs.tooltipRef.current;
       if (tooltip) {
         tooltip.textContent = `W: ${lastWidths[index].toFixed(1)} mm`;
-        tooltip.style.left = ghostEl?.style.left ?? `${initialGhostLeft}px`;
+        tooltip.style.left = `${newGhostLeft}px`;
         tooltip.style.top = '6px';
         tooltip.classList.remove('hidden');
       }
@@ -94,6 +102,8 @@ export function useTableResize(
       ghostEl?.classList.add('hidden');
       refs.tooltipRef.current?.classList.add('hidden');
       if (dividerEl) dividerEl.style.backgroundColor = '';
+      // Clear the inline style — React will re-render with the new cumPercent after store update
+      if (handleWrapper) handleWrapper.style.left = '';
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       const finalCols = component.columns.map((col, i) => ({
@@ -166,6 +176,10 @@ export function useTableResize(
       ghostEl.classList.remove('hidden');
     }
 
+    const rowDividerWrapper = containerEl.querySelector<HTMLElement>(
+      `[data-row-divider="${row.id}"]`
+    );
+
     let lastHeightMm = initialHeightMm;
 
     const onMouseMove = (ev: MouseEvent) => {
@@ -174,6 +188,8 @@ export function useTableResize(
       rowEl.style.height = `${LayoutEngine.mmToPx(lastHeightMm)}px`;
       const newGhostTop = initialGhostTop + LayoutEngine.mmToPx(lastHeightMm - initialHeightMm);
       if (ghostEl) ghostEl.style.top = `${newGhostTop}px`;
+      // Move the overlay row divider wrapper directly so it tracks the drag in real-time
+      if (rowDividerWrapper) rowDividerWrapper.style.top = `${newGhostTop}px`;
       const tooltip = refs.tooltipRef.current;
       if (tooltip) {
         tooltip.textContent = `H: ${lastHeightMm.toFixed(1)} mm`;

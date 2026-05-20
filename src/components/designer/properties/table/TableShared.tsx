@@ -4,9 +4,10 @@ import { DesignerInput } from '../../../shared/DesignerInput';
 
 export const MiniInput = (props: DesignerInputProps) => (
   <DesignerInput
+    variant="mini"
     {...props}
     className={clsx(
-      'h-7 text-[10px] px-1.5 py-1 bg-[var(--bg-surface)] border-[var(--border-default)] rounded focus:border-[var(--accent)] transition-all',
+      'bg-[var(--bg-surface)] border-[var(--border-default)] rounded focus:border-[var(--accent)] transition-all',
       props.className
     )}
   />

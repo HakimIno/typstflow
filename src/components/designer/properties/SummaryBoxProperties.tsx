@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/Select';
 import { Plus, Trash2 } from 'lucide-react';
 import { DesignerInput } from '../../shared/DesignerInput';
-import { SectionHeader } from './Shared';
+import { CollapsibleSection } from './Shared';
 
 interface SummaryBoxPropertiesProps {
   component: any;
@@ -36,13 +36,12 @@ export function SummaryBoxProperties({ component, onUpdate }: SummaryBoxProperti
   };
 
   return (
-    <section>
-      <SectionHeader label="Summary Data" />
-      <div className="p-2 space-y-2">
+    <CollapsibleSection label="Summary Data">
+      <div className="space-y-2.5">
         {rows.map((row: any, idx: number) => (
           <div
             key={idx}
-            className="bg-[var(--bg-widget)] border border-[var(--border-default)] rounded p-2 space-y-2 group/row relative"
+            className="bg-[var(--bg-widget)] border border-[var(--border-default)] rounded p-2.5 space-y-2 group/row relative"
           >
             <button
               type="button"
@@ -54,22 +53,24 @@ export function SummaryBoxProperties({ component, onUpdate }: SummaryBoxProperti
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-0.5">
-                <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+                <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                   Label
                 </span>
                 <DesignerInput
                   type="text"
+                  variant="mini"
                   value={row.label}
                   onChange={(v) => updateRow(idx, { label: v })}
                   placeholder="Label"
                 />
               </div>
               <div className="space-y-0.5">
-                <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">
+                <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
                   Value
                 </span>
                 <DesignerInput
                   type="text"
+                  variant="mini"
                   value={row.value}
                   onChange={(v) => updateRow(idx, { value: v })}
                   placeholder="{{total}}"
@@ -79,12 +80,14 @@ export function SummaryBoxProperties({ component, onUpdate }: SummaryBoxProperti
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase">Style</span>
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase shrink-0">
+                Style
+              </span>
               <Select
                 value={row.style || 'normal'}
                 onValueChange={(val) => updateRow(idx, { style: val })}
               >
-                <SelectTrigger className="flex-1 h-6 text-[10px] bg-[var(--bg-surface)] border-[var(--border-default)] px-1 py-0.5">
+                <SelectTrigger className="flex-1 h-5 text-[9px] bg-[var(--bg-surface)] border-[var(--border-default)] px-1 py-0.5">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -106,6 +109,6 @@ export function SummaryBoxProperties({ component, onUpdate }: SummaryBoxProperti
           <Plus className="w-3 h-3" /> Add Row
         </button>
       </div>
-    </section>
+    </CollapsibleSection>
   );
 }

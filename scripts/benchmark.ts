@@ -81,7 +81,7 @@ function benchSchemaMutations() {
 
   for (const n of selectCounts) {
     const targetIds = Array.from({ length: n }, (_, i) => `p${i * Math.floor(PAGES / n)}-c0`);
-    const transform = (c: ComponentNode) => ({ ...c, x: c.x + 1 });
+    const transform = (c: ComponentNode) => ({ ...c, x: (c.x ?? 0) + 1 });
 
     // Old: sequential calls (one mapComponentInSchema per selected component)
     const oldFn = () => {

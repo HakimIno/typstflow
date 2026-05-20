@@ -10,8 +10,8 @@ import {
 import { useFontInstaller } from '@/hooks/use-font-installer';
 import { CATEGORY_LABELS, FONT_CATALOG } from '@/lib/font-catalog';
 import { fontManager } from '@/lib/font-manager';
-import { useDesignerStore } from '@/store/designer-store';
 import { readFontFamily } from '@/lib/utils/font-parser';
+import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { Check, Download, Loader2, Plus, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';

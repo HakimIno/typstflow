@@ -25,7 +25,7 @@ export const ResizeHandles = memo(function ResizeHandles({ onResizeStart }: Resi
           data-resize-handle="true"
           onMouseDown={(e) => onResizeStart(e, handle)}
           className={clsx(
-            'absolute w-1.5 h-1.5 bg-white border border-[var(--accent)] z-50 shadow-sm',
+            'absolute size-2 rounded-full bg-white border border-[var(--accent)] z-50 shadow-sm',
             handle === 'top-left' &&
               'top-0 left-0 -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize',
             handle === 'top-center' &&

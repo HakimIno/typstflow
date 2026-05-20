@@ -8,7 +8,7 @@ import {
 import { useDesignerStore } from '@/store/designer-store';
 import type { TableComponent } from '@/types/schema';
 import { Minus, Plus } from 'lucide-react';
-import { SectionHeader } from '../Shared';
+import { CollapsibleSection } from '../Shared';
 import { MiniInput } from './TableShared';
 
 interface Props {
@@ -29,9 +29,8 @@ export const TableLinesSection = ({ component }: Props) => {
   };
 
   return (
-    <div className="p-2 space-y-4 bg-[var(--bg-widget)]">
-      <section>
-        <SectionHeader label="Horizontal Lines (H-Lines)" />
+    <div className="space-y-1 bg-[var(--bg-widget)]">
+      <CollapsibleSection label="Horizontal Lines (H-Lines)" defaultOpen={false}>
         <div className="space-y-1">
           {(component.hlines || []).map((line, idx) => (
             <div
@@ -94,10 +93,9 @@ export const TableLinesSection = ({ component }: Props) => {
             <Plus className="w-3 h-3" /> Add H-Line
           </button>
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section>
-        <SectionHeader label="Vertical Lines (V-Lines)" />
+      <CollapsibleSection label="Vertical Lines (V-Lines)" defaultOpen={false}>
         <div className="space-y-1">
           {(component.vlines || []).map((line, idx) => (
             <div
@@ -160,7 +158,7 @@ export const TableLinesSection = ({ component }: Props) => {
             <Plus className="w-3 h-3" /> Add V-Line
           </button>
         </div>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 };

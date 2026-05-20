@@ -1,14 +1,5 @@
 'use client';
 
-import { clsx } from 'clsx';
-import { Bold, Italic, Underline, Strikethrough, CaseSensitive, ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
-import { ColorPicker } from '../../shared/ColorPicker';
-import { DesignerInput } from '../../shared/DesignerInput';
-import { FontFamilyPicker } from './FontFamilyPicker';
-import { ControlField, PropertyGrid, SectionHeader } from './Shared';
-import { useState } from 'react';
-import { useDesignerStore } from '@/store/designer-store';
-import { FONT_CATALOG } from '@/lib/font-catalog';
 import {
   Select,
   SelectContent,
@@ -16,6 +7,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/Select';
+import { FONT_CATALOG } from '@/lib/font-catalog';
+import { useDesignerStore } from '@/store/designer-store';
+import { clsx } from 'clsx';
+import {
+  CaseSensitive,
+  ChevronDown,
+  ChevronUp,
+  Italic,
+  Settings2,
+  Strikethrough,
+  Underline,
+} from 'lucide-react';
+import { useState } from 'react';
+import { ColorPicker } from '../../shared/ColorPicker';
+import { DesignerInput } from '../../shared/DesignerInput';
+import { FontFamilyPicker } from './FontFamilyPicker';
+import { CollapsibleSection, ControlField, PropertyGrid } from './Shared';
 
 interface TypographyPropertiesProps {
   style: any;
@@ -38,13 +46,9 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
   const normalizedFamily = formatFontFamily(fontFamily);
 
   // 1. Find all available weights for this font family
-  const customMatches = customFonts.filter(
-    (f) => formatFontFamily(f.family) === normalizedFamily
-  );
+  const customMatches = customFonts.filter((f) => formatFontFamily(f.family) === normalizedFamily);
 
-  const catalogMatch = FONT_CATALOG.find(
-    (f) => formatFontFamily(f.family) === normalizedFamily
-  );
+  const catalogMatch = FONT_CATALOG.find((f) => formatFontFamily(f.family) === normalizedFamily);
 
   let availableWeights: number[] = [];
 
@@ -98,9 +102,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
   const selectValue = WEIGHT_MAP[currentWeightNum]?.value || 'regular';
 
   return (
-    <section>
-      <SectionHeader label="Typography" />
-
+    <CollapsibleSection label="Typography">
       <PropertyGrid cols={1}>
         <ControlField label="Font Family">
           <FontFamilyPicker
@@ -111,13 +113,14 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
       </PropertyGrid>
 
       <PropertyGrid cols={2}>
-        <ControlField label="Size (pt)">
+        <ControlField label="Size">
           <DesignerInput
             type="number"
             variant="mini"
             min={1}
             max={200}
             value={style?.fontSize || 10}
+            suffix="pt"
             onChange={(v) => onUpdateStyle({ fontSize: Number.parseInt(v) || 10 })}
           />
         </ControlField>
@@ -131,10 +134,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
 
         {/* Font Weight Dropdown (Dynamically filtered by available files) */}
         <ControlField label="Weight">
-          <Select
-            value={selectValue}
-            onValueChange={(val) => onUpdateStyle({ fontWeight: val })}
-          >
+          <Select value={selectValue} onValueChange={(val) => onUpdateStyle({ fontWeight: val })}>
             <SelectTrigger className="w-full h-6 bg-[var(--bg-widget)] border-[var(--border-default)] text-[9.5px] hover:border-[var(--text-muted)] transition-all">
               <SelectValue placeholder="Weight" />
             </SelectTrigger>
@@ -235,7 +235,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
       </PropertyGrid>
 
       {/* Advanced Typography Section */}
-      <div className="mt-3 border-t border-[var(--border-default)] pt-2.5">
+      <div className="mt-2 border-t border-[var(--border-default)] pt-2">
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
@@ -243,7 +243,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
         >
           <div className="flex items-center gap-1.5">
             <Settings2 className="w-3.5 h-3.5 text-zinc-500" />
-            <span>Advanced Typography</span>
+            <span>Advanced Settings</span>
           </div>
           {showAdvanced ? (
             <ChevronUp className="w-3.5 h-3.5" />
@@ -253,7 +253,7 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
         </button>
 
         {showAdvanced && (
-          <div className="mt-2.5 space-y-2.5 p-2 rounded-md bg-white/[0.01] border border-[var(--border-default)] animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="mt-2 space-y-2 p-2 rounded bg-white/[0.01] border border-[var(--border-subtle)] animate-in fade-in duration-150">
             <PropertyGrid cols={2}>
               {/* Text Transform */}
               <ControlField label="Transform">
@@ -265,10 +265,18 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
                     <SelectValue placeholder="Transform" />
                   </SelectTrigger>
                   <SelectContent className="z-[10000]">
-                    <SelectItem value="none" className="text-[10px]">None</SelectItem>
-                    <SelectItem value="upper" className="text-[10px]">Uppercase</SelectItem>
-                    <SelectItem value="lower" className="text-[10px]">Lowercase</SelectItem>
-                    <SelectItem value="title" className="text-[10px]">Capitalize</SelectItem>
+                    <SelectItem value="none" className="text-[10px]">
+                      None
+                    </SelectItem>
+                    <SelectItem value="upper" className="text-[10px]">
+                      Uppercase
+                    </SelectItem>
+                    <SelectItem value="lower" className="text-[10px]">
+                      Lowercase
+                    </SelectItem>
+                    <SelectItem value="title" className="text-[10px]">
+                      Capitalize
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </ControlField>
@@ -326,7 +334,9 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
                   {style?.strokeColor && (
                     <button
                       type="button"
-                      onClick={() => onUpdateStyle({ strokeColor: undefined, strokeWidth: undefined })}
+                      onClick={() =>
+                        onUpdateStyle({ strokeColor: undefined, strokeWidth: undefined })
+                      }
                       className="h-6 px-1.5 text-[8px] font-bold text-red-400 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 rounded transition-all shrink-0"
                     >
                       Clear
@@ -350,6 +360,6 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
           </div>
         )}
       </div>
-    </section>
+    </CollapsibleSection>
   );
 }

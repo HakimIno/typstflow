@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { DesignerInput } from '../../shared/DesignerInput';
-import { PropertyRow, SectionHeader } from './Shared';
+import { CollapsibleSection, PropertyRow } from './Shared';
 
 interface Props {
   component: ColumnLayoutComponent;
@@ -169,23 +169,21 @@ export function ColumnProperties({ component }: Props) {
 
   return (
     <>
-      <SectionHeader label="Column Layout" />
+      <CollapsibleSection label="Column Setup">
+        <PropertyRow label="Gap">
+          <DesignerInput
+            type="text"
+            variant="mini"
+            value={component.gap ?? '10mm'}
+            onChange={handleGapChange}
+            placeholder="10mm"
+            mono
+          />
+        </PropertyRow>
+      </CollapsibleSection>
 
-      {/* Gap */}
-      <PropertyRow label="Gap">
-        <DesignerInput
-          type="text"
-          variant="mini"
-          value={component.gap ?? '10mm'}
-          onChange={handleGapChange}
-          placeholder="10mm"
-          mono
-        />
-      </PropertyRow>
-
-      {/* Column Widths */}
-      <div className="border-t border-[var(--border-default)]">
-        <div className="flex items-center justify-between px-2 py-1.5">
+      <CollapsibleSection label="Columns Config">
+        <div className="flex items-center justify-between py-1.5">
           <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] opacity-60">
             Columns ({component.columns.length})
           </span>
@@ -199,7 +197,7 @@ export function ColumnProperties({ component }: Props) {
           </button>
         </div>
 
-        <div className="px-2 pb-2 space-y-1">
+        <div className="space-y-1">
           {component.columns.map((col, idx) => (
             <div key={idx} className="flex items-center gap-1.5 group">
               <GripVertical className="w-3 h-3 text-[var(--text-muted)] opacity-30 shrink-0" />
@@ -235,19 +233,16 @@ export function ColumnProperties({ component }: Props) {
         </div>
 
         {/* Width hint */}
-        <div className="px-2 pb-2">
+        <div className="pt-2">
           <p className="text-[7px] text-[var(--text-muted)] opacity-50 leading-relaxed italic">
             Widths: <code className="bg-black/20 px-1 rounded">1fr</code> (flexible),{' '}
             <code className="bg-black/20 px-1 rounded">60mm</code> (fixed),{' '}
             <code className="bg-black/20 px-1 rounded">30%</code> (relative)
           </p>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* ── Per-column child editing ────────────────────────────── */}
-      <div className="border-t border-[var(--border-default)]">
-        <SectionHeader label="Column Content" />
-
+      <CollapsibleSection label="Columns Content">
         {component.columns.map((col, colIdx) => (
           <div key={colIdx} className="border-b border-[var(--border-default)] last:border-b-0">
             {/* Column header */}
@@ -322,7 +317,7 @@ export function ColumnProperties({ component }: Props) {
             )}
           </div>
         ))}
-      </div>
+      </CollapsibleSection>
     </>
   );
 }
