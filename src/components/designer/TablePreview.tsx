@@ -2,6 +2,7 @@
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { buildLogicalGrid, physToLogical } from '@/lib/utils/table-grid';
+import { resolveTableColumnPercentages } from '@/lib/utils/table-widths';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import type { TableCell as TCell, TableComponent, TableRow } from '@/types/schema';
@@ -53,6 +54,7 @@ export function TablePreview({ component }: { component: TableComponent }) {
   }, [isTableEditing, component.id, setTableSheetEditId]);
 
   const [headerMidPx, setHeaderMidPx] = useState(20);
+  const [tableHeightPx, setTableHeightPx] = useState(0);
 
   const handleTableDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -103,6 +105,10 @@ export function TablePreview({ component }: { component: TableComponent }) {
     const tableRect = table.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
     const containerW = containerRect.width;
+    const nextTableHeightPx = tableRect.height / zoom;
+    setTableHeightPx((current) =>
+      Math.abs(current - nextTableHeightPx) > 0.5 ? nextTableHeightPx : current
+    );
 
     // All BoundingClientRect values are in screen pixels.
     // The overlay uses logical CSS pixels, so we divide by zoom throughout.
@@ -132,11 +138,10 @@ export function TablePreview({ component }: { component: TableComponent }) {
     if (overlay) {
       for (const tr of allTrs) {
         const rowId = tr.getAttribute('data-row-id');
-        const divider = rowId
-          ? overlay.querySelector<HTMLElement>(`[data-row-divider="${rowId}"]`)
-          : null;
+        if (!rowId) continue;
+        const divider = overlay.querySelector<HTMLElement>(`[data-row-divider="${rowId}"]`);
         if (!divider) continue;
-        divider.style.top = `${rowBottomPx.get(rowId!) ?? 0}px`;
+        divider.style.top = `${rowBottomPx.get(rowId) ?? 0}px`;
       }
     }
 
@@ -148,7 +153,7 @@ export function TablePreview({ component }: { component: TableComponent }) {
     for (const tr of allTrs) {
       const cells = Array.from(tr.querySelectorAll<HTMLElement>('th, td'));
       const totalSpan = cells.reduce(
-        (s, c) => s + parseInt(c.getAttribute('colspan') || '1'),
+        (s, c) => s + Number.parseInt(c.getAttribute('colspan') || '1'),
         0
       );
       if (totalSpan !== totalCols) continue;
@@ -164,18 +169,13 @@ export function TablePreview({ component }: { component: TableComponent }) {
     const domColKey = newDomColPercents.map((p) => p.toFixed(3)).join(',');
     if (domColKey !== domColKeyRef.current) {
       domColKeyRef.current = domColKey;
-      setDomColPercents(
-        newDomColPercents.length === totalCols - 1 ? newDomColPercents : []
-      );
+      setDomColPercents(newDomColPercents.length === totalCols - 1 ? newDomColPercents : []);
     }
 
     // Compute segments only when the sheet-edit overlay is active
     if (!isTableSelected || !isTableEditing) return;
 
-    const allFlatRows: TableRow[] = [
-      ...headerRows,
-      ...previewSections.flatMap((sec) => sec.rows),
-    ];
+    const allFlatRows: TableRow[] = [...headerRows, ...previewSections.flatMap((sec) => sec.rows)];
     if (totalCols < 2 || allFlatRows.length === 0) return;
 
     // Use freshly measured col percents for segment edges (falls back to cumColWidths).
@@ -525,15 +525,24 @@ export function TablePreview({ component }: { component: TableComponent }) {
       if (!w) return 'normal';
       if (typeof w === 'number') return String(w);
       switch (w) {
-        case 'thin': return '100';
-        case 'light': return '300';
-        case 'regular': return 'normal';
-        case 'medium': return '500';
-        case 'semibold': return '600';
-        case 'bold': return 'bold';
-        case 'extrabold': return '800';
-        case 'black': return '900';
-        default: return w;
+        case 'thin':
+          return '100';
+        case 'light':
+          return '300';
+        case 'regular':
+          return 'normal';
+        case 'medium':
+          return '500';
+        case 'semibold':
+          return '600';
+        case 'bold':
+          return 'bold';
+        case 'extrabold':
+          return '800';
+        case 'black':
+          return '900';
+        default:
+          return w;
       }
     })();
     const isItalic =
@@ -561,6 +570,21 @@ export function TablePreview({ component }: { component: TableComponent }) {
     const isFirstCol = logicalCol === 0;
     const isLastCol = logicalCol + (cell.colspan || 1) === component.columns.length;
     const isLastHeaderRow = isHeader && isLastRow;
+    const colSpan = cell.colspan || 1;
+
+    const isSelectedAt = (targetRowIdx: number, targetCol: number) => {
+      const targetRow = sectionRows[targetRowIdx];
+      return targetRow ? isCellSelected(section, targetRow.id, targetCol) : false;
+    };
+
+    const selectionEdges = isSelected
+      ? {
+          top: !isSelectedAt(rowIdx - 1, logicalCol),
+          bottom: !isSelectedAt(rowIdx + 1, logicalCol),
+          left: !isSelectedAt(rowIdx, logicalCol - 1),
+          right: !isSelectedAt(rowIdx, logicalCol + colSpan),
+        }
+      : null;
 
     const borderStyle: React.CSSProperties = {
       borderTop: isFirstRow
@@ -617,12 +641,14 @@ export function TablePreview({ component }: { component: TableComponent }) {
         {isSelected && isTableEditing && (
           <div
             aria-hidden
-            className={clsx(
-              'absolute inset-0 pointer-events-none z-[5]',
-              isActiveCell
-                ? 'outline outline-1 outline-[var(--accent)] -outline-offset-1 bg-[var(--accent)]/[0.04]'
-                : 'bg-[var(--accent)]/[0.03]'
-            )}
+            className="absolute inset-0 pointer-events-none z-[5] bg-[var(--accent)]/[0.03]"
+            style={{
+              borderTop: selectionEdges?.top ? '1px solid var(--accent)' : undefined,
+              borderBottom: selectionEdges?.bottom ? '1px solid var(--accent)' : undefined,
+              borderLeft: selectionEdges?.left ? '1px solid var(--accent)' : undefined,
+              borderRight: selectionEdges?.right ? '1px solid var(--accent)' : undefined,
+              boxShadow: isActiveCell ? 'inset 0 0 0 1px var(--accent)' : undefined,
+            }}
           />
         )}
         {isSelected && !isTableEditing && (
@@ -703,33 +729,7 @@ export function TablePreview({ component }: { component: TableComponent }) {
   };
 
   // ─── Column widths via <colgroup> ─────────────────────────────────────
-  const colWidths = (() => {
-    const totalMm = component.width || 180;
-    type Parsed = { type: 'fixed'; mm: number } | { type: 'fractional'; value: number };
-    const parsed = component.columns.map((col): Parsed => {
-      const w = col.width.trim();
-      if (w.endsWith('mm')) return { type: 'fixed', mm: Number.parseFloat(w) };
-      if (w.endsWith('pt')) return { type: 'fixed', mm: parseTypstUnit(w) };
-      if (w === '*') return { type: 'fractional', value: 1 };
-      if (w.endsWith('fr')) return { type: 'fractional', value: Number.parseFloat(w) || 1 };
-      const num = Number.parseFloat(w);
-      return Number.isNaN(num)
-        ? { type: 'fractional', value: 1 }
-        : { type: 'fractional', value: num };
-    });
-    let fixedSum = 0;
-    let fracSum = 0;
-    for (const p of parsed) {
-      if (p.type === 'fixed') fixedSum += p.mm;
-      else fracSum += p.value;
-    }
-    const remaining = Math.max(totalMm - fixedSum, 0);
-    return parsed.map((p) => {
-      if (p.type === 'fixed') return `${(p.mm / totalMm) * 100}%`;
-      if (fracSum > 0) return `${(((p.value / fracSum) * remaining) / totalMm) * 100}%`;
-      return undefined;
-    });
-  })();
+  const colWidths = resolveTableColumnPercentages(component.columns, component.width || 180);
 
   // Cumulative column percentages — used to position column dividers in the overlay
   const cumColWidths = (() => {
@@ -786,23 +786,24 @@ export function TablePreview({ component }: { component: TableComponent }) {
         </tbody>
       </table>
 
-      <div ref={resizeOverlayRef} className="absolute inset-0 pointer-events-none z-[20] overflow-hidden">
+      <div
+        ref={resizeOverlayRef}
+        className="absolute inset-0 pointer-events-none z-[20] overflow-hidden"
+      >
         {isTableSelected &&
           isTableEditing &&
           // Use DOM-measured positions when available (pixel-accurate after resize)
           // Fall back to cumColWidths for the initial render before DOM is measured.
-          (domColPercents.length > 0 ? domColPercents : cumColWidths.slice(0, -1)).map(
-            (cum, i) => (
-              <ColumnResizeHandle
-                key={`col-divider-${i}`}
-                index={i}
-                cumPercent={cum}
-                headerMidPx={headerMidPx}
-                onMouseDown={(e) => handleColResizeStart(e, i)}
-                segments={colSegments[i]}
-              />
-            )
-          )}
+          (domColPercents.length > 0 ? domColPercents : cumColWidths.slice(0, -1)).map((cum, i) => (
+            <ColumnResizeHandle
+              key={`col-divider-${i}`}
+              index={i}
+              cumPercent={cum}
+              headerMidPx={headerMidPx}
+              onMouseDown={(e) => handleColResizeStart(e, i)}
+              segments={colSegments[i] ?? [{ start: 0, end: tableHeightPx }]}
+            />
+          ))}
         {isTableSelected &&
           isTableEditing &&
           allRenderedRows.map((row) =>
@@ -820,7 +821,8 @@ export function TablePreview({ component }: { component: TableComponent }) {
       {/* Ghost guide lines — always mounted, shown/hidden via direct DOM */}
       <div
         ref={colGhostRef}
-        className="hidden absolute top-0 bottom-0 w-px bg-[var(--accent)] z-[60] pointer-events-none"
+        className="hidden absolute top-0 w-px bg-[var(--accent)] z-[60] pointer-events-none"
+        style={{ height: tableHeightPx }}
       />
       <div
         ref={rowGhostRef}

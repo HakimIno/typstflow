@@ -28,6 +28,10 @@ export function useTableResize(
     refs.isResizingRef.current = true;
     const totalMm = component.width || 180;
     const colEls = Array.from(tableEl.querySelectorAll<HTMLElement>('col'));
+    const tableRect = tableEl.getBoundingClientRect();
+    const containerRect = containerEl.getBoundingClientRect();
+    const tableLeftPx = (tableRect.left - containerRect.left) / zoom;
+    const pxPerMm = tableRect.width > 0 ? tableRect.width / zoom / totalMm : LayoutEngine.mmToPx(1);
 
     const initialWidths = colEls.map((col, idx) => {
       const w = col.style.width;
@@ -40,13 +44,8 @@ export function useTableResize(
         : totalMm / Math.max(colEls.length, 1);
     });
 
-    const targetCellEl = tableEl.querySelector<HTMLElement>(
-      `tr th:nth-child(${index + 1}), tr td:nth-child(${index + 1})`
-    );
-    const containerRect = containerEl.getBoundingClientRect();
-    const initialGhostLeft = targetCellEl
-      ? (targetCellEl.getBoundingClientRect().right - containerRect.left) / zoom
-      : 0;
+    const boundaryMm = initialWidths.slice(0, index + 1).reduce((sum, width) => sum + width, 0);
+    const initialGhostLeft = tableLeftPx + boundaryMm * pxPerMm;
 
     const ghostEl = refs.colGhostRef.current;
     if (ghostEl) {
@@ -63,7 +62,7 @@ export function useTableResize(
     );
 
     const onMouseMove = (ev: MouseEvent) => {
-      const rawDeltaMm = LayoutEngine.pxToMm((ev.clientX - e.clientX) / zoom);
+      const rawDeltaMm = (ev.clientX - e.clientX) / zoom / pxPerMm;
       const siblingIdx = index + 1;
       let newGhostLeft = initialGhostLeft;
 
@@ -76,12 +75,12 @@ export function useTableResize(
         lastWidths[siblingIdx] = clampedSibling;
         colEls[index].style.width = `${(lastWidths[index] / totalMm) * 100}%`;
         colEls[siblingIdx].style.width = `${(lastWidths[siblingIdx] / totalMm) * 100}%`;
-        newGhostLeft = initialGhostLeft + LayoutEngine.mmToPx(finalDelta);
+        newGhostLeft = initialGhostLeft + finalDelta * pxPerMm;
       } else {
         lastWidths[index] = Math.max(5, initialWidths[index] + rawDeltaMm);
         const actualDelta = lastWidths[index] - initialWidths[index];
         colEls[index].style.width = `${(lastWidths[index] / totalMm) * 100}%`;
-        newGhostLeft = initialGhostLeft + LayoutEngine.mmToPx(actualDelta);
+        newGhostLeft = initialGhostLeft + actualDelta * pxPerMm;
       }
 
       if (ghostEl) ghostEl.style.left = `${newGhostLeft}px`;

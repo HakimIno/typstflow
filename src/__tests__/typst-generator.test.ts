@@ -511,3 +511,44 @@ describe('TypstGenerator — flow zone mode', () => {
     expect(output).not.toContain('#block(width: 100%, clip: false)');
   });
 });
+
+describe('TypstGenerator — table component', () => {
+  it('emits exact millimeter column widths resolved from the designer component width', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              {
+                id: 'table-1',
+                type: 'table',
+                x: 10,
+                y: 20,
+                width: 100,
+                height: 30,
+                dataSource: '{{items}}',
+                showHeader: true,
+                repeatHeaderOnPage: true,
+                columns: [
+                  { id: 'c1', header: 'A', field: 'a', width: '30mm' },
+                  { id: 'c2', header: 'B', field: 'b', width: '1fr' },
+                  { id: 'c3', header: 'C', field: 'c', width: '20%' },
+                ],
+                style: {},
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const output = generate(schema, { items: [{ a: '1', b: '2', c: '3' }] });
+
+    expect(output).toContain('columns: (30mm, 50mm, 20mm)');
+    expect(output).not.toContain('1fr');
+  });
+});

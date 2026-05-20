@@ -1,7 +1,14 @@
+import { resolveTableColumnWidths } from '@/lib/utils/table-widths';
 import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { TableComponent } from '@/types/schema';
 import { isVisible, resolveBinding, resolvePath } from '../binding';
-import { escapeStringLiteral, formatColor, formatFontFamily, formatWeight, wrapPlacement } from '../placement';
+import {
+  escapeStringLiteral,
+  formatColor,
+  formatFontFamily,
+  formatWeight,
+  wrapPlacement,
+} from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
 export const tablePlugin: ComponentPlugin<TableComponent> = {
@@ -15,7 +22,9 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     const headerRowCount = comp.headerRows?.length ?? (comp.showHeader !== false ? 1 : 0);
 
     // ── Column widths ─────────────────────────────────────────────────────────
-    const colWidths = cols.map((c) => c.width.replace('*', 'fr')).join(', ');
+    const colWidths = resolveTableColumnWidths(cols, comp.width ?? 180)
+      .map((width) => `${formatMm(width)}mm`)
+      .join(', ');
 
     // ── Stroke ────────────────────────────────────────────────────────────────
     const borderWidth = style?.borderWidth ?? '0.5pt';
@@ -533,6 +542,10 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function formatMm(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(3).replace(/\.?0+$/, '');
+}
+
 function buildFillFn(
   pattern: string,
   headerRows: number,
@@ -573,9 +586,9 @@ function renderStructuredCell(
   let cellStyle = cell.style;
   let cellFill = cell.fill;
   let cellAlign = cell.align;
-  let cellVAlign = cell.verticalAlign;
-  let cellDir = cell.textDirection;
-  let cellInset = cell.inset;
+  const cellVAlign = cell.verticalAlign;
+  const cellDir = cell.textDirection;
+  const cellInset = cell.inset;
 
   // Apply cellStyles overrides if available
   if (cellStyles) {

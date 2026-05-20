@@ -26,12 +26,26 @@ export function ColumnResizeHandle({
 }: ColumnResizeHandleProps) {
   const pillTop = Math.max(headerMidPx, 10);
   const useSegments = segments != null && segments.length > 0;
+  const lineStart = useSegments ? Math.min(...segments.map((seg) => seg.start)) : 0;
+  const lineEnd = useSegments ? Math.max(...segments.map((seg) => seg.end)) : 0;
+  const pillSegment =
+    useSegments && segments.find((seg) => pillTop >= seg.start && pillTop <= seg.end);
+  const visiblePillTop = pillSegment
+    ? pillTop
+    : useSegments
+      ? (lineStart + Math.min(...segments.map((seg) => seg.end))) / 2
+      : pillTop;
 
   return (
     <div
       data-col-handle-idx={index}
-      className="absolute top-0 bottom-0 z-[25] pointer-events-auto cursor-col-resize group/colresizer"
-      style={{ left: `calc(${cumPercent}% - 4px)`, width: '8px' }}
+      className="absolute z-[25] pointer-events-auto cursor-col-resize group/colresizer"
+      style={{
+        left: `calc(${cumPercent}% - 4px)`,
+        top: lineStart,
+        width: '8px',
+        height: Math.max(lineEnd - lineStart, 1),
+      }}
       onMouseDown={onMouseDown}
     >
       {/* Segmented or full-height divider line */}
@@ -41,7 +55,7 @@ export function ColumnResizeHandle({
             key={i}
             data-col-divider={index}
             className="absolute left-1/2 -translate-x-1/2 w-px bg-[var(--accent)] opacity-40 group-hover/colresizer:opacity-90 transition-opacity"
-            style={{ top: seg.start, height: seg.end - seg.start }}
+            style={{ top: seg.start - lineStart, height: seg.end - seg.start }}
           />
         ))
       ) : (
@@ -55,7 +69,7 @@ export function ColumnResizeHandle({
       <div
         aria-hidden
         className="absolute left-1/2 w-[5px] h-3 rounded-full border border-[var(--accent)] bg-white shadow-sm pointer-events-none opacity-80 group-hover/colresizer:opacity-100 group-hover/colresizer:scale-110 transition-all"
-        style={{ top: pillTop, transform: 'translate(-50%, -50%)' }}
+        style={{ top: visiblePillTop - lineStart, transform: 'translate(-50%, -50%)' }}
       />
     </div>
   );
@@ -71,9 +85,7 @@ interface RowResizeHandleProps {
 export function RowResizeHandle({ rowId, onMouseDown, segments }: RowResizeHandleProps) {
   const useSegments = segments != null && segments.length > 0;
   // Center of the combined visible range — where the affordance pill sits
-  const midPct = useSegments
-    ? (segments[0].start + segments[segments.length - 1].end) / 2
-    : 50;
+  const midPct = useSegments ? (segments[0].start + segments[segments.length - 1].end) / 2 : 50;
 
   return (
     <div

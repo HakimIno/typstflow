@@ -79,6 +79,12 @@ export function useCellSelection(
     setIsSelecting(true);
     setSelectionAnchor({ rowId, cellIdx: logicalCol, section });
     setSelectedCell({ tableId: component.id, section, rowId, cellIdx: logicalCol });
+    setSelectedCells({
+      tableId: component.id,
+      section,
+      rowIds: [rowId],
+      cellIndices: [logicalCol],
+    });
   };
 
   const handleCellMouseEnter = (section: SectionType, rowId: string, logicalCol: number) => {
