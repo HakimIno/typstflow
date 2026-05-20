@@ -510,6 +510,42 @@ describe('TypstGenerator — flow zone mode', () => {
     expect(output).toContain('#place(');
     expect(output).not.toContain('#block(width: 100%, clip: false)');
   });
+
+  it('does not use component y as vertical spacing for flow tables', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            layoutMode: 'flow',
+            components: [
+              {
+                id: 'table-1',
+                type: 'table',
+                x: 10,
+                y: 80,
+                width: 100,
+                height: 30,
+                dataSource: '{{items}}',
+                showHeader: true,
+                repeatHeaderOnPage: true,
+                columns: [{ id: 'c1', header: 'Header', field: 'field', width: '1fr' }],
+                style: {},
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const output = new TypstGenerator().generate(schema, { items: [{ field: 'A' }] });
+
+    expect(output).toContain('#pad(left: 10mm)');
+    expect(output).not.toContain('top: 80mm');
+  });
 });
 
 describe('TypstGenerator — table component', () => {

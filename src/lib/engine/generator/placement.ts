@@ -22,17 +22,19 @@ export function wrapPlacement(
 
     if (base.type === 'table') {
       // --- Special Native Flow-Pagination Wrapper for Tables ---
-      // Exactly matches Rust wrap_flow() logic:
-      // - Uses #pad(top, left) with offsets so it stays in document flow and supports page breaks.
+      // - Keeps the table in document flow so rows can paginate naturally.
+      // - Ignores y: flow layout order determines vertical position.
       // - No height constraint so Typst splits table rows naturally across page boundaries.
       const x = base.x ?? 0;
-      const y = base.y ?? 0;
       const w = base.width ?? 100;
-      const absX = offsetX + x;
-      const absY = offsetY + y;
-      parts.push(
-        `#align(top + left)[#pad(top: ${absY}mm, left: ${absX}mm)[#block(width: ${w}mm, clip: false)[${body}]]]\n`
-      );
+      const leftPad = fillWidth ? 0 : offsetX + x;
+      const widthExpr = fillWidth ? '100%' : `${w}mm`;
+      const sizedBlock = `#block(width: ${widthExpr}, clip: false)[${body}]`;
+      const inner = leftPad > 0 ? `#pad(left: ${leftPad}mm)[${sizedBlock}]` : sizedBlock;
+      const aboveVal = (base as any).marginTop != null ? `${(base as any).marginTop}mm` : '0pt';
+      const belowVal =
+        (base as any).marginBottom != null ? `${(base as any).marginBottom}mm` : '0pt';
+      parts.push(`#block(above: ${aboveVal}, below: ${belowVal}, width: 100%)[${inner}]\n`);
       return parts.join('');
     }
 

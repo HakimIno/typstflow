@@ -7,7 +7,7 @@ import {
   SelectValue,
 } from '@/components/ui/Select';
 import { useDesignerStore } from '@/store/designer-store';
-import type { TableComponent, TableRow } from '@/types/schema';
+import type { TableCell, TableComponent, TableRow } from '@/types/schema';
 import { clsx } from 'clsx';
 import {
   AlignCenter,
@@ -44,15 +44,40 @@ export const TableRowsSection = ({ component, type }: Props) => {
     updateComponent(component.id, { [rowKey]: newRows } as any);
   };
 
+  const updateCell = (
+    rowIdx: number,
+    cellIdx: number,
+    updater: Partial<TableCell> | ((cell: TableCell) => TableCell)
+  ) => {
+    const currentRows = rows || [];
+    const row = currentRows[rowIdx];
+    const cell = row?.cells[cellIdx];
+    if (!row || !cell) return;
+
+    const nextCell = typeof updater === 'function' ? updater(cell) : { ...cell, ...updater };
+    const nextCells = row.cells.map((c, idx) => (idx === cellIdx ? nextCell : c));
+    const nextRows = currentRows.map((r, idx) => (idx === rowIdx ? { ...r, cells: nextCells } : r));
+    updateRows(nextRows);
+  };
+
+  const getDefaultCellContent = (colIdx: number) => {
+    const column = component.columns[colIdx];
+    if (!column) return '';
+    if (type === 'header') return column.header || '';
+    if (type === 'detail') return column.field ? `{{${column.field}}}` : '';
+    return '';
+  };
+
   const addRow = () => {
     const newRow: TableRow = {
       id: crypto.randomUUID(),
       type: type === 'detail' ? 'data' : (type as 'header' | 'footer'),
       cells: Array(component.columns.length)
         .fill(null)
-        .map(() => ({
+        .map((_, colIdx) => ({
           id: crypto.randomUUID(),
-          content: '',
+          content: getDefaultCellContent(colIdx),
+          align: component.columns[colIdx]?.align || 'left',
         })),
     };
     const currentRows = rows || [];
@@ -85,6 +110,7 @@ export const TableRowsSection = ({ component, type }: Props) => {
             Repeat on every page
           </span>
           <button
+            type="button"
             onClick={() => {
               const newRows = rows.map((r) => ({ ...r, repeat: !isRepeatEnabled }));
               updateRows(newRows);
@@ -116,6 +142,12 @@ export const TableRowsSection = ({ component, type }: Props) => {
                 isActiveRow && 'bg-white/[0.03] border-b border-[var(--border-default)]'
               )}
               onClick={() => setExpandedRowIndex(isActiveRow ? null : rIdx)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setExpandedRowIndex(isActiveRow ? null : rIdx);
+                }
+              }}
             >
               <div className="flex items-center gap-2 flex-1">
                 <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase">
@@ -134,6 +166,7 @@ export const TableRowsSection = ({ component, type }: Props) => {
               </div>
               <div className="flex items-center gap-1">
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     const newRows = rows.filter((_, i) => i !== rIdx);
@@ -177,11 +210,7 @@ export const TableRowsSection = ({ component, type }: Props) => {
                           </span>
                           <MiniInput
                             value={cell.content || ''}
-                            onChange={(v) => {
-                              const newRows = [...rows];
-                              newRows[rIdx].cells[cIdx].content = v;
-                              updateRows(newRows);
-                            }}
+                            onChange={(v) => updateCell(rIdx, cIdx, { content: v })}
                             placeholder="e.g. Total or {{sum(items, 'val')}}"
                           />
                         </div>
@@ -194,11 +223,7 @@ export const TableRowsSection = ({ component, type }: Props) => {
                           </span>
                           <Select
                             value={cell.format || 'text'}
-                            onValueChange={(val) => {
-                              const newRows = [...rows];
-                              newRows[rIdx].cells[cIdx].format = val as any;
-                              updateRows(newRows);
-                            }}
+                            onValueChange={(val) => updateCell(rIdx, cIdx, { format: val as any })}
                           >
                             <SelectTrigger className="w-full h-7 text-[10px] bg-[var(--bg-surface)] border-[var(--border-default)]">
                               <SelectValue />
@@ -221,15 +246,15 @@ export const TableRowsSection = ({ component, type }: Props) => {
                           </span>
                           <FontWeightSelect
                             value={cell.style?.fontWeight}
-                            onChange={(v) => {
-                              const newRows = [...rows];
-                              const current = newRows[rIdx].cells[cIdx].style || {};
-                              newRows[rIdx].cells[cIdx].style = {
-                                ...current,
-                                fontWeight: v as any,
-                              };
-                              updateRows(newRows);
-                            }}
+                            onChange={(v) =>
+                              updateCell(rIdx, cIdx, (currentCell) => ({
+                                ...currentCell,
+                                style: {
+                                  ...currentCell.style,
+                                  fontWeight: v as any,
+                                },
+                              }))
+                            }
                             className="w-full h-7 text-[10px] px-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-white outline-none focus:border-[var(--accent)]"
                           />
                         </div>
@@ -243,11 +268,9 @@ export const TableRowsSection = ({ component, type }: Props) => {
                           <MiniInput
                             type="number"
                             value={String(cell.colspan || 1)}
-                            onChange={(v) => {
-                              const newRows = [...rows];
-                              newRows[rIdx].cells[cIdx].colspan = Number.parseInt(v) || 1;
-                              updateRows(newRows);
-                            }}
+                            onChange={(v) =>
+                              updateCell(rIdx, cIdx, { colspan: Number.parseInt(v) || 1 })
+                            }
                           />
                         </div>
                         <div>
@@ -257,11 +280,9 @@ export const TableRowsSection = ({ component, type }: Props) => {
                           <MiniInput
                             type="number"
                             value={String(cell.rowspan || 1)}
-                            onChange={(v) => {
-                              const newRows = [...rows];
-                              newRows[rIdx].cells[cIdx].rowspan = Number.parseInt(v) || 1;
-                              updateRows(newRows);
-                            }}
+                            onChange={(v) =>
+                              updateCell(rIdx, cIdx, { rowspan: Number.parseInt(v) || 1 })
+                            }
                           />
                         </div>
                       </div>
@@ -274,15 +295,15 @@ export const TableRowsSection = ({ component, type }: Props) => {
                           <MiniInput
                             type="number"
                             value={String(cell.style?.fontSize || 10)}
-                            onChange={(v) => {
-                              const newRows = [...rows];
-                              const current = newRows[rIdx].cells[cIdx].style || {};
-                              newRows[rIdx].cells[cIdx].style = {
-                                ...current,
-                                fontSize: Number.parseFloat(v) || 10,
-                              };
-                              updateRows(newRows);
-                            }}
+                            onChange={(v) =>
+                              updateCell(rIdx, cIdx, (currentCell) => ({
+                                ...currentCell,
+                                style: {
+                                  ...currentCell.style,
+                                  fontSize: Number.parseFloat(v) || 10,
+                                },
+                              }))
+                            }
                           />
                         </div>
                         <div>
@@ -293,15 +314,15 @@ export const TableRowsSection = ({ component, type }: Props) => {
                             type="number"
                             step="0.1"
                             value={String(cell.style?.lineHeight || 1.4)}
-                            onChange={(v) => {
-                              const newRows = [...rows];
-                              const current = newRows[rIdx].cells[cIdx].style || {};
-                              newRows[rIdx].cells[cIdx].style = {
-                                ...current,
-                                lineHeight: Number.parseFloat(v) || 1.4,
-                              };
-                              updateRows(newRows);
-                            }}
+                            onChange={(v) =>
+                              updateCell(rIdx, cIdx, (currentCell) => ({
+                                ...currentCell,
+                                style: {
+                                  ...currentCell.style,
+                                  lineHeight: Number.parseFloat(v) || 1.4,
+                                },
+                              }))
+                            }
                           />
                         </div>
                       </div>
@@ -313,12 +334,12 @@ export const TableRowsSection = ({ component, type }: Props) => {
                           </span>
                           <ColorPicker
                             color={cell.style?.color || '#000000'}
-                            onChange={(c) => {
-                              const newRows = [...rows];
-                              const current = newRows[rIdx].cells[cIdx].style || {};
-                              newRows[rIdx].cells[cIdx].style = { ...current, color: c };
-                              updateRows(newRows);
-                            }}
+                            onChange={(c) =>
+                              updateCell(rIdx, cIdx, (currentCell) => ({
+                                ...currentCell,
+                                style: { ...currentCell.style, color: c },
+                              }))
+                            }
                           />
                         </div>
                         <div>
@@ -327,11 +348,7 @@ export const TableRowsSection = ({ component, type }: Props) => {
                           </span>
                           <ColorPicker
                             color={cell.fill || 'transparent'}
-                            onChange={(c) => {
-                              const newRows = [...rows];
-                              newRows[rIdx].cells[cIdx].fill = c;
-                              updateRows(newRows);
-                            }}
+                            onChange={(c) => updateCell(rIdx, cIdx, { fill: c })}
                           />
                         </div>
                       </div>
@@ -339,14 +356,15 @@ export const TableRowsSection = ({ component, type }: Props) => {
                       <div className="flex items-center justify-between pt-1 border-t border-white/5 mt-1">
                         <div className="flex items-center gap-1">
                           <button
+                            type="button"
                             onClick={() => {
-                              const newRows = [...rows];
-                              const current = newRows[rIdx].cells[cIdx].style || {};
-                              newRows[rIdx].cells[cIdx].style = {
-                                ...current,
-                                italic: !current.italic,
-                              };
-                              updateRows(newRows);
+                              updateCell(rIdx, cIdx, (currentCell) => ({
+                                ...currentCell,
+                                style: {
+                                  ...currentCell.style,
+                                  italic: !currentCell.style?.italic,
+                                },
+                              }));
                             }}
                             className={clsx(
                               'p-1.5 rounded border transition-all',
@@ -368,12 +386,9 @@ export const TableRowsSection = ({ component, type }: Props) => {
                             ] as const
                           ).map((a) => (
                             <button
+                              type="button"
                               key={a.id}
-                              onClick={() => {
-                                const newRows = [...rows];
-                                newRows[rIdx].cells[cIdx].align = a.id;
-                                updateRows(newRows);
-                              }}
+                              onClick={() => updateCell(rIdx, cIdx, { align: a.id })}
                               className={clsx(
                                 'p-1 rounded transition-all',
                                 (cell.align || 'left') === a.id

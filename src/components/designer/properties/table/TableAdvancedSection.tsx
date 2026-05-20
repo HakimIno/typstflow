@@ -13,6 +13,9 @@ export const TableAdvancedSection = ({ component }: Props) => {
       <CollapsibleSection label="Manual Header Rows" defaultOpen={false}>
         <TableRowsSection component={component} type="header" />
       </CollapsibleSection>
+      <CollapsibleSection label="Manual Detail Rows" defaultOpen={false}>
+        <TableRowsSection component={component} type="detail" />
+      </CollapsibleSection>
       <CollapsibleSection label="Manual Footer Rows" defaultOpen={false}>
         <TableRowsSection component={component} type="footer" />
       </CollapsibleSection>

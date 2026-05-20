@@ -4,7 +4,7 @@ import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { buildLogicalGrid, physToLogical } from '@/lib/utils/table-grid';
 import { insertColumn, insertStructuredRow, mergeStructuredCells } from '@/lib/utils/table-utils';
 import { useDesignerStore } from '@/store/designer-store';
-import type { ComponentNode, TableComponent, TableRow } from '@/types/schema';
+import type { ComponentNode, TableCell, TableComponent, TableRow } from '@/types/schema';
 import { clsx } from 'clsx';
 import {
   AlignCenter,
@@ -80,6 +80,38 @@ export const ActionBar = memo(function ActionBar({
     return (tableComp[key as keyof TableComponent] as TableRow[]) || [];
   };
 
+  const updateSelectedTableCells = (updater: (cell: TableCell) => TableCell) => {
+    if (!selectedCells || !tableComp) return false;
+    const section = selectedCells.section as 'header' | 'data' | 'footer';
+    const key =
+      section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
+    const rows = getTableRows(section);
+    if (!rows.length) return false;
+
+    const grid = buildLogicalGrid(rows, tableComp.columns.length);
+    const selectedRowIds = new Set(selectedCells.rowIds);
+    const selectedCols = new Set(selectedCells.cellIndices);
+    let changed = false;
+
+    const newRows = rows.map((row, rowIdx) => {
+      if (!selectedRowIds.has(row.id)) return row;
+
+      const physMap = physToLogical(grid, rowIdx, row.cells.length);
+      const newCells = row.cells.map((cell, physIdx) => {
+        const logicalCol = physMap[physIdx];
+        if (!selectedCols.has(logicalCol)) return cell;
+        changed = true;
+        return updater(cell);
+      });
+
+      return changed ? { ...row, cells: newCells } : row;
+    });
+
+    if (!changed) return false;
+    updateComponent(tableComp.id, { [key]: newRows } as any);
+    return true;
+  };
+
   const handleTableMerge = () => {
     if (!selectedCells || !tableComp) return;
     const section = selectedCells.section as 'header' | 'data' | 'footer';
@@ -134,6 +166,8 @@ export const ActionBar = memo(function ActionBar({
   const handleTableAlign = (align: 'left' | 'center' | 'right') => {
     if (!selectedCells || !tableComp) return;
     const section = selectedCells.section as 'header' | 'data' | 'footer';
+    if (updateSelectedTableCells((cell) => ({ ...cell, align }))) return;
+
     if (section === 'data') {
       const newCols = [...tableComp.columns];
       for (const logCol of selectedCells.cellIndices) {
@@ -181,18 +215,23 @@ export const ActionBar = memo(function ActionBar({
 
   const handleTableDeleteSelection = () => {
     if (!selectedCells || !tableComp) return;
-    const { section, rowIds, cellIndices } = selectedCells as any;
-    if (section === 'data' && !tableComp.detailRows?.length) {
-      const newCols = tableComp.columns.filter((_, idx) => !cellIndices.includes(idx));
-      updateComponent(tableComp.id, { columns: newCols } as any);
-    } else {
-      const key =
-        section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
-      const rows = getTableRows(section as 'header' | 'data' | 'footer');
-      const newRows = rows.filter((r) => !rowIds.includes(r.id));
-      updateComponent(tableComp.id, { [key]: newRows } as any);
+    if (
+      updateSelectedTableCells((cell) => ({
+        ...cell,
+        content: '',
+        fill: undefined,
+        style: undefined,
+      }))
+    ) {
+      return;
     }
-    setSelectedCell(null);
+
+    const { section, cellIndices } = selectedCells as any;
+    if (section !== 'data') return;
+    const newCols = tableComp.columns.map((col, idx) =>
+      cellIndices.includes(idx) ? { ...col, header: '', field: '' } : col
+    );
+    updateComponent(tableComp.id, { columns: newCols } as any);
   };
 
   // ─── Scrubber (x-position drag) ────────────────────────────────────────
