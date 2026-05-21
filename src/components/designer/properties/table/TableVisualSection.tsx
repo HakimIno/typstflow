@@ -10,7 +10,7 @@ import { useDesignerStore } from '@/store/designer-store';
 import type { FillPattern, TableComponent } from '@/types/schema';
 import { clsx } from 'clsx';
 import { FontWeightSelect } from '../../ui/FontWeightSelect';
-import { CollapsibleSection, ControlField, PropertyGrid } from '../Shared';
+import { CollapsibleSection, ControlField, PropertyGrid, PROPERTY_STACK_CLASS } from '../Shared';
 import { MiniInput } from './TableShared';
 
 const FILL_PATTERNS: { id: FillPattern; label: string; preview: string }[] = [
@@ -36,7 +36,7 @@ export const TableVisualSection = ({ component }: Props) => {
   };
 
   return (
-    <div className="space-y-1 animate-in fade-in slide-in-from-right-1 duration-200">
+    <div className={`${PROPERTY_STACK_CLASS} animate-in fade-in slide-in-from-right-1 duration-200`}>
       {/* 1. Borders & Spacing */}
       <CollapsibleSection label="Borders & Spacing">
         <div className="space-y-2.5">

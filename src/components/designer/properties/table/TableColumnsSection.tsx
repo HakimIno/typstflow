@@ -53,7 +53,7 @@ export const TableColumnsSection = ({ component }: Props) => {
   };
 
   return (
-    <div className="p-2 space-y-1 bg-[var(--bg-widget)]">
+    <div className="space-y-1 min-w-0">
       {component.columns.map((col, idx) => (
         <div
           key={col.id}

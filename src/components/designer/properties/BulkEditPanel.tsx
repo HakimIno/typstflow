@@ -160,12 +160,12 @@ export const BulkEditPanel = memo(function BulkEditPanel({
   return (
     <div className="h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)]">
       {/* Header */}
-      <div className="h-10 min-h-[40px] bg-white/[0.02] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
-        <div className="w-6 h-6 rounded bg-[var(--accent-glow)] flex items-center justify-center border-[var(--border-accent)] text-[var(--accent)]">
-          <Layers className="w-3.5 h-3.5" />
+      <div className="h-10 min-h-[40px] bg-white/[0.01] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
+        <div className="w-5 h-5 flex items-center justify-center text-[var(--accent)] shrink-0">
+          <Layers className="w-4 h-4" />
         </div>
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold tracking-tight text-[var(--text-primary)]">
+          <span className="text-[11px] font-semibold tracking-tight text-[var(--text-primary)]">
             Bulk Edit
           </span>
           <span className="text-[8px] text-[var(--text-muted)] font-mono">
@@ -175,15 +175,15 @@ export const BulkEditPanel = memo(function BulkEditPanel({
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto bg-[var(--border-default)] space-y-px">
         {/* ── Selection Summary ────────────────────────────────────── */}
-        <section className="p-2 border-b border-[var(--border-default)]">
+        <section className="p-2 bg-[var(--bg-surface)]">
           <div className="flex flex-wrap gap-1">
             {Object.entries(typeCounts).map(([type, count]) => (
               <span
                 key={type}
                 className={clsx(
-                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all',
+                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[9px] font-bold border transition-all',
                   TYPE_COLORS[type] || 'bg-white/10 text-zinc-400 border-white/10'
                 )}
               >
@@ -444,7 +444,7 @@ export const BulkEditPanel = memo(function BulkEditPanel({
           <button
             type="button"
             onClick={onDeleteAll}
-            className="flex items-center rounded justify-center gap-2 w-full px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/20 transition-all text-[10px] font-bold uppercase tracking-wider shadow-sm hover:shadow-red-500/20 hover:shadow-lg group"
+            className="flex items-center rounded-[4px] justify-center gap-2 w-full px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/20 transition-all text-[10px] font-bold uppercase tracking-wider group"
           >
             <Trash2 className="w-3.5 h-3.5 group-hover:animate-pulse" />
             Delete {selectedComponents.length} Selected

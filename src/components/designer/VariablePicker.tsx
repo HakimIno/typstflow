@@ -17,6 +17,8 @@ interface VariablePickerProps {
   onSelect: (path: string, binding: string) => void;
   placeholder?: string;
   showAggregates?: boolean;
+  /** Icon-only trigger for tight property rows */
+  compact?: boolean;
 }
 
 // Type icons mapping
@@ -42,6 +44,7 @@ export function VariablePicker({
   onSelect,
   placeholder = 'Select variable...',
   showAggregates = true,
+  compact = false,
 }: VariablePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,21 +112,29 @@ export function VariablePicker({
       <button
         type="button"
         onClick={toggleOpen}
+        title={compact ? 'Insert variable' : undefined}
         className={clsx(
-          'inline-flex items-center gap-1.5 px-2 py-1',
-          'text-[9px] font-black uppercase tracking-[0.05em]',
+          'inline-flex items-center shrink-0',
           'bg-[var(--accent-glow)] text-[var(--accent)] border border-[var(--border-accent)] rounded-[2px]',
           'hover:brightness-110 active:scale-[0.97]',
           'focus:outline-none transition-all',
-          'disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed'
+          'disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed',
+          compact
+            ? 'h-5 w-5 justify-center p-0'
+            : 'gap-1.5 px-2 py-1 text-[9px] font-black uppercase tracking-[0.05em]'
         )}
         disabled={isEmpty}
       >
-        <Braces className="w-3 h-3" />
-        <span>Variables</span>
-        <ChevronDown
-          className={clsx('w-2.5 h-2.5 transition-transform duration-200', isOpen && 'rotate-180')}
-        />
+        <Braces className={compact ? 'w-3 h-3' : 'w-3 h-3'} />
+        {!compact && <span>Variables</span>}
+        {!compact && (
+          <ChevronDown
+            className={clsx(
+              'w-2.5 h-2.5 transition-transform duration-200',
+              isOpen && 'rotate-180'
+            )}
+          />
+        )}
       </button>
 
       {isOpen &&

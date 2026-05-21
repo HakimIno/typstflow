@@ -29,7 +29,7 @@ export const TableLinesSection = ({ component }: Props) => {
   };
 
   return (
-    <div className="space-y-1 bg-[var(--bg-widget)]">
+    <div className="min-w-0">
       <CollapsibleSection label="Horizontal Lines (H-Lines)" defaultOpen={false}>
         <div className="space-y-1">
           {(component.hlines || []).map((line, idx) => (

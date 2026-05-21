@@ -1,5 +1,5 @@
 import type { TableComponent } from '@/types/schema';
-import { CollapsibleSection } from '../Shared';
+import { CollapsibleSection, PROPERTY_STACK_CLASS } from '../Shared';
 import { TableLinesSection } from './TableLinesSection';
 import { TableRowsSection } from './TableRowsSection';
 
@@ -9,7 +9,7 @@ interface Props {
 
 export const TableAdvancedSection = ({ component }: Props) => {
   return (
-    <div className="flex flex-col gap-1 bg-[var(--bg-widget)] animate-in fade-in slide-in-from-right-1 duration-200">
+    <div className={`${PROPERTY_STACK_CLASS} animate-in fade-in slide-in-from-right-1 duration-200`}>
       <CollapsibleSection label="Manual Header Rows" defaultOpen={false}>
         <TableRowsSection component={component} type="header" />
       </CollapsibleSection>
