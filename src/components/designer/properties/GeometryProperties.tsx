@@ -11,7 +11,7 @@ interface GeometryPropertiesProps {
 
 export function GeometryProperties({ x, y, width, height, onUpdate }: GeometryPropertiesProps) {
   return (
-    <PropertyGrid cols={2} className="p-0.5">
+    <PropertyGrid cols={2} className="p-1">
       <DesignerInput
         type="number"
         variant="mini"

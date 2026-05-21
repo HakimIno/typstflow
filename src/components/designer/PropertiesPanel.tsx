@@ -12,24 +12,14 @@ import type {
   SummaryBoxComponent,
   TableComponent,
   TextComponent,
+  TextStyle,
 } from '@/types/schema';
 import { clsx } from 'clsx';
-import {
-  Columns,
-  Database,
-  FileDown,
-  Layers,
-  Layout,
-  Lock,
-  Maximize,
-  Palette,
-  Settings,
-  Trash2,
-  Type,
-} from 'lucide-react';
-import { type ReactNode, memo, useState } from 'react';
+import { Database, Layout, Lock, Palette, Settings, Trash2 } from 'lucide-react';
+import { memo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { DesignerInput } from '../shared/DesignerInput';
+import { ComponentTypeIcon, PANEL_PRESET_ICONS, PanelHeaderIcon } from './ComponentTypeIcon';
 import { TextEditor } from './TextEditor';
 import { VariablePicker } from './VariablePicker';
 import { AlignmentProperties } from './properties/AlignmentProperties';
@@ -44,6 +34,7 @@ import { LineProperties } from './properties/LineProperties';
 import { ReportConfigPanel } from './properties/ReportConfigPanel';
 import {
   CollapsibleSection,
+  PANEL_SECTION_BODY,
   PROPERTY_SECTION_CLASS,
   PROPERTY_STACK_CLASS,
   PropertyRow,
@@ -69,23 +60,6 @@ const isColumns = (c: ComponentNode): c is ColumnLayoutComponent => c.type === '
 const isChecklist = (c: ComponentNode): c is ChecklistComponent => c.type === 'checklist';
 
 type TabType = 'design' | 'layout' | 'data' | 'settings';
-
-const HeaderIconShell = ({
-  children,
-  muted = false,
-}: {
-  children: ReactNode;
-  muted?: boolean;
-}) => (
-  <div
-    className={clsx(
-      'w-5 h-5 flex  items-center justify-center shrink-0',
-      muted ? 'text-[var(--text-muted)]' : 'text-[var(--accent)]'
-    )}
-  >
-    {children}
-  </div>
-);
 
 export const PropertiesPanel = memo(function PropertiesPanel() {
   const [activeTab, setActiveTab] = useState<TabType>('design');
@@ -142,9 +116,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
     return (
       <div className="h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)]">
         <div className="h-10 min-h-[40px] border-b border-[var(--border-default)] flex items-center px-3 gap-2 bg-white/[0.01]">
-          <HeaderIconShell>
-            <Layers className="w-4 h-4" />
-          </HeaderIconShell>
+          <PanelHeaderIcon icon={PANEL_PRESET_ICONS.group} />
           <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
             Group Settings
           </span>
@@ -161,9 +133,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
     return (
       <div className="h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)]">
         <div className="h-10 min-h-[40px] border-b border-[var(--border-default)] flex items-center px-3 gap-2 bg-white/[0.01]">
-          <HeaderIconShell>
-            <Settings className="w-4 h-4" />
-          </HeaderIconShell>
+          <PanelHeaderIcon icon={PANEL_PRESET_ICONS.report} />
           <span className="text-[12px] font-semibold text-[var(--text-primary)] truncate">
             Report Configuration
           </span>
@@ -178,31 +148,40 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
   // ---- 3. MULTIPLE SELECTION VIEW ----
   if (selectedComponentIds.length > 1) {
-    const handleBulkUpdate = (updates: Partial<ComponentNode>) => {
-      const updatesMap: Record<string, Partial<ComponentNode>> = {};
-      for (const comp of bulkSelectedComponents) {
-        updatesMap[comp.id] = updates;
-      }
-      updateComponents(updatesMap);
+    const applyBulkMap = (map: Record<string, Partial<ComponentNode>>) => {
+      if (Object.keys(map).length > 0) updateComponents(map);
     };
 
-    const handleBulkStyleUpdate = (styleUpdates: any) => {
-      const updatesMap: Record<string, Partial<ComponentNode>> = {};
-      for (const comp of bulkSelectedComponents) {
-        const currentStyle = (comp as any).style || {};
-        updatesMap[comp.id] = { style: { ...currentStyle, ...styleUpdates } } as any;
-      }
-      updateComponents(updatesMap);
+    const bulkActions = {
+      updateAll: (updates: Partial<ComponentNode>) => {
+        const updatesMap: Record<string, Partial<ComponentNode>> = {};
+        for (const comp of bulkSelectedComponents) {
+          updatesMap[comp.id] = updates;
+        }
+        applyBulkMap(updatesMap);
+      },
+      updateByType: (type: ComponentNode['type'], updates: Partial<ComponentNode>) => {
+        const updatesMap: Record<string, Partial<ComponentNode>> = {};
+        for (const comp of bulkSelectedComponents) {
+          if (comp.type === type) updatesMap[comp.id] = updates;
+        }
+        applyBulkMap(updatesMap);
+      },
+      updateStyleByType: (type: ComponentNode['type'], styleUpdates: Partial<TextStyle>) => {
+        const updatesMap: Record<string, Partial<ComponentNode>> = {};
+        for (const comp of bulkSelectedComponents) {
+          if (comp.type !== type) continue;
+          const currentStyle = (comp as { style?: TextStyle }).style || {};
+          updatesMap[comp.id] = {
+            style: { ...currentStyle, ...styleUpdates },
+          } as Partial<ComponentNode>;
+        }
+        applyBulkMap(updatesMap);
+      },
+      deleteAll: () => removeComponents(selectedComponentIds),
     };
 
-    return (
-      <BulkEditPanel
-        selectedComponents={bulkSelectedComponents}
-        onBulkUpdate={handleBulkUpdate}
-        onBulkStyleUpdate={handleBulkStyleUpdate}
-        onDeleteAll={() => removeComponents(selectedComponentIds)}
-      />
-    );
+    return <BulkEditPanel selectedComponents={bulkSelectedComponents} actions={bulkActions} />;
   }
 
   // ---- 4. SINGLE COMPONENT VIEW (MAIN INSPECTOR) ----
@@ -273,7 +252,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
             {isTable(selectedComponent) && (
               <>
-                <CollapsibleSection label="Table Columns" defaultOpen={true}>
+                <CollapsibleSection label="Table Columns">
                   <TableColumnsSection component={selectedComponent} />
                 </CollapsibleSection>
                 <TableVisualSection component={selectedComponent} />
@@ -308,29 +287,6 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 height={selectedComponent.height || 0}
                 onUpdate={handleNumericUpdate}
               />
-            </section>
-
-            <section className={PROPERTY_SECTION_CLASS}>
-              <SectionHeader label="Page Flow" />
-              <div className="p-1.5">
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateComponent(selectedComponent.id, {
-                      pageBreakBefore: !selectedComponent.pageBreakBefore,
-                    })
-                  }
-                  className={clsx(
-                    'flex items-center justify-center gap-2 px-2 py-1 text-[9px] font-bold rounded-[4px] transition-all w-full border uppercase tracking-widest',
-                    selectedComponent.pageBreakBefore
-                      ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-                      : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-default)] hover:bg-[var(--bg-hover)]'
-                  )}
-                >
-                  <FileDown className="w-3.5 h-3.5" />
-                  {selectedComponent.pageBreakBefore ? 'Page Break Active' : 'Auto Flow'}
-                </button>
-              </div>
             </section>
           </div>
         );
@@ -431,21 +387,20 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
       case 'settings':
         return (
           <div className={`${PROPERTY_STACK_CLASS} animate-in fade-in duration-200`}>
-            <section className={PROPERTY_SECTION_CLASS}>
-              <SectionHeader label="System Settings" />
-              <div className="space-y-0">
-                <PropertyRow label="Object ID">
-                  <span className="text-[9px] font-mono text-[var(--text-muted)] bg-black/10 px-1 py-0.5 rounded-[2px] border border-[var(--border-default)] truncate max-w-[120px] block">
+            <CollapsibleSection label="System">
+              <div className={PANEL_SECTION_BODY}>
+                <PropertyRow label="Object ID" inline>
+                  <span className="text-[9px] font-mono text-[var(--text-muted)] truncate">
                     {selectedComponent.id}
                   </span>
                 </PropertyRow>
-                <PropertyRow label="Type">
-                  <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-widest">
+                <PropertyRow label="Type" inline>
+                  <span className="text-[9px] font-bold text-[var(--accent)] uppercase">
                     {selectedComponent.type}
                   </span>
                 </PropertyRow>
               </div>
-            </section>
+            </CollapsibleSection>
 
             {isTable(selectedComponent) && <TableAdvancedSection component={selectedComponent} />}
 
@@ -493,20 +448,9 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
   return (
     <div className="h-full flex flex-col bg-[var(--bg-surface)]">
       {/* Header with Component Icon */}
-      <div className="h-10 min-h-[40px] border-b border-[var(--border-default)] flex items-center px-3 justify-between bg-white/[0.01]">
+      <div className="h-10 min-h-[30px] border-b border-[var(--border-default)] flex items-center px-3 justify-between bg-white/[0.01]">
         <div className="flex items-center gap-2">
-          <HeaderIconShell>
-            {isText(selectedComponent) && <Type className="w-4 h-4" />}
-            {isTable(selectedComponent) && <Database className="w-4 h-4" />}
-            {isImage(selectedComponent) && <Palette className="w-4 h-4" />}
-            {isLine(selectedComponent) && <Maximize className="w-4 h-4" />}
-            {isColumns(selectedComponent) && <Columns className="w-4 h-4" />}
-            {!isText(selectedComponent) &&
-              !isTable(selectedComponent) &&
-              !isImage(selectedComponent) &&
-              !isLine(selectedComponent) &&
-              !isColumns(selectedComponent) && <Settings className="w-4 h-4" />}
-          </HeaderIconShell>
+          <ComponentTypeIcon type={selectedComponent.type} />
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-semibold tracking-tight text-[var(--text-primary)] uppercase">
@@ -524,7 +468,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
           onClick={() => removeComponent(selectedComponent.id)}
           disabled={isLocked}
           className={clsx(
-            'p-1.5 rounded transition-colors',
+            'p-1 rounded transition-colors',
             isLocked
               ? 'opacity-20 cursor-not-allowed text-[var(--text-muted)]'
               : 'hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500'

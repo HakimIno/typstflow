@@ -194,7 +194,7 @@ export const TableVisualSection = ({ component }: Props) => {
       </CollapsibleSection>
 
       {/* 2. Header Styling */}
-      <CollapsibleSection label="Header Styling" defaultOpen={false}>
+      <CollapsibleSection label="Header Styling">
         <div className="space-y-2.5">
           <PropertyGrid cols={2}>
             <ControlField label="Fill">
@@ -284,7 +284,7 @@ export const TableVisualSection = ({ component }: Props) => {
       </CollapsibleSection>
 
       {/* 3. Body & Alternating Fill */}
-      <CollapsibleSection label="Body Styling" defaultOpen={false}>
+      <CollapsibleSection label="Body Styling">
         <div className="space-y-2.5">
           <PropertyGrid cols={2}>
             <ControlField label="Text Color">
@@ -360,7 +360,7 @@ export const TableVisualSection = ({ component }: Props) => {
       </CollapsibleSection>
 
       {/* 4. Group Subtotal Styling */}
-      <CollapsibleSection label="Subtotal Styling" defaultOpen={false}>
+      <CollapsibleSection label="Subtotal Styling">
         <div className="space-y-2.5">
           <PropertyGrid cols={2}>
             <ControlField label="Background">

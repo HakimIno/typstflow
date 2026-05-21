@@ -33,12 +33,12 @@ export const TableDataSection = ({ component }: Props) => {
         <div className={TABLE_FIELD_STACK}>
           <BindingField
             label="Data Path"
-            value={component.dataSource || ''}
+                value={component.dataSource || ''}
             onChange={(v) => patch({ dataSource: v })}
             sampleData={sampleData}
             onBindingSelect={(_path, binding) => patch({ dataSource: binding })}
-            placeholder="{{items}}"
-            mono
+                placeholder="{{items}}"
+                mono
           />
           <SettingToggle
             label="Repeat Header"
@@ -49,24 +49,24 @@ export const TableDataSection = ({ component }: Props) => {
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection label="Data Grouping" defaultOpen={false}>
+      <CollapsibleSection label="Data Grouping">
         <div className={TABLE_FIELD_STACK}>
           <BindingField
             label="Group By"
-            value={component.groupBy || ''}
+                  value={component.groupBy || ''}
             onChange={(v) => patch({ groupBy: v })}
             sampleData={sampleData}
             onBindingSelect={(_path, binding) => patch({ groupBy: binding })}
-            placeholder="department"
-            mono
-          />
+                  placeholder="department"
+                  mono
+                />
           <BindingField
             label="Header Text"
             value={component.groupHeaderFormat || ''}
             onChange={(v) => patch({ groupHeaderFormat: v })}
-            sampleData={sampleData}
+                  sampleData={sampleData}
             onBindingSelect={(_path, binding) => patch({ groupHeaderFormat: binding })}
-            placeholder="Group: {{department}}"
+                  placeholder="Group: {{department}}"
             appendBinding
           />
           <InsetSection label="Group Header Style">
@@ -75,24 +75,24 @@ export const TableDataSection = ({ component }: Props) => {
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection label="Summaries & Totals" defaultOpen={false}>
+      <CollapsibleSection label="Summaries & Totals">
         <div className={TABLE_FIELD_STACK}>
           <SettingToggle
             label="Auto Subtotal"
             description="Per group"
-            value={!!component.autoGroupFooter}
+                value={!!component.autoGroupFooter}
             onChange={(v) => patch({ autoGroupFooter: v })}
-          />
-          {component.autoGroupFooter && (
-            <ControlField label="Footer Label">
-              <MiniInput
-                value={component.autoGroupFooterLabel ?? 'Subtotal'}
-                onChange={(v) => patch({ autoGroupFooterLabel: v })}
-                placeholder="Subtotal"
-                className="w-full"
               />
-            </ControlField>
-          )}
+            {component.autoGroupFooter && (
+              <ControlField label="Footer Label">
+                <MiniInput
+                  value={component.autoGroupFooterLabel ?? 'Subtotal'}
+                onChange={(v) => patch({ autoGroupFooterLabel: v })}
+                  placeholder="Subtotal"
+                className="w-full"
+                />
+              </ControlField>
+            )}
           <SettingToggle
             label="Repeat Notes"
             description="Per group"
@@ -100,18 +100,18 @@ export const TableDataSection = ({ component }: Props) => {
             onChange={(v) => patch({ repeatSummaryOnGroup: v })}
           />
           <InsetSection label="Manual Summary Rows" contentClassName="space-y-1.5">
-            {(component.summaryRows || []).map((row, idx) => (
+              {(component.summaryRows || []).map((row, idx) => (
               <SummaryRowEditor
-                key={idx}
+                  key={idx}
                 label={row.label}
                 value={row.value}
                 onLabelChange={(v) => {
-                  const rows = [...(component.summaryRows || [])];
+                        const rows = [...(component.summaryRows || [])];
                   rows[idx] = { ...rows[idx], label: v };
                   patch({ summaryRows: rows });
                 }}
                 onValueChange={(v) => {
-                  const rows = [...(component.summaryRows || [])];
+                        const rows = [...(component.summaryRows || [])];
                   rows[idx] = { ...rows[idx], value: v };
                   patch({ summaryRows: rows });
                 }}

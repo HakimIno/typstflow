@@ -1,25 +1,37 @@
+'use client';
+
 import type { TableComponent } from '@/types/schema';
-import { CollapsibleSection, PROPERTY_STACK_CLASS } from '../Shared';
-import { TableLinesSection } from './TableLinesSection';
+import { useState } from 'react';
+import { CollapsibleSection, SegmentedControl } from '../Shared';
+import { TableGuideLinesPanel } from './TableLinesSection';
 import { TableRowsSection } from './TableRowsSection';
+import { TABLE_FIELD_STACK } from './TableShared';
 
 interface Props {
   component: TableComponent;
 }
 
+const ROW_KIND_OPTIONS = [
+  { value: 'header' as const, label: 'Header' },
+  { value: 'detail' as const, label: 'Detail' },
+  { value: 'footer' as const, label: 'Footer' },
+];
+
 export const TableAdvancedSection = ({ component }: Props) => {
+  const [rowKind, setRowKind] = useState<'header' | 'detail' | 'footer'>('header');
+
   return (
-    <div className={`${PROPERTY_STACK_CLASS} animate-in fade-in slide-in-from-right-1 duration-200`}>
-      <CollapsibleSection label="Manual Header Rows" defaultOpen={false}>
-        <TableRowsSection component={component} type="header" />
+    <>
+      <CollapsibleSection label="Manual Rows" defaultOpen={false}>
+        <div className={TABLE_FIELD_STACK}>
+          <SegmentedControl value={rowKind} onChange={setRowKind} options={ROW_KIND_OPTIONS} />
+          <TableRowsSection component={component} type={rowKind} />
+        </div>
       </CollapsibleSection>
-      <CollapsibleSection label="Manual Detail Rows" defaultOpen={false}>
-        <TableRowsSection component={component} type="detail" />
+
+      <CollapsibleSection label="Guide Lines" defaultOpen={false}>
+        <TableGuideLinesPanel component={component} />
       </CollapsibleSection>
-      <CollapsibleSection label="Manual Footer Rows" defaultOpen={false}>
-        <TableRowsSection component={component} type="footer" />
-      </CollapsibleSection>
-      <TableLinesSection component={component} />
-    </div>
+    </>
   );
 };

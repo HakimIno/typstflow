@@ -7,449 +7,353 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
-  Bold,
-  Italic,
-  Layers,
   Minus,
   MoreHorizontal,
   MoreVertical,
   Trash2,
-  Underline,
 } from 'lucide-react';
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { ColorPicker } from '../../shared/ColorPicker';
-import { DesignerInput } from '../../shared/DesignerInput';
-import { FontFamilyPicker } from './FontFamilyPicker';
-import { CollapsibleSection, PropertyRow } from './Shared';
+import { PANEL_PRESET_ICONS, PanelHeaderIcon, getComponentTypeIcon } from '../ComponentTypeIcon';
+import { BulkTypographySection } from './BulkTypographySection';
+import {
+  CollapsibleSection,
+  ControlField,
+  PANEL_FIELD_STACK,
+  PROPERTY_STACK_CLASS,
+  PanelMiniInput,
+  PropertyGrid,
+} from './Shared';
+import {
+  LINE_TYPES,
+  TYPE_CHIP_COLORS,
+  TYPOGRAPHY_TYPES,
+  componentsOfType,
+  countByType,
+  getMixedValue,
+  isMixed,
+  isTypographyType,
+} from './bulk-edit-utils';
 
-// ── Constants ────────────────────────────────────────────────────────────
-
-const MIXED = Symbol('mixed');
-type MixedValue<T> = T | typeof MIXED;
-
-const TYPE_COLORS: Record<string, string> = {
-  text: 'bg-blue-500/20 text-blue-400 border-blue-500/20',
-  table: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/20',
-  image: 'bg-purple-500/20 text-purple-400 border-purple-500/20',
-  line: 'bg-amber-500/20 text-amber-400 border-amber-500/20',
-  spacer: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/20',
-  barcode: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/20',
-  qr: 'bg-pink-500/20 text-pink-400 border-pink-500/20',
-  'summary-box': 'bg-orange-500/20 text-orange-400 border-orange-500/20',
-  'page-number': 'bg-indigo-500/20 text-indigo-400 border-indigo-500/20',
-  'page-break-indicator': 'bg-rose-500/20 text-rose-400 border-rose-500/20',
-};
-
-const TYPE_ICONS: Record<string, string> = {
-  text: '𝐓',
-  table: '▦',
-  image: '🖼',
-  line: '━',
-  spacer: '↕',
-  barcode: '⫿',
-  qr: '⊞',
-  'summary-box': '∑',
-  'page-number': '#',
-  'page-break-indicator': '⤓',
-};
-
-// ── Helper: compute mixed value ──────────────────────────────────────────
-
-function getMixedValue<T>(
-  components: ComponentNode[],
-  getter: (c: ComponentNode) => T
-): MixedValue<T> {
-  if (components.length === 0) return MIXED;
-  const first = getter(components[0]);
-  for (let i = 1; i < components.length; i++) {
-    if (getter(components[i]) !== first) return MIXED;
-  }
-  return first;
+export interface BulkEditActions {
+  /** Apply to every selected component */
+  updateAll: (updates: Partial<ComponentNode>) => void;
+  /** Apply only to components of this type (e.g. all text, all tables) */
+  updateByType: (type: ComponentNode['type'], updates: Partial<ComponentNode>) => void;
+  updateStyleByType: (type: ComponentNode['type'], updates: Partial<TextStyle>) => void;
+  deleteAll: () => void;
 }
-
-function getMixedStyleValue<T>(components: ComponentNode[], key: keyof TextStyle): MixedValue<T> {
-  return getMixedValue(components, (c) => {
-    const style = (c as any).style as TextStyle | undefined;
-    return (style?.[key] ?? undefined) as T;
-  });
-}
-
-function isMixed<T>(value: MixedValue<T>): value is typeof MIXED {
-  return value === MIXED;
-}
-
-// ── Props ────────────────────────────────────────────────────────────────
 
 interface BulkEditPanelProps {
   selectedComponents: ComponentNode[];
-  onBulkUpdate: (updates: Partial<ComponentNode>) => void;
-  onBulkStyleUpdate: (styleUpdates: Partial<TextStyle>) => void;
-  onDeleteAll: () => void;
+  actions: BulkEditActions;
 }
 
-// ── Component ────────────────────────────────────────────────────────────
+const TYPE_LABELS: Partial<Record<ComponentNode['type'], string>> = {
+  text: 'Text',
+  table: 'Table',
+  image: 'Image',
+  line: 'Line',
+  checklist: 'Checklist',
+  'page-number': 'Page #',
+  'summary-box': 'Summary',
+  barcode: 'Barcode',
+  qr: 'QR',
+  spacer: 'Spacer',
+  columns: 'Columns',
+  repeater: 'Repeater',
+  'page-break-indicator': 'Break',
+};
+
+function BulkLineSection({
+  components,
+  onUpdate,
+}: {
+  components: ComponentNode[];
+  onUpdate: (updates: Partial<ComponentNode>) => void;
+}) {
+  const lineColor = getMixedValue(components, (c) => (c as { color?: string }).color || '#000000');
+  const lineThickness = getMixedValue(
+    components,
+    (c) => (c as { thickness?: string }).thickness || '1pt'
+  );
+  const lineStyle = getMixedValue(components, (c) => (c as { style?: string }).style || 'solid');
+
+  return (
+    <div className={PANEL_FIELD_STACK}>
+      <ControlField label="Thickness">
+        <PanelMiniInput
+          value={isMixed(lineThickness) ? '' : (lineThickness as string)}
+          onChange={(v) => onUpdate({ thickness: v } as Partial<ComponentNode>)}
+          mono
+          placeholder={isMixed(lineThickness) ? '—' : '1pt'}
+          className="w-full"
+        />
+      </ControlField>
+      <ControlField label="Color">
+        <ColorPicker
+          color={isMixed(lineColor) ? '#000000' : (lineColor as string)}
+          onChange={(color) => onUpdate({ color } as Partial<ComponentNode>)}
+        />
+      </ControlField>
+      <ControlField label="Dash">
+        <div className="flex border border-[var(--border-default)] rounded-[3px] overflow-hidden h-5 w-full">
+          {(
+            [
+              { id: 'solid', icon: Minus },
+              { id: 'dashed', icon: MoreHorizontal },
+              { id: 'dotted', icon: MoreVertical },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onUpdate({ style: item.id } as Partial<ComponentNode>)}
+              className={clsx(
+                'flex-1 flex items-center justify-center transition-colors',
+                !isMixed(lineStyle) && lineStyle === item.id
+                  ? 'bg-[var(--accent)] text-white'
+                  : 'text-[var(--text-muted)] hover:bg-white/[0.04]'
+              )}
+            >
+              <item.icon className="w-3 h-3" />
+            </button>
+          ))}
+        </div>
+      </ControlField>
+    </div>
+  );
+}
 
 export const BulkEditPanel = memo(function BulkEditPanel({
   selectedComponents,
-  onBulkUpdate,
-  onBulkStyleUpdate,
-  onDeleteAll,
+  actions,
 }: BulkEditPanelProps) {
-  // ── Derived state ──────────────────────────────────────────────────────
+  const typeCounts = useMemo(() => countByType(selectedComponents), [selectedComponents]);
+  const typeKeys = useMemo(
+    () => Object.keys(typeCounts).sort() as ComponentNode['type'][],
+    [typeCounts]
+  );
+  const hasMultipleTypes = typeKeys.length > 1;
+  const [focusType, setFocusType] = useState<ComponentNode['type'] | 'all'>('all');
 
-  const typeCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const c of selectedComponents) {
-      counts[c.type] = (counts[c.type] || 0) + 1;
-    }
-    return counts;
-  }, [selectedComponents]);
+  const scoped =
+    focusType === 'all' ? selectedComponents : componentsOfType(selectedComponents, focusType);
 
-  const allTypes = Object.keys(typeCounts);
-  const allText = allTypes.every((t) => t === 'text' || t === 'table');
-  const allLine = allTypes.every((t) => t === 'line');
-
-  // Shared values
-  const widthValue = getMixedValue(selectedComponents, (c) => c.width);
-  const heightValue = getMixedValue(selectedComponents, (c) => c.height);
-  const alignValue = getMixedValue(selectedComponents, (c) => c.align || 'left');
-
-  // Typography values (only computed when relevant)
-  const fontFamily = allText ? getMixedStyleValue<string>(selectedComponents, 'fontFamily') : MIXED;
-  const fontSize = allText ? getMixedStyleValue<number>(selectedComponents, 'fontSize') : MIXED;
-  const fontWeight = allText ? getMixedStyleValue<string>(selectedComponents, 'fontWeight') : MIXED;
-  const isItalic = allText ? getMixedStyleValue<boolean>(selectedComponents, 'italic') : MIXED;
-  const isUnderline = allText
-    ? getMixedStyleValue<boolean>(selectedComponents, 'underline')
-    : MIXED;
-  const textColor = allText ? getMixedStyleValue<string>(selectedComponents, 'color') : MIXED;
-  const lineHeight = allText ? getMixedStyleValue<number>(selectedComponents, 'lineHeight') : MIXED;
-
-  // Line values
-  const lineColor = allLine
-    ? getMixedValue(selectedComponents, (c) => (c as any).color || '#000000')
-    : MIXED;
-  const lineThickness = allLine
-    ? getMixedValue(selectedComponents, (c) => (c as any).thickness || '1pt')
-    : MIXED;
-  const lineStyle = allLine
-    ? getMixedValue(selectedComponents, (c) => (c as any).style || 'solid')
-    : MIXED;
-
-  // ── Handlers ───────────────────────────────────────────────────────────
+  const widthValue = getMixedValue(scoped, (c) => c.width);
+  const heightValue = getMixedValue(scoped, (c) => c.height);
+  const alignValue = getMixedValue(scoped, (c) => c.align || 'left');
 
   const handleWidthChange = (v: string) => {
     const num = Number.parseFloat(v);
-    if (!Number.isNaN(num)) onBulkUpdate({ width: num });
+    if (Number.isNaN(num)) return;
+    if (focusType === 'all') actions.updateAll({ width: num });
+    else actions.updateByType(focusType, { width: num });
   };
 
   const handleHeightChange = (v: string) => {
     const num = Number.parseFloat(v);
-    if (!Number.isNaN(num)) onBulkUpdate({ height: num });
+    if (Number.isNaN(num)) return;
+    if (focusType === 'all') actions.updateAll({ height: num });
+    else actions.updateByType(focusType, { height: num });
   };
 
   const handleAlignChange = (align: 'left' | 'center' | 'right' | 'justify') => {
-    onBulkUpdate({ align });
-    if (allText) {
-      onBulkStyleUpdate({ justify: align === 'justify' });
+    const patch = { align };
+    if (focusType === 'all') {
+      actions.updateAll(patch);
+      for (const type of TYPOGRAPHY_TYPES) {
+        if (typeCounts[type]) {
+          actions.updateStyleByType(type, { justify: align === 'justify' });
+        }
+      }
+    } else {
+      actions.updateByType(focusType, patch);
+      if (isTypographyType(focusType)) {
+        actions.updateStyleByType(focusType, { justify: align === 'justify' });
+      }
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────
+  const typographyTypes = typeKeys.filter((t) => isTypographyType(t));
+  const lineTypes = typeKeys.filter((t) => (LINE_TYPES as readonly string[]).includes(t));
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-default)]">
-      {/* Header */}
-      <div className="h-10 min-h-[40px] bg-white/[0.01] border-b border-[var(--border-default)] flex items-center px-3 gap-2">
-        <div className="w-5 h-5 flex items-center justify-center text-[var(--accent)] shrink-0">
-          <Layers className="w-4 h-4" />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[11px] font-semibold tracking-tight text-[var(--text-primary)]">
+      <div className="h-10 min-h-[40px] border-b border-[var(--border-default)] flex items-center px-3 gap-2 bg-white/[0.01]">
+        <PanelHeaderIcon icon={PANEL_PRESET_ICONS.group} />
+        <div className="flex flex-col min-w-0">
+          <span className="text-[11px] font-semibold text-[var(--text-primary)] truncate">
             Bulk Edit
           </span>
           <span className="text-[8px] text-[var(--text-muted)] font-mono">
-            {selectedComponents.length} SELECTED
+            {selectedComponents.length} selected
+            {hasMultipleTypes ? ` · ${typeKeys.length} types` : ''}
           </span>
         </div>
       </div>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-auto bg-[var(--border-default)] space-y-px">
-        {/* ── Selection Summary ────────────────────────────────────── */}
-        <section className="p-2 bg-[var(--bg-surface)]">
-          <div className="flex flex-wrap gap-1">
-            {Object.entries(typeCounts).map(([type, count]) => (
-              <span
-                key={type}
+      <div className="flex-1 overflow-auto">
+        <div className={PROPERTY_STACK_CLASS}>
+          {/* Type filter — style per kind without re-selecting on canvas */}
+          <div className="px-2.5 py-2 space-y-1.5 border-b border-[var(--border-default)]">
+            <p className="text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+              Apply styles to
+            </p>
+            <div className="flex flex-wrap gap-1">
+              <button
+                type="button"
+                onClick={() => setFocusType('all')}
                 className={clsx(
-                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[9px] font-bold border transition-all',
-                  TYPE_COLORS[type] || 'bg-white/10 text-zinc-400 border-white/10'
+                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-[3px] text-[8px] font-bold border transition-colors',
+                  focusType === 'all'
+                    ? 'bg-[var(--accent)]/15 text-[var(--accent)] border-[var(--accent)]/40'
+                    : 'bg-[var(--bg-widget)] text-[var(--text-muted)] border-[var(--border-default)] hover:text-[var(--text-secondary)]'
                 )}
               >
-                <span className="text-[10px] leading-none">{TYPE_ICONS[type] || '•'}</span>
-                {type}
-                <span className="opacity-60">×{count}</span>
-              </span>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Geometry ─────────────────────────────────────────────── */}
-        <CollapsibleSection label="Dimensions">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-0.5">
-              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
-                Width (mm)
-              </span>
-              <DesignerInput
-                type="number"
-                variant="mini"
-                step="1"
-                min={1}
-                value={isMixed(widthValue) ? '' : (widthValue ?? 0)}
-                onChange={handleWidthChange}
-                placeholder={isMixed(widthValue) ? '—' : undefined}
-              />
+                All
+                <span className="opacity-60">×{selectedComponents.length}</span>
+              </button>
+              {typeKeys.map((type) => {
+                const Icon = getComponentTypeIcon(type);
+                const active = focusType === type;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setFocusType(type)}
+                    className={clsx(
+                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-[3px] text-[8px] font-bold border transition-colors',
+                      active
+                        ? 'bg-[var(--accent)]/15 text-[var(--accent)] border-[var(--accent)]/40'
+                        : TYPE_CHIP_COLORS[type] ||
+                            'bg-[var(--bg-widget)] text-[var(--text-muted)] border-[var(--border-default)]'
+                    )}
+                  >
+                    <Icon className="w-3 h-3 shrink-0" />
+                    {TYPE_LABELS[type] ?? type}
+                    <span className="opacity-60">×{typeCounts[type]}</span>
+                  </button>
+                );
+              })}
             </div>
-            <div className="space-y-0.5">
-              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase">
-                Height (mm)
-              </span>
-              <DesignerInput
-                type="number"
-                variant="mini"
-                step="1"
-                min={1}
-                value={isMixed(heightValue) ? '' : (heightValue ?? 0)}
-                onChange={handleHeightChange}
-                placeholder={isMixed(heightValue) ? '—' : undefined}
-              />
-            </div>
-          </div>
-        </CollapsibleSection>
-
-        {/* ── Alignment ────────────────────────────────────────────── */}
-        <CollapsibleSection label="Alignment">
-          <div className="space-y-1.5">
-            <div className="flex border border-[var(--border-default)] rounded-[4px] overflow-hidden w-full bg-white/[0.02]">
-              {(
-                [
-                  { id: 'left', icon: AlignLeft },
-                  { id: 'center', icon: AlignCenter },
-                  { id: 'right', icon: AlignRight },
-                  { id: 'justify', icon: AlignJustify },
-                ] as const
-              ).map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleAlignChange(item.id)}
-                  className={clsx(
-                    'flex-1 py-1.5 flex items-center justify-center transition-all',
-                    !isMixed(alignValue) && alignValue === item.id
-                      ? 'bg-[var(--accent)] text-white'
-                      : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/[0.04]'
-                  )}
-                >
-                  <item.icon className="w-3.5 h-3.5" />
-                </button>
-              ))}
-            </div>
-            {isMixed(alignValue) && (
-              <p className="text-[8px] text-[var(--text-muted)] mt-1 text-center italic opacity-60">
-                Mixed alignments — click to unify
+            {hasMultipleTypes && focusType !== 'all' && (
+              <p className="text-[8px] text-[var(--text-muted)] leading-snug">
+                Layout changes below affect only{' '}
+                <span className="text-[var(--text-secondary)]">
+                  {TYPE_LABELS[focusType] ?? focusType}
+                </span>
+                . Typography sections always target each type separately.
               </p>
             )}
           </div>
-        </CollapsibleSection>
 
-        {/* ── Typography (conditional: all text/table) ─────────────── */}
-        {allText && (
-          <CollapsibleSection label="Typography">
-            <div className="space-y-2.5">
-              <PropertyRow label="Font">
-                <FontFamilyPicker
-                  value={isMixed(fontFamily) ? '' : (fontFamily as string) || 'Sarabun'}
-                  onChange={(family) => onBulkStyleUpdate({ fontFamily: family })}
-                  mixed={isMixed(fontFamily)}
-                />
-              </PropertyRow>
+          <CollapsibleSection
+            label={
+              focusType === 'all'
+                ? 'Shared layout'
+                : `Layout · ${TYPE_LABELS[focusType] ?? focusType}`
+            }
+          >
+            <div className={PANEL_FIELD_STACK}>
+              <PropertyGrid cols={2} className="gap-2">
+                <ControlField label="Width">
+                  <PanelMiniInput
+                    type="number"
+                    step="1"
+                    min={1}
+                    value={isMixed(widthValue) ? '' : (widthValue ?? 0)}
+                    onChange={handleWidthChange}
+                    placeholder={isMixed(widthValue) ? '—' : undefined}
+                    className="w-full"
+                  />
+                </ControlField>
+                <ControlField label="Height">
+                  <PanelMiniInput
+                    type="number"
+                    step="1"
+                    min={1}
+                    value={isMixed(heightValue) ? '' : (heightValue ?? 0)}
+                    onChange={handleHeightChange}
+                    placeholder={isMixed(heightValue) ? '—' : undefined}
+                    className="w-full"
+                  />
+                </ControlField>
+              </PropertyGrid>
 
-              <PropertyRow label="Size (pt)">
-                <DesignerInput
-                  type="number"
-                  variant="mini"
-                  min={1}
-                  max={200}
-                  value={isMixed(fontSize) ? '' : (fontSize as number) || 10}
-                  onChange={(v) => onBulkStyleUpdate({ fontSize: Number.parseInt(v) || 10 })}
-                  placeholder={isMixed(fontSize) ? '—' : undefined}
-                />
-              </PropertyRow>
-
-              <PropertyRow label="Style">
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    title="Bold"
-                    onClick={() =>
-                      onBulkStyleUpdate({
-                        fontWeight:
-                          !isMixed(fontWeight) && fontWeight === 'bold' ? 'regular' : 'bold',
-                      })
-                    }
-                    className={clsx(
-                      'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
-                      !isMixed(fontWeight) && fontWeight === 'bold'
-                        ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-                        : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                    )}
-                  >
-                    <Bold className="w-3 h-3" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Italic"
-                    onClick={() =>
-                      onBulkStyleUpdate({ italic: isMixed(isItalic) ? true : !isItalic })
-                    }
-                    className={clsx(
-                      'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
-                      !isMixed(isItalic) && isItalic
-                        ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-                        : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                    )}
-                  >
-                    <Italic className="w-3 h-3" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Underline"
-                    onClick={() =>
-                      onBulkStyleUpdate({ underline: isMixed(isUnderline) ? true : !isUnderline })
-                    }
-                    className={clsx(
-                      'w-6 h-6 flex items-center justify-center border rounded-[4px] transition-all',
-                      !isMixed(isUnderline) && isUnderline
-                        ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-                        : 'bg-white/[0.04] border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-white/[0.08]'
-                    )}
-                  >
-                    <Underline className="w-3 h-3" />
-                  </button>
-                  {(isMixed(fontWeight) || isMixed(isItalic) || isMixed(isUnderline)) && (
-                    <span className="text-[8px] text-[var(--text-muted)] flex items-center ml-1 italic opacity-50">
-                      mixed
-                    </span>
-                  )}
-                </div>
-              </PropertyRow>
-
-              <PropertyRow label="Color">
-                <div className="flex items-center gap-1.5 w-full">
-                  <div className="flex-1">
-                    <ColorPicker
-                      color={isMixed(textColor) ? '#000000' : (textColor as string) || '#000000'}
-                      onChange={(color) => onBulkStyleUpdate({ color })}
-                    />
-                  </div>
-                  {isMixed(textColor) && (
-                    <span className="text-[8px] text-[var(--text-muted)] italic opacity-50 shrink-0">
-                      mixed
-                    </span>
-                  )}
-                </div>
-              </PropertyRow>
-
-              <PropertyRow label="Line Height">
-                <DesignerInput
-                  type="number"
-                  variant="mini"
-                  step="0.1"
-                  min={0.5}
-                  max={3}
-                  value={isMixed(lineHeight) ? '' : (lineHeight as number) || 1.4}
-                  onChange={(v) => onBulkStyleUpdate({ lineHeight: Number.parseFloat(v) || 1.4 })}
-                  placeholder={isMixed(lineHeight) ? '—' : undefined}
-                />
-              </PropertyRow>
-            </div>
-          </CollapsibleSection>
-        )}
-
-        {/* ── Line Properties (conditional: all line) ──────────────── */}
-        {allLine && (
-          <CollapsibleSection label="Line Appearance">
-            <div className="space-y-2.5">
-              <PropertyRow label="Thickness">
-                <DesignerInput
-                  type="text"
-                  variant="mini"
-                  value={isMixed(lineThickness) ? '' : (lineThickness as string)}
-                  onChange={(v) => onBulkUpdate({ thickness: v } as any)}
-                  mono
-                  placeholder={isMixed(lineThickness) ? '— mixed —' : '1pt'}
-                />
-              </PropertyRow>
-
-              <PropertyRow label="Color">
-                <div className="flex items-center gap-1.5 w-full">
-                  <div className="flex-1">
-                    <ColorPicker
-                      color={isMixed(lineColor) ? '#000000' : (lineColor as string)}
-                      onChange={(color) => onBulkUpdate({ color } as any)}
-                    />
-                  </div>
-                  {isMixed(lineColor) && (
-                    <span className="text-[8px] text-[var(--text-muted)] italic opacity-50 shrink-0">
-                      mixed
-                    </span>
-                  )}
-                </div>
-              </PropertyRow>
-
-              <PropertyRow label="Style">
-                <div className="flex border border-[var(--border-default)] rounded-[4px] overflow-hidden w-full bg-white/[0.02]">
+              <ControlField label="Align">
+                <div className="flex border border-[var(--border-default)] rounded-[3px] overflow-hidden h-5 w-full">
                   {(
                     [
-                      { id: 'solid', icon: Minus, label: 'Solid' },
-                      { id: 'dashed', icon: MoreHorizontal, label: 'Dashed' },
-                      { id: 'dotted', icon: MoreVertical, label: 'Dotted' },
+                      { id: 'left', icon: AlignLeft },
+                      { id: 'center', icon: AlignCenter },
+                      { id: 'right', icon: AlignRight },
+                      { id: 'justify', icon: AlignJustify },
                     ] as const
                   ).map((item) => (
                     <button
                       key={item.id}
                       type="button"
-                      title={item.label}
-                      onClick={() => onBulkUpdate({ style: item.id } as any)}
+                      onClick={() => handleAlignChange(item.id)}
                       className={clsx(
-                        'flex-1 py-1 flex items-center justify-center transition-all',
-                        !isMixed(lineStyle) && lineStyle === item.id
+                        'flex-1 flex items-center justify-center transition-colors',
+                        !isMixed(alignValue) && alignValue === item.id
                           ? 'bg-[var(--accent)] text-white'
-                          : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/[0.04]'
+                          : 'text-[var(--text-muted)] hover:bg-white/[0.04]'
                       )}
                     >
-                      <item.icon className="w-3.5 h-3.5" />
+                      <item.icon className="w-3 h-3" />
                     </button>
                   ))}
                 </div>
-              </PropertyRow>
+              </ControlField>
+              {isMixed(alignValue) && (
+                <p className="text-[8px] text-[var(--text-muted)] italic">Mixed — pick to unify</p>
+              )}
             </div>
           </CollapsibleSection>
-        )}
 
-        {/* ── Danger Zone ──────────────────────────────────────────── */}
-        <section className="p-1 mt-2">
-          <button
-            type="button"
-            onClick={onDeleteAll}
-            className="flex items-center rounded-[4px] justify-center gap-2 w-full px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/20 transition-all text-[10px] font-bold uppercase tracking-wider group"
-          >
-            <Trash2 className="w-3.5 h-3.5 group-hover:animate-pulse" />
-            Delete {selectedComponents.length} Selected
-          </button>
-        </section>
+          {/* Per-type typography — always scoped by type */}
+          {typographyTypes.map((type) => {
+            const subset = componentsOfType(selectedComponents, type);
+            const label = TYPE_LABELS[type] ?? type;
+            return (
+              <CollapsibleSection
+                key={type}
+                label={`Typography · ${label} ×${typeCounts[type]}`}
+                defaultOpen={typographyTypes.length === 1}
+              >
+                <BulkTypographySection
+                  components={subset}
+                  onStyleUpdate={(updates) => actions.updateStyleByType(type, updates)}
+                />
+              </CollapsibleSection>
+            );
+          })}
+
+          {lineTypes.map((type) => {
+            const subset = componentsOfType(selectedComponents, type);
+            return (
+              <CollapsibleSection key={type} label={`Line · ×${typeCounts[type]}`}>
+                <BulkLineSection
+                  components={subset}
+                  onUpdate={(updates) => actions.updateByType(type, updates)}
+                />
+              </CollapsibleSection>
+            );
+          })}
+
+          <div className="px-2.5 py-2">
+            <button
+              type="button"
+              onClick={actions.deleteAll}
+              className="flex items-center justify-center gap-2 w-full h-7 rounded-[3px] bg-red-600/10 hover:bg-red-600/80 text-red-500 hover:text-white border border-red-600/25 transition-colors text-[9px] font-bold uppercase tracking-wide"
+            >
+              <Trash2 className="w-3 h-3" />
+              Delete {selectedComponents.length}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

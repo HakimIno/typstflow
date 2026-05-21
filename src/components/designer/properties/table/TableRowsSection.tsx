@@ -9,19 +9,17 @@ import {
 import { useDesignerStore } from '@/store/designer-store';
 import type { TableCell, TableComponent, TableRow } from '@/types/schema';
 import { clsx } from 'clsx';
-import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  ChevronDown,
-  ChevronRight,
-  Italic,
-  Plus,
-  Trash2,
-} from 'lucide-react';
+import { ChevronDown, ChevronRight, Italic, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { FontWeightSelect } from '../../ui/FontWeightSelect';
-import { MiniInput } from './TableShared';
+import { PANEL_SELECT_TRIGGER } from '../Shared';
+import {
+  AddRowButton,
+  AlignToggleGroup,
+  MiniInput,
+  SettingToggle,
+  TABLE_FIELD_STACK,
+} from './TableShared';
 
 interface Props {
   component: TableComponent;
@@ -87,15 +85,9 @@ export const TableRowsSection = ({ component, type }: Props) => {
 
   if (!rows || rows.length === 0) {
     return (
-      <div className="p-4 text-center space-y-3">
-        <p className="text-[10px] text-[var(--text-muted)]">No custom {type} rows defined.</p>
-        <button
-          type="button"
-          onClick={addRow}
-          className="px-4 py-1.5 bg-[var(--accent)] text-white text-[10px] font-bold rounded shadow-sm hover:bg-[var(--accent)]/90 transition-all"
-        >
-          Initialize {type} Rows
-        </button>
+      <div className={TABLE_FIELD_STACK}>
+        <p className="text-[8px] text-[var(--text-muted)]">No custom rows.</p>
+        <AddRowButton label="Add row" onClick={addRow} />
       </div>
     );
   }
@@ -103,43 +95,27 @@ export const TableRowsSection = ({ component, type }: Props) => {
   const isRepeatEnabled = rows[0]?.repeat !== false;
 
   return (
-    <div className="p-0 space-y-1 bg-[var(--bg-widget)]">
-      {type === 'footer' && rows.length > 0 && (
-        <div className="flex items-center justify-between p-2 mb-2 bg-[var(--bg-surface)] border-b border-[var(--border-default)]">
-          <span className="text-[10px] font-medium text-[var(--text-primary)]">
-            Repeat on every page
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              const newRows = rows.map((r) => ({ ...r, repeat: !isRepeatEnabled }));
-              updateRows(newRows);
-            }}
-            className={clsx(
-              'w-7 h-4 rounded-full transition-colors relative',
-              isRepeatEnabled ? 'bg-[var(--accent)]' : 'bg-[var(--bg-hover)]'
-            )}
-          >
-            <div
-              className={clsx(
-                'w-3 h-3 bg-white rounded-full absolute top-0.5 transition-transform',
-                isRepeatEnabled ? 'translate-x-3.5' : 'translate-x-0.5'
-              )}
-            />
-          </button>
-        </div>
+    <div className="space-y-1 min-w-0">
+      {type === 'footer' && (
+        <SettingToggle
+          label="Repeat on every page"
+          value={isRepeatEnabled}
+          onChange={() => {
+            updateRows(rows.map((r) => ({ ...r, repeat: !isRepeatEnabled })));
+          }}
+        />
       )}
       {rows.map((row, rIdx) => {
         const isActiveRow = expandedRowIndex === rIdx;
         return (
           <div
             key={row.id}
-            className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded overflow-hidden"
+            className="border border-[var(--border-default)] rounded-[3px] overflow-hidden"
           >
             <div
               className={clsx(
-                'flex items-center gap-2 p-1.5 cursor-pointer hover:bg-white/[0.02] transition-colors',
-                isActiveRow && 'bg-white/[0.03] border-b border-[var(--border-default)]'
+                'flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-white/[0.03] transition-colors',
+                isActiveRow && 'bg-white/[0.02] border-b border-[var(--border-default)]'
               )}
               onClick={() => setExpandedRowIndex(isActiveRow ? null : rIdx)}
               onKeyDown={(e) => {
@@ -185,11 +161,11 @@ export const TableRowsSection = ({ component, type }: Props) => {
             </div>
 
             {isActiveRow && (
-              <div className="p-2 space-y-4 bg-black/10">
+              <div className="px-2 py-1.5 space-y-2 border-t border-[var(--border-default)]/60">
                 {row.cells.map((cell, cIdx) => (
                   <div
                     key={cell.id}
-                    className="p-2 rounded border border-white/5 bg-white/[0.02] space-y-2"
+                    className="py-1.5 space-y-1.5 border-b border-[var(--border-default)]/40 last:border-0"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -225,7 +201,7 @@ export const TableRowsSection = ({ component, type }: Props) => {
                             value={cell.format || 'text'}
                             onValueChange={(val) => updateCell(rIdx, cIdx, { format: val as any })}
                           >
-                            <SelectTrigger className="w-full h-7 text-[10px] bg-[var(--bg-surface)] border-[var(--border-default)]">
+                            <SelectTrigger className={PANEL_SELECT_TRIGGER}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -353,53 +329,32 @@ export const TableRowsSection = ({ component, type }: Props) => {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-1 border-t border-white/5 mt-1">
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              updateCell(rIdx, cIdx, (currentCell) => ({
-                                ...currentCell,
-                                style: {
-                                  ...currentCell.style,
-                                  italic: !currentCell.style?.italic,
-                                },
-                              }));
-                            }}
-                            className={clsx(
-                              'p-1.5 rounded border transition-all',
-                              cell.style?.italic
-                                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-                                : 'bg-white/5 border-white/10 text-[var(--text-muted)] hover:bg-white/10'
-                            )}
-                          >
-                            <Italic className="w-3 h-3" />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded border border-white/10">
-                          {(
-                            [
-                              { id: 'left', icon: AlignLeft },
-                              { id: 'center', icon: AlignCenter },
-                              { id: 'right', icon: AlignRight },
-                            ] as const
-                          ).map((a) => (
-                            <button
-                              type="button"
-                              key={a.id}
-                              onClick={() => updateCell(rIdx, cIdx, { align: a.id })}
-                              className={clsx(
-                                'p-1 rounded transition-all',
-                                (cell.align || 'left') === a.id
-                                  ? 'bg-[var(--accent)] text-white'
-                                  : 'text-[var(--text-muted)] hover:bg-white/10'
-                              )}
-                            >
-                              <a.icon className="w-3 h-3" />
-                            </button>
-                          ))}
-                        </div>
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          title="Italic"
+                          onClick={() =>
+                            updateCell(rIdx, cIdx, (currentCell) => ({
+                              ...currentCell,
+                              style: {
+                                ...currentCell.style,
+                                italic: !currentCell.style?.italic,
+                              },
+                            }))
+                          }
+                          className={clsx(
+                            'h-5 w-7 flex items-center justify-center rounded-[3px] border transition-all',
+                            cell.style?.italic
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                              : 'bg-[var(--bg-widget)] border-[var(--border-default)] text-[var(--text-muted)]'
+                          )}
+                        >
+                          <Italic className="w-2.5 h-2.5" />
+                        </button>
+                        <AlignToggleGroup
+                          value={cell.align || 'left'}
+                          onChange={(align) => updateCell(rIdx, cIdx, { align })}
+                        />
                       </div>
                     </div>
                   </div>
@@ -409,14 +364,7 @@ export const TableRowsSection = ({ component, type }: Props) => {
           </div>
         );
       })}
-      <button
-        type="button"
-        onClick={addRow}
-        className="w-full mt-2 flex items-center justify-center gap-1.5 p-1.5 bg-white/[0.02] border border-dashed border-[var(--border-default)] text-[var(--text-muted)] text-[9px] font-bold rounded hover:bg-white/[0.04] transition-all"
-      >
-        <Plus className="w-3 h-3" />
-        Add Row
-      </button>
+      <AddRowButton label="Add row" onClick={addRow} />
     </div>
   );
 };

@@ -267,7 +267,7 @@ export const TableColumnsSection = ({ component }: Props) => {
       <button
         type="button"
         onClick={addColumn}
-        className="w-full flex items-center justify-center gap-1.5 p-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-[var(--accent)] text-[10px] font-bold rounded border border-dashed border-[var(--border-default)] transition-all"
+        className="w-full flex items-center justify-center gap-1.5 p-0.5 bg-white/[0.04] hover:bg-white/[0.08] text-[var(--accent)] text-[10px] font-bold rounded border border-dashed border-[var(--border-default)] transition-all"
       >
         <Plus className="w-3 h-3" />
         Add New Column

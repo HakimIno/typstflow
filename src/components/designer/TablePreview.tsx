@@ -637,18 +637,21 @@ export function TablePreview({ component }: { component: TableComponent }) {
             : {}),
         }}
       >
-        {/* Figma-style cell selection — thin outline on active cell only */}
+        {/* Figma-style cell selection — 1px outline; active cell uses inset shadow only (no stacked borders) */}
         {isSelected && isTableEditing && (
           <div
             aria-hidden
             className="absolute inset-0 pointer-events-none z-[5] bg-[var(--accent)]/[0.03]"
-            style={{
-              borderTop: selectionEdges?.top ? '1px solid var(--accent)' : undefined,
-              borderBottom: selectionEdges?.bottom ? '1px solid var(--accent)' : undefined,
-              borderLeft: selectionEdges?.left ? '1px solid var(--accent)' : undefined,
-              borderRight: selectionEdges?.right ? '1px solid var(--accent)' : undefined,
-              boxShadow: isActiveCell ? 'inset 0 0 0 1px var(--accent)' : undefined,
-            }}
+            style={
+              isActiveCell
+                ? { boxShadow: 'inset 0 0 0 1px var(--accent)' }
+                : {
+                    borderTop: selectionEdges?.top ? '1px solid var(--accent)' : undefined,
+                    borderBottom: selectionEdges?.bottom ? '1px solid var(--accent)' : undefined,
+                    borderLeft: selectionEdges?.left ? '1px solid var(--accent)' : undefined,
+                    borderRight: selectionEdges?.right ? '1px solid var(--accent)' : undefined,
+                  }
+            }
           />
         )}
         {isSelected && !isTableEditing && (

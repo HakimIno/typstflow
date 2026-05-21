@@ -102,7 +102,7 @@ export const ReportConfigPanel = memo(function ReportConfigPanel() {
         </PropertyGrid>
       </CollapsibleSection>
 
-      <CollapsibleSection label="Margins" defaultOpen={false}>
+      <CollapsibleSection label="Margins">
         <PropertyGrid cols={2} className="gap-2">
           {(['top', 'bottom', 'left', 'right'] as const).map((side) => (
             <ControlField key={side} label={side.charAt(0).toUpperCase()}>
@@ -123,7 +123,7 @@ export const ReportConfigPanel = memo(function ReportConfigPanel() {
       </CollapsibleSection>
 
       {activePage && (
-        <CollapsibleSection label="Batch Data" defaultOpen={false}>
+        <CollapsibleSection label="Batch Data">
           <PanelMiniInput
             value={activePage.dataSource ?? ''}
             onChange={(v) => updatePageDataSource(activePage.id, v.trim() || undefined)}
@@ -135,7 +135,7 @@ export const ReportConfigPanel = memo(function ReportConfigPanel() {
       )}
 
       {selectedZoneKey && zone && (
-        <CollapsibleSection label={`Zone · ${selectedZoneKey}`} defaultOpen>
+        <CollapsibleSection label={`Zone · ${selectedZoneKey}`}>
           <div className={PANEL_FIELD_STACK}>
             <ControlField label="Layout">
               <SegmentedControl
