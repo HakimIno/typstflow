@@ -100,15 +100,15 @@ export const Palette = memo(function Palette() {
       </div>
 
       {/* Categories Content - Dense List */}
-      <div className="flex-1 overflow-y-auto scrollbar-none p-1.5 space-y-3">
+      <div className="flex-1 overflow-y-auto scrollbar-none py-1">
         {filteredCategories.map((cat) => (
-          <div key={cat.id} className="space-y-1">
-            <div className="px-1.5 py-0.5 flex items-center gap-2">
-              <span className="text-[11px] font-bold text-[var(--text-muted)]">{cat.label}</span>
-              <div className="flex-1 h-px bg-[var(--border-subtle)] opacity-50" />
+          <div key={cat.id} className="mb-2 last:mb-0">
+            <div className="h-7 px-3 flex items-center gap-2 text-[var(--text-muted)]">
+              <span className="text-[10px] font-bold uppercase tracking-[0.12em]">{cat.label}</span>
+              <div className="flex-1 h-px bg-[var(--border-default)] opacity-70" />
             </div>
 
-            <div className="grid grid-cols-1 gap-0.5">
+            <div className="grid grid-cols-1">
               {cat.items.map((item) => (
                 <PaletteItem key={item.type} {...item} />
               ))}
@@ -266,14 +266,15 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: Palet
     <div
       ref={ref}
       className={clsx(
-        'group flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-grab active:cursor-grabbing hover:bg-[var(--bg-widget)] border border-transparent hover:border-[var(--border-subtle)] hover:shadow-sm'
+        'group mx-1.5 flex items-center gap-2.5 rounded-md p-1 transition-all cursor-grab active:cursor-grabbing border border-transparent hover:bg-[var(--bg-widget)] hover:border-[var(--border-subtle)]'
       )}
     >
-      <div className="w-6 h-6 rounded-md bg-[var(--bg-widget)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] transition-all">
+      <div className="w-7 h-7 rounded-full  flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(
+         --bg-surface)] group-hover:border-[var(--accent)]/45 transition-all">
         <Icon className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors" />
       </div>
 
-      <span className="text-[12px] text-[var(--text-secondary)] font-medium truncate group-hover:text-[var(--text-primary)] transition-colors">
+      <span className="text-[13px] text-[var(--text-secondary)] font-medium truncate group-hover:text-[var(--text-primary)] transition-colors">
         {label}
       </span>
     </div>

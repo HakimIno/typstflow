@@ -34,6 +34,8 @@ export type SchemaSlice = Pick<
   | 'updateGroup'
   | 'addGroup'
   | 'removeGroup'
+  | 'groupSelectedElements'
+  | 'ungroupContainer'
   | 'undo'
   | 'redo'
   | 'rewindToCheckpoint'
@@ -712,6 +714,114 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
       };
       return pushHistory(state, newSchema);
     }),
+
+  groupSelectedElements: () =>
+    set((state) => {
+      const selected = state.selectedComponentIds
+        .map((id) => findComponentZone(state.schema, id))
+        .filter((info): info is NonNullable<typeof info> => info !== null);
+
+      if (selected.length < 2) return state;
+
+      const first = selected[0];
+      const sameZone = selected.every(
+        (info) =>
+          info.zoneKey === first.zoneKey &&
+          info.pageId === first.pageId &&
+          info.groupId === first.groupId &&
+          info.groupType === first.groupType
+      );
+      if (!sameZone) return state;
+
+      const selectedIds = new Set(selected.map((info) => info.component.id));
+      const ordered = getTopLevelComponents(
+        state.schema,
+        first.zoneKey,
+        first.pageId,
+        first.groupId,
+        first.groupType
+      ).filter((component) => selectedIds.has(component.id));
+
+      if (ordered.length < 2) return state;
+
+      const minX = Math.min(...ordered.map((component) => component.x ?? 0));
+      const minY = Math.min(...ordered.map((component) => component.y ?? 0));
+      const maxX = Math.max(
+        ...ordered.map((component) => (component.x ?? 0) + (component.width ?? 40))
+      );
+      const maxY = Math.max(
+        ...ordered.map((component) => (component.y ?? 0) + (component.height ?? 10))
+      );
+
+      const groupId = `columns-${Math.random().toString(36).substring(2, 9)}`;
+      const groupedComponent: ComponentNode = {
+        id: groupId,
+        type: 'columns',
+        name: 'Layer Group',
+        x: minX,
+        y: minY,
+        width: Math.max(10, maxX - minX),
+        height: Math.max(10, maxY - minY),
+        gap: '0mm',
+        columns: [
+          {
+            width: '1fr',
+            components: ordered.map((component) => ({
+              ...component,
+              x: (component.x ?? 0) - minX,
+              y: (component.y ?? 0) - minY,
+            })),
+          },
+        ],
+      };
+
+      const withoutSelected = removeComponentsFromSchema(
+        state.schema,
+        ordered.map((component) => component.id)
+      ).schema;
+      const newSchema = insertTopLevelComponent(
+        withoutSelected,
+        groupedComponent,
+        first.zoneKey,
+        first.pageId,
+        first.groupId,
+        first.groupType
+      );
+
+      return { ...pushHistory(state, newSchema), selectedComponentIds: [groupId] };
+    }),
+
+  ungroupContainer: (id: string) =>
+    set((state) => {
+      const info = findComponentZone(state.schema, id);
+      if (!info || info.component.type !== 'columns') return state;
+
+      const children = info.component.columns.flatMap((column) => column.components || []);
+      if (children.length === 0) return state;
+
+      const parentX = info.component.x ?? 0;
+      const parentY = info.component.y ?? 0;
+      const lifted = children.map((component) => ({
+        ...component,
+        x: parentX + (component.x ?? 0),
+        y: parentY + (component.y ?? 0),
+      }));
+
+      const withoutGroup = removeComponentFromSchema(state.schema, id).schema;
+      const newSchema = insertTopLevelComponents(
+        withoutGroup,
+        lifted,
+        info.zoneKey,
+        info.pageId,
+        info.groupId,
+        info.groupType
+      );
+
+      return {
+        ...pushHistory(state, newSchema),
+        selectedComponentIds: lifted.map((component) => component.id),
+      };
+    }),
 });
 
 // ─── Private Helpers ───────────────────────────────────────────────────────
@@ -806,4 +916,82 @@ function mapSchemaComponents(
   }
 
   return nextSchema;
+}
+
+function getTopLevelComponents(
+  schema: LayoutSchema,
+  zoneKey: ZoneKey,
+  pageId?: string,
+  groupId?: string,
+  groupType?: 'header' | 'footer'
+): ComponentNode[] {
+  if (groupId && groupType) {
+    const group = schema.groups.find((item) => item.id === groupId);
+    return group?.[groupType].components ?? [];
+  }
+  if (zoneKey === 'body') {
+    const page = schema.pages.find((item) => item.id === pageId) ?? schema.pages[0];
+    return page?.body.components ?? [];
+  }
+  return schema.zones[zoneKey].components;
+}
+
+function insertTopLevelComponent(
+  schema: LayoutSchema,
+  component: ComponentNode,
+  zoneKey: ZoneKey,
+  pageId?: string,
+  groupId?: string,
+  groupType?: 'header' | 'footer'
+): LayoutSchema {
+  return insertTopLevelComponents(schema, [component], zoneKey, pageId, groupId, groupType);
+}
+
+function insertTopLevelComponents(
+  schema: LayoutSchema,
+  components: ComponentNode[],
+  zoneKey: ZoneKey,
+  pageId?: string,
+  groupId?: string,
+  groupType?: 'header' | 'footer'
+): LayoutSchema {
+  if (groupId && groupType) {
+    return {
+      ...schema,
+      groups: schema.groups.map((group) => {
+        if (group.id !== groupId) return group;
+        const zone = group[groupType];
+        return {
+          ...group,
+          [groupType]: { ...zone, components: [...zone.components, ...components] },
+        };
+      }),
+    };
+  }
+
+  if (zoneKey === 'body') {
+    const targetPageId = pageId ?? schema.pages[0]?.id;
+    return {
+      ...schema,
+      pages: schema.pages.map((page) =>
+        page.id === targetPageId
+          ? {
+              ...page,
+              body: { ...page.body, components: [...page.body.components, ...components] },
+            }
+          : page
+      ),
+    };
+  }
+
+  return {
+    ...schema,
+    zones: {
+      ...schema.zones,
+      [zoneKey]: {
+        ...schema.zones[zoneKey],
+        components: [...schema.zones[zoneKey].components, ...components],
+      },
+    },
+  };
 }

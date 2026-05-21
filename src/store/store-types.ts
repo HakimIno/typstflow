@@ -267,6 +267,8 @@ export interface DesignerState extends FontSlice {
   // Group Actions
   addGroup: (field: string) => void;
   removeGroup: (id: string) => void;
+  groupSelectedElements: () => void;
+  ungroupContainer: (id: string) => void;
   // Dialog
   dialog: DialogState;
   showDialog: (options: DialogOptions) => void;

@@ -112,7 +112,7 @@ export const DataPanel = memo(function DataPanel() {
   }, [allPaths, searchQuery]);
 
   type VirtualItem =
-    | { type: 'header'; label: string; id: string }
+    | { type: 'header'; label: string; id: string; count: number }
     | { type: 'field'; path: string; dataType: string; id: string };
 
   const virtualDataItems = useMemo(() => {
@@ -133,7 +133,12 @@ export const DataPanel = memo(function DataPanel() {
     const result: VirtualItem[] = [];
     for (const [key, group] of Object.entries(groups)) {
       if (group.paths.length > 0) {
-        result.push({ type: 'header', label: group.label, id: `header-${key}` });
+        result.push({
+          type: 'header',
+          label: group.label,
+          id: `header-${key}`,
+          count: group.paths.length,
+        });
         if (!collapsedGroups[group.label]) {
           for (const path of group.paths) {
             result.push({
@@ -152,7 +157,7 @@ export const DataPanel = memo(function DataPanel() {
   const virtualizer = useVirtualizer({
     count: virtualDataItems.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: (index) => (virtualDataItems[index]?.type === 'header' ? 28 : 36),
+    estimateSize: (index) => (virtualDataItems[index]?.type === 'header' ? 31 : 31),
     overscan: 10,
   });
 
@@ -408,7 +413,7 @@ export const DataPanel = memo(function DataPanel() {
             <div className="relative group">
               <DesignerInput
                 type="text"
-                placeholder="Search tools..."
+                placeholder="Search data..."
                 value={searchQuery}
                 onChange={(v: string) => setSearchQuery(v)}
                 className="pr-8"
@@ -419,7 +424,8 @@ export const DataPanel = memo(function DataPanel() {
               />
             </div>
           </div>
-          <div ref={parentRef} className="flex-1 overflow-y-auto scrollbar-hide">
+          <hr className="border-white/5" />
+          <div ref={parentRef} className="flex-1 overflow-y-auto scrollbar-hide py-1">
             {filteredPaths.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] p-8 text-center gap-3">
                 <Icon icon="lucide:database" className="w-8 h-8 opacity-20" />
@@ -457,12 +463,12 @@ export const DataPanel = memo(function DataPanel() {
                         width: '100%',
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${virtualRow.start}px)`,
-                        padding: '0 8px',
                       }}
                     >
                       {item.type === 'header' ? (
                         <ExplorerHeader
                           label={item.label}
+                          count={item.count}
                           isCollapsed={!!collapsedGroups[item.label]}
                           onToggle={() =>
                             setCollapsedGroups((prev) => ({
@@ -505,10 +511,12 @@ export const DataPanel = memo(function DataPanel() {
 
 function ExplorerHeader({
   label,
+  count,
   isCollapsed,
   onToggle,
 }: {
   label: string;
+  count: number;
   isCollapsed: boolean;
   onToggle: () => void;
 }) {
@@ -526,26 +534,31 @@ function ExplorerHeader({
   return (
     <button
       type="button"
-      className="flex items-center gap-2 py-1 px-1.5 mb-1 mt-2 first:mt-1 cursor-pointer group/header w-full text-left"
+      className={clsx(
+        'w-full h-full flex items-center gap-2 px-3 cursor-pointer text-left transition-all group/header border-y border-transparent',
+        'bg-white/[0.018] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/[0.035]'
+      )}
       onClick={onToggle}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="h-5 w-5 flex items-center justify-center text-[var(--text-muted)] group-hover/header:text-[var(--text-primary)] transition-all shrink-0">
         <Icon
           icon="lucide:chevron-right"
-          className={clsx(
-            'w-3 h-3 text-[var(--text-muted)] transition-transform duration-200',
-            !isCollapsed && 'rotate-90'
-          )}
+          className={clsx('w-3 h-3 transition-transform duration-200', !isCollapsed && 'rotate-90')}
         />
+      </div>
+      <div className="w-5 flex items-center justify-center shrink-0">
         <Icon
           icon={iconName}
-          className="w-3 h-3 text-[var(--text-muted)] group-hover/header:text-[var(--text-secondary)] transition-colors"
+          className="w-4 h-4 text-[var(--text-muted)] group-hover/header:text-[var(--accent)] transition-colors"
         />
-        <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-[0.15em] group-hover/header:text-[var(--text-secondary)] transition-colors">
-          {label}
-        </span>
       </div>
-      <div className="flex-1 h-px bg-[var(--border-subtle)] opacity-50" />
+      <span className="text-[12px] font-semibold flex-1 truncate opacity-90 group-hover/header:opacity-100 transition-opacity">
+        {label}
+      </span>
+      <div className="h-px w-8 bg-[var(--border-default)] opacity-70" />
+      <span className="flex items-center justify-center min-w-[18px] h-[18px] text-[9px] bg-black/5 text-[var(--text-muted)] px-1 rounded-full font-bold">
+        {count}
+      </span>
     </button>
   );
 }
@@ -608,9 +621,10 @@ function ExplorerItem({
     <div
       ref={ref}
       className={clsx(
-        'group flex items-center gap-2.5 px-2 py-1 rounded-xl transition-all border border-transparent cursor-grab active:cursor-grabbing hover:bg-[var(--bg-widget)] hover:border-[var(--border-subtle)] hover:shadow-sm w-full text-left outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]',
+        'group flex items-center gap-2.5 h-full pr-3 transition-all border border-transparent cursor-grab active:cursor-grabbing hover:bg-white/[0.035] w-full text-left outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]',
         isDragging && 'opacity-40 grayscale'
       )}
+      style={{ paddingLeft: '34px' }}
       onClick={handleCopy}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -621,18 +635,19 @@ function ExplorerItem({
       onMouseEnter={(e) => onHover((e.currentTarget as HTMLElement).getBoundingClientRect())}
       onMouseLeave={onLeave}
     >
-      <div className="w-5 h-5 p-0.5 rounded-full bg-[var(--bg-widget)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(--bg-surface)] group-hover:border-[var(--accent)] transition-all ">
+      <div className="w-3 shrink-0" />
+      <div className="w-5 flex items-center justify-center shrink-0">
         <Icon
           icon={iconName}
-          className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors"
+          className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors"
         />
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-bold text-[var(--text-primary)] truncate transition-colors group-hover:text-[var(--accent)]">
+        <p className="text-[13px] font-medium text-[var(--text-muted)] truncate leading-tight transition-colors group-hover:text-[var(--accent)]">
           {path}
         </p>
-        <p className="text-[9px] text-[var(--text-muted)] truncate font-medium uppercase tracking-wider">
+        <p className="text-[9px] text-[var(--text-muted)] truncate font-medium uppercase tracking-[0.08em] leading-tight opacity-70">
           {type}
         </p>
       </div>
@@ -640,17 +655,17 @@ function ExplorerItem({
       <button
         type="button"
         className={clsx(
-          'p-1.5 rounded-md transition-all shrink-0',
+          'p-1 rounded-md transition-all shrink-0',
           copied
             ? 'opacity-100 text-green-500 bg-green-500/10'
-            : 'opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-surface)]'
+            : 'opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--accent)]'
         )}
         onClick={(e) => {
           e.stopPropagation();
           handleCopy();
         }}
       >
-        <Icon icon={copied ? 'lucide:check-circle-2' : 'lucide:copy'} className="w-3.5 h-3.5" />
+        <Icon icon={copied ? 'lucide:check-circle-2' : 'lucide:copy'} className="w-4 h-4" />
       </button>
     </div>
   );
