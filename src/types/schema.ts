@@ -87,7 +87,9 @@ export type ComponentNode =
   | SummaryBoxComponent
   | PageBreakIndicatorComponent
   | PageNumberComponent
-  | ChecklistComponent;
+  | ChecklistComponent
+  | RectangleComponent
+  | SignatureComponent;
 
 export interface BaseComponent {
   id: string;
@@ -450,6 +452,34 @@ export interface ChecklistComponent extends BaseComponent {
   alignItems?: 'start' | 'center'; // vertical alignment of bullet/checkbox (default: 'start')
   checkedStrikethrough?: boolean; // strikethrough checked item labels
   checkedMuted?: boolean; // mute (dim) checked item labels
+}
+
+// --- Rectangle Component ---
+export interface RectangleComponent extends BaseComponent {
+  type: 'rectangle';
+  fill?: string;
+  strokeColor?: string;
+  strokeWidth?: string;
+  strokeStyle?: 'solid' | 'dashed' | 'dotted';
+  radius?: string;
+}
+
+// --- Signature Component ---
+export interface SignatureSlot {
+  id: string;
+  label: string;
+  nameLabel?: string;
+  dateLabel?: string;
+}
+
+export interface SignatureComponent extends BaseComponent {
+  type: 'signature';
+  slots: SignatureSlot[];
+  showNameLine?: boolean;
+  showDateLine?: boolean;
+  lineStyle?: 'solid' | 'dotted' | 'dashed';
+  lineColor?: string;
+  labelStyle?: TextStyle;
 }
 
 // --- Supporting Types ---

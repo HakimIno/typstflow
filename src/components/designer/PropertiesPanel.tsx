@@ -9,6 +9,8 @@ import type {
   LineComponent,
   PageNumberComponent,
   QRComponent,
+  RectangleComponent,
+  SignatureComponent,
   SummaryBoxComponent,
   TableComponent,
   TextComponent,
@@ -40,6 +42,8 @@ import {
   PropertyRow,
   SectionHeader,
 } from './properties/Shared';
+import { RectangleProperties } from './properties/RectangleProperties';
+import { SignatureProperties } from './properties/SignatureProperties';
 import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
 import { TypographyProperties } from './properties/TypographyProperties';
 import { TableAdvancedSection } from './properties/table/TableAdvancedSection';
@@ -58,6 +62,8 @@ const isBarcode = (c: ComponentNode): c is BarcodeComponent =>
 const isPageNumber = (c: ComponentNode): c is PageNumberComponent => c.type === 'page-number';
 const isColumns = (c: ComponentNode): c is ColumnLayoutComponent => c.type === 'columns';
 const isChecklist = (c: ComponentNode): c is ChecklistComponent => c.type === 'checklist';
+const isRectangle = (c: ComponentNode): c is RectangleComponent => c.type === 'rectangle';
+const isSignature = (c: ComponentNode): c is SignatureComponent => c.type === 'signature';
 
 type TabType = 'design' | 'layout' | 'data' | 'settings';
 
@@ -268,6 +274,24 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
             {isChecklist(selectedComponent) && (
               <div className={PROPERTY_SECTION_CLASS}>
                 <ChecklistProperties
+                  component={selectedComponent}
+                  onUpdate={(updates) => updateComponent(selectedComponent.id, updates as any)}
+                />
+              </div>
+            )}
+
+            {isRectangle(selectedComponent) && (
+              <div className={PROPERTY_SECTION_CLASS}>
+                <RectangleProperties
+                  component={selectedComponent}
+                  onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
+                />
+              </div>
+            )}
+
+            {isSignature(selectedComponent) && (
+              <div className={PROPERTY_SECTION_CLASS}>
+                <SignatureProperties
                   component={selectedComponent}
                   onUpdate={(updates) => updateComponent(selectedComponent.id, updates as any)}
                 />

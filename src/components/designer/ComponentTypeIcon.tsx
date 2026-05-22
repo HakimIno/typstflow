@@ -14,7 +14,9 @@ import {
   Maximize,
   Minus,
   Palette,
+  PenLine,
   QrCode,
+  RectangleHorizontal,
   Repeat,
   SeparatorHorizontal,
   Settings,
@@ -37,6 +39,8 @@ export const COMPONENT_TYPE_ICONS: Record<ComponentNode['type'], LucideIcon> = {
   'page-break-indicator': SeparatorHorizontal,
   'page-number': FileDigit,
   checklist: CheckSquare,
+  rectangle: RectangleHorizontal,
+  signature: PenLine,
 };
 
 const FALLBACK_ICON = Settings;

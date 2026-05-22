@@ -5,6 +5,8 @@ import type {
   ComponentNode,
   PageNumberComponent,
   QRComponent,
+  RectangleComponent,
+  SignatureComponent,
   TableComponent,
   TextComponent,
 } from '@/types/schema';
@@ -18,6 +20,8 @@ import { LinePreview } from './previews/LinePreview';
 import { PageBreakPreview } from './previews/PageBreakPreview';
 import { PageNumberPreview } from './previews/PageNumberPreview';
 import { QRPreview } from './previews/QRPreview';
+import { RectanglePreview } from './previews/RectanglePreview';
+import { SignaturePreview } from './previews/SignaturePreview';
 import { SpacerPreview } from './previews/SpacerPreview';
 import { SummaryBoxPreview } from './previews/SummaryBoxPreview';
 import { TextPreview } from './previews/TextPreview';
@@ -84,6 +88,10 @@ export const ComponentPreview = memo(function ComponentPreview({
       return (
         <ChecklistPreview component={component as ChecklistComponent} sampleData={sampleData} />
       );
+    case 'rectangle':
+      return <RectanglePreview component={component as RectangleComponent} />;
+    case 'signature':
+      return <SignaturePreview component={component as SignatureComponent} />;
     default:
       return <div>Preview for {component.type}</div>;
   }

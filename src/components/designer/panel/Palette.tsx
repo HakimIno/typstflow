@@ -14,7 +14,9 @@ import {
   ListChecks,
   ListTree,
   Minus,
+  PenLine,
   QrCode,
+  RectangleHorizontal,
   ScanLine,
   Search,
   Space,
@@ -42,6 +44,8 @@ const CATEGORIES = [
       { type: 'text', label: 'Text Field', icon: Type },
       { type: 'image', label: 'Picture', icon: Image },
       { type: 'line', label: 'Line Divider', icon: Minus },
+      { type: 'rectangle', label: 'Rectangle', icon: RectangleHorizontal },
+      { type: 'signature', label: 'Signature Line', icon: PenLine },
     ],
   },
   {
@@ -238,6 +242,34 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: Palet
             style: { fontSize: 9, fontWeight: 'medium' },
             width: 35,
             height: 6,
+          };
+        case 'rectangle':
+          return {
+            ...base,
+            type: 'rectangle',
+            fill: '#f3f4f6',
+            strokeColor: '#d1d5db',
+            strokeWidth: '1pt',
+            strokeStyle: 'solid',
+            radius: '2mm',
+            width: 60,
+            height: 20,
+          };
+        case 'signature':
+          return {
+            ...base,
+            type: 'signature',
+            slots: [
+              { id: 'sig-1', label: 'ผู้อนุมัติ', nameLabel: '(......................)', dateLabel: 'วันที่: ___/___/______' },
+              { id: 'sig-2', label: 'ผู้ตรวจสอบ', nameLabel: '(......................)', dateLabel: 'วันที่: ___/___/______' },
+            ],
+            showNameLine: true,
+            showDateLine: true,
+            lineStyle: 'solid',
+            lineColor: '#000000',
+            labelStyle: { fontSize: 8 },
+            width: 180,
+            height: 30,
           };
         default:
           return { ...base, type: 'text', content: '', height: 10 };

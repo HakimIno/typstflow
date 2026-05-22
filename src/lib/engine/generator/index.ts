@@ -12,7 +12,9 @@ import { linePlugin } from './plugins/line';
 import { pageBreakIndicatorPlugin } from './plugins/page-break-indicator';
 import { pageNumberPlugin } from './plugins/page-number';
 import { qrPlugin } from './plugins/qr';
+import { rectanglePlugin } from './plugins/rectangle';
 import { repeaterPlugin } from './plugins/repeater';
+import { signaturePlugin } from './plugins/signature';
 import { spacerPlugin } from './plugins/spacer';
 import { summaryBoxPlugin } from './plugins/summary-box';
 import { tablePlugin } from './plugins/table';
@@ -34,6 +36,8 @@ const BUILT_IN_PLUGINS: ComponentPlugin[] = [
   columnsPlugin,
   tablePlugin,
   checklistPlugin,
+  rectanglePlugin,
+  signaturePlugin,
 ];
 
 /**
