@@ -28,6 +28,31 @@ import { EditorOverlay } from './EditorOverlay';
 import { ResizeHandles } from './ResizeHandles';
 import { getComponentById, getComponentPosition } from './utils';
 
+function clampToZone(value: number, max: number): number {
+  return Math.max(0, Math.min(value, Math.max(0, max)));
+}
+
+function calculateLocalDropPosition(
+  event: PointerEvent,
+  zoneElement: HTMLElement,
+  dragOffsetXpx: number,
+  dragOffsetYpx: number,
+  zoom: number,
+  widthMm: number,
+  heightMm: number
+): { x: number; y: number } {
+  const rect = zoneElement.getBoundingClientRect();
+  const zoneWidthMm = LayoutEngine.pxToMm(rect.width / zoom);
+  const zoneHeightMm = LayoutEngine.pxToMm(rect.height / zoom);
+  const rawX = LayoutEngine.pxToMm((event.clientX - rect.left - dragOffsetXpx) / zoom);
+  const rawY = LayoutEngine.pxToMm((event.clientY - rect.top - dragOffsetYpx) / zoom);
+
+  return {
+    x: clampToZone(LayoutEngine.snap(rawX), zoneWidthMm - widthMm),
+    y: clampToZone(LayoutEngine.snap(rawY), zoneHeightMm - heightMm),
+  };
+}
+
 interface Props {
   componentId: string;
   zoneKey: 'header' | 'body' | 'footer';
@@ -136,7 +161,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const handleFlowPointerMove = useCallback((e: React.PointerEvent) => {
     const state = flowDragRef.current;
     if (!state || e.pointerId !== state.pointerId) return;
-    const zoom = useDesignerStore.getState().zoom;
+    const { zoom } = useDesignerStore.getState();
     const dx = (e.clientX - state.startX) / zoom;
     const dy = (e.clientY - state.startY) / zoom;
     // Apply transform directly — no React state → no re-render → no bounce
@@ -163,7 +188,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       setFlowDragging(false);
       window.dispatchEvent(new CustomEvent('flow-drag-end'));
 
-      const zoom = useDesignerStore.getState().zoom;
+      const { zoom } = useDesignerStore.getState();
       const dxMm = LayoutEngine.pxToMm((e.clientX - state.startX) / zoom);
       const newX = Math.max(0, state.initialXmm + dxMm);
       useDesignerStore.getState().updateComponent(componentId, { x: Math.round(newX * 10) / 10 });
@@ -578,6 +603,18 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           if (targetZone) {
             const tz = targetZone;
             const { lastSnappedX, lastSnappedY } = dragState;
+            const primaryInitial = initialPositions.get(componentId);
+            const primaryLocalDrop = primaryInitial
+              ? calculateLocalDropPosition(
+                  event,
+                  tz.element,
+                  dragState.dragOffsetXpx,
+                  dragState.dragOffsetYpx,
+                  currentZoom,
+                  dragState.primaryCompWidth,
+                  dragState.primaryCompHeight
+                )
+              : null;
 
             const dstZoneOffset = dragState.zoneLayoutCache.getZoneOffset(tz.zoneKey, tz.pageId);
             const dstPageAbsOffset = dragState.zoneLayoutCache.getPageAbsOffsetMm(tz.pageId);
@@ -593,14 +630,6 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               const compData = getComponentById(dragId, store.schema);
               if (!compData) continue;
 
-              // Calculate new absolute document-space coordinates
-              const newAbsX = pos.x + dxMM;
-              const newAbsY = pos.absY + dyMM;
-
-              // Convert back to zone-local for store (strip zone offset and page offset)
-              const newX = newAbsX;
-              const newY = Math.max(0, newAbsY - dstZoneOffset - dstPageAbsOffset);
-
               const compIsCrossZone =
                 tz &&
                 isDifferentZone(
@@ -612,6 +641,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({
                   },
                   tz
                 );
+              const newX =
+                compIsCrossZone && primaryInitial && primaryLocalDrop
+                  ? primaryLocalDrop.x + (pos.x - primaryInitial.x)
+                  : pos.x + dxMM;
+              const newY =
+                compIsCrossZone && primaryInitial && primaryLocalDrop
+                  ? Math.max(0, primaryLocalDrop.y + (pos.y - primaryInitial.y))
+                  : Math.max(0, pos.absY + dyMM - dstZoneOffset - dstPageAbsOffset);
 
               if (compIsCrossZone) {
                 moves.push({

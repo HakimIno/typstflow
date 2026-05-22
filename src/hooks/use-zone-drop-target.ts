@@ -1,12 +1,57 @@
 'use client';
 
-import { dragSnapState } from '@/lib/engine/drag-snap-state';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { getZoneComponents } from '@/lib/utils/schema-mutators';
 import { useDesignerStore } from '@/store/designer-store';
-import type { ZoneKey } from '@/types/schema';
+import type { ComponentNode, ZoneKey } from '@/types/schema';
 import { dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { useEffect, useState } from 'react';
+
+type DropSourceData = {
+  type?: string;
+  id?: string;
+  zoneKey?: ZoneKey;
+  pageId?: string;
+  groupId?: string;
+  groupType?: 'header' | 'footer';
+  dragOffsetX?: number;
+  dragOffsetY?: number;
+  component?: Partial<ComponentNode>;
+  group?: Array<{
+    id: string;
+    sourceZoneKey: ZoneKey;
+    sourcePageId: string | undefined;
+    offsetX: number;
+    offsetY: number;
+  }>;
+};
+
+function clampToZone(value: number, max: number): number {
+  return Math.max(0, Math.min(value, Math.max(0, max)));
+}
+
+function calculateLocalDropPosition(
+  input: { clientX: number; clientY: number },
+  zoneEl: HTMLElement,
+  data: DropSourceData
+): { x: number; y: number } {
+  const { zoom } = useDesignerStore.getState();
+  const rect = zoneEl.getBoundingClientRect();
+  const offsetX = data.dragOffsetX ?? 0;
+  const offsetY = data.dragOffsetY ?? 0;
+  const widthMm = data.component?.width ?? 0;
+  const heightMm = data.component?.height ?? 0;
+
+  const zoneWidthMm = LayoutEngine.pxToMm(rect.width / zoom);
+  const zoneHeightMm = LayoutEngine.pxToMm(rect.height / zoom);
+  const rawX = LayoutEngine.pxToMm((input.clientX - rect.left - offsetX) / zoom);
+  const rawY = LayoutEngine.pxToMm((input.clientY - rect.top - offsetY) / zoom);
+
+  return {
+    x: clampToZone(LayoutEngine.snap(rawX), zoneWidthMm - widthMm),
+    y: clampToZone(LayoutEngine.snap(rawY), zoneHeightMm - heightMm),
+  };
+}
 
 function resolveFlowY(
   cursorClientY: number,
@@ -15,7 +60,7 @@ function resolveFlowY(
   zoneKey: ZoneKey,
   pageId?: string
 ): number {
-  const zoom = useDesignerStore.getState().zoom;
+  const { zoom } = useDesignerStore.getState();
   const rect = zoneEl.getBoundingClientRect();
   // Convert cursor position to layout pixels (pre-zoom) then to mm
   const cursorRelYMm = LayoutEngine.pxToMm((cursorClientY - rect.top) / zoom);
@@ -122,32 +167,25 @@ export function useZoneDropTarget(
         }
 
         const state = useDesignerStore.getState();
-        const data = source.data as any;
+        const data = source.data as DropSourceData;
+        const zoneEl = contentRef.current;
+        if (!zoneEl) return;
 
-        // ✅ Read from sync singleton — no RAF / store race.
-        const snap = dragSnapState.read();
-        const finalX = snap.snappedX;
-        const finalY = snap.snappedY;
-
-        // Group bands have their own offset; otherwise use cumulative zone offset.
-        const zoneOffsetMm =
-          groupId && groupType
-            ? LayoutEngine.calculateBandOffset(groupId, groupType, state.schema, pageId)
-            : LayoutEngine.calculateZoneOffset(zoneKey, state.schema, pageId);
+        const localDrop = calculateLocalDropPosition(location.current.input, zoneEl, data);
 
         // For flow mode: snap to the row the cursor is actually over (not element top).
-        const resolveY = (rawAbsY: number): number => {
-          if (!isFlowMode) return rawAbsY - zoneOffsetMm;
-          if (contentRef.current) {
+        const resolveY = (localY: number): number => {
+          if (!isFlowMode) return localY;
+          if (zoneEl) {
             return resolveFlowY(
               location.current.input.clientY,
-              contentRef.current,
+              zoneEl,
               state.schema,
               zoneKey,
               pageId
             );
           }
-          return Math.max(0, rawAbsY - zoneOffsetMm);
+          return localY;
         };
 
         if (data.type === 'new-component') {
@@ -156,8 +194,8 @@ export function useZoneDropTarget(
             {
               ...data.component,
               id: Math.random().toString(36).substring(7),
-              x: finalX,
-              y: resolveY(finalY),
+              x: localDrop.x,
+              y: resolveY(localDrop.y),
             },
             pageId,
             groupId,
@@ -165,21 +203,13 @@ export function useZoneDropTarget(
           );
         } else if (data.id) {
           if (data.group && data.group.length > 1) {
-            const moves = (
-              data.group as Array<{
-                id: string;
-                sourceZoneKey: string;
-                sourcePageId: string | undefined;
-                offsetX: number;
-                offsetY: number;
-              }>
-            ).map((item) => ({
+            const moves = data.group.map((item) => ({
               id: item.id,
-              fromZone: (item.sourceZoneKey ?? data.zoneKey) as any,
+              fromZone: item.sourceZoneKey ?? data.zoneKey,
               toZone: zoneKey,
               newIndex: -1 as const,
-              x: finalX + item.offsetX,
-              y: resolveY(finalY + item.offsetY),
+              x: localDrop.x + item.offsetX,
+              y: resolveY(localDrop.y + item.offsetY),
               fromPageId: item.sourcePageId ?? data.pageId,
               toPageId: pageId,
               fromGroupId: data.groupId,
@@ -191,11 +221,11 @@ export function useZoneDropTarget(
           } else {
             moveComponent(
               data.id,
-              data.zoneKey as any,
+              data.zoneKey ?? zoneKey,
               zoneKey,
               -1,
-              finalX,
-              resolveY(finalY),
+              localDrop.x,
+              resolveY(localDrop.y),
               data.pageId,
               pageId,
               false,
