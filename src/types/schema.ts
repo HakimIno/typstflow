@@ -458,10 +458,22 @@ export interface ChecklistComponent extends BaseComponent {
 export interface RectangleComponent extends BaseComponent {
   type: 'rectangle';
   fill?: string;
+  // Radius — uniform or per-corner (per-corner takes precedence)
+  radius?: string;
+  radiusTopLeft?: string;
+  radiusTopRight?: string;
+  radiusBottomLeft?: string;
+  radiusBottomRight?: string;
+  // Stroke
   strokeColor?: string;
   strokeWidth?: string;
   strokeStyle?: 'solid' | 'dashed' | 'dotted';
-  radius?: string;
+  strokeCap?: 'butt' | 'round' | 'square';
+  strokeJoin?: 'miter' | 'round' | 'bevel';
+  strokeSides?: { top: boolean; right: boolean; bottom: boolean; left: boolean };
+  // Spacing
+  inset?: string;
+  outset?: string;
 }
 
 // --- Signature Component ---
