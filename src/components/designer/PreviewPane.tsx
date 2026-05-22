@@ -9,7 +9,7 @@ import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { useDesignerStore } from '@/store/designer-store';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { AlertTriangle } from 'lucide-react';
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loading } from '../shared/Loading';
 import { CanvasToolbar } from './CanvasToolbar';
 
@@ -27,42 +27,30 @@ const PageSlide = memo(function PageSlide({
   cache,
   naturalWidth,
   naturalHeight,
-  zoom,
 }: {
   pageIndex: number;
   cacheVersion: number;
   cache: PreviewSvgCache;
   naturalWidth: number;
   naturalHeight: number;
-  zoom: number;
 }) {
   const blobUrl = cache.getBlobUrl(pageIndex);
-  // cacheVersion ensures re-read when cache updates without storing SVG in React state.
   void cacheVersion;
 
   return (
     <div
-      className="relative bg-white shadow-xl overflow-hidden flex-shrink-0"
-      style={{ width: naturalWidth * zoom, height: naturalHeight * zoom }}
+      className="relative bg-white shadow-xl overflow-hidden shrink-0"
+      style={{ width: naturalWidth, height: naturalHeight }}
     >
       {blobUrl ? (
         <img
           src={blobUrl}
           alt=""
           draggable={false}
-          className="absolute top-0 left-0 pointer-events-none select-none"
-          style={{
-            width: naturalWidth,
-            height: naturalHeight,
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top left',
-          }}
+          className="absolute top-0 left-0 w-full h-full pointer-events-none select-none"
         />
       ) : (
-        <div
-          className="absolute inset-0 bg-white/80 animate-pulse"
-          style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
-        />
+        <div className="absolute inset-0 bg-white/80 animate-pulse" />
       )}
     </div>
   );
@@ -232,29 +220,43 @@ export const PreviewPane = memo(function PreviewPane() {
   const naturalWidthPx = useMemo(() => LayoutEngine.mmToPx(pageWidthMm), [pageWidthMm]);
   const naturalHeightPx = useMemo(() => LayoutEngine.mmToPx(pageHeightMm), [pageHeightMm]);
 
-  const scaledWidthPx = naturalWidthPx * zoom;
-  const scaledHeightPx = naturalHeightPx * zoom;
-
   const cols = canvasLayout === 'grid' ? 2 : 1;
-  const currentGapY = (canvasLayout === 'grid' ? ROW_GAP_GRID : ROW_GAP_LIST) * zoom;
-  const currentGapX = COL_GAP * zoom;
+  const rowGap = canvasLayout === 'grid' ? ROW_GAP_GRID : ROW_GAP_LIST;
+  const colGap = COL_GAP;
+  const rowHeightPx = naturalHeightPx + rowGap;
+  const contentWidthPx = cols === 2 ? naturalWidthPx * 2 + colGap : naturalWidthPx;
 
   const pageCount = Math.max(schema.pages.length, svgCacheRef.current.pageCount);
   const rowCount = Math.ceil(pageCount / cols);
 
+  // Virtualizer layout stays at natural (100%) size — zoom is applied once via CSS
+  // transform on a wrapper so row offsets never desync when zoom changes.
   const virtualizer = useVirtualizer({
     count: rowCount,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => scaledHeightPx + currentGapY,
+    estimateSize: () => rowHeightPx,
     overscan: OVERSCAN,
   });
+
+  const layoutHeightPx = virtualizer.getTotalSize();
+  const scaledLayoutHeightPx = layoutHeightPx * zoom;
+  const scaledContentWidthPx = contentWidthPx * zoom;
+
+  const scrollToRow = useCallback(
+    (rowIdx: number) => {
+      const el = scrollRef.current;
+      if (!el) return;
+      el.scrollTo({ top: rowIdx * rowHeightPx * zoom, behavior: 'auto' });
+    },
+    [rowHeightPx, zoom]
+  );
 
   useEffect(() => {
     const handleScroll = () => {
       if (scrollRef.current) {
         const { scrollTop, clientHeight } = scrollRef.current;
-        const middle = scrollTop + clientHeight / 2;
-        const rowIdx = Math.floor((middle - PADDING_TOP) / (scaledHeightPx + currentGapY));
+        const middle = scrollTop + clientHeight / 2 - PADDING_TOP;
+        const rowIdx = Math.floor(Math.max(0, middle) / zoom / rowHeightPx);
         const pageIdx = Math.max(0, Math.min(pageCount - 1, rowIdx * cols));
         setActivePreviewPageIdx(pageIdx + 1);
       }
@@ -263,26 +265,20 @@ export const PreviewPane = memo(function PreviewPane() {
     const container = scrollRef.current;
     container?.addEventListener('scroll', handleScroll);
     return () => container?.removeEventListener('scroll', handleScroll);
-  }, [scaledHeightPx, currentGapY, pageCount, cols]);
+  }, [rowHeightPx, pageCount, cols, zoom]);
 
   useEffect(() => {
     if (scrollToPageId) {
       const idx = pageIds.indexOf(scrollToPageId);
       if (idx !== -1) {
         const rowIdx = Math.floor(idx / cols);
-        virtualizer.scrollToIndex(rowIdx, { align: 'start', behavior: 'auto' });
+        scrollToRow(rowIdx);
         setTimeout(() => setScrollToPageId(null), 50);
       }
     }
-  }, [scrollToPageId, pageIds, cols, virtualizer, setScrollToPageId]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: virtualizer ref is stable
-  useLayoutEffect(() => {
-    virtualizer.measure();
-  }, [zoom, canvasLayout]);
+  }, [scrollToPageId, pageIds, cols, scrollToRow, setScrollToPageId]);
 
   const accentRgb = useMemo(() => hexToRgb(primaryColor), [primaryColor]);
-  const contentWidth = cols === 2 ? scaledWidthPx * 2 + currentGapX : scaledWidthPx;
 
   return (
     <div className="PreviewPane flex-1 flex flex-col bg-slate-400/20 shadow-inner overflow-hidden relative">
@@ -302,60 +298,71 @@ export const PreviewPane = memo(function PreviewPane() {
           {hasPages ? (
             <div
               style={{
-                height: `${virtualizer.getTotalSize()}px`,
-                width: `${contentWidth}px`,
+                height: `${scaledLayoutHeightPx}px`,
+                width: `${scaledContentWidthPx}px`,
                 position: 'relative',
               }}
             >
-              {isRendering && (
-                <div
-                  className="sticky top-2 z-50 flex justify-end pointer-events-none"
-                  style={{ width: `${contentWidth}px` }}
-                >
-                  <div className="mr-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1.5 text-[10px] text-white/60">
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
-                    Compiling…
-                  </div>
-                </div>
-              )}
-              {virtualizer.getVirtualItems().map((vRow) => {
-                const startIdx = vRow.index * cols;
-
-                return (
+              <div
+                style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: 'top left',
+                  width: `${contentWidthPx}px`,
+                  height: `${layoutHeightPx}px`,
+                  position: 'relative',
+                }}
+              >
+                {isRendering && (
                   <div
-                    key={vRow.key}
-                    style={{
-                      position: 'absolute',
-                      top: vRow.start,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: `${contentWidth}px`,
-                      display: 'flex',
-                      gap: `${currentGapX}px`,
-                    }}
+                    className="sticky top-2 z-50 flex justify-end pointer-events-none"
+                    style={{ width: `${contentWidthPx}px` }}
                   >
-                    {Array.from({ length: Math.min(cols, pageCount - startIdx) }, (_, i) => {
-                      const pageIndex = startIdx + i;
-                      return (
-                        <PageSlide
-                          key={pageIndex}
-                          pageIndex={pageIndex}
-                          cacheVersion={cacheVersion}
-                          cache={svgCacheRef.current}
-                          naturalWidth={naturalWidthPx}
-                          naturalHeight={naturalHeightPx}
-                          zoom={zoom}
-                        />
-                      );
-                    })}
+                    <div className="mr-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1.5 text-[10px] text-white/60">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+                      Compiling…
+                    </div>
                   </div>
-                );
-              })}
+                )}
+                {virtualizer.getVirtualItems().map((vRow) => {
+                  const startIdx = vRow.index * cols;
+
+                  return (
+                    <div
+                      key={vRow.key}
+                      style={{
+                        position: 'absolute',
+                        top: vRow.start,
+                        left: 0,
+                        width: `${contentWidthPx}px`,
+                        display: 'flex',
+                        gap: `${colGap}px`,
+                      }}
+                    >
+                      {Array.from({ length: Math.min(cols, pageCount - startIdx) }, (_, i) => {
+                        const pageIndex = startIdx + i;
+                        return (
+                          <PageSlide
+                            key={pageIndex}
+                            pageIndex={pageIndex}
+                            cacheVersion={cacheVersion}
+                            cache={svgCacheRef.current}
+                            naturalWidth={naturalWidthPx}
+                            naturalHeight={naturalHeightPx}
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <div
               className="relative overflow-hidden rounded-sm shadow-2xl"
-              style={{ width: `${scaledWidthPx}px`, height: `${scaledHeightPx}px` }}
+              style={{
+                width: `${naturalWidthPx * zoom}px`,
+                height: `${naturalHeightPx * zoom}px`,
+              }}
             >
               <div className="absolute inset-0 w-full h-full">
                 <CanvasRevealEffect
@@ -406,7 +413,7 @@ export const PreviewPane = memo(function PreviewPane() {
         totalPageCount={pageCount}
         onPageChange={(idx) => {
           const rowIdx = Math.floor(idx / cols);
-          virtualizer.scrollToIndex(rowIdx, { align: 'start', behavior: 'auto' });
+          scrollToRow(rowIdx);
         }}
       />
     </div>

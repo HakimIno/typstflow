@@ -1,8 +1,8 @@
-import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { TextComponent } from '@/types/schema';
 import { isVisible, resolveBinding } from '../binding';
+import { emitFormattedTypstContent } from '../format-emit';
 import { formatSetCall } from '../pretty';
-import { escapeStringLiteral, formatColor, formatFontFamily, formatWeight, wrapPlacement } from '../placement';
+import { formatColor, formatFontFamily, formatWeight, wrapPlacement } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
 function applyTextTransform(s: string, transform: string | undefined): string {
@@ -45,13 +45,7 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
     const highlight = s?.highlight ? formatColor(s.highlight) : undefined;
     const format = comp.format ?? 'text';
 
-    const innerContent =
-      format !== 'text'
-        ? `#fmt_${format.replace(/-/g, '_')}("${escapeStringLiteral(content)}")`
-        : content
-            .split('\n')
-            .map((line) => escapeTypst(line))
-            .join(' #linebreak() ');
+    const innerContent = emitFormattedTypstContent(content, format, !!ctx.pretty);
 
     let mainContent = innerContent;
     if (underline) {

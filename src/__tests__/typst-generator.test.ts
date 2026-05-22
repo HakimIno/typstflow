@@ -481,6 +481,110 @@ describe('TypstGenerator — flow zone mode', () => {
     expect(bodySection.startsWith('// --- PAGE 1 BODY ---\n#block(')).toBe(true);
   });
 
+  it('renders static header/footer in flow mode when repeatOnEveryPage is false', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      zones: {
+        header: {
+          id: 'header',
+          minHeight: '30mm',
+          repeatOnEveryPage: false,
+          components: [
+            {
+              id: 'hdr-title',
+              type: 'text',
+              content: 'MEDICAL BILLING INVOICE',
+              x: 0,
+              y: 5,
+              width: 180,
+              height: 10,
+              style: { fontSize: 14, fontWeight: 'bold' },
+            },
+          ],
+        },
+        footer: {
+          id: 'footer',
+          minHeight: '20mm',
+          repeatOnEveryPage: false,
+          components: [
+            {
+              id: 'ftr-total',
+              type: 'text',
+              content: 'TOTAL',
+              x: 0,
+              y: 5,
+              width: 80,
+              height: 10,
+              style: { fontWeight: 'bold' },
+            },
+          ],
+        },
+      },
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            layoutMode: 'flow',
+            components: [
+              {
+                id: 'table-1',
+                type: 'table',
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 50,
+                columns: [{ id: 'c1', header: 'Item', field: 'name', width: '1fr' }],
+                dataSource: 'items',
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const output = new TypstGenerator().generate(schema, { items: [{ name: 'Check Up' }] });
+    expect(output).toContain('MEDICAL BILLING INVOICE');
+    expect(output).toContain('TOTAL');
+    expect(output).toContain('Check Up');
+    expect(output).toContain('// --- PAGE 1 HEADER ---');
+    expect(output).toContain('// --- PAGE 1 FOOTER ---');
+    expect(output).not.toContain('#set page(header:');
+    expect(output).toContain('#set page(margin: (top: 30mm, bottom: 0mm');
+  });
+
+  it('reserves bottom margin in flow mode only when footer repeats on every page', () => {
+    const baseSchema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      zones: {
+        header: { id: 'header', minHeight: '10mm', repeatOnEveryPage: false, components: [] },
+        footer: { id: 'footer', minHeight: '20mm', repeatOnEveryPage: false, components: [] },
+      },
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: { id: 'body', layoutMode: 'flow', components: [] },
+        },
+      ],
+    };
+
+    const staticFooter = new TypstGenerator().generate(baseSchema, {});
+    expect(staticFooter).toContain('#set page(margin: (top: 10mm, bottom: 0mm');
+
+    const repeatingFooter = new TypstGenerator().generate(
+      {
+        ...baseSchema,
+        zones: {
+          ...baseSchema.zones,
+          footer: { ...baseSchema.zones.footer, repeatOnEveryPage: true },
+        },
+      },
+      {}
+    );
+    expect(repeatingFooter).toContain('#set page(margin: (top: 10mm, bottom: 20mm');
+  });
+
   it('absolute mode (default) still uses #place()', () => {
     const schema: LayoutSchema = {
       ...MINIMAL_SCHEMA,
@@ -619,7 +723,8 @@ describe('TypstGenerator — pretty export', () => {
   it('includes document banner and section headers', () => {
     const output = gen.generate(schema, {}, { pretty: true });
     expect(output).toContain('Exported from TypstFlow');
-    expect(output).toContain('// --- Imports ---');
+    expect(output).not.toContain('// --- Imports ---');
+    expect(output).not.toContain('Formatting Helpers');
     expect(output).toContain('// --- Page Setup ---');
     expect(output).toContain('// --- Document Typography ---');
     expect(output).toContain('// --- Report Content ---');
@@ -638,5 +743,130 @@ describe('TypstGenerator — pretty export', () => {
     const output = gen.generate(schema, {}, { pretty: false });
     expect(output).toContain('#place(top + left, dx: 10mm, dy: 10mm)');
     expect(output).not.toContain('Exported from TypstFlow');
+  });
+
+  it('pretty export skips empty pages and omits empty zone sections', () => {
+    const multiPage: LayoutSchema = {
+      ...schema,
+      pages: [
+        schema.pages[0],
+        ...Array.from({ length: 3 }, (_, i) => ({
+          id: `page-${i + 2}`,
+          name: `Page ${i + 2}`,
+          body: { id: `body-${i + 2}`, components: [] },
+        })),
+      ],
+    };
+    const output = gen.generate(multiPage, {}, { pretty: true });
+    expect(output).toContain('// --- Page 1 · Body ---');
+    expect(output).not.toContain('Page 2');
+    expect(output).not.toContain('#pagebreak(weak: true)');
+  });
+
+  it('pretty export includes codetastic import only when qr/barcode used', () => {
+    const withQr: LayoutSchema = {
+      ...schema,
+      pages: [
+        {
+          ...schema.pages[0],
+          body: {
+            ...schema.pages[0].body,
+            components: [
+              ...schema.pages[0].body.components,
+              { id: 'qr-1', type: 'qr', x: 0, y: 30, width: 20, height: 20, value: 'test' },
+            ],
+          },
+        },
+      ],
+    };
+    expect(gen.generate(withQr, {}, { pretty: true })).toContain('codetastic');
+  });
+
+  it('pretty export inlines formatted values without fmt helpers', () => {
+    const withCurrency: LayoutSchema = {
+      ...schema,
+      pages: [
+        {
+          ...schema.pages[0],
+          body: {
+            ...schema.pages[0].body,
+            components: [
+              {
+                id: 'price',
+                type: 'text',
+                x: 0,
+                y: 20,
+                width: 40,
+                height: 10,
+                content: '100',
+                format: 'currency-thb',
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const output = gen.generate(withCurrency, {}, { pretty: true });
+    expect(output).not.toContain('#let fmt_');
+    expect(output).not.toContain('#fmt_currency_thb');
+    expect(output).toMatch(/100|฿/);
+  });
+
+  it('compile mode keeps fmt helpers for formatted fields', () => {
+    const withCurrency: LayoutSchema = {
+      ...schema,
+      pages: [
+        {
+          ...schema.pages[0],
+          body: {
+            ...schema.pages[0].body,
+            components: [
+              {
+                id: 'price',
+                type: 'text',
+                x: 0,
+                y: 20,
+                width: 40,
+                height: 10,
+                content: '100',
+                format: 'currency-thb',
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const output = gen.generate(withCurrency, {}, { pretty: false });
+    expect(output).toContain('#let fmt_currency_thb');
+    expect(output).toContain('#fmt_currency_thb("100")');
+  });
+
+  it('pretty export uses file path for local images instead of FILE NOT FOUND', () => {
+    const imageSchema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              {
+                id: 'img-1',
+                type: 'image',
+                x: 10,
+                y: 10,
+                width: 40,
+                height: 40,
+                src: 'download.png',
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const output = gen.generate(imageSchema, {}, { pretty: true });
+    expect(output).toContain('#image("download.png"');
+    expect(output).not.toContain('FILE NOT FOUND');
   });
 });

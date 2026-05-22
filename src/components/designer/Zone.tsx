@@ -43,7 +43,14 @@ export const Zone = memo(function Zone({
 
   // ✅ Subscribes ONLY to its own component IDs list
   const componentIds = useDesignerStore(
-    useShallow((s) => getZoneComponents(s.schema, zoneKey, pageId).map((c) => c.id))
+    useShallow((s) => {
+      if (isGroupBand && groupId && groupType) {
+        const group = s.schema.groups.find((g) => g.id === groupId);
+        const zone = groupType === 'header' ? group?.header : group?.footer;
+        return (zone?.components ?? []).map((c) => c.id);
+      }
+      return getZoneComponents(s.schema, zoneKey, pageId).map((c) => c.id);
+    })
   );
 
   const isFlowZone = useDesignerStore((s) => {
@@ -100,9 +107,17 @@ export const Zone = memo(function Zone({
   // For text components in flow mode, the actual DOM height is used (measured by ResizeObserver
   // in ComponentWrapper and written back to the schema via skipHistory update).
   const flowHeightsPx = useDesignerStore(
-    useShallow((s) =>
-      getZoneComponents(s.schema, zoneKey, pageId).map((c) => LayoutEngine.mmToPx(c.height ?? 10))
-    )
+    useShallow((s) => {
+      let comps;
+      if (isGroupBand && groupId && groupType) {
+        const group = s.schema.groups.find((g) => g.id === groupId);
+        const zone = groupType === 'header' ? group?.header : group?.footer;
+        comps = zone?.components ?? [];
+      } else {
+        comps = getZoneComponents(s.schema, zoneKey, pageId);
+      }
+      return comps.map((c) => LayoutEngine.mmToPx(c.height ?? 10));
+    })
   );
 
   // Cumulative slot tops from DOM: measures actual rendered element heights so the drag

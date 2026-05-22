@@ -1,8 +1,13 @@
 import { agentLogger } from '@/lib/utils/agent-logger';
-import { validateAndRepairSchema } from '@/lib/utils/schema-validator';
+import {
+  SchemaImportError,
+  countSchemaComponents,
+  parseImportBundle,
+} from '@/lib/utils/schema-import';
+import { resetWasmSchemaStore, syncHistoryMeta } from '@/lib/wasm-schema-store';
 import type { StateCreator } from 'zustand';
 import type { DesignerState } from '../store-types';
-import { BLANK_SCHEMA, pushHistory } from '../store-utils';
+import { buildComponentRegistry } from '../store-utils';
 
 export type IOSlice = Pick<DesignerState, 'exportSchema' | 'importSchema'>;
 
@@ -48,34 +53,62 @@ export const createIOSlice: StateCreator<DesignerState, [], [], IOSlice> = (set,
   },
 
   importSchema: (json: string) => {
+    const state = get();
     try {
-      const rawData = JSON.parse(json);
-      // Handle bundled format: { "schema": ..., "data": ... }
-      const schemaToValidate = rawData.schema || rawData;
-      const sampleData = rawData.data || null;
+      const { schema: validSchema, data: sampleData } = parseImportBundle(json);
+      const componentCount = countSchemaComponents(validSchema);
+      const firstPageId = validSchema.pages[0]?.id ?? null;
 
-      const validSchema = validateAndRepairSchema(schemaToValidate, BLANK_SCHEMA);
-
-      set((state) => ({
-        ...pushHistory(state, validSchema),
-        sampleData: sampleData || state.sampleData,
+      set({
+        schema: validSchema,
+        componentRegistry: buildComponentRegistry(validSchema),
+        sampleData: sampleData ?? state.sampleData,
         selectedComponentIds: [],
         selectedGroupId: null,
         selectedZone: null,
-        activePageId: validSchema.pages[0]?.id || null,
-      }));
+        activePageId: firstPageId,
+        scrollToPageId: firstPageId,
+        historyIndex: 0,
+        historyLength: 1,
+      });
+
+      resetWasmSchemaStore(validSchema);
+      set(syncHistoryMeta());
 
       agentLogger.log({
         source: 'ai-agent',
         level: 'action',
-        message: `Imported schema: ${validSchema.name}`,
+        message: `Imported schema: ${validSchema.name} (${componentCount} components)`,
+      });
+
+      state.showDialog({
+        title: 'Import Successful',
+        message: `Loaded "${validSchema.name}" with ${componentCount} components across ${validSchema.pages.length} page(s).`,
+        variant: 'success',
+        confirmLabel: 'OK',
+        onConfirm: () => get().hideDialog(),
       });
     } catch (error) {
       console.error('Failed to import schema:', error);
+      const message =
+        error instanceof SchemaImportError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Unknown import error';
+
       agentLogger.log({
         source: 'system',
         level: 'error',
-        message: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message: `Import failed: ${message}`,
+      });
+
+      get().showDialog({
+        title: 'Import Failed',
+        message,
+        variant: 'danger',
+        confirmLabel: 'OK',
+        onConfirm: () => get().hideDialog(),
       });
     }
   },

@@ -165,23 +165,23 @@ export default function DesignerPage() {
           >
             <div className="w-80 h-full flex flex-col overflow-hidden">
               <DesignerErrorBoundary componentName="Sidebar Panel">
-                {renderLeftPanel()}
+                {isSidebarOpen ? renderLeftPanel() : null}
               </DesignerErrorBoundary>
             </div>
           </aside>
 
-          {/* Workspace: canvas shrinks for left drawer; properties stay pinned right */}
-          <div className="flex flex-1 min-w-0 overflow-hidden">
+          {/* Workspace — margin snaps instantly; only the drawer slides (GPU transform) */}
+          <div className="relative flex flex-1 min-w-0 overflow-hidden">
             <div
               className={clsx(
-                'flex flex-1 min-w-0 overflow-hidden gap-0.5 transition-[margin] duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)]',
+                'flex flex-1 min-w-0 overflow-hidden gap-0.5',
                 isSidebarOpen ? 'ml-80' : 'ml-0'
               )}
             >
               {(viewMode === 'design' || viewMode === 'split') && (
                 <main
                   className={clsx(
-                    'flex-1 min-w-0 overflow-auto bg-[var(--bg-canvas)] flex justify-center p-0 transition-all duration-300',
+                    'flex-1 min-w-0 overflow-auto bg-[var(--bg-canvas)] flex justify-center p-0',
                     viewMode === 'split' &&
                       'border-r-2 border-[var(--border-default)] shadow-2xl z-10'
                   )}
@@ -193,7 +193,7 @@ export default function DesignerPage() {
               )}
 
               {(viewMode === 'preview' || viewMode === 'split') && (
-                <div className="flex-1 min-w-0 flex overflow-hidden transition-all duration-300 bg-[var(--bg-app)]">
+                <div className="flex-1 min-w-0 flex overflow-hidden bg-[var(--bg-app)]">
                   <DesignerErrorBoundary componentName="Preview Engine">
                     <PreviewPane />
                   </DesignerErrorBoundary>
@@ -201,18 +201,18 @@ export default function DesignerPage() {
               )}
             </div>
 
-            {/* Properties — always anchored to the right edge of the workspace */}
+            {/* Properties — overlay slide; avoids width animation reflowing canvas/preview */}
             <aside
               className={clsx(
-                'shrink-0 h-full overflow-hidden border-l bg-[var(--bg-surface)] shadow-[var(--shadow-premium)] transition-[width,border-color] duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)]',
+                'absolute right-0 top-0 bottom-0 w-64 z-30 overflow-hidden border-l bg-[var(--bg-surface)] shadow-[var(--shadow-premium)] transition-transform duration-150 ease-out will-change-transform',
                 isRightSidebarOpen
-                  ? 'w-64 border-[var(--border-default)]'
-                  : 'w-0 border-transparent pointer-events-none'
+                  ? 'translate-x-0 border-[var(--border-default)]'
+                  : 'translate-x-full border-transparent pointer-events-none'
               )}
             >
               <div className="w-64 h-full flex flex-col overflow-hidden">
                 <DesignerErrorBoundary componentName="Properties Inspector">
-                  <PropertiesPanel />
+                  {isRightSidebarOpen ? <PropertiesPanel /> : null}
                 </DesignerErrorBoundary>
               </div>
             </aside>

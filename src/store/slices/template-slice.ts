@@ -12,7 +12,7 @@ import { resetWasmSchemaStore } from '@/lib/wasm-schema-store';
 import type { LayoutSchema } from '@/types/schema';
 import type { StateCreator } from 'zustand';
 import type { DesignerState } from '../store-types';
-import { BLANK_SCHEMA } from '../store-utils';
+import { BLANK_SCHEMA, buildComponentRegistry } from '../store-utils';
 
 export type TemplateSlice = Pick<DesignerState, 'loadTemplate' | 'loadStressTest'>;
 
@@ -21,7 +21,14 @@ function applyTemplate(
   schema: LayoutSchema,
   sampleData: Record<string, unknown>
 ) {
-  set({ schema, sampleData, historyIndex: 0, historyLength: 1 });
+  set({
+    schema,
+    sampleData,
+    componentRegistry: buildComponentRegistry(schema),
+    activePageId: schema.pages[0]?.id ?? null,
+    historyIndex: 0,
+    historyLength: 1,
+  });
   resetWasmSchemaStore(schema);
 }
 

@@ -191,37 +191,39 @@ export const LayoutSchemaValidator = z
 
 /**
  * Validates a schema object and returns either the valid schema or a default one if corrupted.
+ * Used on rehydrate — falls back silently to avoid crashing the app.
  */
 export function validateAndRepairSchema(data: unknown, defaultSchema: LayoutSchema): LayoutSchema {
   try {
-    const validated = LayoutSchemaValidator.parse(data) as LayoutSchema;
-
-    // Deep Repair: Ensure all page IDs are unique
-    const pageIds = new Set<string>();
-    let hasDuplicate = false;
-
-    for (const page of validated.pages) {
-      if (pageIds.has(page.id)) {
-        hasDuplicate = true;
-        break;
-      }
-      pageIds.add(page.id);
-    }
-
-    if (hasDuplicate) {
-      console.warn('[Validator] Duplicate page IDs detected, repairing...');
-      validated.pages = validated.pages.map((page: PageDefinition, idx: number) => {
-        // If it's a collision or looks like a length-based ID that might collide,
-        // give it a unique suffix
-        const uniqueId = `page-${Math.random().toString(36).substring(2, 6)}-${idx}`;
-        return { ...page, id: uniqueId };
-      });
-    }
-
-    return validated;
+    return validateAndRepairSchemaStrict(data);
   } catch (error) {
     console.error('Schema Corruption Detected:', error);
-    // In production, we'd log this to an external service
     return defaultSchema;
   }
+}
+
+/** Strict validation — throws on invalid schema (import path). */
+export function validateAndRepairSchemaStrict(data: unknown): LayoutSchema {
+  const validated = LayoutSchemaValidator.parse(data) as LayoutSchema;
+
+  const pageIds = new Set<string>();
+  let hasDuplicate = false;
+
+  for (const page of validated.pages) {
+    if (pageIds.has(page.id)) {
+      hasDuplicate = true;
+      break;
+    }
+    pageIds.add(page.id);
+  }
+
+  if (hasDuplicate) {
+    console.warn('[Validator] Duplicate page IDs detected, repairing...');
+    validated.pages = validated.pages.map((page: PageDefinition, idx: number) => {
+      const uniqueId = `page-${Math.random().toString(36).substring(2, 6)}-${idx}`;
+      return { ...page, id: uniqueId };
+    });
+  }
+
+  return validated;
 }

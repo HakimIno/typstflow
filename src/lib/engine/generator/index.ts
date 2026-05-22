@@ -6,9 +6,12 @@ import {
   generateFonts,
   generateImports,
   generatePageSetup,
-  PRETTY_FORMAT_HELPERS,
 } from './preamble';
 import { finalizePrettyOutput, formatComponentComment, generateDocumentBanner } from './pretty';
+import {
+  schemaNeedsCodetasticImports,
+  schemaNeedsFormatHelpers,
+} from './schema-analysis';
 import { PluginRegistry } from './registry';
 import type { ComponentPlugin, RenderContext } from './types';
 
@@ -79,18 +82,22 @@ export class TypstGenerator {
   generate(schema: LayoutSchema, data: Record<string, unknown>, options: GenerateOptions = {}): string {
     const pretty = options.pretty ?? false;
     const pageIndices = options.pageIndices;
+    const skipEmptyPages = options.skipEmptyPages ?? pretty;
     const parts: string[] = [];
 
     if (pretty) {
       parts.push(generateDocumentBanner(schema));
     }
 
-    parts.push(
-      generateImports(pretty),
-      generatePageSetup(schema, pretty),
-      generateFonts(schema, pretty),
-      pretty ? PRETTY_FORMAT_HELPERS : FORMAT_HELPERS
-    );
+    if (schemaNeedsCodetasticImports(schema)) {
+      parts.push(generateImports(pretty));
+    }
+
+    parts.push(generatePageSetup(schema, pretty), generateFonts(schema, pretty));
+
+    if (!pretty && schemaNeedsFormatHelpers(schema)) {
+      parts.push(FORMAT_HELPERS);
+    }
 
     const pageH = paperHeightMm(schema.page.size, schema.page.orientation === 'landscape');
     const headerH = Number.parseFloat(schema.zones.header.minHeight ?? '0');
@@ -102,11 +109,15 @@ export class TypstGenerator {
     const hasFlowBody = schema.pages.some((p) => p.body.layoutMode === 'flow');
 
     if (hasFlowBody) {
-      // Override margins to allocate space for the header/footer bands.
-      // The content area becomes: pageH - headerH - footerH per page.
-      if (headerH > 0 || footerH > 0) {
+      // Top margin reserves space for the static header band on flow documents.
+      // Bottom margin only when footer uses native repeating page bands — static
+      // footers flow after body content and must not leave empty space on every page.
+      const topMargin = headerH > 0 ? headerH : 0;
+      const bottomMargin =
+        schema.zones.footer.repeatOnEveryPage && footerH > 0 ? footerH : 0;
+      if (topMargin > 0 || bottomMargin > 0) {
         parts.push(
-          `#set page(margin: (top: ${headerH}mm, bottom: ${footerH}mm, left: 0mm, right: 0mm))\n`
+          `#set page(margin: (top: ${topMargin}mm, bottom: ${bottomMargin}mm, left: 0mm, right: 0mm))\n`
         );
       }
       // Render header and footer as native Typst page bands (repeat on every page).
@@ -189,7 +200,19 @@ export class TypstGenerator {
         const item = batchItems[i] as Record<string, unknown>;
         if (i > 0) parts.push('\n#pagebreak(weak: true)\n#box()\n');
         parts.push(
-          this.renderDocument(schema, item, data, 0, bodyY, headerY, footerY, hasFlowBody, pretty)
+          this.renderDocument(
+            schema,
+            item,
+            data,
+            0,
+            bodyY,
+            headerY,
+            footerY,
+            hasFlowBody,
+            pretty,
+            pageIndices,
+            skipEmptyPages
+          )
         );
       }
     } else if (schema.groups && schema.groups.length > 0) {
@@ -200,8 +223,7 @@ export class TypstGenerator {
         : [];
 
       if (
-        !hasFlowBody &&
-        !schema.zones.header.repeatOnEveryPage &&
+        !zoneUsesNativePageBand(schema.zones.header, hasFlowBody, headerH) &&
         shouldRenderZone(schema.zones.header, 0, 1, 'header')
       ) {
         parts.push('// --- REPORT HEADER ---\n');
@@ -213,8 +235,7 @@ export class TypstGenerator {
       parts.push(this.renderGroupLevel(schema, schema.groups, 0, items, data, bodyY, pretty));
 
       if (
-        !hasFlowBody &&
-        !schema.zones.footer.repeatOnEveryPage &&
+        !zoneUsesNativePageBand(schema.zones.footer, hasFlowBody, footerH) &&
         shouldRenderZone(schema.zones.footer, 0, 1, 'footer')
       ) {
         parts.push('// --- REPORT FOOTER ---\n');
@@ -234,7 +255,8 @@ export class TypstGenerator {
           footerY,
           hasFlowBody,
           pretty,
-          pageIndices
+          pageIndices,
+          skipEmptyPages
         )
       );
     }
@@ -253,7 +275,8 @@ export class TypstGenerator {
     footerOffsetY: number,
     nativeBands = false,
     pretty = false,
-    pageIndices?: number[]
+    pageIndices?: number[],
+    skipEmptyPages = false
   ): string {
     let t = '';
     const totalPages = schema.pages.length;
@@ -264,18 +287,14 @@ export class TypstGenerator {
       if (!includePage(i)) continue;
 
       const pageDef = schema.pages[i];
-      if (!firstEmitted) {
-        t += pretty ? '\n#pagebreak(weak: true)\n#box()\n\n' : '\n#pagebreak(weak: true)\n#box()\n';
-      }
-      firstEmitted = false;
+      let pageOutput = '';
 
-      // Header — skip if using native bands (#set page(header: ...) handles it)
       const h = schema.zones.header;
-      if (!h.repeatOnEveryPage && shouldRenderZone(h, i, totalPages, 'header')) {
-        t += pretty
-          ? `\n// --- Page ${i + 1} · Header ---\n\n`
-          : `// --- PAGE ${i + 1} HEADER ---\n`;
-        t += this.renderZoneComponents(
+      if (
+        !zoneUsesNativePageBand(h, nativeBands, Number.parseFloat(h.minHeight ?? '0')) &&
+        shouldRenderZone(h, i, totalPages, 'header')
+      ) {
+        const headerContent = this.renderZoneComponents(
           h,
           localData,
           globalData,
@@ -285,12 +304,15 @@ export class TypstGenerator {
           schema,
           pretty
         );
-        if (pretty) t += '\n';
+        if (headerContent.trim()) {
+          if (pretty) pageOutput += `\n// --- Page ${i + 1} · Header ---\n\n`;
+          else pageOutput += `// --- PAGE ${i + 1} HEADER ---\n`;
+          pageOutput += headerContent;
+          if (pretty) pageOutput += '\n';
+        }
       }
 
-      // Body
-      t += pretty ? `\n// --- Page ${i + 1} · Body ---\n\n` : `// --- PAGE ${i + 1} BODY ---\n`;
-      t += this.renderZoneComponents(
+      const bodyContent = this.renderZoneComponents(
         pageDef.body,
         localData,
         globalData,
@@ -300,14 +322,18 @@ export class TypstGenerator {
         schema,
         pretty
       );
+      if (bodyContent.trim()) {
+        if (pretty) pageOutput += `\n// --- Page ${i + 1} · Body ---\n\n`;
+        else pageOutput += `// --- PAGE ${i + 1} BODY ---\n`;
+        pageOutput += bodyContent;
+      }
 
-      // Footer — skip if using native bands
       const f = schema.zones.footer;
-      if (!f.repeatOnEveryPage && shouldRenderZone(f, i, totalPages, 'footer')) {
-        t += pretty
-          ? `\n// --- Page ${i + 1} · Footer ---\n\n`
-          : `// --- PAGE ${i + 1} FOOTER ---\n`;
-        t += this.renderZoneComponents(
+      if (
+        !zoneUsesNativePageBand(f, nativeBands, Number.parseFloat(f.minHeight ?? '0')) &&
+        shouldRenderZone(f, i, totalPages, 'footer')
+      ) {
+        const footerContent = this.renderZoneComponents(
           f,
           localData,
           globalData,
@@ -317,8 +343,29 @@ export class TypstGenerator {
           schema,
           pretty
         );
-        if (pretty) t += '\n';
+        if (footerContent.trim()) {
+          if (pretty) pageOutput += `\n// --- Page ${i + 1} · Footer ---\n\n`;
+          else pageOutput += `// --- PAGE ${i + 1} FOOTER ---\n`;
+          pageOutput += footerContent;
+          if (pretty) pageOutput += '\n';
+        }
       }
+
+      if (!pageOutput.trim()) {
+        if (skipEmptyPages) continue;
+        if (!firstEmitted) {
+          t += pretty ? '\n#pagebreak(weak: true)\n#box()\n\n' : '\n#pagebreak(weak: true)\n#box()\n';
+        }
+        firstEmitted = false;
+        t += pretty ? `\n// --- Page ${i + 1} · Body ---\n\n` : `// --- PAGE ${i + 1} BODY ---\n`;
+        continue;
+      }
+
+      if (!firstEmitted) {
+        t += pretty ? '\n#pagebreak(weak: true)\n#box()\n\n' : '\n#pagebreak(weak: true)\n#box()\n';
+      }
+      firstEmitted = false;
+      t += pageOutput;
     }
 
     return t;
@@ -459,6 +506,16 @@ export class TypstGenerator {
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
+
+function zoneUsesNativePageBand(
+  zone: Zone,
+  nativeBands: boolean,
+  bandHeightMm: number
+): boolean {
+  if (!zone.repeatOnEveryPage) return false;
+  if (nativeBands) return bandHeightMm > 0;
+  return true;
+}
 
 function shouldRenderZone(
   zone: Zone,

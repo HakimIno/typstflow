@@ -11,4 +11,9 @@ export interface GenerateOptions {
    * Used for incremental preview — omits unchanged pages from compilation.
    */
   pageIndices?: number[];
+  /**
+   * Omit pages with no body/header/footer components from output.
+   * Defaults to `pretty` — keeps compile output page-accurate unless overridden.
+   */
+  skipEmptyPages?: boolean;
 }

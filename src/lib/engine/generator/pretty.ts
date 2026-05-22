@@ -14,9 +14,8 @@ export function generateDocumentBanner(schema: LayoutSchema): string {
     `//  Paper: ${page.size} ${page.orientation} · Font: ${fontLabel}`,
     '//',
     '//  Reuse this file:',
-    '//    1. Edit page setup & component blocks below',
-    '//    2. Pass JSON data (see bindings like {{customer.name}})',
-    '//    3. typst compile main.typ main.pdf',
+    '//    1. Values are pre-formatted from preview data (snapshot export)',
+    '//    2. Edit layout blocks below, then: typst compile main.typ main.pdf',
     '// ===========================================================================',
     '',
   ].join('\n');

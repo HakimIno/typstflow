@@ -286,6 +286,34 @@ function computeImagesHash(schema: any): string {
   return parts.join('|');
 }
 
+/** Embed uploaded image bytes as data URLs so downloaded .typ files are self-contained. */
+function prepareSchemaForTypstExport(schema: any): any {
+  const s = structuredClone(schema);
+
+  const applyImages = (comps: any[]) => {
+    if (!Array.isArray(comps)) return;
+    for (const comp of comps) {
+      if (comp.type === 'image' && comp.srcData && !String(comp.src ?? '').startsWith('data:')) {
+        comp.src = comp.srcData;
+      }
+      if (comp.type === 'repeater') applyImages(comp.children ?? []);
+      if (comp.type === 'columns') {
+        for (const col of comp.columns ?? []) applyImages(col.components ?? []);
+      }
+    }
+  };
+
+  applyImages(s.zones?.header?.components ?? []);
+  applyImages(s.zones?.footer?.components ?? []);
+  for (const page of s.pages ?? []) applyImages(page.body?.components ?? []);
+  for (const group of s.groups ?? []) {
+    applyImages(group.header?.components ?? []);
+    applyImages(group.footer?.components ?? []);
+  }
+
+  return s;
+}
+
 function injectImagesIntoSchema(schema: any): any {
   if (!bridge || !schema?.zones) return schema;
 
@@ -473,8 +501,9 @@ self.onmessage = async (e: MessageEvent) => {
       }
       case 'GENERATE_REPORT_TYPST': {
         const { schema, data } = payload;
+        const exportSchema = prepareSchemaForTypstExport(schema);
         const generator = new TypstGenerator();
-        const source = generator.generate(schema, data, { pretty: true });
+        const source = generator.generate(exportSchema, data, { pretty: true });
         self.postMessage({ id, type: 'success', payload: source });
         break;
       }

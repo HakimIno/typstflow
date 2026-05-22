@@ -2,6 +2,7 @@ import { resolveTableColumnWidths } from '@/lib/utils/table-widths';
 import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { TableComponent } from '@/types/schema';
 import { isVisible, resolveBinding, resolvePath } from '../binding';
+import { emitFormattedTypstContent } from '../format-emit';
 import {
   escapeStringLiteral,
   formatColor,
@@ -310,10 +311,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           const rawVal = resolvePath(col.field, item);
           const valStr = rawVal != null ? String(rawVal) : '';
           const fmt = col.format ?? 'text';
-          const content =
-            fmt !== 'text'
-              ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(valStr)}")`
-              : escapeTypst(valStr);
+          const content = emitFormattedTypstContent(valStr, fmt, !!ctx.pretty);
 
           // Build a virtual cell from TableColumn
           const virtualCell = {
@@ -394,7 +392,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
             const isSum = cellContent.includes('SUM');
             const displayVal =
               fmt !== 'text' && isSum
-                ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(val)}")`
+                ? emitFormattedTypstContent(val, fmt, !!ctx.pretty)
                 : escapeTypst(val);
 
             // Styling overrides for footer
