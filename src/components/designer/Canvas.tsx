@@ -32,6 +32,7 @@ export const Canvas = memo(function Canvas() {
   const scrollToPageId = useDesignerStore((state) => state.scrollToPageId);
   const setScrollToPageId = useDesignerStore((state) => state.setScrollToPageId);
   const setActivePage = useDesignerStore((state) => state.setActivePage);
+  const manualGuides = useDesignerStore((state) => state.manualGuides);
 
   const pages = useDesignerStore((state) => state.schema.pages);
   const pageIds = useMemo(() => pages.map((p) => p.id), [pages]);
@@ -197,6 +198,7 @@ export const Canvas = memo(function Canvas() {
   const currentGap = Math.round(
     (canvasLayout === 'grid' ? GAP_VERTICAL_GRID : GAP_VERTICAL_LIST) * zoom
   );
+  const pageGapMm = LayoutEngine.pxToMm(currentGap);
   const pageHeightPx = Math.round(LayoutEngine.mmToPx(pageHeightMm) * zoom);
   const totalPageHeight = pageHeightPx + currentGap;
 
@@ -229,6 +231,10 @@ export const Canvas = memo(function Canvas() {
               length={pageWidthMm}
               scrollPos={scrollPos.x}
               zoom={zoom}
+              pageWidthMm={pageWidthMm}
+              pageHeightMm={pageHeightMm}
+              pageGapMm={pageGapMm}
+              guideMarks={manualGuides.vertical}
             />
           </div>
         </div>
@@ -238,9 +244,13 @@ export const Canvas = memo(function Canvas() {
           <div className="w-6 bg-[var(--bg-surface)] border-r border-[var(--border-default)] flex-shrink-0 relative z-30 overflow-hidden">
             <Ruler
               orientation="vertical"
-              length={pageHeightMm * pageIds.length + (pageIds.length - 1) * 12}
+              length={pageHeightMm * pageIds.length + (pageIds.length - 1) * pageGapMm}
               scrollPos={scrollPos.y}
               zoom={zoom}
+              pageWidthMm={pageWidthMm}
+              pageHeightMm={pageHeightMm}
+              pageGapMm={pageGapMm}
+              guideMarks={manualGuides.horizontal}
             />
           </div>
 

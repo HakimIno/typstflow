@@ -7,6 +7,7 @@ import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { Trash2 } from 'lucide-react';
 import { memo } from 'react';
+import { ManualGuides } from './ManualGuides';
 import { SelectionMarquee } from './SelectionMarquee';
 import { SelectionOverlay } from './SelectionOverlay';
 import { SelectionToolbar } from './SelectionToolbar';
@@ -78,7 +79,7 @@ export const DesignerPage = memo(function DesignerPage({ pageId, pIdx }: Designe
 
         {/* Margin Guides */}
         <div
-          className="absolute border border-[var(--accent)] border-dashed pointer-events-none z-10 opacity-30"
+          className="absolute border border-[var(--accent)] border-solid pointer-events-none z-10 opacity-25"
           style={{
             top: `${LayoutEngine.mmToPx(marginTop)}px`,
             bottom: `${LayoutEngine.mmToPx(marginBottom)}px`,
@@ -171,6 +172,9 @@ export const DesignerPage = memo(function DesignerPage({ pageId, pIdx }: Designe
             }
           />
         </div>
+
+        {/* Above zones (z-20) so guide lines stay visible */}
+        <ManualGuides />
 
         {/* Remove Page Button */}
         {pageCount > 1 && (

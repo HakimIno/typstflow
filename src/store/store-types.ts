@@ -44,6 +44,9 @@ export interface DesignerState extends FontSlice {
   aiMode: 'plan' | 'act';
   scrollToPageId: string | null;
 
+  // Ruler guides (page-local mm)
+  manualGuides: { vertical: number[]; horizontal: number[] };
+
   // Selection
   selectedComponentIds: string[];
   selectedGroupId: string | null;
@@ -195,6 +198,11 @@ export interface DesignerState extends FontSlice {
   selectGroup: (id: string | null) => void;
   nudgeSelected: (dx: number, dy: number) => void;
   setDragState: (updates: Partial<DesignerState['dragState']>) => void;
+  addManualGuide: (axis: 'vertical' | 'horizontal', valueMm: number) => void;
+  removeManualGuide: (axis: 'vertical' | 'horizontal', valueMm: number) => void;
+  toggleManualGuide: (axis: 'vertical' | 'horizontal', valueMm: number) => void;
+  moveManualGuide: (axis: 'vertical' | 'horizontal', fromMm: number, toMm: number) => void;
+  clearManualGuides: () => void;
   setSampleData: (data: Record<string, unknown>) => void;
   setZoom: (zoom: number) => void;
   setViewMode: (mode: 'design' | 'preview' | 'split') => void;

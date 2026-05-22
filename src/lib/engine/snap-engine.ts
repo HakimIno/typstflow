@@ -48,7 +48,8 @@ export const SnapEngine = {
   generateSnapPoints(
     schema: LayoutSchema,
     draggedIds: string | string[],
-    pageId?: string
+    pageId?: string,
+    manualGuides?: { vertical: number[]; horizontal: number[] }
   ): { x: SnapPoint[]; y: SnapPoint[] } {
     const pointsX: SnapPoint[] = [];
     const pointsY: SnapPoint[] = [];
@@ -123,6 +124,15 @@ export const SnapEngine = {
         for (const c of group.footer.components) {
           addComponentPoints(c, bOffset);
         }
+      }
+    }
+
+    if (manualGuides) {
+      for (const x of manualGuides.vertical) {
+        pointsX.push({ value: x, type: 'edge', originId: 'manual-guide' });
+      }
+      for (const y of manualGuides.horizontal) {
+        pointsY.push({ value: pageAbsY + y, type: 'edge', originId: 'manual-guide' });
       }
     }
 

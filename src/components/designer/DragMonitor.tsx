@@ -163,6 +163,14 @@ export const DragMonitor = memo(function DragMonitor() {
         pointsY.push({ value: 0, type: 'edge', originId: 'page' });
         pointsY.push({ value: pH, type: 'edge', originId: 'page' });
 
+        const { manualGuides } = useDesignerStore.getState();
+        for (const x of manualGuides.vertical) {
+          pointsX.push({ value: x, type: 'edge', originId: 'manual-guide' });
+        }
+        for (const y of manualGuides.horizontal) {
+          pointsY.push({ value: y, type: 'edge', originId: 'manual-guide' });
+        }
+
         // Page layout constants
         const pageHeightPx = LayoutEngine.mmToPx(pH) * zoom;
         const pageWidthPx = LayoutEngine.mmToPx(pW);

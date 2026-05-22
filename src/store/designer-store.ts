@@ -8,6 +8,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { createDialogSlice } from './slices/dialog-slice';
 import { createFontSlice } from './slices/font-slice';
+import { createGuidesSlice } from './slices/guides-slice';
 import { createIOSlice } from './slices/io-slice';
 import { createLayerSlice } from './slices/layer-slice';
 import { createPageSlice } from './slices/page-slice';
@@ -32,6 +33,7 @@ export const useDesignerStore = create<DesignerState>()(
       ...createIOSlice(...a),
       ...createDialogSlice(...a),
       ...createFontSlice()(...a),
+      ...createGuidesSlice(...a),
       // Override schema/history/componentRegistry with proper initial values
       schema: BLANK_SCHEMA,
       componentRegistry: buildComponentRegistry(BLANK_SCHEMA),

@@ -368,7 +368,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         cachedSnapPoints: SnapEngine.generateSnapPoints(
           store.schema,
           store.selectedComponentIds,
-          pageId || undefined
+          pageId || undefined,
+          store.manualGuides
         ),
         initialAbsoluteY: (component.y || 0) + zoneOffset + primaryPageAbsOffset,
       };
@@ -429,7 +430,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               dragState.cachedSnapPoints = SnapEngine.generateSnapPoints(
                 store.schema,
                 componentId,
-                newPageId
+                newPageId,
+                store.manualGuides
               );
             }
           }
@@ -438,7 +440,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             dragState.cachedSnapPoints = SnapEngine.generateSnapPoints(
               store.schema,
               componentId,
-              dragState.activePageId || undefined
+              dragState.activePageId || undefined,
+              store.manualGuides
             );
           }
 
