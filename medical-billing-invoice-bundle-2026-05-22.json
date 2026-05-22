@@ -1,0 +1,925 @@
+{
+  "schema": {
+    "page": {
+      "size": "A4",
+      "orientation": "portrait",
+      "margin": {
+        "top": "5mm",
+        "bottom": "5mm",
+        "left": "5mm",
+        "right": "5mm"
+      }
+    },
+    "zones": {
+      "header": {
+        "id": "header",
+        "components": [
+          {
+            "id": "top-divider",
+            "type": "line",
+            "x": 5,
+            "y": 46,
+            "width": 198.8,
+            "height": 2.6000000000000014,
+            "orientation": "horizontal",
+            "thickness": "1pt",
+            "color": "#2B6CB0",
+            "style": "dotted"
+          },
+          {
+            "id": "top-blue-bar",
+            "type": "line",
+            "x": -4,
+            "y": 0.9000000000000113,
+            "width": 214.10000000000002,
+            "height": 4,
+            "orientation": "horizontal",
+            "thickness": "20pt",
+            "color": "#2b6cb0"
+          },
+          {
+            "id": "line-qdrvaga",
+            "type": "line",
+            "x": 4.8,
+            "y": 67,
+            "width": 198.8,
+            "height": 2.6000000000000014,
+            "orientation": "horizontal",
+            "thickness": "1pt",
+            "color": "#2B6CB0",
+            "style": "dotted"
+          },
+          {
+            "id": "pat-info-lbl",
+            "type": "text",
+            "x": 10,
+            "y": 21,
+            "width": 78,
+            "height": 3,
+            "content": "PATIENT INFORMATION",
+            "style": {
+              "fontSize": 7.5,
+              "fontWeight": "bold",
+              "color": "#2b6cb0",
+              "letterSpacing": "0.05em"
+            }
+          },
+          {
+            "id": "pat-info-val",
+            "type": "text",
+            "x": 10,
+            "y": 26,
+            "width": 78,
+            "height": 17,
+            "content": "{{patient.name}}\n{{patient.phone}}\n{{patient.address}}",
+            "style": {
+              "fontSize": 8.5,
+              "color": "#2d3748",
+              "lineHeight": 1.4
+            }
+          },
+          {
+            "id": "doc-info-lbl",
+            "type": "text",
+            "x": 122,
+            "y": 19.9,
+            "width": 80,
+            "height": 3,
+            "content": "PERSCRIBING PHYSICIAN'S INFORMATION",
+            "style": {
+              "fontSize": 7.5,
+              "fontWeight": "bold",
+              "color": "#2b6cb0",
+              "letterSpacing": "0.05em"
+            }
+          },
+          {
+            "id": "doc-info-val",
+            "type": "text",
+            "x": 122,
+            "y": 24.9,
+            "width": 80,
+            "height": 17,
+            "content": "Dr. {{patient.doctor}}\n{{patient.doctorPhone}}\n{{patient.doctorAddress}}",
+            "style": {
+              "fontSize": 8.5,
+              "color": "#2d3748",
+              "lineHeight": 1.4
+            }
+          },
+          {
+            "id": "columns-v3ftle1",
+            "type": "columns",
+            "x": 5.499999999999972,
+            "y": 49.5,
+            "width": 198.70000000000005,
+            "height": 19.400000000000006,
+            "columns": [
+              {
+                "width": "1fr",
+                "components": [
+                  {
+                    "id": "text-2u6ccek",
+                    "x": 1,
+                    "y": 0,
+                    "width": 60,
+                    "height": 4.9,
+                    "type": "text",
+                    "content": "INVOICE NUMBER",
+                    "style": {
+                      "fontSize": 10,
+                      "fontWeight": "regular",
+                      "justify": false
+                    },
+                    "align": "center"
+                  },
+                  {
+                    "id": "text-tm1rnht",
+                    "x": 0.1,
+                    "y": 0,
+                    "width": 60,
+                    "height": 7.9,
+                    "type": "text",
+                    "content": "{{patient.invoiceNumber}}",
+                    "style": {
+                      "fontSize": 16,
+                      "justify": false,
+                      "fontWeight": "bold"
+                    },
+                    "align": "center"
+                  }
+                ]
+              },
+              {
+                "width": "1fr",
+                "components": [
+                  {
+                    "id": "text-9h9x8z8",
+                    "x": 0,
+                    "y": 0,
+                    "width": 60,
+                    "height": 4.9,
+                    "type": "text",
+                    "content": "DATE",
+                    "style": {
+                      "fontSize": 10,
+                      "fontWeight": "regular",
+                      "justify": false
+                    },
+                    "align": "center"
+                  },
+                  {
+                    "id": "text-w7diep3",
+                    "x": 0,
+                    "y": 0,
+                    "width": 60,
+                    "height": 7.9,
+                    "type": "text",
+                    "content": "{{patient.admissionDate}}",
+                    "style": {
+                      "fontSize": 16,
+                      "fontWeight": "bold",
+                      "justify": false
+                    },
+                    "align": "center"
+                  }
+                ]
+              },
+              {
+                "width": "1fr",
+                "components": [
+                  {
+                    "id": "text-y3w7x9f",
+                    "x": 0,
+                    "y": 0,
+                    "width": 60,
+                    "height": 4.9,
+                    "type": "text",
+                    "content": "INVOICE DUE DATE",
+                    "style": {
+                      "fontSize": 10,
+                      "fontWeight": "regular",
+                      "justify": false
+                    },
+                    "align": "center"
+                  },
+                  {
+                    "id": "text-z4itmmp",
+                    "x": 41.1,
+                    "y": 0,
+                    "width": 60,
+                    "height": 7.9,
+                    "type": "text",
+                    "content": "{{patient.dischargeDate}}",
+                    "style": {
+                      "fontSize": 16,
+                      "justify": false,
+                      "fontWeight": "bold"
+                    },
+                    "align": "center"
+                  }
+                ]
+              },
+              {
+                "width": "1fr",
+                "components": [
+                  {
+                    "id": "text-cyunxzo",
+                    "x": 0,
+                    "y": 0,
+                    "width": 60,
+                    "height": 4.9,
+                    "type": "text",
+                    "content": "Amount DUE",
+                    "style": {
+                      "fontSize": 10,
+                      "justify": false,
+                      "fontWeight": "regular"
+                    },
+                    "align": "center"
+                  },
+                  {
+                    "id": "text-5ff7bzb",
+                    "x": 0,
+                    "y": 0,
+                    "width": 60,
+                    "height": 7.9,
+                    "type": "text",
+                    "content": "${{patient.totalAmount}}",
+                    "style": {
+                      "fontSize": 16,
+                      "justify": false,
+                      "fontWeight": "bold"
+                    },
+                    "align": "center"
+                  }
+                ]
+              }
+            ],
+            "gap": "1mm"
+          },
+          {
+            "id": "invoice-title",
+            "type": "text",
+            "x": 8,
+            "y": 10.999999999999998,
+            "width": 103,
+            "height": 9.100000000000001,
+            "content": "MEDICAL BILLING INVOICE",
+            "style": {
+              "fontSize": 20,
+              "fontWeight": "bold",
+              "color": "#000000",
+              "letterSpacing": "0.02em",
+              "justify": false
+            },
+            "align": "left"
+          }
+        ],
+        "minHeight": "74.2mm",
+        "repeatOnEveryPage": false
+      },
+      "footer": {
+        "id": "footer",
+        "components": [
+          {
+            "id": "bottom-divider",
+            "type": "line",
+            "x": 5,
+            "y": 1.8000000000000114,
+            "width": 199.20000000000002,
+            "height": 3.099999999999989,
+            "orientation": "horizontal",
+            "thickness": "1pt",
+            "color": "#cbd5e0"
+          },
+          {
+            "id": "notes-lbl",
+            "type": "text",
+            "x": 6,
+            "y": 5.800000000000011,
+            "width": 95,
+            "height": 3,
+            "content": "NOTES",
+            "style": {
+              "fontSize": 7.5,
+              "fontWeight": "bold",
+              "color": "#1a202c"
+            }
+          },
+          {
+            "id": "notes-val",
+            "type": "text",
+            "x": 6,
+            "y": 10.800000000000011,
+            "width": 95,
+            "height": 20,
+            "content": "{{patient.symptoms}}\n\n* Prescription and medical charges have been electronically verified.",
+            "style": {
+              "fontSize": 8,
+              "color": "#4a5568",
+              "lineHeight": 1.4
+            }
+          },
+          {
+            "id": "footer-hospital-details",
+            "type": "text",
+            "x": 6,
+            "y": 36.80000000000001,
+            "width": 80,
+            "height": 9,
+            "content": "**Concordia Hill Hospital**\nwww.concordiahill.com",
+            "style": {
+              "fontSize": 7.5,
+              "color": "#85C9D5",
+              "lineHeight": 1.3
+            },
+            "align": "left"
+          },
+          {
+            "id": "lbl-subtotal",
+            "type": "text",
+            "x": 137,
+            "y": 5.800000000000011,
+            "width": 30,
+            "height": 3,
+            "content": "SUB TOTAL",
+            "style": {
+              "fontSize": 8,
+              "fontWeight": "bold",
+              "color": "#4a5568"
+            }
+          },
+          {
+            "id": "val-subtotal",
+            "type": "text",
+            "x": 167,
+            "y": 5.800000000000011,
+            "width": 35,
+            "height": 3,
+            "content": "${{patient.subtotal}}",
+            "style": {
+              "fontSize": 8,
+              "fontWeight": "bold",
+              "color": "#1a202c"
+            },
+            "align": "right"
+          },
+          {
+            "id": "lbl-taxrate",
+            "type": "text",
+            "x": 137,
+            "y": 10.800000000000011,
+            "width": 30,
+            "height": 3,
+            "content": "TAX RATE",
+            "style": {
+              "fontSize": 8,
+              "fontWeight": "bold",
+              "color": "#4a5568"
+            }
+          },
+          {
+            "id": "val-taxrate",
+            "type": "text",
+            "x": 167,
+            "y": 10.800000000000011,
+            "width": 35,
+            "height": 3,
+            "content": "{{patient.taxRate}}",
+            "style": {
+              "fontSize": 8,
+              "fontWeight": "bold",
+              "color": "#1a202c"
+            },
+            "align": "right"
+          },
+          {
+            "id": "lbl-taxamount",
+            "type": "text",
+            "x": 137,
+            "y": 15.800000000000011,
+            "width": 30,
+            "height": 3,
+            "content": "TAX",
+            "style": {
+              "fontSize": 8,
+              "fontWeight": "bold",
+              "color": "#4a5568"
+            }
+          },
+          {
+            "id": "val-taxamount",
+            "type": "text",
+            "x": 167,
+            "y": 15.800000000000011,
+            "width": 35,
+            "height": 3,
+            "content": "${{patient.taxAmount}}",
+            "style": {
+              "fontSize": 8,
+              "fontWeight": "bold",
+              "color": "#1a202c"
+            },
+            "align": "right"
+          },
+          {
+            "id": "total-due-val",
+            "type": "text",
+            "x": 166,
+            "y": 23.80000000000001,
+            "width": 37,
+            "height": 4,
+            "content": "${{patient.totalAmount}}",
+            "style": {
+              "fontSize": 10.5,
+              "fontWeight": "bold",
+              "color": "#2b6cb0"
+            },
+            "align": "right"
+          },
+          {
+            "id": "total-due-lbl",
+            "type": "text",
+            "x": 137,
+            "y": 23.80000000000001,
+            "width": 20,
+            "height": 4,
+            "content": "TOTAL",
+            "style": {
+              "fontSize": 9.5,
+              "fontWeight": "bold",
+              "color": "#1a202c"
+            }
+          },
+          {
+            "id": "footer-help-details",
+            "type": "text",
+            "x": 127,
+            "y": 36.80000000000001,
+            "width": 76,
+            "height": 9,
+            "content": "For more information or any issues or concerns,\nemail us at **invoices@concordiahill.com**",
+            "style": {
+              "fontSize": 6.5,
+              "color": "#5094B9",
+              "lineHeight": 1.3
+            },
+            "align": "right"
+          }
+        ],
+        "minHeight": "50.900000000000006mm",
+        "repeatOnEveryPage": false
+      }
+    },
+    "pages": [
+      {
+        "id": "invoice-page",
+        "name": "Medical Invoice",
+        "body": {
+          "id": "body",
+          "components": [
+            {
+              "id": "invoice-table",
+              "type": "table",
+              "x": 4.8,
+              "y": 0,
+              "width": 198.9,
+              "height": 19,
+              "repeatHeaderOnPage": true,
+              "dataSource": "{{patient.treatments}}",
+              "showHeader": true,
+              "columns": [
+                {
+                  "id": "c-item",
+                  "header": "No",
+                  "field": "code",
+                  "width": "110pt",
+                  "align": "left"
+                },
+                {
+                  "id": "c-desc",
+                  "header": "Description",
+                  "field": "description",
+                  "width": "1fr",
+                  "align": "left"
+                },
+                {
+                  "id": "c-amount",
+                  "header": "Price",
+                  "field": "amount",
+                  "width": "80pt",
+                  "align": "right",
+                  "format": "currency-usd"
+                }
+              ],
+              "style": {
+                "headerTextColor": "#1a202c",
+                "headerFontWeight": "500",
+                "borderColor": "#cbd5e0",
+                "borderWidth": "0.5pt",
+                "cellPadding": "8pt",
+                "fontSize": 8.5,
+                "fillPattern": "none",
+                "borderSides": {
+                  "top": false,
+                  "bottom": false,
+                  "left": false,
+                  "right": false,
+                  "innerH": false,
+                  "innerV": false
+                },
+                "headerBorderWidth": "0pt",
+                "headerBorderColor": "#2b6cb0",
+                "headerBackground": "#2b6cb0",
+                "headerColor": "#E6EAEF"
+              }
+            }
+          ],
+          "minHeight": "142mm",
+          "layoutMode": "flow"
+        },
+        "footer": {
+          "id": "footer",
+          "components": [],
+          "minHeight": "20mm"
+        }
+      }
+    ],
+    "groups": [],
+    "batchDataSource": "patients",
+    "fonts": [
+      {
+        "family": "Sarabun",
+        "size": 10,
+        "role": "body",
+        "embedded": true
+      }
+    ],
+    "metadata": {
+      "title": "Medical Billing Invoice",
+      "createdAt": "2026-05-18T12:00:00Z",
+      "updatedAt": "2026-05-18T12:00:00Z",
+      "author": "Antigravity"
+    },
+    "id": "medical-billing-invoice",
+    "name": "Medical Billing Invoice",
+    "version": "1.0.0",
+    "variables": [],
+    "dataSchema": []
+  },
+  "data": {
+    "patient": {
+      "name": "Kemba Harris",
+      "phone": "(555) 595-5999",
+      "address": "11 Rosewood Drive, Collingwood, NY 33580",
+      "doctor": "Alanah Gomez",
+      "doctorPhone": "(555) 505-5000",
+      "doctorAddress": "102 Trope Street, New York, NY 45568",
+      "invoiceNumber": "12245",
+      "admissionDate": "07/01/2026",
+      "dischargeDate": "07/30/2026",
+      "symptoms": "A prescription has been written out for the patient, for an acute throat infection.",
+      "treatments": [
+        {
+          "code": "Full Check Up",
+          "description": "Full body check up including bloodwork and vital analysis",
+          "amount": 745
+        },
+        {
+          "code": "Ear & Throat Exam",
+          "description": "Infection check due to persistent localized inflammation",
+          "amount": 1000
+        }
+      ],
+      "subtotal": "1,745.00",
+      "taxRate": "9%",
+      "taxAmount": "157.05",
+      "totalAmount": "1,902.05"
+    },
+    "patients": [
+      {
+        "patient": {
+          "name": "Kemba Harris",
+          "phone": "(555) 595-5999",
+          "address": "11 Rosewood Drive, Collingwood, NY 33580",
+          "doctor": "Alanah Gomez",
+          "doctorPhone": "(555) 505-5000",
+          "doctorAddress": "102 Trope Street, New York, NY 45568",
+          "invoiceNumber": "12245",
+          "admissionDate": "07/01/2026",
+          "dischargeDate": "07/30/2026",
+          "symptoms": "A prescription has been written out for the patient, for an acute throat infection.",
+          "treatments": [
+            {
+              "code": "Full Check Up",
+              "description": "Full body check up including bloodwork and vital analysis",
+              "amount": 745
+            },
+            {
+              "code": "Ear & Throat Exam",
+              "description": "Infection check due to persistent localized inflammation",
+              "amount": 1000
+            }
+          ],
+          "subtotal": "1,745.00",
+          "taxRate": "9%",
+          "taxAmount": "157.05",
+          "totalAmount": "1,902.05"
+        }
+      },
+      {
+        "patient": {
+          "name": "Marcus Aurelius",
+          "phone": "(555) 234-8910",
+          "address": "88 Stoic Way, Brooklyn, NY 11201",
+          "doctor": "Alanah Gomez",
+          "doctorPhone": "(555) 505-5000",
+          "doctorAddress": "102 Trope Street, New York, NY 45568",
+          "invoiceNumber": "12246",
+          "admissionDate": "07/02/2026",
+          "dischargeDate": "07/31/2026",
+          "symptoms": "Follow-up consultation on joint inflammation and prescription of anti-inflammatory therapies.",
+          "treatments": [
+            {
+              "code": "Joint Consultation",
+              "description": "Specialized orthopedic consult and ultrasound diagnostics",
+              "amount": 450
+            },
+            {
+              "code": "Cortisone Therapy",
+              "description": "Targeted intra-articular injection for localized relief",
+              "amount": 800
+            }
+          ],
+          "subtotal": "1,250.00",
+          "taxRate": "9%",
+          "taxAmount": "112.50",
+          "totalAmount": "1,362.50"
+        }
+      },
+      {
+        "patient": {
+          "name": "Clara Oswald",
+          "phone": "(555) 789-1234",
+          "address": "42 Gallifrey Lane, Queens, NY 11101",
+          "doctor": "John Smith",
+          "doctorPhone": "(555) 909-2000",
+          "doctorAddress": "Tardis Clinic, London Road, NY 10012",
+          "invoiceNumber": "12247",
+          "admissionDate": "07/03/2026",
+          "dischargeDate": "08/01/2026",
+          "symptoms": "Patient was admitted for acute respiratory monitoring following sudden breathing difficulties.",
+          "treatments": [
+            {
+              "code": "Respiratory Scan",
+              "description": "Advanced spirometry and diagnostic chest radiography",
+              "amount": 950
+            },
+            {
+              "code": "Oxygen Treatment",
+              "description": "Nebulizer administration and supplementary oxygen therapy",
+              "amount": 600
+            }
+          ],
+          "subtotal": "1,550.00",
+          "taxRate": "9%",
+          "taxAmount": "139.50",
+          "totalAmount": "1,689.50"
+        }
+      },
+      {
+        "patient": {
+          "name": "Sarah Connor",
+          "phone": "(555) 101-2029",
+          "address": "747 Resistance Blvd, Bronx, NY 10451",
+          "doctor": "Silberman Marcus",
+          "doctorPhone": "(555) 444-9000",
+          "doctorAddress": "Pescadero Institute, Albany, NY 12201",
+          "invoiceNumber": "12248",
+          "admissionDate": "07/04/2026",
+          "dischargeDate": "08/02/2026",
+          "symptoms": "Rehabilitation charges and physiological therapy following minor muscular trauma.",
+          "treatments": [
+            {
+              "code": "Trauma Consult",
+              "description": "Clinical assessment by emergency trauma team",
+              "amount": 650
+            },
+            {
+              "code": "Physiotherapy",
+              "description": "Musculoskeletal exercise and deep-tissue recovery session",
+              "amount": 550
+            },
+            {
+              "code": "Laceration Care",
+              "description": "Minor wound cleaning and clinical dressing application",
+              "amount": 300
+            }
+          ],
+          "subtotal": "1,500.00",
+          "taxRate": "9%",
+          "taxAmount": "135.00",
+          "totalAmount": "1,635.00"
+        }
+      },
+      {
+        "patient": {
+          "name": "Bruce Wayne",
+          "phone": "(555) 999-0000",
+          "address": "1007 Mountain Drive, Gotham, NY 10001",
+          "doctor": "Thomas Leslie",
+          "doctorPhone": "(555) 123-4567",
+          "doctorAddress": "Wayne Memorial Clinic, Gotham, NY 10003",
+          "invoiceNumber": "12249",
+          "admissionDate": "07/05/2026",
+          "dischargeDate": "08/03/2026",
+          "symptoms": "Cardiology evaluation and high-resolution EKG diagnostics following elevated heart-rate spikes.",
+          "treatments": [
+            {
+              "code": "Cardiology Consult",
+              "description": "Full cardiac risk panel assessment and evaluation",
+              "amount": 1200
+            },
+            {
+              "code": "High-Res EKG",
+              "description": "Electrocardiogram monitoring and electrical profiling",
+              "amount": 800
+            },
+            {
+              "code": "Stress Test",
+              "description": "Physical treadmill analysis with metabolic monitoring",
+              "amount": 1100
+            }
+          ],
+          "subtotal": "3,100.00",
+          "taxRate": "9%",
+          "taxAmount": "279.00",
+          "totalAmount": "3,379.00"
+        }
+      },
+      {
+        "patient": {
+          "name": "Peter Parker",
+          "phone": "(555) 867-5309",
+          "address": "20 Ingram Street, Forest Hills, NY 11375",
+          "doctor": "Curt Connors",
+          "doctorPhone": "(555) 777-8888",
+          "doctorAddress": "ESU Research Ward, New York, NY 10027",
+          "invoiceNumber": "12250",
+          "admissionDate": "07/06/2026",
+          "dischargeDate": "08/04/2026",
+          "symptoms": "Clinical toxicological screening and metabolic profiling following unusual biological exposure.",
+          "treatments": [
+            {
+              "code": "Toxicology Panel",
+              "description": "Comprehensive blood and enzyme toxicological analysis",
+              "amount": 500
+            },
+            {
+              "code": "Metabolic Profiling",
+              "description": "Cellular respiratory and energy-efficiency profiling",
+              "amount": 400
+            }
+          ],
+          "subtotal": "900.00",
+          "taxRate": "9%",
+          "taxAmount": "81.00",
+          "totalAmount": "981.00"
+        }
+      },
+      {
+        "patient": {
+          "name": "Diana Prince",
+          "phone": "(555) 300-1000",
+          "address": "12 Gateway Boulevard, Washington, DC 20008",
+          "doctor": "Alanah Gomez",
+          "doctorPhone": "(555) 505-5000",
+          "doctorAddress": "102 Trope Street, New York, NY 45568",
+          "invoiceNumber": "12251",
+          "admissionDate": "07/07/2026",
+          "dischargeDate": "08/05/2026",
+          "symptoms": "Comprehensive physical checkup, muscular flexibility tests, and metabolic baseline screening.",
+          "treatments": [
+            {
+              "code": "Executive Checkup",
+              "description": "Elite comprehensive wellness and physical screening",
+              "amount": 1500
+            },
+            {
+              "code": "Biochemical Assay",
+              "description": "High-density blood chemistry and metabolic profiling",
+              "amount": 750
+            }
+          ],
+          "subtotal": "2,250.00",
+          "taxRate": "9%",
+          "taxAmount": "202.50",
+          "totalAmount": "2,452.50"
+        }
+      },
+      {
+        "patient": {
+          "name": "Tony Stark",
+          "phone": "(555) 300-3000",
+          "address": "10880 Malibu Point, Los Angeles, CA 90265",
+          "doctor": "Bruce Banner",
+          "doctorPhone": "(555) 222-1111",
+          "doctorAddress": "Culver University Lab, Arlington, VA 22201",
+          "invoiceNumber": "12252",
+          "admissionDate": "07/08/2026",
+          "dischargeDate": "08/06/2026",
+          "symptoms": "Advanced electromagnetic radiation scan and cardiac pacing telemetry inspection.",
+          "treatments": [
+            {
+              "code": "Radiation Scan",
+              "description": "Full-body high-resolution radioactive isotope profiling",
+              "amount": 3500
+            },
+            {
+              "code": "Telemetry Checkup",
+              "description": "Intracardiac voltage telemetry and pacing verification",
+              "amount": 2500
+            },
+            {
+              "code": "Titanium Dressing",
+              "description": "Biocompatible chest plating review and clinical dress",
+              "amount": 1500
+            }
+          ],
+          "subtotal": "7,500.00",
+          "taxRate": "9%",
+          "taxAmount": "675.00",
+          "totalAmount": "8,175.00"
+        }
+      },
+      {
+        "patient": {
+          "name": "Arthur Dent",
+          "phone": "(555) 042-4242",
+          "address": "15 Country Road, Cottington, West Country, UK",
+          "doctor": "Ford Prefect",
+          "doctorPhone": "(555) 777-0042",
+          "doctorAddress": "Betelgeuse Medical Hub, London, NY 10001",
+          "invoiceNumber": "12253",
+          "admissionDate": "07/09/2026",
+          "dischargeDate": "08/07/2026",
+          "symptoms": "Diagnostic stress counseling and mental stabilization treatment after severe environmental shock.",
+          "treatments": [
+            {
+              "code": "Stress Therapy",
+              "description": "Psychological trauma assessment and coping session",
+              "amount": 350
+            },
+            {
+              "code": "Sedative Treatment",
+              "description": "Intravenous clinical sedation and recovery sleep ward",
+              "amount": 500
+            }
+          ],
+          "subtotal": "850.00",
+          "taxRate": "9%",
+          "taxAmount": "76.50",
+          "totalAmount": "926.50"
+        }
+      },
+      {
+        "patient": {
+          "name": "Ellen Ripley",
+          "phone": "(555) 737-0101",
+          "address": "Weyland-Yutani Colony Suite 7, Brooklyn, NY 11202",
+          "doctor": "Ash Synthetic",
+          "doctorPhone": "(555) 999-1979",
+          "doctorAddress": "Nostromo Clinic, Gateway Station, NY 10101",
+          "invoiceNumber": "12254",
+          "admissionDate": "07/10/2026",
+          "dischargeDate": "08/08/2026",
+          "symptoms": "Foreign parasite biological scan and hyper-sleep decompression physical therapy.",
+          "treatments": [
+            {
+              "code": "Parasite Scan",
+              "description": "High-frequency ultrasound abdominal scan and profiling",
+              "amount": 1800
+            },
+            {
+              "code": "Cryo-Decompress",
+              "description": "Neuromuscular decompression therapy after hyper-sleep",
+              "amount": 1200
+            },
+            {
+              "code": "Vital Re-align",
+              "description": "Endocrine balance synthesis and vitamin replacement",
+              "amount": 800
+            }
+          ],
+          "subtotal": "3,800.00",
+          "taxRate": "9%",
+          "taxAmount": "342.00",
+          "totalAmount": "4,142.00"
+        }
+      }
+    ]
+  },
+  "exportedAt": "2026-05-22T04:56:37.933Z",
+  "version": "1.0.0"
+}
