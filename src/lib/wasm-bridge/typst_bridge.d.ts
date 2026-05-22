@@ -4,12 +4,14 @@
 export class LayoutEngine {
     free(): void;
     [Symbol.dispose](): void;
+    calculate_band_offset(group_id: string, group_type: string, page_index: number): number;
     /**
      * Comprehensive single-call snap: equal-spacing + element + spacing indicators.
      * Returns {snapped_x, snapped_y, guides_x, guides_y, spacing_indicators}.
      * zone_filter scopes element/equal-spacing snaps; spacing indicators always use all nodes.
      */
     calculate_snap(id: string, x: number, y: number, width: number, height: number, threshold: number, zone_filter?: string | null): any;
+    calculate_zone_offset(zone_key: string, page_index: number): number;
     clear(): void;
     /**
      * Legacy single-pass snap: returns {dx, dy, guides}.
@@ -21,6 +23,10 @@ export class LayoutEngine {
     constructor();
     query_rect(x: number, y: number, width: number, height: number, zone_filter?: string | null, page_filter?: string | null): string[];
     remove_node(id: string): void;
+    /**
+     * Load compact zone layout config (parsed mm values). Enables O(1) offset lookups in WASM.
+     */
+    set_zone_layout(input: any): void;
 }
 
 export class TableEngine {
@@ -85,7 +91,9 @@ export interface InitOutput {
     readonly lut_inverse_interp16: (a: number, b: number, c: number) => number;
     readonly lut_interp_linear16: (a: number, b: number, c: number) => number;
     readonly __wbg_layoutengine_free: (a: number, b: number) => void;
+    readonly layoutengine_calculate_band_offset: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly layoutengine_calculate_snap: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
+    readonly layoutengine_calculate_zone_offset: (a: number, b: number, c: number, d: number) => number;
     readonly layoutengine_clear: (a: number) => void;
     readonly layoutengine_find_snaps: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
     readonly layoutengine_insert_node: (a: number, b: any) => [number, number];
@@ -93,6 +101,7 @@ export interface InitOutput {
     readonly layoutengine_new: () => number;
     readonly layoutengine_query_rect: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number];
     readonly layoutengine_remove_node: (a: number, b: number, c: number) => void;
+    readonly layoutengine_set_zone_layout: (a: number, b: any) => [number, number];
     readonly __wbg_tableengine_free: (a: number, b: number) => void;
     readonly tableengine_resolve: (a: number, b: number, c: number, d: number) => [number, number, number];
     readonly typstbridge_parse_csv_bytes: (a: number, b: number, c: number) => [number, number, number, number];

@@ -26,8 +26,19 @@ export class WasmLayoutEngine {
   private static instance: WasmLayoutEngine;
   private engine: LayoutEngine | null = null;
   private initialized = false;
+  /** Serialize mutating WASM calls — prevents recursive borrow panics. */
+  private mutQueue: Promise<void> = Promise.resolve();
 
   private constructor() {}
+
+  private enqueueMut<T>(fn: () => T): Promise<T> {
+    const next = this.mutQueue.then(() => fn());
+    this.mutQueue = next.then(
+      () => undefined,
+      () => undefined
+    );
+    return next;
+  }
 
   public static getInstance(): WasmLayoutEngine {
     if (!WasmLayoutEngine.instance) {
@@ -61,21 +72,55 @@ export class WasmLayoutEngine {
       width: number;
       height: number;
     }[]
-  ) {
+  ): void {
+    void this.loadNodesAsync(nodes);
+  }
+
+  public async loadNodesAsync(
+    nodes: {
+      id: string;
+      zone: string;
+      pageId?: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }[]
+  ): Promise<void> {
     if (!this.engine) return;
+    return this.enqueueMut(() => {
+      try {
+        const mappedNodes = nodes.map((n) => ({
+          id: n.id,
+          zone: n.zone,
+          page_id: n.pageId,
+          x: n.x,
+          y: n.y,
+          width: n.width,
+          height: n.height,
+        }));
+        this.engine?.insert_nodes_batch(mappedNodes);
+      } catch (e) {
+        console.warn('[WasmLayoutEngine] insert_nodes_batch failed', e);
+      }
+    });
+  }
+
+  public calculateZoneOffset(zoneKey: string, pageIndex: number): number {
+    if (!this.engine) return 0;
     try {
-      const mappedNodes = nodes.map((n) => ({
-        id: n.id,
-        zone: n.zone,
-        page_id: n.pageId,
-        x: n.x,
-        y: n.y,
-        width: n.width,
-        height: n.height,
-      }));
-      this.engine.insert_nodes_batch(mappedNodes);
-    } catch (e) {
-      console.warn('[WasmLayoutEngine] insert_nodes_batch failed', e);
+      return this.engine.calculate_zone_offset(zoneKey, pageIndex);
+    } catch {
+      return 0;
+    }
+  }
+
+  public calculateBandOffset(groupId: string, groupType: string, pageIndex: number): number {
+    if (!this.engine) return 0;
+    try {
+      return this.engine.calculate_band_offset(groupId, groupType, pageIndex);
+    } catch {
+      return 0;
     }
   }
 

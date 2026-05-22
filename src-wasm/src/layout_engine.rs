@@ -2,6 +2,8 @@ use rstar::{RTree, RTreeObject, AABB};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
+use crate::zone_layout::{calculate_band_offset, calculate_zone_offset, ZoneLayoutConfig};
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct LayoutNode {
     pub id: String,
@@ -84,6 +86,7 @@ const GRID_SIZE: f64 = 1.0; // mm
 #[wasm_bindgen]
 pub struct LayoutEngine {
     tree: RTree<LayoutNode>,
+    zone_layout: Option<ZoneLayoutConfig>,
 }
 
 // Private helpers — not exported to WASM
@@ -283,6 +286,32 @@ impl LayoutEngine {
     pub fn new() -> Self {
         Self {
             tree: RTree::new(),
+            zone_layout: None,
+        }
+    }
+
+    /// Load compact zone layout config (parsed mm values). Enables O(1) offset lookups in WASM.
+    pub fn set_zone_layout(&mut self, input: JsValue) -> Result<(), JsValue> {
+        self.zone_layout = Some(serde_wasm_bindgen::from_value(input)?);
+        Ok(())
+    }
+
+    pub fn calculate_zone_offset(&self, zone_key: &str, page_index: usize) -> f64 {
+        match &self.zone_layout {
+            Some(config) => calculate_zone_offset(config, zone_key, page_index),
+            None => 0.0,
+        }
+    }
+
+    pub fn calculate_band_offset(
+        &self,
+        group_id: &str,
+        group_type: &str,
+        page_index: usize,
+    ) -> f64 {
+        match &self.zone_layout {
+            Some(config) => calculate_band_offset(config, group_id, group_type, page_index),
+            None => 0.0,
         }
     }
 

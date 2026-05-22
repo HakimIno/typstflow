@@ -12,6 +12,20 @@ export class LayoutEngine {
         wasm.__wbg_layoutengine_free(ptr, 0);
     }
     /**
+     * @param {string} group_id
+     * @param {string} group_type
+     * @param {number} page_index
+     * @returns {number}
+     */
+    calculate_band_offset(group_id, group_type, page_index) {
+        const ptr0 = passStringToWasm0(group_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(group_type, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.layoutengine_calculate_band_offset(this.__wbg_ptr, ptr0, len0, ptr1, len1, page_index);
+        return ret;
+    }
+    /**
      * Comprehensive single-call snap: equal-spacing + element + spacing indicators.
      * Returns {snapped_x, snapped_y, guides_x, guides_y, spacing_indicators}.
      * zone_filter scopes element/equal-spacing snaps; spacing indicators always use all nodes.
@@ -34,6 +48,17 @@ export class LayoutEngine {
             throw takeFromExternrefTable0(ret[1]);
         }
         return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * @param {string} zone_key
+     * @param {number} page_index
+     * @returns {number}
+     */
+    calculate_zone_offset(zone_key, page_index) {
+        const ptr0 = passStringToWasm0(zone_key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.layoutengine_calculate_zone_offset(this.__wbg_ptr, ptr0, len0, page_index);
+        return ret;
     }
     clear() {
         wasm.layoutengine_clear(this.__wbg_ptr);
@@ -111,6 +136,16 @@ export class LayoutEngine {
         const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.layoutengine_remove_node(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Load compact zone layout config (parsed mm values). Enables O(1) offset lookups in WASM.
+     * @param {any} input
+     */
+    set_zone_layout(input) {
+        const ret = wasm.layoutengine_set_zone_layout(this.__wbg_ptr, input);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
     }
 }
 if (Symbol.dispose) LayoutEngine.prototype[Symbol.dispose] = LayoutEngine.prototype.free;
@@ -326,12 +361,22 @@ function __wbg_get_imports() {
             const ret = Error(getStringFromWasm0(arg0, arg1));
             return ret;
         },
+        __wbg_Number_e6ffdb596c888833: function(arg0) {
+            const ret = Number(arg0);
+            return ret;
+        },
         __wbg_String_8564e559799eccda: function(arg0, arg1) {
             const ret = String(arg1);
             const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             const len1 = WASM_VECTOR_LEN;
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
             getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+        },
+        __wbg___wbindgen_bigint_get_as_i64_2c5082002e4826e2: function(arg0, arg1) {
+            const v = arg1;
+            const ret = typeof(v) === 'bigint' ? v : undefined;
+            getDataViewMemory0().setBigInt64(arg0 + 8 * 1, isLikeNone(ret) ? BigInt(0) : ret, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, !isLikeNone(ret), true);
         },
         __wbg___wbindgen_boolean_get_a86c216575a75c30: function(arg0) {
             const v = arg0;
@@ -349,6 +394,10 @@ function __wbg_get_imports() {
             const ret = arg0 in arg1;
             return ret;
         },
+        __wbg___wbindgen_is_bigint_6c98f7e945dacdde: function(arg0) {
+            const ret = typeof(arg0) === 'bigint';
+            return ret;
+        },
         __wbg___wbindgen_is_function_49868bde5eb1e745: function(arg0) {
             const ret = typeof(arg0) === 'function';
             return ret;
@@ -360,6 +409,10 @@ function __wbg_get_imports() {
         },
         __wbg___wbindgen_is_undefined_c0cca72b82b86f4d: function(arg0) {
             const ret = arg0 === undefined;
+            return ret;
+        },
+        __wbg___wbindgen_jsval_eq_7d430e744a913d26: function(arg0, arg1) {
+            const ret = arg0 === arg1;
             return ret;
         },
         __wbg___wbindgen_jsval_loose_eq_3a72ae764d46d944: function(arg0, arg1) {
@@ -440,6 +493,10 @@ function __wbg_get_imports() {
         },
         __wbg_isArray_db61795ad004c139: function(arg0) {
             const ret = Array.isArray(arg0);
+            return ret;
+        },
+        __wbg_isSafeInteger_ea83862ba994770c: function(arg0) {
+            const ret = Number.isSafeInteger(arg0);
             return ret;
         },
         __wbg_iterator_de403ef31815a3e6: function() {

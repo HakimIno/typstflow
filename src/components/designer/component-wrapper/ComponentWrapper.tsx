@@ -20,6 +20,7 @@ import {
 } from '@/lib/engine/wasm-snap';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { detectZoneAtPoint, isDifferentZone } from '@/lib/utils/zone-detector';
+import { type ZoneLayoutCache, getZoneLayoutCache } from '@/lib/utils/zone-layout';
 import type { WasmLayoutEngine } from '@/lib/wasm-layout-engine';
 import { ComponentPreview } from '../component-preview';
 import { ActionBar } from './ActionBar';
@@ -182,6 +183,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     hasStartedDrag: boolean;
     initialPositions: Map<string, { x: number; y: number; absY: number; element: HTMLElement }>;
     wasmEngine: WasmLayoutEngine | null;
+    zoneLayoutCache: ZoneLayoutCache;
     primaryCompWidth: number;
     primaryCompHeight: number;
     lastSnappedX: number;
@@ -296,12 +298,12 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       );
       const scrollParentEl = paperContainerEl?.closest<HTMLElement>('.overflow-auto') ?? null;
 
-      const zoneOffset = LayoutEngine.calculateZoneOffset(zoneKey, store.schema, pageId);
-      // Match the document-absolute coordinate space: rawY + pageIndex * pageHeight
-      const primaryPageIdx = pageId ? store.schema.pages.findIndex((p) => p.id === pageId) : 0;
-      const primaryPageAbsOffset = Math.max(0, primaryPageIdx) * pH;
+      const zoneLayoutCache = getZoneLayoutCache(store.schema);
+      const zoneOffset = zoneLayoutCache.getZoneOffset(zoneKey, pageId);
+      const primaryPageAbsOffset = zoneLayoutCache.getPageAbsOffsetMm(pageId);
+      const primaryPageIdx = zoneLayoutCache.getPageIndex(pageId);
       const { pageStartIdx, pageEndIdx } = getSnapPageRange(
-        Math.max(0, primaryPageIdx),
+        primaryPageIdx,
         store.schema.pages.length,
         SNAP_PAGE_RADIUS
       );
@@ -317,6 +319,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         hasStartedDrag: false,
         initialPositions,
         wasmEngine: null,
+        zoneLayoutCache,
         primaryCompWidth: component.width || 40,
         primaryCompHeight: component.height || 10,
         lastSnappedX: component.x || 0,
@@ -338,6 +341,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         pageStartIdx,
         pageEndIdx,
         manualGuides: store.manualGuides,
+        zoneLayout: zoneLayoutCache,
       })
         .then((engine) => {
           if (dragStateRef.current?.isActive) {
@@ -400,18 +404,19 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               dragState.scrollParentEl = paperAtPoint.closest<HTMLElement>('.overflow-auto');
 
               if (dragState.wasmEngine) {
-                const newPageIdx = store.schema.pages.findIndex((p) => p.id === newPageId);
+                const newPageIdx = dragState.zoneLayoutCache.getPageIndex(newPageId);
                 const { pageStartIdx, pageEndIdx } = getSnapPageRange(
-                  Math.max(0, newPageIdx),
+                  newPageIdx,
                   store.schema.pages.length,
                   SNAP_PAGE_RADIUS
                 );
-                reloadWasmSnapNodes(dragState.wasmEngine, store.schema, {
+                void reloadWasmSnapNodes(dragState.wasmEngine, store.schema, {
                   excludeIds: store.selectedComponentIds,
                   pageStartIdx,
                   pageEndIdx,
                   manualGuides: store.manualGuides,
-                });
+                  zoneLayout: dragState.zoneLayoutCache,
+                }).catch(() => {});
               }
             }
           }
@@ -434,15 +439,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
                 dragState.activePageId || undefined
               );
 
-          const _paperRect = dragState.paperContainerEl?.getBoundingClientRect();
-          const pageIndex = dragState.activePageId
-            ? store.schema.pages.findIndex((p) => p.id === dragState.activePageId)
-            : 0;
-          const { height: pageHeight } = getPaperDimensions(
-            store.schema.page.size,
-            store.schema.page.orientation
+          const pageAbsOffsetMM = dragState.zoneLayoutCache.getPageAbsOffsetMm(
+            dragState.activePageId || undefined
           );
-          const pageAbsOffsetMM = pageIndex * pageHeight;
 
           // Standardized to absolute document-space (mm)
           const absRawX = currentPos.rawX;
@@ -580,16 +579,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             const tz = targetZone;
             const { lastSnappedX, lastSnappedY } = dragState;
 
-            const dstZoneOffset = LayoutEngine.calculateZoneOffset(
-              tz.zoneKey,
-              store.schema,
-              tz.pageId
-            );
-            // Subtract destination page's absolute offset to get zone-local y
-            const dstPageIdx = tz.pageId
-              ? store.schema.pages.findIndex((p) => p.id === tz.pageId)
-              : 0;
-            const dstPageAbsOffset = Math.max(0, dstPageIdx) * pH;
+            const dstZoneOffset = dragState.zoneLayoutCache.getZoneOffset(tz.zoneKey, tz.pageId);
+            const dstPageAbsOffset = dragState.zoneLayoutCache.getPageAbsOffsetMm(tz.pageId);
 
             // Calculate the document-absolute delta (mm)
             const dxMM = lastSnappedX - (initialPositions.get(componentId)?.x || 0);

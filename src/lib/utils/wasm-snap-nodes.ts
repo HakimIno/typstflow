@@ -1,5 +1,5 @@
-import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
+import { type ZoneLayoutCache, getZoneLayoutCache } from '@/lib/utils/zone-layout';
 import type { WasmLayoutEngine } from '@/lib/wasm-layout-engine';
 import type { LayoutSchema } from '@/types/schema';
 
@@ -16,12 +16,14 @@ export interface BuildWasmSnapNodesOptions {
   manualGuides?: { vertical: number[]; horizontal: number[] };
   /** When false, Y coords are page-local (no page stacking). Default: true. */
   stackPages?: boolean;
+  /** Precomputed zone layout — avoids per-page offset recalculation. */
+  zoneLayout?: ZoneLayoutCache;
 }
 
 /**
  * Build RTree nodes for WASM snap in document-absolute coordinates.
  * Y includes page stacking (pageIndex × pageHeight); X is page-local.
- * Zone offsets are applied via LayoutEngine.calculateZoneOffset at load time.
+ * Zone offsets are precomputed via ZoneLayoutCache (O(1) per page).
  */
 export function buildWasmSnapNodes(
   schema: LayoutSchema,
@@ -30,10 +32,11 @@ export function buildWasmSnapNodes(
   const excludeIds = new Set(options.excludeIds ?? []);
   const maxPerPage = options.maxComponentsPerPage ?? 100;
   const stackPages = options.stackPages !== false;
-  const { width: pageWidth, height: pageHeight } = getPaperDimensions(
-    schema.page.size,
-    schema.page.orientation
-  );
+  const zoneLayout = options.zoneLayout ?? getZoneLayoutCache(schema);
+  const config = zoneLayout.getConfig();
+
+  const pageWidth = getPaperDimensions(schema.page.size, schema.page.orientation).width;
+  const pageHeight = config.pageHeightMm;
 
   const nodes: WasmSnapNode[] = [];
 
@@ -62,11 +65,9 @@ export function buildWasmSnapNodes(
 
     const pageAbsY = stackPages ? i * pageHeight : 0;
     const pageId = page.id;
-    const isFirstPage = i === 0;
-    const isLastPage = i === schema.pages.length - 1;
+    const pageOffsets = zoneLayout.getPageOffsets(pageId);
 
-    const isHeaderRepeated = schema.zones.header?.repeatOnEveryPage === true;
-    if (isHeaderRepeated || isFirstPage) {
+    if (pageOffsets.headerVisible) {
       let count = 0;
       for (const c of schema.zones.header.components) {
         if (count++ >= maxPerPage) break;
@@ -74,26 +75,17 @@ export function buildWasmSnapNodes(
       }
     }
 
-    const bodyOffset = LayoutEngine.calculateZoneOffset('body', schema, pageId);
     let count = 0;
     for (const c of page.body.components) {
       if (count++ >= maxPerPage) break;
-      addComponent(c, bodyOffset, `body:${pageId}`, pageId, pageAbsY);
+      addComponent(c, pageOffsets.body, `body:${pageId}`, pageId, pageAbsY);
     }
 
-    const isFooterRepeated = schema.zones.footer?.repeatOnEveryPage === true;
-    const showOnLastPageOnly = schema.zones.footer?.showOnLastPageOnly === true;
-    const isFooterVisible =
-      isFooterRepeated ||
-      (showOnLastPageOnly && isLastPage) ||
-      (!isFooterRepeated && !showOnLastPageOnly && isFirstPage);
-
-    if (isFooterVisible) {
-      const footerOffset = LayoutEngine.calculateZoneOffset('footer', schema, pageId);
+    if (pageOffsets.footerVisible) {
       count = 0;
       for (const c of schema.zones.footer.components) {
         if (count++ >= maxPerPage) break;
-        addComponent(c, footerOffset, `footer:${pageId}`, pageId, pageAbsY);
+        addComponent(c, pageOffsets.footer, `footer:${pageId}`, pageId, pageAbsY);
       }
     }
 

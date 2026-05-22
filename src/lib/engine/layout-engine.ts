@@ -5,8 +5,7 @@ import {
   pxToMmAtCurrentDpi,
   updateDpiRatio,
 } from '../constants';
-import { getPaperDimensions } from '../utils/paper-sizes';
-import { parseTypstUnit } from '../utils/units';
+import { getZoneLayoutCache } from '../utils/zone-layout';
 
 /**
  * Enhanced coordinate system information for accurate position calculations.
@@ -255,53 +254,7 @@ export const LayoutEngine = {
   },
 
   calculateZoneOffset(zoneKey: string, schema: any, pageId?: string): number {
-    if (zoneKey === 'header') return 0;
-
-    const isFirstPage = !pageId || pageId === schema.pages[0]?.id;
-    const isHeaderRepeated = schema.zones.header?.repeatOnEveryPage === true;
-
-    // For footer, it is visually anchored to the bottom of the page
-    // because the Body zone is `flex: 1`.
-    if (zoneKey === 'footer') {
-      const { height: pageHeightMm } = getPaperDimensions(
-        schema.page.size,
-        schema.page.orientation
-      );
-
-      // Determine if footer is actually shown on this page
-      const pageIndex = schema.pages.findIndex((p: any) => p.id === pageId);
-      const pIdx = pageIndex >= 0 ? pageIndex : 0;
-      const isFooterRepeated = schema.zones.footer?.repeatOnEveryPage === true;
-      const showOnLastPageOnly = schema.zones.footer?.showOnLastPageOnly === true;
-      const isLastPage = pIdx === schema.pages.length - 1;
-
-      const isFooterVisible =
-        isFooterRepeated ||
-        (showOnLastPageOnly && isLastPage) ||
-        (!isFooterRepeated && !showOnLastPageOnly && pIdx === 0);
-
-      if (!isFooterVisible) return 0; // Or pageHeightMm, if it's hidden it shouldn't accept drops realistically.
-
-      const footerHeight = parseTypstUnit(schema.zones.footer?.minHeight || '0mm');
-      return pageHeightMm - footerHeight;
-    }
-
-    let offset = 0;
-
-    // 1. Report Header (Only on first page unless repeated)
-    if (isHeaderRepeated || isFirstPage) {
-      offset += parseTypstUnit(schema.zones.header?.minHeight || '0mm');
-    }
-
-    // 2. Group Headers
-    if (zoneKey === 'body') {
-      for (const group of schema.groups || []) {
-        offset += parseTypstUnit(group.header?.minHeight || '0mm');
-      }
-      return offset;
-    }
-
-    return offset;
+    return getZoneLayoutCache(schema).getZoneOffset(zoneKey, pageId);
   },
 
   /**
@@ -313,54 +266,7 @@ export const LayoutEngine = {
     schema: any,
     pageId?: string
   ): number {
-    const isFirstPage = !pageId || pageId === schema.pages[0]?.id;
-    const isHeaderRepeated = schema.zones.header?.repeatOnEveryPage === true;
-
-    let offset = 0;
-    if (isHeaderRepeated || isFirstPage) {
-      offset += parseTypstUnit(schema.zones.header?.minHeight || '0mm');
-    }
-
-    if (groupType === 'header') {
-      for (const group of schema.groups || []) {
-        if (group.id === groupId) return offset;
-        offset += parseTypstUnit(group.header?.minHeight || '0mm');
-      }
-    } else {
-      // Group Footers are anchored to the bottom of the page, stacked above the main Footer
-      const { height: pageHeightMm } = getPaperDimensions(
-        schema.page.size,
-        schema.page.orientation
-      );
-
-      let bottomOffset = pageHeightMm;
-
-      // Subtract the main Footer height if it's visible on this page
-      const pageIndex = schema.pages.findIndex((p: any) => p.id === pageId);
-      const pIdx = pageIndex >= 0 ? pageIndex : 0;
-      const isFooterRepeated = schema.zones.footer?.repeatOnEveryPage === true;
-      const showOnLastPageOnly = schema.zones.footer?.showOnLastPageOnly === true;
-      const isLastPage = pIdx === schema.pages.length - 1;
-
-      const isFooterVisible =
-        isFooterRepeated ||
-        (showOnLastPageOnly && isLastPage) ||
-        (!isFooterRepeated && !showOnLastPageOnly && pIdx === 0);
-
-      if (isFooterVisible) {
-        bottomOffset -= parseTypstUnit(schema.zones.footer?.minHeight || '0mm');
-      }
-
-      // Group Footers are rendered in REVERSE order in Canvas.tsx
-      const reversedGroups = [...(schema.groups || [])].reverse();
-      for (const group of reversedGroups) {
-        const groupFooterHeight = parseTypstUnit(group.footer?.minHeight || '0mm');
-        bottomOffset -= groupFooterHeight;
-        if (group.id === groupId) return bottomOffset;
-      }
-    }
-
-    return offset;
+    return getZoneLayoutCache(schema).getBandOffset(groupId, groupType, pageId);
   },
 
   /**

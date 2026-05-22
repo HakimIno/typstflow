@@ -12,6 +12,7 @@ mod parsers;
 mod world;
 pub mod layout_engine;
 pub mod table_engine;
+pub mod zone_layout;
 
 use world::WasmWorld;
 

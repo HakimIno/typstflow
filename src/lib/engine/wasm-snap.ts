@@ -72,16 +72,18 @@ export async function loadWasmSnapNodes(
 ): Promise<WasmLayoutEngine> {
   const engine = await getWasmLayoutEngine();
   await engine.initWasm();
-  engine.loadNodes(buildWasmSnapNodes(schema, options));
+  // Zone offsets are pre-applied in buildWasmSnapNodes via ZoneLayoutCache (TS).
+  // Do NOT call set_zone_layout here — it corrupts WASM state when combined with insert_nodes_batch.
+  await engine.loadNodesAsync(buildWasmSnapNodes(schema, options));
   return engine;
 }
 
-export function reloadWasmSnapNodes(
+export async function reloadWasmSnapNodes(
   engine: WasmLayoutEngine,
   schema: LayoutSchema,
   options: BuildWasmSnapNodesOptions
-): void {
-  engine.loadNodes(buildWasmSnapNodes(schema, options));
+): Promise<void> {
+  await engine.loadNodesAsync(buildWasmSnapNodes(schema, options));
 }
 
 /** Convert WASM spacing indicators to store/UI format (camelCase, page-local Y). */
