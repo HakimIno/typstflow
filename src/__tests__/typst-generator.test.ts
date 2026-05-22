@@ -588,3 +588,55 @@ describe('TypstGenerator — table component', () => {
     expect(output).not.toContain('1fr');
   });
 });
+
+describe('TypstGenerator — pretty export', () => {
+  const schema: LayoutSchema = {
+    ...MINIMAL_SCHEMA,
+    pages: [
+      {
+        id: 'page-1',
+        name: 'Page 1',
+        body: {
+          id: 'body',
+          components: [
+            {
+              id: 'title-text',
+              type: 'text',
+              name: 'Document Title',
+              x: 10,
+              y: 10,
+              width: 80,
+              height: 10,
+              content: 'Hello World',
+              style: { fontSize: 12, fontWeight: 'bold' },
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  it('includes document banner and section headers', () => {
+    const output = gen.generate(schema, {}, { pretty: true });
+    expect(output).toContain('Exported from TypstFlow');
+    expect(output).toContain('// --- Imports ---');
+    expect(output).toContain('// --- Page Setup ---');
+    expect(output).toContain('// --- Document Typography ---');
+    expect(output).toContain('// --- Report Content ---');
+  });
+
+  it('labels components and formats #place blocks on multiple lines', () => {
+    const output = gen.generate(schema, {}, { pretty: true });
+    expect(output).toContain('// ── text · Document Title · Hello World ──');
+    expect(output).toContain('#place(');
+    expect(output).toContain('  dx: 10mm,');
+    expect(output).toContain('  dy: 10mm,');
+    expect(output).toMatch(/#set text\(\n\s+size: 12pt,/);
+  });
+
+  it('compact mode stays single-line for #place', () => {
+    const output = gen.generate(schema, {}, { pretty: false });
+    expect(output).toContain('#place(top + left, dx: 10mm, dy: 10mm)');
+    expect(output).not.toContain('Exported from TypstFlow');
+  });
+});

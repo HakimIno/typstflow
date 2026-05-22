@@ -482,15 +482,21 @@ export interface SignatureSlot {
   label: string;
   nameLabel?: string;
   dateLabel?: string;
+  // Per-slot overrides — falls back to component-level defaults when undefined
+  showNameLine?: boolean;
+  showDateLine?: boolean;
 }
 
 export interface SignatureComponent extends BaseComponent {
   type: 'signature';
   slots: SignatureSlot[];
+  // Defaults for all slots (per-slot can override)
   showNameLine?: boolean;
   showDateLine?: boolean;
   lineStyle?: 'solid' | 'dotted' | 'dashed';
   lineColor?: string;
+  lineWidth?: string;
+  slotSpacing?: string;
   labelStyle?: TextStyle;
 }
 

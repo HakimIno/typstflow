@@ -535,7 +535,8 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
       ctx.offsetX,
       ctx.offsetY,
       ctx.flowMode,
-      ctx.fillWidth
+      ctx.fillWidth,
+      ctx.pretty
     );
   },
 };

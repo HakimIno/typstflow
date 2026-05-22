@@ -441,7 +441,7 @@ self.onmessage = async (e: MessageEvent) => {
       case 'GENERATE_REPORT_TYPST': {
         const { schema, data } = payload;
         const generator = new TypstGenerator();
-        const source = generator.generate(schema, data);
+        const source = generator.generate(schema, data, { pretty: true });
         self.postMessage({ id, type: 'success', payload: source });
         break;
       }

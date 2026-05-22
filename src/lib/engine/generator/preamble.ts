@@ -5,22 +5,51 @@ import { formatFontFamily } from './placement';
  *  `#place(dx, dy)` coordinates map 1-to-1 with the designer's mm coordinate
  *  system (page corner = 0,0). The schema margin is visual-only in the designer.
  */
-export function generatePageSetup(schema: LayoutSchema): string {
+export function generatePageSetup(schema: LayoutSchema, pretty = false): string {
   const { page } = schema;
   const paper = page.size.toLowerCase();
   const flipped = page.orientation === 'landscape';
+  if (pretty) {
+    return [
+      '// --- Page Setup ---',
+      '#set page(',
+      `  paper: "${paper}",`,
+      `  flipped: ${flipped},`,
+      '  margin: 0mm,',
+      ')',
+      '',
+    ].join('\n');
+  }
   return `#set page(\n  paper: "${paper}",\n  flipped: ${flipped},\n  margin: 0mm,\n)\n\n`;
 }
 
 /** Returns the `#set text(...)` block using the first body font. */
-export function generateFonts(schema: LayoutSchema): string {
+export function generateFonts(schema: LayoutSchema, pretty = false): string {
   const font = schema.fonts.find((f) => f.role === 'body') ?? schema.fonts[0];
   if (!font) return '';
   const family = formatFontFamily(font.family);
+  if (pretty) {
+    return [
+      '// --- Document Typography ---',
+      '#set text(',
+      `  font: ("${family}", "Sarabun", "sans-serif"),`,
+      `  size: ${font.size}pt,`,
+      '  lang: "th",',
+      ')',
+      '#set par(leading: 0.75em, justify: false)',
+      '',
+    ].join('\n');
+  }
   return `#set text(font: ("${family}", "Sarabun", "sans-serif"), size: ${font.size}pt, lang: "th")\n#set par(leading: 0.75em, justify: false)\n\n`;
 }
 
 /** Import block for bundled packages (codetastic for QR / barcodes). */
+export function generateImports(pretty = false): string {
+  const line = '#import "@preview/codetastic:0.2.2": qrcode, ean13, ean8';
+  return pretty ? `// --- Imports ---\n${line}\n\n` : `${line}\n`;
+}
+
+/** @deprecated Use {@link generateImports} — kept for compact output compatibility. */
 export const IMPORTS = '#import "@preview/codetastic:0.2.2": qrcode, ean13, ean8\n';
 
 /** Typst helper functions for formatting (number, currency, date, etc.).
@@ -97,3 +126,9 @@ export const FORMAT_HELPERS = `
   if v == true or v == "true" or v == "1" or v == "yes" { "Yes" } else { "No" }
 }
 `;
+
+/** Same as {@link FORMAT_HELPERS} with an expanded section title for pretty exports. */
+export const PRETTY_FORMAT_HELPERS = FORMAT_HELPERS.replace(
+  '// --- Formatting Helpers ---',
+  '// --- Formatting Helpers (numbers, currency, dates) ---'
+);

@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { ChevronDown } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
@@ -70,6 +70,148 @@ export const SegmentedControl = <T extends string>({
         </button>
       );
     })}
+  </div>
+);
+
+/**
+ * Standalone pill-shaped toggle — visually consistent with SegmentedControl
+ * but independent (multiple can be active at once).
+ *
+ * Use `ToggleChipGroup` to wrap a row of chips with consistent spacing.
+ */
+export const ToggleChip = ({
+  checked,
+  onChange,
+  label,
+  icon: Icon,
+  className,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  icon?: LucideIcon;
+  className?: string;
+}) => (
+  <button
+    type="button"
+    onClick={() => onChange(!checked)}
+    className={clsx(
+      'inline-flex items-center gap-1 px-2 h-5 rounded-full text-[8px] font-bold uppercase tracking-wide transition-all select-none shrink-0',
+      checked
+        ? 'bg-[var(--accent)]/15 text-[var(--accent)] ring-1 ring-[var(--accent)]/25'
+        : 'bg-white/[0.04] text-[var(--text-muted)] ring-1 ring-transparent hover:bg-white/[0.07] hover:text-[var(--text-secondary)]',
+      className
+    )}
+  >
+    <span
+      className={clsx(
+        'w-1.5 h-1.5 rounded-full shrink-0 transition-colors',
+        checked ? 'bg-[var(--accent)]' : 'bg-white/20'
+      )}
+    />
+    {Icon && <Icon className="w-2.5 h-2.5 shrink-0" />}
+    <span>{label}</span>
+  </button>
+);
+
+/** Wraps a row of `ToggleChip` components with consistent gap. */
+export const ToggleChipGroup = ({
+  children,
+  className,
+}: { children: React.ReactNode; className?: string }) => (
+  <div className={clsx('flex flex-wrap items-center gap-1', className)}>{children}</div>
+);
+
+/** Shared visual — used by both Checkbox and CheckboxField to stay DRY. */
+const CheckboxIndicator = ({
+  checked,
+  className,
+}: { checked: boolean; className?: string }) => (
+  <div
+    className={clsx(
+      'w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center shrink-0 transition-all',
+      checked
+        ? 'bg-[var(--accent)] border-[var(--accent)]'
+        : 'bg-transparent border-[var(--border-default)]',
+      className
+    )}
+  >
+    {checked && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+  </div>
+);
+
+/**
+ * Standalone checkbox button — rounded square, accent fill + white ✓ when checked.
+ * Use `CheckboxField` for the full label+checkbox combo.
+ */
+export const Checkbox = ({
+  checked,
+  onChange,
+  disabled,
+  className,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+}) => (
+  <button
+    type="button"
+    role="checkbox"
+    aria-checked={checked}
+    disabled={disabled}
+    onClick={() => onChange(!checked)}
+    className={clsx(
+      'shrink-0 transition-all hover:opacity-80',
+      disabled && 'opacity-40 pointer-events-none',
+      className
+    )}
+  >
+    <CheckboxIndicator checked={checked} />
+  </button>
+);
+
+/**
+ * Checkbox with label (and optional description).
+ * Uses a `<div>` wrapper — NOT a `<button>` — to avoid nested button hydration errors.
+ * The whole row is clickable via onClick on the div.
+ */
+export const CheckboxField = ({
+  checked,
+  onChange,
+  label,
+  description,
+  disabled,
+  className,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  description?: string;
+  disabled?: boolean;
+  className?: string;
+}) => (
+  <div
+    role="checkbox"
+    aria-checked={checked}
+    onClick={disabled ? undefined : () => onChange(!checked)}
+    className={clsx(
+      'flex items-start gap-2 w-full cursor-pointer select-none group transition-opacity',
+      disabled && 'opacity-40 pointer-events-none',
+      className
+    )}
+  >
+    <CheckboxIndicator checked={checked} className="mt-px" />
+    <div className="min-w-0">
+      <span className="text-[11px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors leading-none block">
+        {label}
+      </span>
+      {description && (
+        <span className="text-[9px] text-[var(--text-muted)] mt-0.5 block leading-snug">
+          {description}
+        </span>
+      )}
+    </div>
   </div>
 );
 

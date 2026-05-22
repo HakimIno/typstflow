@@ -8,6 +8,6 @@ export const spacerPlugin: ComponentPlugin<SpacerComponent> = {
   render(comp, ctx: RenderContext): string {
     if (!isVisible(comp.visible, ctx.local, ctx.global)) return '';
     if (ctx.flowMode) return `#v(${comp.height}mm)\n`;
-    return wrapPlacement(comp, '', ctx.offsetX, ctx.offsetY);
+    return wrapPlacement(comp, '', ctx.offsetX, ctx.offsetY, ctx.flowMode, undefined, ctx.pretty);
   },
 };

@@ -11,15 +11,18 @@ export const signaturePlugin: ComponentPlugin<SignatureComponent> = {
     const slots = comp.slots ?? [];
     if (slots.length === 0) return '';
 
-    const showName = comp.showNameLine !== false;
-    const showDate = comp.showDateLine !== false;
     const lineColor = formatColor(comp.lineColor ?? '#000000');
-    const lineStroke =
+    const lineWidthPart = comp.lineWidth ? `, thickness: ${comp.lineWidth}` : '';
+    const dashPart =
       comp.lineStyle === 'dashed'
-        ? `(paint: ${lineColor}, dash: "dashed")`
+        ? ', dash: "dashed"'
         : comp.lineStyle === 'dotted'
-          ? `(paint: ${lineColor}, dash: "dotted")`
-          : lineColor;
+          ? ', dash: "dotted"'
+          : '';
+    const lineStroke =
+      lineWidthPart || dashPart
+        ? `(paint: ${lineColor}${lineWidthPart}${dashPart})`
+        : lineColor;
 
     const labelSize = comp.labelStyle?.fontSize ?? 8;
     const labelWeight = formatWeight(comp.labelStyle?.fontWeight, 'regular');
@@ -29,6 +32,10 @@ export const signaturePlugin: ComponentPlugin<SignatureComponent> = {
       : '';
 
     const slotBlocks = slots.map((slot) => {
+      // Per-slot visibility falls back to component-level defaults
+      const showName = slot.showNameLine ?? comp.showNameLine ?? true;
+      const showDate = slot.showDateLine ?? comp.showDateLine ?? true;
+
       const lines: string[] = [];
       lines.push(`#v(12mm)`);
       lines.push(`#line(length: 100%, stroke: ${lineStroke})`);
@@ -53,7 +60,8 @@ export const signaturePlugin: ComponentPlugin<SignatureComponent> = {
     });
 
     const cols = slots.map(() => '1fr').join(', ');
-    const body = `#grid(columns: (${cols}), gutter: 5mm, ${slotBlocks.join(', ')})`;
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
+    const gutter = comp.slotSpacing ?? '5mm';
+    const body = `#grid(columns: (${cols}), gutter: ${gutter}, ${slotBlocks.join(', ')})`;
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth, ctx.pretty);
   },
 };

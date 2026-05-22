@@ -46,6 +46,6 @@ export const rectanglePlugin: ComponentPlugin<RectangleComponent> = {
     const outsetPart = comp.outset ? `, outset: ${comp.outset}` : '';
 
     const body = `#rect(width: 100%, height: 100%, fill: ${fill}, stroke: ${stroke}${radiusPart}${insetPart}${outsetPart})`;
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth, ctx.pretty);
   },
 };

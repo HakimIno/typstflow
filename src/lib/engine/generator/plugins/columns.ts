@@ -25,6 +25,6 @@ export const columnsPlugin: ComponentPlugin<ColumnLayoutComponent> = {
       .join(', ');
 
     const body = `#grid(columns: (${widths}), gutter: ${gap}, ${colContents})`;
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth, ctx.pretty);
   },
 };

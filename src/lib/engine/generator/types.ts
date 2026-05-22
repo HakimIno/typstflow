@@ -23,6 +23,8 @@ export interface RenderContext {
   readonly fillWidth?: boolean;
   /** Full layout schema — available for plugins that need page/font config. */
   readonly schema: LayoutSchema;
+  /** When true, emit indented multi-line Typst (export / download). */
+  readonly pretty?: boolean;
   /**
    * Render any component node, optionally overriding parts of the context.
    * Plugins call this for children (repeater children, column components, etc.)

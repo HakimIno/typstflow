@@ -1,6 +1,14 @@
 import type { ComponentNode, GroupDefinition, LayoutSchema, Zone } from '@/types/schema';
 import { resolveBinding, resolvePath } from './binding';
-import { FORMAT_HELPERS, IMPORTS, generateFonts, generatePageSetup } from './preamble';
+import type { GenerateOptions } from './options';
+import {
+  FORMAT_HELPERS,
+  generateFonts,
+  generateImports,
+  generatePageSetup,
+  PRETTY_FORMAT_HELPERS,
+} from './preamble';
+import { finalizePrettyOutput, formatComponentComment, generateDocumentBanner } from './pretty';
 import { PluginRegistry } from './registry';
 import type { ComponentPlugin, RenderContext } from './types';
 
@@ -68,13 +76,20 @@ export class TypstGenerator {
     for (const p of customPlugins) this.registry.register(p);
   }
 
-  generate(schema: LayoutSchema, data: Record<string, unknown>): string {
-    const parts: string[] = [
-      IMPORTS,
-      generatePageSetup(schema),
-      generateFonts(schema),
-      FORMAT_HELPERS,
-    ];
+  generate(schema: LayoutSchema, data: Record<string, unknown>, options: GenerateOptions = {}): string {
+    const pretty = options.pretty ?? false;
+    const parts: string[] = [];
+
+    if (pretty) {
+      parts.push(generateDocumentBanner(schema));
+    }
+
+    parts.push(
+      generateImports(pretty),
+      generatePageSetup(schema, pretty),
+      generateFonts(schema, pretty),
+      pretty ? PRETTY_FORMAT_HELPERS : FORMAT_HELPERS
+    );
 
     const pageH = paperHeightMm(schema.page.size, schema.page.orientation === 'landscape');
     const headerH = Number.parseFloat(schema.zones.header.minHeight ?? '0');
@@ -103,7 +118,8 @@ export class TypstGenerator {
           [],
           0,
           0,
-          schema
+          schema,
+          pretty
         );
         parts.push(`#set page(header: [${hContent}])\n`);
       }
@@ -115,7 +131,8 @@ export class TypstGenerator {
           [],
           0,
           0,
-          schema
+          schema,
+          pretty
         );
         parts.push(`#set page(footer: [${fContent}])\n`);
       }
@@ -129,7 +146,8 @@ export class TypstGenerator {
           [],
           0,
           0,
-          schema
+          schema,
+          pretty
         );
         parts.push(`\n#set page(header: [${headerContent}])\n`);
       }
@@ -143,13 +161,14 @@ export class TypstGenerator {
           [],
           0,
           footerY,
-          schema
+          schema,
+          pretty
         );
         parts.push(`\n#set page(footer: [${footerContent}])\n`);
       }
     }
 
-    parts.push('\n// --- Report ---\n');
+    parts.push(pretty ? '\n// --- Report Content ---\n\n' : '\n// --- Report ---\n');
 
     // bodyY: offset passed to body zone renderer.
     // - Flow body: 0 — Typst margin (top: headerH) already shifts content below the header band.
@@ -169,7 +188,7 @@ export class TypstGenerator {
         const item = batchItems[i] as Record<string, unknown>;
         if (i > 0) parts.push('\n#pagebreak(weak: true)\n#box()\n');
         parts.push(
-          this.renderDocument(schema, item, data, 0, bodyY, headerY, footerY, hasFlowBody)
+          this.renderDocument(schema, item, data, 0, bodyY, headerY, footerY, hasFlowBody, pretty)
         );
       }
     } else if (schema.groups && schema.groups.length > 0) {
@@ -186,11 +205,11 @@ export class TypstGenerator {
       ) {
         parts.push('// --- REPORT HEADER ---\n');
         parts.push(
-          this.renderZoneComponents(schema.zones.header, data, data, [], 0, headerY, schema)
+          this.renderZoneComponents(schema.zones.header, data, data, [], 0, headerY, schema, pretty)
         );
       }
 
-      parts.push(this.renderGroupLevel(schema, schema.groups, 0, items, data, bodyY));
+      parts.push(this.renderGroupLevel(schema, schema.groups, 0, items, data, bodyY, pretty));
 
       if (
         !hasFlowBody &&
@@ -199,14 +218,17 @@ export class TypstGenerator {
       ) {
         parts.push('// --- REPORT FOOTER ---\n');
         parts.push(
-          this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema)
+          this.renderZoneComponents(schema.zones.footer, data, data, [], 0, footerY, schema, pretty)
         );
       }
     } else {
-      parts.push(this.renderDocument(schema, data, data, 0, bodyY, headerY, footerY, hasFlowBody));
+      parts.push(
+        this.renderDocument(schema, data, data, 0, bodyY, headerY, footerY, hasFlowBody, pretty)
+      );
     }
 
-    return parts.join('');
+    const raw = parts.join('');
+    return pretty ? finalizePrettyOutput(raw) : raw;
   }
 
   private renderDocument(
@@ -217,19 +239,22 @@ export class TypstGenerator {
     bodyOffsetY: number,
     headerOffsetY: number,
     footerOffsetY: number,
-    nativeBands = false
+    nativeBands = false,
+    pretty = false
   ): string {
     let t = '';
     const totalPages = schema.pages.length;
 
     for (let i = 0; i < totalPages; i++) {
       const pageDef = schema.pages[i];
-      if (i > 0) t += '\n#pagebreak(weak: true)\n#box()\n';
+      if (i > 0) t += pretty ? '\n#pagebreak(weak: true)\n#box()\n\n' : '\n#pagebreak(weak: true)\n#box()\n';
 
       // Header — skip if using native bands (#set page(header: ...) handles it)
       const h = schema.zones.header;
       if (!h.repeatOnEveryPage && shouldRenderZone(h, i, totalPages, 'header')) {
-        t += `// --- PAGE ${i + 1} HEADER ---\n`;
+        t += pretty
+          ? `\n// --- Page ${i + 1} · Header ---\n\n`
+          : `// --- PAGE ${i + 1} HEADER ---\n`;
         t += this.renderZoneComponents(
           h,
           localData,
@@ -237,12 +262,14 @@ export class TypstGenerator {
           [],
           offsetX,
           headerOffsetY,
-          schema
+          schema,
+          pretty
         );
+        if (pretty) t += '\n';
       }
 
       // Body
-      t += `// --- PAGE ${i + 1} BODY ---\n`;
+      t += pretty ? `\n// --- Page ${i + 1} · Body ---\n\n` : `// --- PAGE ${i + 1} BODY ---\n`;
       t += this.renderZoneComponents(
         pageDef.body,
         localData,
@@ -250,13 +277,16 @@ export class TypstGenerator {
         [],
         offsetX,
         bodyOffsetY,
-        schema
+        schema,
+        pretty
       );
 
       // Footer — skip if using native bands
       const f = schema.zones.footer;
       if (!f.repeatOnEveryPage && shouldRenderZone(f, i, totalPages, 'footer')) {
-        t += `// --- PAGE ${i + 1} FOOTER ---\n`;
+        t += pretty
+          ? `\n// --- Page ${i + 1} · Footer ---\n\n`
+          : `// --- PAGE ${i + 1} FOOTER ---\n`;
         t += this.renderZoneComponents(
           f,
           localData,
@@ -264,8 +294,10 @@ export class TypstGenerator {
           [],
           offsetX,
           footerOffsetY,
-          schema
+          schema,
+          pretty
         );
+        if (pretty) t += '\n';
       }
     }
 
@@ -281,7 +313,8 @@ export class TypstGenerator {
     groupItems: unknown[],
     offsetX: number,
     offsetY: number,
-    schema: LayoutSchema
+    schema: LayoutSchema,
+    pretty = false
   ): string {
     const registry = this.registry;
     const isFlowZone = zone.layoutMode === 'flow';
@@ -300,25 +333,34 @@ export class TypstGenerator {
         offsetY,
         schema,
         flowMode: isFlowZone,
+        pretty,
         render: renderChild,
         ...overrides,
       };
       return registry.render(comp, ctx);
     };
 
+    const renderOne = (comp: ComponentNode): string => {
+      const output = renderChild(comp);
+      if (!output) return '';
+      if (!pretty) return output;
+      return `${formatComponentComment(comp)}\n${output}`;
+    };
+
     if (isFlowZone) {
       // Push flow content below any preceding absolute zones (e.g. header rendered with #place())
       // Without this, flow blocks start at y=0 and overlap the header area.
       const leadingSpace = offsetY > 0 ? `#v(${offsetY}mm)\n` : '';
-      const separator = flowGap === '0mm' ? '' : `#v(${flowGap})\n`;
+      const separator = flowGap === '0mm' ? (pretty ? '\n\n' : '') : `#v(${flowGap})\n`;
       const content = zone.components
-        .map((comp) => renderChild(comp))
+        .map((comp) => renderOne(comp))
         .filter(Boolean)
         .join(separator);
       return leadingSpace + content;
     }
 
-    return zone.components.map((comp) => renderChild(comp)).join('');
+    const separator = pretty ? '\n\n' : '';
+    return zone.components.map((comp) => renderOne(comp)).filter(Boolean).join(separator);
   }
 
   private renderGroupLevel(
@@ -327,7 +369,8 @@ export class TypstGenerator {
     index: number,
     items: Record<string, unknown>[],
     global: Record<string, unknown>,
-    bodyY: number
+    bodyY: number,
+    pretty = false
   ): string {
     const group = groups[index];
 
@@ -336,10 +379,10 @@ export class TypstGenerator {
       const parts: string[] = [];
       for (const item of items) {
         parts.push(
-          this.renderZoneComponents(schema.pages[0].body, item, global, [], 0, bodyY, schema)
+          this.renderZoneComponents(schema.pages[0].body, item, global, [], 0, bodyY, schema, pretty)
         );
       }
-      return parts.join('');
+      return parts.join(pretty ? '\n\n' : '');
     }
 
     // Filter
@@ -373,14 +416,22 @@ export class TypstGenerator {
       const groupItems = groupMap.get(key) ?? [];
       const firstItem = groupItems[0] ?? global;
 
-      parts.push(`// GROUP [${group.id}] HEADER\n`);
       parts.push(
-        this.renderZoneComponents(group.header, firstItem, global, groupItems, 0, bodyY, schema)
+        pretty
+          ? `\n// --- Group · ${group.name || group.id} · ${key} · Header ---\n\n`
+          : `// GROUP [${group.id}] HEADER\n`
       );
-      parts.push(this.renderGroupLevel(schema, groups, index + 1, groupItems, global, bodyY));
-      parts.push(`// GROUP [${group.id}] FOOTER\n`);
       parts.push(
-        this.renderZoneComponents(group.footer, firstItem, global, groupItems, 0, bodyY, schema)
+        this.renderZoneComponents(group.header, firstItem, global, groupItems, 0, bodyY, schema, pretty)
+      );
+      parts.push(this.renderGroupLevel(schema, groups, index + 1, groupItems, global, bodyY, pretty));
+      parts.push(
+        pretty
+          ? `\n// --- Group · ${group.name || group.id} · ${key} · Footer ---\n\n`
+          : `// GROUP [${group.id}] FOOTER\n`
+      );
+      parts.push(
+        this.renderZoneComponents(group.footer, firstItem, global, groupItems, 0, bodyY, schema, pretty)
       );
     }
     return parts.join('');
@@ -424,5 +475,6 @@ function paperHeightMm(size: string, landscape: boolean): number {
 
 // Re-export for external use
 export type { ComponentPlugin, RenderContext };
+export type { GenerateOptions } from './options';
 export { PluginRegistry };
 export { isVisible, resolveBinding } from './binding';

@@ -20,7 +20,8 @@ export const linePlugin: ComponentPlugin<LineComponent> = {
         ctx.offsetX,
         ctx.offsetY,
         ctx.flowMode,
-        ctx.fillWidth
+        ctx.fillWidth,
+        ctx.pretty
       );
     }
 
@@ -52,7 +53,8 @@ export const linePlugin: ComponentPlugin<LineComponent> = {
       ctx.offsetX,
       ctx.offsetY,
       ctx.flowMode,
-      ctx.fillWidth
+      ctx.fillWidth,
+      ctx.pretty
     );
   },
 };

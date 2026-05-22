@@ -1,6 +1,7 @@
 import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { TextComponent } from '@/types/schema';
 import { isVisible, resolveBinding } from '../binding';
+import { formatSetCall } from '../pretty';
 import { escapeStringLiteral, formatColor, formatFontFamily, formatWeight, wrapPlacement } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
@@ -88,9 +89,9 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
     }
 
     let body =
-      `#set align(${align})\n` +
-      `#set par(leading: ${leading}em, justify: ${justify})\n` +
-      `#set text(${textArgs.join(', ')})\n` +
+      formatSetCall('align', [`${align}`], !!ctx.pretty) +
+      formatSetCall('par', [`leading: ${leading}em`, `justify: ${justify}`], !!ctx.pretty) +
+      formatSetCall('text', textArgs, !!ctx.pretty) +
       `${mainContent}`;
 
     if (s?.background) {
@@ -106,6 +107,14 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
       }
     }
 
-    return wrapPlacement(comp, finalBody, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
+    return wrapPlacement(
+      comp,
+      finalBody,
+      ctx.offsetX,
+      ctx.offsetY,
+      ctx.flowMode,
+      ctx.fillWidth,
+      ctx.pretty
+    );
   },
 };

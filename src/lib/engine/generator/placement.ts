@@ -1,4 +1,5 @@
 import type { BaseComponent } from '@/types/schema';
+import { indentLines } from './pretty';
 
 /**
  * Emit a placement wrapper for a component.
@@ -13,7 +14,8 @@ export function wrapPlacement(
   offsetX: number,
   offsetY: number,
   flowMode?: boolean,
-  fillWidth?: boolean
+  fillWidth?: boolean,
+  pretty?: boolean
 ): string {
   const parts: string[] = [];
 
@@ -86,6 +88,25 @@ export function wrapPlacement(
   const h = base.height ?? 20;
   const absX = offsetX + x;
   const absY = offsetY + y;
+
+  if (pretty) {
+    const inner = indentLines(body.trimEnd(), 4);
+    parts.push(
+      [
+        '#place(',
+        '  top + left,',
+        `  dx: ${absX}mm,`,
+        `  dy: ${absY}mm,`,
+        ')[',
+        `  #block(width: ${w}mm, height: ${h}mm, clip: false)[`,
+        inner,
+        '  ]',
+        ']',
+        '',
+      ].join('\n')
+    );
+    return parts.join('');
+  }
 
   parts.push(
     `#place(top + left, dx: ${absX}mm, dy: ${absY}mm)[#block(width: ${w}mm, height: ${h}mm, clip: false)[${body}]]\n`

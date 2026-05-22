@@ -156,7 +156,8 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
         ctx.offsetX,
         ctx.offsetY,
         ctx.flowMode,
-        ctx.fillWidth
+        ctx.fillWidth,
+        ctx.pretty
       );
     }
 
@@ -273,6 +274,6 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
       body = `${customSymDefs}${textSet}#pad(left: ${indent}mm)[#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)]`;
     }
 
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
+    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth, ctx.pretty);
   },
 };
