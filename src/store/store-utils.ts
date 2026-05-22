@@ -1,7 +1,10 @@
+import { buildComponentRegistry, patchComponentRegistry } from '@/lib/utils/component-registry';
 import { shareSchemaStructure } from '@/lib/utils/schema-structure';
 import { syncHistoryMeta, wasmSchemaStore } from '@/lib/wasm-schema-store';
-import type { ComponentNode, LayoutSchema, Zone } from '@/types/schema';
+import type { ComponentNode, LayoutSchema } from '@/types/schema';
 import type { DesignerState } from './store-types';
+
+export { buildComponentRegistry } from '@/lib/utils/component-registry';
 
 export const MAX_HISTORY = 50;
 
@@ -26,46 +29,8 @@ export const getMaxHistory = (schema: LayoutSchema): number => {
   return MAX_HISTORY;
 };
 
-export const buildComponentRegistry = (schema: LayoutSchema): Record<string, ComponentNode> => {
-  const registry: Record<string, ComponentNode> = {};
-
-  const processComponent = (comp: ComponentNode) => {
-    registry[comp.id] = comp;
-    if (comp.type === 'columns' && comp.columns) {
-      for (const col of comp.columns) {
-        if (col.components) {
-          for (const child of col.components) {
-            processComponent(child);
-          }
-        }
-      }
-    } else if (comp.type === 'repeater' && (comp as any).children) {
-      for (const child of (comp as any).children) {
-        processComponent(child);
-      }
-    }
-  };
-
-  const processZone = (zone: Zone) => {
-    for (const comp of zone.components) {
-      processComponent(comp);
-    }
-  };
-
-  processZone(schema.zones.header);
-  processZone(schema.zones.footer);
-  for (const page of schema.pages) {
-    processZone(page.body);
-  }
-  for (const group of schema.groups || []) {
-    processZone(group.header);
-    processZone(group.footer);
-  }
-  return registry;
-};
-
 export const pushHistory = (
-  state: Pick<DesignerState, 'schema'>,
+  state: Pick<DesignerState, 'schema' | 'componentRegistry'>,
   newSchema: LayoutSchema
 ): {
   schema: LayoutSchema;
@@ -85,7 +50,11 @@ export const pushHistory = (
 
   return {
     schema: sharedSchema,
-    componentRegistry: buildComponentRegistry(sharedSchema),
+    componentRegistry: patchComponentRegistry(
+      state.componentRegistry,
+      state.schema,
+      sharedSchema
+    ),
     ...meta,
   };
 };

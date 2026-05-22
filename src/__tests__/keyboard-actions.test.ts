@@ -1,14 +1,18 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { initWasmSchemaStore, ensureWasmInit } from '@/lib/wasm-schema-store';
 import { useDesignerStore } from '../store/designer-store';
 
 describe('Keyboard Actions (Store)', () => {
-  const resetStore = () => {
+  const resetStore = async () => {
+    await ensureWasmInit();
+    await initWasmSchemaStore(structuredClone(useDesignerStore.getState().schema));
     useDesignerStore.getState().loadTemplate('blank');
     useDesignerStore.getState().clearSelection();
+    await initWasmSchemaStore(useDesignerStore.getState().schema);
   };
 
-  beforeEach(() => {
-    resetStore();
+  beforeEach(async () => {
+    await resetStore();
   });
 
   it('should copy selected components to clipboard', () => {
@@ -104,7 +108,8 @@ describe('Keyboard Actions (Store)', () => {
 
     // 2. Undo
     useDesignerStore.getState().undo();
-    expect(useDesignerStore.getState().schema.pages[0].body.components[0].x).toBe(10);
+    const afterUndo = useDesignerStore.getState().schema.pages[0].body.components[0];
+    expect(afterUndo?.x).toBe(10);
 
     // 3. Redo
     useDesignerStore.getState().redo();

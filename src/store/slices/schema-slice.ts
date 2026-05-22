@@ -14,6 +14,7 @@ import type { ComponentNode, GroupDefinition, LayoutSchema, Zone, ZoneKey } from
 import type { StateCreator } from 'zustand';
 import type { DesignerState } from '../store-types';
 import { buildComponentRegistry, pushHistory } from '../store-utils';
+import { patchComponentRegistry } from '@/lib/utils/component-registry';
 
 export type SchemaSlice = Pick<
   DesignerState,
@@ -630,7 +631,11 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
       if (!restoredSchema) return state;
       return {
         schema: restoredSchema,
-        componentRegistry: buildComponentRegistry(restoredSchema),
+        componentRegistry: patchComponentRegistry(
+          state.componentRegistry,
+          state.schema,
+          restoredSchema
+        ),
         ...syncHistoryMeta(),
       };
     }),
@@ -642,7 +647,11 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
       if (!restoredSchema) return state;
       return {
         schema: restoredSchema,
-        componentRegistry: buildComponentRegistry(restoredSchema),
+        componentRegistry: patchComponentRegistry(
+          state.componentRegistry,
+          state.schema,
+          restoredSchema
+        ),
         ...syncHistoryMeta(),
       };
     }),
@@ -655,7 +664,11 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
       if (!restoredSchema) return state;
       return {
         schema: restoredSchema,
-        componentRegistry: buildComponentRegistry(restoredSchema),
+        componentRegistry: patchComponentRegistry(
+          state.componentRegistry,
+          state.schema,
+          restoredSchema
+        ),
         ...syncHistoryMeta(),
         selectedComponentIds: [],
       };

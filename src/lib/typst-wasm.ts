@@ -1,10 +1,19 @@
 export type PdfExportStage = 'compressing' | 'compiling';
 
+export type RenderStreamKind = 'partial' | 'full';
+
+export interface RenderStreamOptions {
+  /** Zero-based page indices to compile (incremental preview). */
+  pageIndices?: number[];
+  /** Partial streams are cancelled independently from full compiles. */
+  kind?: RenderStreamKind;
+}
+
 let worker: Worker | null = null;
-// ID of the most-recent RENDER_REPORT_SVG_STREAM request.
-// When a new stream starts, the previous one is cancelled (its pending entry is
-// rejected immediately so the PreviewPane effect's await unblocks cleanly).
-let activeStreamId: string | null = null;
+// Separate stream IDs so a partial active-page compile is not cancelled by the next partial,
+// but a full compile always supersedes any in-flight partial compile.
+let activePartialStreamId: string | null = null;
+let activeFullStreamId: string | null = null;
 
 const pendingRequests = new Map<
   string,
@@ -123,31 +132,43 @@ export async function renderToPdf(mainContent: string): Promise<Uint8Array> {
 
 /**
  * Streams rendered SVG pages back in chunks as they are ready.
- * Automatically cancels the previous in-flight stream so the worker can start
- * the new compile sooner (skips remaining chunk-posting of the old request).
- * onChunk is called repeatedly with each batch; resolves when all pages are sent.
+ * Supports incremental pageIndices for partial preview compiles.
  */
 export async function renderReportToSvgStream(
   schema: any,
   data: any,
-  onChunk: (pages: string[], startIdx: number) => void
+  onChunk: (pages: string[], startIdx: number) => void,
+  options: RenderStreamOptions = {}
 ): Promise<void> {
   const w = getWorker();
+  const kind: RenderStreamKind = options.kind ?? (options.pageIndices ? 'partial' : 'full');
 
-  // Cancel the previous stream: reject its Promise so the caller's await unblocks,
-  // and tell the worker to stop posting chunks for that id.
-  if (activeStreamId) {
-    const prev = pendingRequests.get(activeStreamId);
+  const cancelStream = (streamId: string | null) => {
+    if (!streamId) return;
+    const prev = pendingRequests.get(streamId);
     if (prev) {
       prev.reject(new Error('CANCELLED'));
-      pendingRequests.delete(activeStreamId);
+      pendingRequests.delete(streamId);
     }
-    w.postMessage({ type: 'CANCEL', id: 'cancel-cmd', payload: { id: activeStreamId } });
-    activeStreamId = null;
+    w.postMessage({ type: 'CANCEL', id: 'cancel-cmd', payload: { id: streamId } });
+  };
+
+  if (kind === 'full') {
+    cancelStream(activePartialStreamId);
+    activePartialStreamId = null;
+    cancelStream(activeFullStreamId);
+    activeFullStreamId = null;
+  } else {
+    cancelStream(activePartialStreamId);
+    activePartialStreamId = null;
   }
 
   const id = generateId();
-  activeStreamId = id;
+  if (kind === 'full') {
+    activeFullStreamId = id;
+  } else {
+    activePartialStreamId = id;
+  }
 
   if (!isWorkerReady && workerReadyPromise) {
     await workerReadyPromise;
@@ -156,16 +177,22 @@ export async function renderReportToSvgStream(
   return new Promise((resolve, reject) => {
     pendingRequests.set(id, {
       resolve: (v) => {
-        if (activeStreamId === id) activeStreamId = null;
+        if (kind === 'full' && activeFullStreamId === id) activeFullStreamId = null;
+        if (kind === 'partial' && activePartialStreamId === id) activePartialStreamId = null;
         resolve(v);
       },
       reject: (reason) => {
-        if (activeStreamId === id) activeStreamId = null;
+        if (kind === 'full' && activeFullStreamId === id) activeFullStreamId = null;
+        if (kind === 'partial' && activePartialStreamId === id) activePartialStreamId = null;
         reject(reason);
       },
       onProgress: onChunk,
     });
-    w.postMessage({ type: 'RENDER_REPORT_SVG_STREAM', id, payload: { schema, data } });
+    w.postMessage({
+      type: 'RENDER_REPORT_SVG_STREAM',
+      id,
+      payload: { schema, data, pageIndices: options.pageIndices },
+    });
   });
 }
 

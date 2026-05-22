@@ -8,6 +8,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    env: {
+      VITEST: 'true',
+    },
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     exclude: ['node_modules', '.next', 'src/lib/wasm-bridge'],
     coverage: {

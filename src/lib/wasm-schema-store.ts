@@ -1,18 +1,43 @@
 import type { LayoutSchema } from '@/types/schema';
 import init, {
+  initSync,
   SchemaStore,
   msgpack_decode_to_json,
   msgpack_encode_json,
+  schema_msgpack_decode,
+  schema_msgpack_encode,
 } from './wasm-bridge/typst_bridge';
 
 let initPromise: Promise<boolean> | null = null;
 
+async function loadWasmModule(): Promise<void> {
+  if (typeof window !== 'undefined') {
+    await init();
+    return;
+  }
+
+  // Node / Vitest — default wasm-pack init uses fetch(file://…) which Node rejects.
+  const [{ readFileSync }, { fileURLToPath }, { dirname, join }] = await Promise.all([
+    import('node:fs'),
+    import('node:url'),
+    import('node:path'),
+  ]);
+  const dir = dirname(fileURLToPath(import.meta.url));
+  initSync(readFileSync(join(dir, 'wasm-bridge', 'typst_bridge_bg.wasm')));
+}
+
 /** Initialize WASM module; returns false on failure without throwing. */
 export async function ensureWasmInit(): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
+  if (typeof WebAssembly === 'undefined') return false;
+
+  if (typeof window === 'undefined') {
+    const isVitest = typeof process !== 'undefined' && process.env.VITEST === 'true';
+    const isBunRuntime = typeof (globalThis as { Bun?: unknown }).Bun !== 'undefined';
+    if (!isVitest && !isBunRuntime) return false;
+  }
 
   if (!initPromise) {
-    initPromise = init()
+    initPromise = loadWasmModule()
       .then(() => true)
       .catch((e) => {
         console.error('[ensureWasmInit] WASM load failed', e);
@@ -24,25 +49,21 @@ export async function ensureWasmInit(): Promise<boolean> {
   return initPromise;
 }
 
+function decodeSchemaValue(value: unknown): LayoutSchema | null {
+  if (value == null || value === undefined) return null;
+  return value as LayoutSchema;
+}
+
 /**
- * Rust-backed schema history store (im::Vector structural sharing) + MessagePack helpers.
+ * Rust-backed schema history store (im::Vector structural sharing).
+ * Uses serde_wasm_bindgen for zero JSON round-trip on push/undo.
  */
 class WasmSchemaStore {
   private static instance: WasmSchemaStore;
   private store: SchemaStore | null = null;
   private initialized = false;
-  private mutQueue: Promise<void> = Promise.resolve();
 
   private constructor() {}
-
-  private enqueueMut<T>(fn: () => T): Promise<T> {
-    const next = this.mutQueue.then(() => fn());
-    this.mutQueue = next.then(
-      () => undefined,
-      () => undefined
-    );
-    return next;
-  }
 
   public static getInstance(): WasmSchemaStore {
     if (!WasmSchemaStore.instance) {
@@ -55,42 +76,73 @@ class WasmSchemaStore {
     return this.initialized && this.store !== null;
   }
 
-  public async initWasm(): Promise<void> {
-    if (this.initialized) return;
+  private async ensureReady(): Promise<boolean> {
+    if (this.initialized && this.store) return true;
     const ok = await ensureWasmInit();
-    if (!ok) return;
+    if (!ok) return false;
     try {
       this.store = new SchemaStore();
       this.initialized = true;
+      return true;
     } catch (e) {
       console.error('[WasmSchemaStore] Init failed', e);
+      return false;
     }
+  }
+
+  private loadInner(schema: LayoutSchema): void {
+    if (!this.store) return;
+    try {
+      this.store.load_from_value(schema);
+    } catch {
+      this.store.load_from_json(JSON.stringify(schema));
+    }
+  }
+
+  private pushInner(schema: LayoutSchema): void {
+    if (!this.store) return;
+    try {
+      this.store.push_from_value(schema);
+    } catch {
+      try {
+        const bytes = schema_msgpack_encode(schema);
+        this.store.push_from_msgpack(bytes);
+      } catch {
+        this.store.push_from_json(JSON.stringify(schema));
+      }
+    }
+  }
+
+  public async initWasm(): Promise<void> {
+    await this.ensureReady();
   }
 
   public async loadFromSchema(schema: LayoutSchema): Promise<void> {
-    await this.initWasm();
-    if (!this.store) return;
-    return this.enqueueMut(() => {
-      this.store?.load_from_json(JSON.stringify(schema));
-    });
+    await this.ensureReady();
+    this.loadInner(schema);
   }
 
-  /** Fire-and-forget push — ordered via mutQueue when awaited through push(). */
-  public pushSync(schema: LayoutSchema): void {
-    if (!this.store) return;
-    try {
-      this.store.push_from_json(JSON.stringify(schema));
-    } catch (e) {
-      console.warn('[WasmSchemaStore] pushSync failed', e);
+  /** Synchronous load when WASM is already initialized (avoids races with pushSync). */
+  public loadFromSchemaSync(schema: LayoutSchema): void {
+    if (!this.store) {
+      void this.loadFromSchema(schema);
+      return;
     }
+    this.loadInner(schema);
+  }
+
+  /** Synchronous push — must not race with loadFromSchema (both sync after init). */
+  public pushSync(schema: LayoutSchema): void {
+    if (!this.store) {
+      void this.push(schema);
+      return;
+    }
+    this.pushInner(schema);
   }
 
   public async push(schema: LayoutSchema): Promise<void> {
-    await this.initWasm();
-    if (!this.store) return;
-    return this.enqueueMut(() => {
-      this.store?.push_from_json(JSON.stringify(schema));
-    });
+    await this.ensureReady();
+    this.pushInner(schema);
   }
 
   public undo(): LayoutSchema | null {
@@ -99,7 +151,13 @@ class WasmSchemaStore {
       const json = this.store.undo();
       return json ? (JSON.parse(json) as LayoutSchema) : null;
     } catch {
-      return null;
+      try {
+        const bytes = this.store.undo_msgpack();
+        if (!bytes) return null;
+        return decodeSchemaValue(schema_msgpack_decode(bytes));
+      } catch {
+        return decodeSchemaValue(this.store.undo_value());
+      }
     }
   }
 
@@ -109,7 +167,13 @@ class WasmSchemaStore {
       const json = this.store.redo();
       return json ? (JSON.parse(json) as LayoutSchema) : null;
     } catch {
-      return null;
+      try {
+        const bytes = this.store.redo_msgpack();
+        if (!bytes) return null;
+        return decodeSchemaValue(schema_msgpack_decode(bytes));
+      } catch {
+        return decodeSchemaValue(this.store.redo_value());
+      }
     }
   }
 
@@ -119,7 +183,7 @@ class WasmSchemaStore {
       const json = this.store.goto_index(index);
       return json ? (JSON.parse(json) as LayoutSchema) : null;
     } catch {
-      return null;
+      return decodeSchemaValue(this.store.goto_index_value(index));
     }
   }
 
@@ -155,7 +219,12 @@ export async function initWasmSchemaStore(schema: LayoutSchema): Promise<void> {
 
 /** Replace WASM undo stack after template load / import (does not push history). */
 export function resetWasmSchemaStore(schema: LayoutSchema): void {
-  void wasmSchemaStore.loadFromSchema(schema);
+  wasmSchemaStore.loadFromSchemaSync(schema);
 }
 
-export { msgpack_decode_to_json, msgpack_encode_json };
+export {
+  msgpack_decode_to_json,
+  msgpack_encode_json,
+  schema_msgpack_decode,
+  schema_msgpack_encode,
+};

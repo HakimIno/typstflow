@@ -78,6 +78,7 @@ export class TypstGenerator {
 
   generate(schema: LayoutSchema, data: Record<string, unknown>, options: GenerateOptions = {}): string {
     const pretty = options.pretty ?? false;
+    const pageIndices = options.pageIndices;
     const parts: string[] = [];
 
     if (pretty) {
@@ -223,7 +224,18 @@ export class TypstGenerator {
       }
     } else {
       parts.push(
-        this.renderDocument(schema, data, data, 0, bodyY, headerY, footerY, hasFlowBody, pretty)
+        this.renderDocument(
+          schema,
+          data,
+          data,
+          0,
+          bodyY,
+          headerY,
+          footerY,
+          hasFlowBody,
+          pretty,
+          pageIndices
+        )
       );
     }
 
@@ -240,14 +252,22 @@ export class TypstGenerator {
     headerOffsetY: number,
     footerOffsetY: number,
     nativeBands = false,
-    pretty = false
+    pretty = false,
+    pageIndices?: number[]
   ): string {
     let t = '';
     const totalPages = schema.pages.length;
+    const includePage = (i: number) => !pageIndices || pageIndices.includes(i);
+    let firstEmitted = true;
 
     for (let i = 0; i < totalPages; i++) {
+      if (!includePage(i)) continue;
+
       const pageDef = schema.pages[i];
-      if (i > 0) t += pretty ? '\n#pagebreak(weak: true)\n#box()\n\n' : '\n#pagebreak(weak: true)\n#box()\n';
+      if (!firstEmitted) {
+        t += pretty ? '\n#pagebreak(weak: true)\n#box()\n\n' : '\n#pagebreak(weak: true)\n#box()\n';
+      }
+      firstEmitted = false;
 
       // Header — skip if using native bands (#set page(header: ...) handles it)
       const h = schema.zones.header;

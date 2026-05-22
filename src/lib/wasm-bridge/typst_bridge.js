@@ -213,6 +213,17 @@ export class SchemaStore {
         return v1;
     }
     /**
+     * @param {number} index
+     * @returns {any}
+     */
+    goto_index_value(index) {
+        const ret = wasm.schemastore_goto_index_value(this.__wbg_ptr, index);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
      * @returns {number}
      */
     history_index() {
@@ -237,6 +248,27 @@ export class SchemaStore {
             throw takeFromExternrefTable0(ret[0]);
         }
     }
+    /**
+     * @param {Uint8Array} bytes
+     */
+    load_from_msgpack(bytes) {
+        const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.schemastore_load_from_msgpack(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * Load initial schema from a JS object (no JSON stringify round-trip).
+     * @param {any} value
+     */
+    load_from_value(value) {
+        const ret = wasm.schemastore_load_from_value(this.__wbg_ptr, value);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
     constructor() {
         const ret = wasm.schemastore_new();
         this.__wbg_ptr = ret >>> 0;
@@ -250,6 +282,27 @@ export class SchemaStore {
         const ptr0 = passStringToWasm0(json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.schemastore_push_from_json(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * @param {Uint8Array} bytes
+     */
+    push_from_msgpack(bytes) {
+        const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.schemastore_push_from_msgpack(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * Push schema history entry from a JS object (no JSON stringify round-trip).
+     * @param {any} value
+     */
+    push_from_value(value) {
+        const ret = wasm.schemastore_push_from_value(this.__wbg_ptr, value);
         if (ret[1]) {
             throw takeFromExternrefTable0(ret[0]);
         }
@@ -270,6 +323,31 @@ export class SchemaStore {
         return v1;
     }
     /**
+     * @returns {Uint8Array | undefined}
+     */
+    redo_msgpack() {
+        const ret = wasm.schemastore_redo_msgpack(this.__wbg_ptr);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        let v1;
+        if (ret[0] !== 0) {
+            v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+            wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        }
+        return v1;
+    }
+    /**
+     * @returns {any}
+     */
+    redo_value() {
+        const ret = wasm.schemastore_redo_value(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
      * @returns {string | undefined}
      */
     undo() {
@@ -283,6 +361,32 @@ export class SchemaStore {
             wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
         }
         return v1;
+    }
+    /**
+     * @returns {Uint8Array | undefined}
+     */
+    undo_msgpack() {
+        const ret = wasm.schemastore_undo_msgpack(this.__wbg_ptr);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        let v1;
+        if (ret[0] !== 0) {
+            v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+            wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        }
+        return v1;
+    }
+    /**
+     * Undo returning a JS object directly (no JSON string round-trip).
+     * @returns {any}
+     */
+    undo_value() {
+        const ret = wasm.schemastore_undo_value(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
     }
 }
 if (Symbol.dispose) SchemaStore.prototype[Symbol.dispose] = SchemaStore.prototype.free;
@@ -534,6 +638,36 @@ export function msgpack_encode_json(json) {
     return v2;
 }
 
+/**
+ * Decode MessagePack (TFMP header) LayoutSchemaDoc to a JS object.
+ * @param {Uint8Array} bytes
+ * @returns {any}
+ */
+export function schema_msgpack_decode(bytes) {
+    const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.schema_msgpack_decode(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * Encode LayoutSchemaDoc directly to MessagePack bytes (TFMP header).
+ * @param {any} value
+ * @returns {Uint8Array}
+ */
+export function schema_msgpack_encode(value) {
+    const ret = wasm.schema_msgpack_encode(value);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v1;
+}
+
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
@@ -587,6 +721,10 @@ function __wbg_get_imports() {
             const ret = typeof(val) === 'object' && val !== null;
             return ret;
         },
+        __wbg___wbindgen_is_string_b29b5c5a8065ba1a: function(arg0) {
+            const ret = typeof(arg0) === 'string';
+            return ret;
+        },
         __wbg___wbindgen_is_undefined_c0cca72b82b86f4d: function(arg0) {
             const ret = arg0 === undefined;
             return ret;
@@ -624,6 +762,10 @@ function __wbg_get_imports() {
             const ret = arg0.done;
             return ret;
         },
+        __wbg_entries_616b1a459b85be0b: function(arg0) {
+            const ret = Object.entries(arg0);
+            return ret;
+        },
         __wbg_error_38bec0a78dd8ded8: function(arg0) {
             console.error(arg0);
         },
@@ -637,6 +779,10 @@ function __wbg_get_imports() {
         },
         __wbg_getMonth_288607689622719c: function(arg0) {
             const ret = arg0.getMonth();
+            return ret;
+        },
+        __wbg_get_4848e350b40afc16: function(arg0, arg1) {
+            const ret = arg0[arg1 >>> 0];
             return ret;
         },
         __wbg_get_ed0642c4b9d31ddf: function() { return handleError(function (arg0, arg1) {
@@ -655,6 +801,16 @@ function __wbg_get_imports() {
             let result;
             try {
                 result = arg0 instanceof ArrayBuffer;
+            } catch (_) {
+                result = false;
+            }
+            const ret = result;
+            return ret;
+        },
+        __wbg_instanceof_Map_a10a2795ef4bfe97: function(arg0) {
+            let result;
+            try {
+                result = arg0 instanceof Map;
             } catch (_) {
                 result = false;
             }
@@ -702,6 +858,10 @@ function __wbg_get_imports() {
             const ret = new Object();
             return ret;
         },
+        __wbg_new_99cabae501c0a8a0: function() {
+            const ret = new Map();
+            return ret;
+        },
         __wbg_new_a560378ea1240b14: function(arg0) {
             const ret = new Uint8Array(arg0);
             return ret;
@@ -725,6 +885,10 @@ function __wbg_get_imports() {
             const ret = arg0.push(arg1);
             return ret;
         },
+        __wbg_set_08463b1df38a7e29: function(arg0, arg1, arg2) {
+            const ret = arg0.set(arg1, arg2);
+            return ret;
+        },
         __wbg_set_6be42768c690e380: function(arg0, arg1, arg2) {
             arg0[arg1] = arg2;
         },
@@ -743,12 +907,17 @@ function __wbg_get_imports() {
             const ret = arg0;
             return ret;
         },
-        __wbindgen_cast_0000000000000002: function(arg0, arg1) {
+        __wbindgen_cast_0000000000000002: function(arg0) {
+            // Cast intrinsic for `I64 -> Externref`.
+            const ret = arg0;
+            return ret;
+        },
+        __wbindgen_cast_0000000000000003: function(arg0, arg1) {
             // Cast intrinsic for `Ref(String) -> Externref`.
             const ret = getStringFromWasm0(arg0, arg1);
             return ret;
         },
-        __wbindgen_cast_0000000000000003: function(arg0) {
+        __wbindgen_cast_0000000000000004: function(arg0) {
             // Cast intrinsic for `U64 -> Externref`.
             const ret = BigInt.asUintN(64, arg0);
             return ret;

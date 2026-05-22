@@ -6,4 +6,9 @@ export interface GenerateOptions {
    * @default false
    */
   pretty?: boolean;
+  /**
+   * When set, only emit Typst for these zero-based page indices.
+   * Used for incremental preview — omits unchanged pages from compilation.
+   */
+  pageIndices?: number[];
 }

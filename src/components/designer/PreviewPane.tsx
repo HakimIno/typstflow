@@ -2,7 +2,9 @@
 
 import { CanvasRevealEffect } from '@/components/ui/canvas-reveal-effect';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { PreviewSvgCache } from '@/lib/preview/preview-svg-cache';
 import { renderReportToSvgStream } from '@/lib/typst-wasm';
+import { computeStalePageIndices } from '@/lib/utils/preview-diff';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { useDesignerStore } from '@/store/designer-store';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -11,49 +13,57 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'rea
 import { Loading } from '../shared/Loading';
 import { CanvasToolbar } from './CanvasToolbar';
 
-const ROW_GAP_LIST = 32; // gap-8 = 32px
-const ROW_GAP_GRID = 48; // gap-12 = 48px
-const COL_GAP = 32; // 32px horizontal gap
-const PADDING_TOP = 48; // pt-12 = 48px
-const PADDING_SIDE = 64; // px-16 = 64px
+const ROW_GAP_LIST = 32;
+const ROW_GAP_GRID = 48;
+const COL_GAP = 32;
+const PADDING_TOP = 48;
+const PADDING_SIDE = 64;
 const OVERSCAN = 2;
+const PARTIAL_DEBOUNCE_MS = 50;
 
-/**
- * Single page slide.
- * Outer div is sized at `naturalW * zoom × naturalH * zoom` for correct scroll/layout.
- * Inner div is natural size with CSS transform:scale(zoom) so the SVG content
- * scales visually without distortion — same technique as the original global transform,
- * but scoped per-page so the virtualizer can measure real layout dimensions.
- */
 const PageSlide = memo(function PageSlide({
-  svg,
+  pageIndex,
+  cacheVersion,
+  cache,
   naturalWidth,
   naturalHeight,
   zoom,
 }: {
-  svg: string;
+  pageIndex: number;
+  cacheVersion: number;
+  cache: PreviewSvgCache;
   naturalWidth: number;
   naturalHeight: number;
   zoom: number;
 }) {
+  const blobUrl = cache.getBlobUrl(pageIndex);
+  // cacheVersion ensures re-read when cache updates without storing SVG in React state.
+  void cacheVersion;
+
   return (
     <div
       className="relative bg-white shadow-xl overflow-hidden flex-shrink-0"
       style={{ width: naturalWidth * zoom, height: naturalHeight * zoom }}
     >
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: naturalWidth,
-          height: naturalHeight,
-          transform: `scale(${zoom})`,
-          transformOrigin: 'top left',
-        }}
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: Needed for SVG preview
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
+      {blobUrl ? (
+        <img
+          src={blobUrl}
+          alt=""
+          draggable={false}
+          className="absolute top-0 left-0 pointer-events-none select-none"
+          style={{
+            width: naturalWidth,
+            height: naturalHeight,
+            transform: `scale(${zoom})`,
+            transformOrigin: 'top left',
+          }}
+        />
+      ) : (
+        <div
+          className="absolute inset-0 bg-white/80 animate-pulse"
+          style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+        />
+      )}
     </div>
   );
 });
@@ -61,6 +71,7 @@ const PageSlide = memo(function PageSlide({
 export const PreviewPane = memo(function PreviewPane() {
   const schema = useDesignerStore((state) => state.schema);
   const sampleData = useDesignerStore((state) => state.sampleData);
+  const activePageId = useDesignerStore((state) => state.activePageId);
   const zoom = useDesignerStore((state) => state.zoom);
   const isDragging = useDesignerStore((state) => state.dragState.isDragging);
   const fontLoadedAt = useDesignerStore((state) => state.fontLoadedAt);
@@ -71,15 +82,16 @@ export const PreviewPane = memo(function PreviewPane() {
 
   const pageIds = useMemo(() => schema.pages.map((p) => p.id), [schema.pages]);
 
-  const [svgContent, setSvgContent] = useState<string[] | null>(null);
+  const svgCacheRef = useRef(new PreviewSvgCache());
+  const prevSchemaRef = useRef(schema);
+  const [cacheVersion, setCacheVersion] = useState(0);
+  const [hasPages, setHasPages] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activePreviewPageIdx, setActivePreviewPageIdx] = useState(1);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Scale debounce with document size: larger docs need a longer quiet period
-  // so we don't pile up cancellations while the user is actively editing.
   const debounceMs = useMemo(() => {
     const n = schema.pages.length;
     if (n <= 10) return 200;
@@ -88,79 +100,138 @@ export const PreviewPane = memo(function PreviewPane() {
     return 2000;
   }, [schema.pages.length]);
 
-  // fontLoadedAt triggers a re-render when a font loads but isn't referenced inside the body.
+  const bumpCache = () => {
+    setCacheVersion(svgCacheRef.current.version);
+    setHasPages(svgCacheRef.current.pageCount > 0);
+  };
+
+  const runStream = async (
+    pageIndices: number[] | undefined,
+    kind: 'partial' | 'full',
+    active: { current: boolean }
+  ) => {
+    await renderReportToSvgStream(
+      schema,
+      sampleData,
+      (chunkPages, startIdx) => {
+        if (!active.current) return;
+        for (let i = 0; i < chunkPages.length; i++) {
+          const svg = chunkPages[i];
+          if (svg) svgCacheRef.current.setPage(startIdx + i, svg);
+        }
+        bumpCache();
+      },
+      { pageIndices, kind }
+    );
+  };
+
+  // Fast incremental compile for changed / active pages.
   // biome-ignore lint/correctness/useExhaustiveDependencies: fontLoadedAt is an intentional trigger
   useEffect(() => {
     if (isDragging) return;
-    let active = true;
-    let rafHandle: number | null = null;
 
-    const performRender = async () => {
+    const stale = computeStalePageIndices(prevSchemaRef.current, schema, activePageId);
+    prevSchemaRef.current = schema;
+
+    if (stale.allPages || stale.indices.length === 0) return;
+
+    let active = true;
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        setIsRendering(true);
+        await runStream(stale.indices, 'partial', { current: active });
+        if (active) setIsRendering(false);
+      } catch (err: unknown) {
+        if (!active) return;
+        if ((err as Error).message === 'CANCELLED') return;
+        console.error('Partial render error:', err);
+      }
+    }, PARTIAL_DEBOUNCE_MS);
+
+    return () => {
+      active = false;
+      clearTimeout(timeoutId);
+    };
+  }, [schema, sampleData, isDragging, activePageId, fontLoadedAt]);
+
+  // Full compile after quiet period — authoritative for all pages.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fontLoadedAt is an intentional trigger
+  useEffect(() => {
+    if (isDragging) return;
+
+    let active = true;
+
+    const performFullRender = async () => {
       try {
         setError(null);
         setIsRendering(true);
 
-        // Accumulate pages here so each RAF flush sees a consistent snapshot.
         const accumulated: string[] = [];
+        let rafHandle: number | null = null;
 
-        // Batch React state updates via requestAnimationFrame — multiple chunks
-        // (each arriving ~1ms apart via setTimeout(0) in the worker) get coalesced
-        // into a single state update per animation frame, cutting virtualizer
-        // re-layouts from ~40 to ~10 for a 1000-page document.
         const scheduleFlush = () => {
           if (rafHandle !== null) return;
           rafHandle = requestAnimationFrame(() => {
             rafHandle = null;
-            if (active) setSvgContent([...accumulated]);
+            if (!active) return;
+            for (let i = 0; i < accumulated.length; i++) {
+              const svg = accumulated[i];
+              if (svg) svgCacheRef.current.setPage(i, svg);
+            }
+            bumpCache();
           });
         };
 
-        await renderReportToSvgStream(schema, sampleData, (chunkPages, startIdx) => {
-          if (!active) return;
-          for (let i = 0; i < chunkPages.length; i++) {
-            accumulated[startIdx + i] = chunkPages[i];
-          }
-          scheduleFlush();
-        });
+        await renderReportToSvgStream(
+          schema,
+          sampleData,
+          (chunkPages, startIdx) => {
+            if (!active) return;
+            for (let i = 0; i < chunkPages.length; i++) {
+              accumulated[startIdx + i] = chunkPages[i];
+            }
+            scheduleFlush();
+          },
+          { kind: 'full' }
+        );
 
         if (!active) return;
 
-        // Cancel any pending RAF and do a final authoritative flush.
         if (rafHandle !== null) {
           cancelAnimationFrame(rafHandle);
-          rafHandle = null;
         }
-        setSvgContent(accumulated.filter(Boolean));
+        svgCacheRef.current.setAll(accumulated.filter(Boolean));
+        bumpCache();
         setIsRendering(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!active) return;
-        // 'CANCELLED' is thrown by typst-wasm.ts when a newer render supersedes
-        // this one — not a user-visible error.
         if ((err as Error).message === 'CANCELLED') return;
         console.error('Render error:', err);
-        setError(err.message || 'Failed to render Typst');
+        setError((err as Error).message || 'Failed to render Typst');
         setIsRendering(false);
       }
     };
 
-    const timeoutId = setTimeout(performRender, debounceMs);
+    const timeoutId = setTimeout(performFullRender, debounceMs);
     return () => {
       active = false;
-      if (rafHandle !== null) cancelAnimationFrame(rafHandle);
       clearTimeout(timeoutId);
     };
   }, [schema, sampleData, isDragging, fontLoadedAt, debounceMs]);
+
+  useEffect(() => {
+    return () => svgCacheRef.current.clear();
+  }, []);
 
   const { width: pageWidthMm, height: pageHeightMm } = useMemo(
     () => getPaperDimensions(schema.page.size, schema.page.orientation),
     [schema.page.size, schema.page.orientation]
   );
 
-  // Natural (unzoomed) page size in px — used as the base for scaling.
   const naturalWidthPx = useMemo(() => LayoutEngine.mmToPx(pageWidthMm), [pageWidthMm]);
   const naturalHeightPx = useMemo(() => LayoutEngine.mmToPx(pageHeightMm), [pageHeightMm]);
 
-  // Actual rendered size after zoom — used for outer container and virtualizer.
   const scaledWidthPx = naturalWidthPx * zoom;
   const scaledHeightPx = naturalHeightPx * zoom;
 
@@ -168,8 +239,8 @@ export const PreviewPane = memo(function PreviewPane() {
   const currentGapY = (canvasLayout === 'grid' ? ROW_GAP_GRID : ROW_GAP_LIST) * zoom;
   const currentGapX = COL_GAP * zoom;
 
-  const pages = svgContent ?? [];
-  const rowCount = Math.ceil(pages.length / cols);
+  const pageCount = Math.max(schema.pages.length, svgCacheRef.current.pageCount);
+  const rowCount = Math.ceil(pageCount / cols);
 
   const virtualizer = useVirtualizer({
     count: rowCount,
@@ -178,14 +249,13 @@ export const PreviewPane = memo(function PreviewPane() {
     overscan: OVERSCAN,
   });
 
-  // Track active page in preview via scroll
   useEffect(() => {
     const handleScroll = () => {
       if (scrollRef.current) {
         const { scrollTop, clientHeight } = scrollRef.current;
         const middle = scrollTop + clientHeight / 2;
         const rowIdx = Math.floor((middle - PADDING_TOP) / (scaledHeightPx + currentGapY));
-        const pageIdx = Math.max(0, Math.min(pages.length - 1, rowIdx * cols));
+        const pageIdx = Math.max(0, Math.min(pageCount - 1, rowIdx * cols));
         setActivePreviewPageIdx(pageIdx + 1);
       }
     };
@@ -193,24 +263,20 @@ export const PreviewPane = memo(function PreviewPane() {
     const container = scrollRef.current;
     container?.addEventListener('scroll', handleScroll);
     return () => container?.removeEventListener('scroll', handleScroll);
-  }, [scaledHeightPx, currentGapY, pages.length, cols]);
+  }, [scaledHeightPx, currentGapY, pageCount, cols]);
 
-  // Support scrollToPageId for synchronized navigation
   useEffect(() => {
     if (scrollToPageId) {
       const idx = pageIds.indexOf(scrollToPageId);
       if (idx !== -1) {
         const rowIdx = Math.floor(idx / cols);
         virtualizer.scrollToIndex(rowIdx, { align: 'start', behavior: 'auto' });
-        // Small delay to ensure virtualizer has updated
         setTimeout(() => setScrollToPageId(null), 50);
       }
     }
   }, [scrollToPageId, pageIds, cols, virtualizer, setScrollToPageId]);
 
-  // When zoom or layout changes, reset TanStack Virtual's size cache so
-  // row heights are re-estimated from the new scaledHeightPx value.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: virtualizer ref is stable; zoom/canvasLayout are the real triggers
+  // biome-ignore lint/correctness/useExhaustiveDependencies: virtualizer ref is stable
   useLayoutEffect(() => {
     virtualizer.measure();
   }, [zoom, canvasLayout]);
@@ -233,7 +299,7 @@ export const PreviewPane = memo(function PreviewPane() {
             paddingRight: `${PADDING_SIDE}px`,
           }}
         >
-          {pages.length > 0 ? (
+          {hasPages ? (
             <div
               style={{
                 height: `${virtualizer.getTotalSize()}px`,
@@ -241,8 +307,6 @@ export const PreviewPane = memo(function PreviewPane() {
                 position: 'relative',
               }}
             >
-              {/* Subtle spinner overlay while a re-compile is in progress.
-                  Previous pages remain visible — no blank flash. */}
               {isRendering && (
                 <div
                   className="sticky top-2 z-50 flex justify-end pointer-events-none"
@@ -256,7 +320,6 @@ export const PreviewPane = memo(function PreviewPane() {
               )}
               {virtualizer.getVirtualItems().map((vRow) => {
                 const startIdx = vRow.index * cols;
-                const rowPages = pages.slice(startIdx, startIdx + cols);
 
                 return (
                   <div
@@ -271,15 +334,20 @@ export const PreviewPane = memo(function PreviewPane() {
                       gap: `${currentGapX}px`,
                     }}
                   >
-                    {rowPages.map((svg, i) => (
-                      <PageSlide
-                        key={startIdx + i}
-                        svg={svg}
-                        naturalWidth={naturalWidthPx}
-                        naturalHeight={naturalHeightPx}
-                        zoom={zoom}
-                      />
-                    ))}
+                    {Array.from({ length: Math.min(cols, pageCount - startIdx) }, (_, i) => {
+                      const pageIndex = startIdx + i;
+                      return (
+                        <PageSlide
+                          key={pageIndex}
+                          pageIndex={pageIndex}
+                          cacheVersion={cacheVersion}
+                          cache={svgCacheRef.current}
+                          naturalWidth={naturalWidthPx}
+                          naturalHeight={naturalHeightPx}
+                          zoom={zoom}
+                        />
+                      );
+                    })}
                   </div>
                 );
               })}
@@ -335,7 +403,7 @@ export const PreviewPane = memo(function PreviewPane() {
       <CanvasToolbar
         mode="preview"
         activePage={activePreviewPageIdx}
-        totalPageCount={pages.length}
+        totalPageCount={pageCount}
         onPageChange={(idx) => {
           const rowIdx = Math.floor(idx / cols);
           virtualizer.scrollToIndex(rowIdx, { align: 'start', behavior: 'auto' });
@@ -345,7 +413,6 @@ export const PreviewPane = memo(function PreviewPane() {
   );
 });
 
-/** Convert hex color string to [R, G, B] array (0–255) */
 function hexToRgb(hex: string): [number, number, number] {
   const cleaned = hex.replace('#', '');
   if (cleaned.length !== 6) return [139, 92, 246];

@@ -8,7 +8,7 @@
 
 import { createFontSlice } from '@/store/slices/font-slice';
 import { buildComponentRegistry, getMaxHistory, pushHistory } from '@/store/store-utils';
-import { initWasmSchemaStore, wasmSchemaStore } from '@/lib/wasm-schema-store';
+import { initWasmSchemaStore, ensureWasmInit, wasmSchemaStore } from '@/lib/wasm-schema-store';
 import type { LayoutSchema, TextComponent } from '@/types/schema';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { create } from 'zustand';
@@ -106,14 +106,18 @@ describe('getMaxHistory — adaptive history limits', () => {
 
 describe('pushHistory — WASM history cap + structural sharing', () => {
   beforeEach(async () => {
-    const init = (await import('@/lib/wasm-bridge/typst_bridge')).default;
-    await init();
+    await ensureWasmInit();
   });
 
   it('caps history at getMaxHistory for large component schemas', async () => {
     const largeSchema = makeSchema(60, 10); // 600 components → max 10
     await initWasmSchemaStore(largeSchema);
-    let state = { historyIndex: 0, historyLength: 1, schema: largeSchema };
+    let state = {
+      historyIndex: 0,
+      historyLength: 1,
+      schema: largeSchema,
+      componentRegistry: buildComponentRegistry(largeSchema),
+    };
 
     for (let i = 0; i < 20; i++) {
       const next = { ...largeSchema, id: `step-${i}` };
@@ -129,7 +133,12 @@ describe('pushHistory — WASM history cap + structural sharing', () => {
   it('small schema caps at 50', async () => {
     const smallSchema = makeSchema(5, 3); // 15 components
     await initWasmSchemaStore(smallSchema);
-    let state = { historyIndex: 0, historyLength: 1, schema: smallSchema };
+    let state = {
+      historyIndex: 0,
+      historyLength: 1,
+      schema: smallSchema,
+      componentRegistry: buildComponentRegistry(smallSchema),
+    };
 
     for (let i = 0; i < 55; i++) {
       const next = { ...smallSchema, id: `step-${i}` };
@@ -144,7 +153,12 @@ describe('pushHistory — WASM history cap + structural sharing', () => {
   it('historyIndex points to the latest entry after 15 pushes', async () => {
     const schema = makeSchema(5, 1);
     await initWasmSchemaStore(schema);
-    let state = { historyIndex: 0, historyLength: 1, schema };
+    let state = {
+      historyIndex: 0,
+      historyLength: 1,
+      schema,
+      componentRegistry: buildComponentRegistry(schema),
+    };
 
     for (let i = 0; i < 15; i++) {
       const next = { ...schema, id: `step-${i}` };

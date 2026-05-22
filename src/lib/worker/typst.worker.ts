@@ -79,6 +79,21 @@ function getImageCacheKey(compId: string, srcData: string): string {
   return `${compId}:${srcData.length}:${srcData.slice(0, 32)}`;
 }
 
+function bytesToBinaryString(bytes: Uint8Array): string {
+  // Never use spread (`...bytes`) — large arrays exceed the call stack.
+  const chunkSize = 8192;
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const end = Math.min(i + chunkSize, bytes.length);
+    let segment = '';
+    for (let j = i; j < end; j++) {
+      segment += String.fromCharCode(bytes[j]);
+    }
+    parts.push(segment);
+  }
+  return parts.join('');
+}
+
 // ── Image Compression ─────────────────────────────────────────────────────────
 
 /** Max pixel dimension for PDF images — 150 DPI on A4 (210mm × ~1240px) with headroom. */
@@ -160,14 +175,10 @@ async function compressImageForPdf(dataUrl: string): Promise<string> {
     // Only accept compressed version if it's meaningfully smaller
     if (outBlob.size >= blob.size * 0.95) return dataUrl;
 
-    // Blob → base64 data URL (8 KB chunks to avoid call-stack overflow on large images)
+    // Blob → base64 data URL (chunked — no spread on large byte arrays)
     const buf = await outBlob.arrayBuffer();
     const bytes = new Uint8Array(buf);
-    const parts: string[] = [];
-    for (let i = 0; i < bytes.length; i += 8192) {
-      parts.push(String.fromCharCode(...bytes.subarray(i, Math.min(i + 8192, bytes.length))));
-    }
-    const result = `data:${outType};base64,${btoa(parts.join(''))}`;
+    const result = `data:${outType};base64,${btoa(bytesToBinaryString(bytes))}`;
     compressedImageCache.set(cacheKey, result);
     return result;
   } catch {
@@ -380,36 +391,58 @@ self.onmessage = async (e: MessageEvent) => {
         break;
       }
       case 'RENDER_REPORT_SVG_STREAM': {
-        const { schema, data } = payload;
+        const { schema, data, pageIndices } = payload as {
+          schema: unknown;
+          data: unknown;
+          pageIndices?: number[];
+        };
         const now = new Date();
         bridge.set_today(now.getFullYear(), now.getMonth() + 1, now.getDate());
         const preparedSchema = injectImagesIntoSchema(schema);
         const generator = new TypstGenerator();
-        const typstCode = generator.generate(preparedSchema, data);
-        workerLog('log', 'RENDER_REPORT_SVG_STREAM. Generated Typst Code:\n', typstCode, '\nFonts loaded in WASM:', Array.from(bridge.get_font_names() as string[]));
+        const generateOpts =
+          pageIndices && pageIndices.length > 0 ? { pageIndices } : undefined;
+        const typstCode = generator.generate(
+          preparedSchema,
+          data as Record<string, unknown>,
+          generateOpts ?? {}
+        );
+
         const svgString = bridge.render_svg(typstCode);
         const pages = svgString
           .split('<!-- PAGE_BREAK -->')
           .filter((s: string) => s.trim().length > 0);
 
-        // 25 pages per chunk (was 10) — fewer postMessage round-trips and React
-        // re-renders while still giving progressive visual feedback.
-        const CHUNK_SIZE = 25;
-        for (let i = 0; i < pages.length; i += CHUNK_SIZE) {
-          // Check cancellation at each yield point (after WASM has already run —
-          // we cannot interrupt synchronous WASM, only the chunk-posting phase).
-          if (cancelledIds.has(id)) {
-            cancelledIds.delete(id);
-            return; // Don't send 'success'; main thread has already moved on.
+        if (pageIndices && pageIndices.length > 0) {
+          for (let i = 0; i < pages.length; i++) {
+            if (cancelledIds.has(id)) {
+              cancelledIds.delete(id);
+              return;
+            }
+            const targetIdx = pageIndices[i] ?? i;
+            self.postMessage({
+              id,
+              type: 'progress',
+              payload: { pages: [pages[i]], startIdx: targetIdx },
+            });
+            await new Promise((r) => setTimeout(r, 0));
           }
-          self.postMessage({
-            id,
-            type: 'progress',
-            payload: { pages: pages.slice(i, i + CHUNK_SIZE), startIdx: i },
-          });
-          await new Promise((r) => setTimeout(r, 0));
+        } else {
+          const CHUNK_SIZE = 25;
+          for (let i = 0; i < pages.length; i += CHUNK_SIZE) {
+            if (cancelledIds.has(id)) {
+              cancelledIds.delete(id);
+              return;
+            }
+            self.postMessage({
+              id,
+              type: 'progress',
+              payload: { pages: pages.slice(i, i + CHUNK_SIZE), startIdx: i },
+            });
+            await new Promise((r) => setTimeout(r, 0));
+          }
         }
-        // Final check: if cancelled between the last chunk and now, skip success.
+
         if (cancelledIds.has(id)) {
           cancelledIds.delete(id);
         } else {
