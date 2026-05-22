@@ -34,7 +34,7 @@ export function RectangleProperties({ component, onUpdate }: RectangleProperties
             borderWidth: hasBorder ? 1 : 0,
             borderColor: component.strokeColor ?? '#d1d5db',
             borderStyle,
-            borderRadius: component.radius ?? 2,
+            borderRadius: component.radius ? `calc(${component.radius} * 3.78)` : 2,
             boxSizing: 'border-box',
             backgroundImage:
               !component.fill

@@ -1,4 +1,3 @@
-import { LayoutEngine } from '@/lib/engine/layout-engine';
 import type { SignatureComponent } from '@/types/schema';
 import { memo } from 'react';
 
@@ -20,14 +19,11 @@ export const SignaturePreview = memo(function SignaturePreview({ component }: Si
 
   const labelSize = component.labelStyle?.fontSize ?? 8;
   const labelColor = component.labelStyle?.color ?? '#000000';
-  // Match Typst column-gutter: 5mm exactly
-  const gapPx = LayoutEngine.mmToPx(5);
 
   return (
-    <div className="w-full h-full flex" style={{ gap: gapPx }}>
+    <div className="w-full h-full flex gap-2">
       {slots.map((slot) => (
-        <div key={slot.id} className="flex-1 flex flex-col justify-end" style={{ minWidth: 0 }}>
-          {/* Signature line */}
+        <div key={slot.id} className="flex-1 flex flex-col justify-end gap-0.5">
           <div
             style={{
               borderBottomWidth: 1,
@@ -36,49 +32,16 @@ export const SignaturePreview = memo(function SignaturePreview({ component }: Si
               marginBottom: 2,
             }}
           />
-          {/* Title label */}
-          <span
-            style={{
-              fontSize: labelSize,
-              color: labelColor,
-              lineHeight: 1.3,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <span style={{ fontSize: labelSize, color: labelColor, lineHeight: 1.3 }}>
             {slot.label}
           </span>
-          {/* Name */}
           {showName && (
-            <span
-              style={{
-                fontSize: Math.max(labelSize - 1, 6),
-                color: labelColor,
-                opacity: 0.65,
-                lineHeight: 1.3,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <span style={{ fontSize: labelSize - 1, color: labelColor, opacity: 0.7, lineHeight: 1.3 }}>
               {slot.nameLabel ?? '(......................)'}
             </span>
           )}
-          {/* Date */}
           {showDate && (
-            <span
-              style={{
-                fontSize: Math.max(labelSize - 1, 6),
-                color: labelColor,
-                opacity: 0.65,
-                lineHeight: 1.3,
-                marginTop: 2,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <span style={{ fontSize: labelSize - 1, color: labelColor, opacity: 0.7, lineHeight: 1.3 }}>
               {slot.dateLabel ?? 'Date: ___/___/______'}
             </span>
           )}

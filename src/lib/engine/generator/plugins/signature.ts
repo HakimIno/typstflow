@@ -30,6 +30,7 @@ export const signaturePlugin: ComponentPlugin<SignatureComponent> = {
 
     const slotBlocks = slots.map((slot) => {
       const lines: string[] = [];
+      lines.push(`#v(12mm)`);
       lines.push(`#line(length: 100%, stroke: ${lineStroke})`);
       lines.push(`#v(1mm)`);
       lines.push(
@@ -37,21 +38,22 @@ export const signaturePlugin: ComponentPlugin<SignatureComponent> = {
       );
       if (showName) {
         const nameLbl = slot.nameLabel ?? '(......................)';
-        lines.push(`\n#text(size: ${labelSize - 1}pt, weight: ${labelWeight}, fill: ${labelColor}, ${labelFont})[${nameLbl}]`);
+        lines.push(
+          `#text(size: ${labelSize}pt, weight: ${labelWeight}, fill: ${labelColor}, ${labelFont})[${nameLbl}]`
+        );
       }
       if (showDate) {
         const dateLbl = slot.dateLabel ?? 'Date: ___/___/______';
-        lines.push(`\n#v(1mm)`);
+        lines.push(`#v(1mm)`);
         lines.push(
-          `#text(size: ${labelSize - 1}pt, weight: ${labelWeight}, fill: ${labelColor}, ${labelFont})[${dateLbl}]`
+          `#text(size: ${labelSize}pt, weight: ${labelWeight}, fill: ${labelColor}, ${labelFont})[${dateLbl}]`
         );
       }
       return `[${lines.join('\n')}]`;
     });
 
     const cols = slots.map(() => '1fr').join(', ');
-    // align(bottom) mirrors CSS justify-end — content sits at the bottom of the allocated height
-    const body = `#align(bottom)[#grid(columns: (${cols}), column-gutter: 5mm, ${slotBlocks.join(', ')})]`;
+    const body = `#grid(columns: (${cols}), gutter: 5mm, ${slotBlocks.join(', ')})`;
     return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth);
   },
 };
