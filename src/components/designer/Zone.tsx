@@ -47,6 +47,11 @@ export const Zone = memo(function Zone({
   );
 
   const isFlowZone = useDesignerStore((s) => {
+    if (isGroupBand && groupId && groupType) {
+      const group = s.schema.groups.find((g) => g.id === groupId);
+      const zone = groupType === 'header' ? group?.header : group?.footer;
+      return zone?.layoutMode === 'flow';
+    }
     if (zoneKey === 'body') {
       const page = s.schema.pages.find((p) => p.id === pageId) ?? s.schema.pages[0];
       return page?.body.layoutMode === 'flow';
@@ -59,9 +64,16 @@ export const Zone = memo(function Zone({
   const toggleLayoutMode = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      updateZone(zoneKey, { layoutMode: isFlowZone ? 'absolute' : 'flow' }, pageId);
+      updateZone(
+        zoneKey,
+        { layoutMode: isFlowZone ? 'absolute' : 'flow' },
+        pageId,
+        undefined,
+        groupId,
+        groupType
+      );
     },
-    [zoneKey, pageId, isFlowZone, updateZone]
+    [zoneKey, pageId, groupId, groupType, isFlowZone, updateZone]
   );
 
   const { isResizing, handleResizeStart } = useZoneResize(

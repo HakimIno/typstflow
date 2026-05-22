@@ -11,6 +11,7 @@ use wasm_bindgen::prelude::*;
 mod parsers;
 mod world;
 pub mod layout_engine;
+pub mod schema;
 pub mod table_engine;
 pub mod zone_layout;
 

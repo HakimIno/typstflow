@@ -213,12 +213,6 @@ export const Canvas = memo(function Canvas() {
   }, [pageIds, visibleRange, mounted]);
 
   if (!mounted) return <div className="flex-1 flex flex-col bg-[var(--bg-canvas)]" />;
-
-  const _marginTop = parseTypstUnit(margin.top);
-  const _marginBottom = parseTypstUnit(margin.bottom);
-  const _marginLeft = parseTypstUnit(margin.left);
-  const _marginRight = parseTypstUnit(margin.right);
-
   return (
     <div className="Canvas flex-1 flex flex-col overflow-hidden relative bg-[var(--bg-canvas)] contain-layout">
       <DragMonitor />

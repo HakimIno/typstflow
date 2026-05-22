@@ -78,9 +78,9 @@ export interface DesignerState extends FontSlice {
   previewError: string | null;
   componentRegistry: Record<string, ComponentNode>;
 
-  // History
-  history: LayoutSchema[];
+  // History (WASM SchemaStore is source of truth — only UI metadata in Zustand)
   historyIndex: number;
+  historyLength: number;
 
   // Drag & Snapping
   dragState: {

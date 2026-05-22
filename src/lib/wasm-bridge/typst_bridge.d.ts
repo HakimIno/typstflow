@@ -29,6 +29,22 @@ export class LayoutEngine {
     set_zone_layout(input: any): void;
 }
 
+export class SchemaStore {
+    free(): void;
+    [Symbol.dispose](): void;
+    can_redo(): boolean;
+    can_undo(): boolean;
+    current_to_json(): string;
+    goto_index(index: number): string | undefined;
+    history_index(): number;
+    history_len(): number;
+    load_from_json(json: string): void;
+    constructor();
+    push_from_json(json: string): void;
+    redo(): string | undefined;
+    undo(): string | undefined;
+}
+
 export class TableEngine {
     private constructor();
     free(): void;
@@ -63,21 +79,20 @@ export class TypstBridge {
     set_today(year: number, month: number, day: number): void;
 }
 
+/**
+ * Decode MessagePack (with optional TFMP header) back to JSON string.
+ */
+export function msgpack_decode_to_json(bytes: Uint8Array): string;
+
+/**
+ * Encode arbitrary JSON state to MessagePack with TypstFlow magic header.
+ */
+export function msgpack_encode_json(json: string): Uint8Array;
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
-    readonly __wbg_typstbridge_free: (a: number, b: number) => void;
-    readonly typstbridge_clear_images: (a: number) => void;
-    readonly typstbridge_get_font_names: (a: number) => any;
-    readonly typstbridge_new: () => number;
-    readonly typstbridge_parse_csv: (a: number, b: number, c: number) => [number, number, number, number];
-    readonly typstbridge_parse_xlsx: (a: number, b: number, c: number) => [number, number, number, number];
-    readonly typstbridge_register_font: (a: number, b: number, c: number) => number;
-    readonly typstbridge_register_image: (a: number, b: number, c: number, d: number, e: number) => void;
-    readonly typstbridge_render_pdf: (a: number, b: number, c: number) => [number, number, number, number];
-    readonly typstbridge_render_svg: (a: number, b: number, c: number) => [number, number, number, number];
-    readonly typstbridge_set_today: (a: number, b: number, c: number, d: number) => void;
     readonly qcms_transform_data_rgb_out_lut: (a: number, b: number, c: number, d: number) => void;
     readonly qcms_transform_data_rgba_out_lut: (a: number, b: number, c: number, d: number) => void;
     readonly qcms_transform_data_bgra_out_lut: (a: number, b: number, c: number, d: number) => void;
@@ -90,6 +105,34 @@ export interface InitOutput {
     readonly qcms_profile_is_bogus: (a: number) => number;
     readonly lut_inverse_interp16: (a: number, b: number, c: number) => number;
     readonly lut_interp_linear16: (a: number, b: number, c: number) => number;
+    readonly __wbg_schemastore_free: (a: number, b: number) => void;
+    readonly msgpack_decode_to_json: (a: number, b: number) => [number, number, number, number];
+    readonly msgpack_encode_json: (a: number, b: number) => [number, number, number, number];
+    readonly schemastore_can_redo: (a: number) => number;
+    readonly schemastore_can_undo: (a: number) => number;
+    readonly schemastore_current_to_json: (a: number) => [number, number, number, number];
+    readonly schemastore_goto_index: (a: number, b: number) => [number, number, number, number];
+    readonly schemastore_history_index: (a: number) => number;
+    readonly schemastore_history_len: (a: number) => number;
+    readonly schemastore_load_from_json: (a: number, b: number, c: number) => [number, number];
+    readonly schemastore_new: () => number;
+    readonly schemastore_push_from_json: (a: number, b: number, c: number) => [number, number];
+    readonly schemastore_redo: (a: number) => [number, number, number, number];
+    readonly schemastore_undo: (a: number) => [number, number, number, number];
+    readonly __wbg_tableengine_free: (a: number, b: number) => void;
+    readonly __wbg_typstbridge_free: (a: number, b: number) => void;
+    readonly tableengine_resolve: (a: number, b: number, c: number, d: number) => [number, number, number];
+    readonly typstbridge_clear_images: (a: number) => void;
+    readonly typstbridge_get_font_names: (a: number) => any;
+    readonly typstbridge_new: () => number;
+    readonly typstbridge_parse_csv: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly typstbridge_parse_csv_bytes: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly typstbridge_parse_xlsx: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly typstbridge_register_font: (a: number, b: number, c: number) => number;
+    readonly typstbridge_register_image: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly typstbridge_render_pdf: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly typstbridge_render_svg: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly typstbridge_set_today: (a: number, b: number, c: number, d: number) => void;
     readonly __wbg_layoutengine_free: (a: number, b: number) => void;
     readonly layoutengine_calculate_band_offset: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly layoutengine_calculate_snap: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number, number];
@@ -102,9 +145,6 @@ export interface InitOutput {
     readonly layoutengine_query_rect: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number];
     readonly layoutengine_remove_node: (a: number, b: number, c: number) => void;
     readonly layoutengine_set_zone_layout: (a: number, b: any) => [number, number];
-    readonly __wbg_tableengine_free: (a: number, b: number) => void;
-    readonly tableengine_resolve: (a: number, b: number, c: number, d: number) => [number, number, number];
-    readonly typstbridge_parse_csv_bytes: (a: number, b: number, c: number) => [number, number, number, number];
     readonly qcms_enable_iccv4: () => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

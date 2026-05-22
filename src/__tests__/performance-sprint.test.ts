@@ -8,6 +8,7 @@
 
 import { createFontSlice } from '@/store/slices/font-slice';
 import { buildComponentRegistry, getMaxHistory, pushHistory } from '@/store/store-utils';
+import { initWasmSchemaStore, wasmSchemaStore } from '@/lib/wasm-schema-store';
 import type { LayoutSchema, TextComponent } from '@/types/schema';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { create } from 'zustand';
@@ -65,6 +66,18 @@ describe('getMaxHistory — adaptive history limits', () => {
     expect(getMaxHistory(makeSchema(1, 1))).toBe(50);
   });
 
+  it('returns 15 for 101–200 pages regardless of component count', () => {
+    expect(getMaxHistory(makeSchema(0, 150))).toBe(15);
+  });
+
+  it('returns 10 for 201–500 pages', () => {
+    expect(getMaxHistory(makeSchema(0, 300))).toBe(10);
+  });
+
+  it('returns 5 for 500+ pages', () => {
+    expect(getMaxHistory(makeSchema(0, 1000))).toBe(5);
+  });
+
   it('returns 30 for medium schemas (100–200 components)', () => {
     expect(getMaxHistory(makeSchema(15, 8))).toBe(30); // 120 components
     expect(getMaxHistory(makeSchema(20, 9))).toBe(30); // 180 components
@@ -89,26 +102,34 @@ describe('getMaxHistory — adaptive history limits', () => {
   });
 });
 
-// ─── Sprint 2: pushHistory uses constant MAX_HISTORY ──────────────────────
+// ─── Sprint 2: pushHistory caps via WASM SchemaStore ────────────────────────
 
-describe('pushHistory — constant MAX_HISTORY = 50 for reliable undo/redo', () => {
-  it('always caps history at 50 regardless of schema size', () => {
-    const largeSchema = makeSchema(60, 10); // 600 components
-    let state = { history: [] as LayoutSchema[], historyIndex: -1, schema: largeSchema };
+describe('pushHistory — WASM history cap + structural sharing', () => {
+  beforeEach(async () => {
+    const init = (await import('@/lib/wasm-bridge/typst_bridge')).default;
+    await init();
+  });
 
-    for (let i = 0; i < 60; i++) {
+  it('caps history at getMaxHistory for large component schemas', async () => {
+    const largeSchema = makeSchema(60, 10); // 600 components → max 10
+    await initWasmSchemaStore(largeSchema);
+    let state = { historyIndex: 0, historyLength: 1, schema: largeSchema };
+
+    for (let i = 0; i < 20; i++) {
       const next = { ...largeSchema, id: `step-${i}` };
       const result = pushHistory(state, next);
       state = { ...state, ...result };
     }
 
-    expect(state.history.length).toBe(50);
-    expect(state.historyIndex).toBe(49);
+    expect(state.historyLength).toBe(10);
+    expect(state.historyIndex).toBe(9);
+    expect(wasmSchemaStore.historyLen()).toBe(10);
   });
 
-  it('small schema also caps at 50', () => {
+  it('small schema caps at 50', async () => {
     const smallSchema = makeSchema(5, 3); // 15 components
-    let state = { history: [] as LayoutSchema[], historyIndex: -1, schema: smallSchema };
+    await initWasmSchemaStore(smallSchema);
+    let state = { historyIndex: 0, historyLength: 1, schema: smallSchema };
 
     for (let i = 0; i < 55; i++) {
       const next = { ...smallSchema, id: `step-${i}` };
@@ -116,12 +137,14 @@ describe('pushHistory — constant MAX_HISTORY = 50 for reliable undo/redo', () 
       state = { ...state, ...result };
     }
 
-    expect(state.history.length).toBe(50);
+    expect(state.historyLength).toBe(50);
+    expect(wasmSchemaStore.historyLen()).toBe(50);
   });
 
-  it('historyIndex points to the latest entry after 15 pushes', () => {
+  it('historyIndex points to the latest entry after 15 pushes', async () => {
     const schema = makeSchema(5, 1);
-    let state = { history: [] as LayoutSchema[], historyIndex: -1, schema };
+    await initWasmSchemaStore(schema);
+    let state = { historyIndex: 0, historyLength: 1, schema };
 
     for (let i = 0; i < 15; i++) {
       const next = { ...schema, id: `step-${i}` };
@@ -129,8 +152,8 @@ describe('pushHistory — constant MAX_HISTORY = 50 for reliable undo/redo', () 
       state = { ...state, ...result };
     }
 
-    expect(state.historyIndex).toBe(state.history.length - 1);
-    expect(state.history[state.historyIndex].id).toBe('step-14');
+    expect(state.historyIndex).toBe(state.historyLength - 1);
+    expect(state.schema.id).toBe('step-14');
   });
 });
 

@@ -96,10 +96,12 @@ export default function DesignerPage() {
     root.classList.add(theme);
   }, [theme]);
 
-  // Auto-hide Properties in Preview Mode
+  // Hide properties in full preview; restore when returning to design/split
   useEffect(() => {
     if (viewMode === 'preview') {
       setRightSidebarOpen(false);
+    } else if (viewMode === 'design' || viewMode === 'split') {
+      setRightSidebarOpen(true);
     }
   }, [viewMode, setRightSidebarOpen]);
 
@@ -168,51 +170,54 @@ export default function DesignerPage() {
             </div>
           </aside>
 
-          {/* Center: Workspace (Design / Preview / Split) - Hardware-Accelerated PUSH */}
-          <div
-            className={clsx(
-              'flex-1 flex overflow-hidden gap-0.5 min-w-0 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform transform-gpu',
-              isSidebarOpen ? 'translate-x-[320px]' : 'translate-x-0'
-            )}
-            style={{ width: '100%' }}
-          >
-            {(viewMode === 'design' || viewMode === 'split') && (
-              <main
-                className={clsx(
-                  'flex-1 overflow-auto bg-[var(--bg-canvas)] flex justify-center p-0 transition-all duration-300',
-                  viewMode === 'split' &&
-                    'border-r-2 border-[var(--border-default)] shadow-2xl z-10'
-                )}
-              >
-                <DesignerErrorBoundary componentName="Designer Canvas">
-                  <Canvas />
-                </DesignerErrorBoundary>
-              </main>
-            )}
+          {/* Workspace: canvas shrinks for left drawer; properties stay pinned right */}
+          <div className="flex flex-1 min-w-0 overflow-hidden">
+            <div
+              className={clsx(
+                'flex flex-1 min-w-0 overflow-hidden gap-0.5 transition-[margin] duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)]',
+                isSidebarOpen ? 'ml-80' : 'ml-0'
+              )}
+            >
+              {(viewMode === 'design' || viewMode === 'split') && (
+                <main
+                  className={clsx(
+                    'flex-1 min-w-0 overflow-auto bg-[var(--bg-canvas)] flex justify-center p-0 transition-all duration-300',
+                    viewMode === 'split' &&
+                      'border-r-2 border-[var(--border-default)] shadow-2xl z-10'
+                  )}
+                >
+                  <DesignerErrorBoundary componentName="Designer Canvas">
+                    <Canvas />
+                  </DesignerErrorBoundary>
+                </main>
+              )}
 
-            {(viewMode === 'preview' || viewMode === 'split') && (
-              <div className="flex-1 flex overflow-hidden transition-all duration-300 bg-[var(--bg-app)]">
-                <DesignerErrorBoundary componentName="Preview Engine">
-                  <PreviewPane />
+              {(viewMode === 'preview' || viewMode === 'split') && (
+                <div className="flex-1 min-w-0 flex overflow-hidden transition-all duration-300 bg-[var(--bg-app)]">
+                  <DesignerErrorBoundary componentName="Preview Engine">
+                    <PreviewPane />
+                  </DesignerErrorBoundary>
+                </div>
+              )}
+            </div>
+
+            {/* Properties — always anchored to the right edge of the workspace */}
+            <aside
+              className={clsx(
+                'shrink-0 h-full overflow-hidden border-l bg-[var(--bg-surface)] shadow-[var(--shadow-premium)] transition-[width,border-color] duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)]',
+                isRightSidebarOpen
+                  ? 'w-64 border-[var(--border-default)]'
+                  : 'w-0 border-transparent pointer-events-none'
+              )}
+            >
+              <div className="w-64 h-full flex flex-col overflow-hidden">
+                <DesignerErrorBoundary componentName="Properties Inspector">
+                  <PropertiesPanel />
                 </DesignerErrorBoundary>
               </div>
-            )}
+            </aside>
           </div>
         </div>
-
-        {/* Right Sidebar: Properties - Professional Slide-out (Hardware Accelerated) */}
-        <aside
-          className={clsx(
-            'absolute right-0 top-0 bottom-0 w-64 bg-[var(--bg-surface)] overflow-hidden border-l border-[var(--border-default)] z-30 transition-transform duration-[200ms] ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform shadow-[var(--shadow-premium)]',
-            isRightSidebarOpen ? 'translate-x-0' : 'translate-x-full'
-          )}
-        >
-          <div className="w-64 h-full flex flex-col overflow-hidden">
-            <DesignerErrorBoundary componentName="Properties Inspector">
-              <PropertiesPanel />
-            </DesignerErrorBoundary>
-          </div>
-        </aside>
       </div>
 
       {/* Status Bar */}

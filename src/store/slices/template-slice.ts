@@ -8,11 +8,22 @@ import { MULTI_INVOICE_SAMPLE_DATA, MULTI_INVOICE_TEMPLATE } from '@/lib/templat
 import { TAX_INVOICE_SAMPLE_DATA, TAX_INVOICE_TEMPLATE } from '@/lib/templates/tax-invoice';
 import { agentLogger } from '@/lib/utils/agent-logger';
 import { generateStressTestSchema } from '@/lib/utils/performance-test';
+import { resetWasmSchemaStore } from '@/lib/wasm-schema-store';
+import type { LayoutSchema } from '@/types/schema';
 import type { StateCreator } from 'zustand';
 import type { DesignerState } from '../store-types';
 import { BLANK_SCHEMA } from '../store-utils';
 
 export type TemplateSlice = Pick<DesignerState, 'loadTemplate' | 'loadStressTest'>;
+
+function applyTemplate(
+  set: (partial: Partial<DesignerState>) => void,
+  schema: LayoutSchema,
+  sampleData: Record<string, unknown>
+) {
+  set({ schema, sampleData, historyIndex: 0, historyLength: 1 });
+  resetWasmSchemaStore(schema);
+}
 
 export const createTemplateSlice: StateCreator<DesignerState, [], [], TemplateSlice> = (
   set,
@@ -25,47 +36,17 @@ export const createTemplateSlice: StateCreator<DesignerState, [], [], TemplateSl
       message: `Loading template: ${name}`,
     });
     if (name === 'invoice') {
-      set({
-        schema: INVOICE_TEMPLATE,
-        sampleData: INVOICE_SAMPLE_DATA,
-        history: [INVOICE_TEMPLATE],
-        historyIndex: 0,
-      });
+      applyTemplate(set, INVOICE_TEMPLATE, INVOICE_SAMPLE_DATA);
     } else if (name === 'complex') {
-      set({
-        schema: COMPLEX_TABLE_TEMPLATE,
-        sampleData: COMPLEX_SAMPLE_DATA,
-        history: [COMPLEX_TABLE_TEMPLATE],
-        historyIndex: 0,
-      });
+      applyTemplate(set, COMPLEX_TABLE_TEMPLATE, COMPLEX_SAMPLE_DATA);
     } else if (name === 'invoice-with-breaks') {
-      set({
-        schema: INVOICE_WITH_PAGE_BREAKS_TEMPLATE,
-        sampleData: INVOICE_WITH_MANY_ITEMS_SAMPLE_DATA,
-        history: [INVOICE_WITH_PAGE_BREAKS_TEMPLATE],
-        historyIndex: 0,
-      });
+      applyTemplate(set, INVOICE_WITH_PAGE_BREAKS_TEMPLATE, INVOICE_WITH_MANY_ITEMS_SAMPLE_DATA);
     } else if (name === 'tax-invoice') {
-      set({
-        schema: TAX_INVOICE_TEMPLATE,
-        sampleData: TAX_INVOICE_SAMPLE_DATA,
-        history: [TAX_INVOICE_TEMPLATE],
-        historyIndex: 0,
-      });
+      applyTemplate(set, TAX_INVOICE_TEMPLATE, TAX_INVOICE_SAMPLE_DATA);
     } else if (name === 'multi-invoice') {
-      set({
-        schema: MULTI_INVOICE_TEMPLATE,
-        sampleData: MULTI_INVOICE_SAMPLE_DATA,
-        history: [MULTI_INVOICE_TEMPLATE],
-        historyIndex: 0,
-      });
+      applyTemplate(set, MULTI_INVOICE_TEMPLATE, MULTI_INVOICE_SAMPLE_DATA);
     } else {
-      set({
-        schema: BLANK_SCHEMA,
-        sampleData: {},
-        history: [BLANK_SCHEMA],
-        historyIndex: 0,
-      });
+      applyTemplate(set, BLANK_SCHEMA, {});
     }
   },
 
@@ -76,6 +57,7 @@ export const createTemplateSlice: StateCreator<DesignerState, [], [], TemplateSl
       message: `Generating stress test schema: ${pages} pages`,
     });
     const schema = generateStressTestSchema(pages, components);
-    set({ schema, history: [schema], historyIndex: 0, activePageId: schema.pages[0]?.id });
+    set({ schema, historyIndex: 0, historyLength: 1, activePageId: schema.pages[0]?.id });
+    resetWasmSchemaStore(schema);
   },
 });

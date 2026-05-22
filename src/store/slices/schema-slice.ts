@@ -9,6 +9,7 @@ import {
   removeComponentsFromSchema,
 } from '@/lib/utils/schema-mutators';
 import { parseTypstUnit } from '@/lib/utils/units';
+import { syncHistoryMeta, wasmSchemaStore } from '@/lib/wasm-schema-store';
 import type { ComponentNode, GroupDefinition, LayoutSchema, Zone, ZoneKey } from '@/types/schema';
 import type { StateCreator } from 'zustand';
 import type { DesignerState } from '../store-types';
@@ -17,8 +18,8 @@ import { buildComponentRegistry, pushHistory } from '../store-utils';
 export type SchemaSlice = Pick<
   DesignerState,
   | 'schema'
-  | 'history'
   | 'historyIndex'
+  | 'historyLength'
   | 'componentRegistry'
   | 'addComponent'
   | 'addComponentToColumn'
@@ -51,8 +52,8 @@ export type SchemaSlice = Pick<
 
 export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice> = (set, get) => ({
   schema: {} as LayoutSchema, // initialized in designer-store.ts
-  history: [],
   historyIndex: 0,
+  historyLength: 1,
   componentRegistry: {},
 
   addComponent: (zoneKey, component, pageId, groupId, groupType) =>
@@ -624,36 +625,38 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
 
   undo: () =>
     set((state) => {
-      if (state.historyIndex <= 0) return state;
-      const newIndex = state.historyIndex - 1;
-      const restoredSchema = state.history[newIndex];
+      if (!wasmSchemaStore.canUndo()) return state;
+      const restoredSchema = wasmSchemaStore.undo();
+      if (!restoredSchema) return state;
       return {
         schema: restoredSchema,
         componentRegistry: buildComponentRegistry(restoredSchema),
-        historyIndex: newIndex,
+        ...syncHistoryMeta(),
       };
     }),
 
   redo: () =>
     set((state) => {
-      if (state.historyIndex >= state.history.length - 1) return state;
-      const newIndex = state.historyIndex + 1;
-      const restoredSchema = state.history[newIndex];
+      if (!wasmSchemaStore.canRedo()) return state;
+      const restoredSchema = wasmSchemaStore.redo();
+      if (!restoredSchema) return state;
       return {
         schema: restoredSchema,
         componentRegistry: buildComponentRegistry(restoredSchema),
-        historyIndex: newIndex,
+        ...syncHistoryMeta(),
       };
     }),
 
   rewindToCheckpoint: (checkpointIndex: number) =>
     set((state) => {
-      const target = Math.max(0, Math.min(checkpointIndex, state.history.length - 1));
-      const restoredSchema = state.history[target];
+      const maxIndex = Math.max(0, state.historyLength - 1);
+      const target = Math.max(0, Math.min(checkpointIndex, maxIndex));
+      const restoredSchema = wasmSchemaStore.gotoIndex(target);
+      if (!restoredSchema) return state;
       return {
         schema: restoredSchema,
         componentRegistry: buildComponentRegistry(restoredSchema),
-        historyIndex: target,
+        ...syncHistoryMeta(),
         selectedComponentIds: [],
       };
     }),

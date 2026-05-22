@@ -9,7 +9,7 @@ export const UndoRedoTools = memo(function UndoRedoTools() {
   const undo = useDesignerStore((state) => state.undo);
   const redo = useDesignerStore((state) => state.redo);
   const historyIndex = useDesignerStore((state) => state.historyIndex);
-  const historyLength = useDesignerStore((state) => state.history.length);
+  const historyLength = useDesignerStore((state) => state.historyLength);
 
   return (
     <div className="flex items-center">

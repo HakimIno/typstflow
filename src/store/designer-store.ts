@@ -1,7 +1,8 @@
 // Re-export types so existing imports still work
 export type { DialogOptions } from './store-types';
 
-import { indexedDBStorage } from '@/lib/async-storage';
+import { msgpackIndexedDBStorage } from '@/lib/msgpack-storage';
+import { initWasmSchemaStore, syncHistoryMeta } from '@/lib/wasm-schema-store';
 import { agentLogger } from '@/lib/utils/agent-logger';
 import { validateAndRepairSchema } from '@/lib/utils/schema-validator';
 import { create } from 'zustand';
@@ -34,20 +35,30 @@ export const useDesignerStore = create<DesignerState>()(
       ...createDialogSlice(...a),
       ...createFontSlice()(...a),
       ...createGuidesSlice(...a),
-      // Override schema/history/componentRegistry with proper initial values
+      // Override schema/history metadata/componentRegistry with proper initial values
       schema: BLANK_SCHEMA,
       componentRegistry: buildComponentRegistry(BLANK_SCHEMA),
-      history: [BLANK_SCHEMA],
       historyIndex: 0,
+      historyLength: 1,
     }),
     {
       name: 'designer-storage',
-      storage: createJSONStorage(() => indexedDBStorage),
+      storage: createJSONStorage(() => msgpackIndexedDBStorage),
       partialize: (state: DesignerState) => {
-        const { dragState, _hasHydrated, dialog, componentRegistry, loadingFonts, ...rest } = state;
+        const {
+          dragState,
+          _hasHydrated,
+          dialog,
+          componentRegistry,
+          loadingFonts,
+          historyIndex: _historyIndex,
+          historyLength: _historyLength,
+          ...rest
+        } = state;
+        // Persist current schema only — undo stack lives in WASM (in-memory).
         return rest;
       },
-      version: 4,
+      version: 7,
       migrate: (persistedState: any, version: number) => {
         const state = persistedState as any;
         if (version < 2) {
@@ -76,6 +87,18 @@ export const useDesignerStore = create<DesignerState>()(
             state.historyIndex = Math.max(0, state.history.length - 1);
           }
         }
+        if (version < 5) {
+          state.history = undefined;
+          state.historyIndex = undefined;
+        }
+        if (version < 6) {
+          // v6: IndexedDB payload migrated from JSON objects to MessagePack (TFMP) on next save.
+        }
+        if (version < 7) {
+          delete state.history;
+          state.historyIndex = 0;
+          state.historyLength = 1;
+        }
         return state;
       },
       onRehydrateStorage: () => (state) => {
@@ -83,16 +106,8 @@ export const useDesignerStore = create<DesignerState>()(
           const validSchema = validateAndRepairSchema(state.schema, BLANK_SCHEMA);
           if (validSchema !== state.schema) state.schema = validSchema;
           state.componentRegistry = buildComponentRegistry(state.schema);
-          // Validate persisted history — clamp index or seed from schema if corrupt/empty.
-          if (!Array.isArray(state.history) || state.history.length === 0) {
-            state.history = [state.schema];
-            state.historyIndex = 0;
-          } else {
-            state.historyIndex = Math.min(
-              Math.max(0, state.historyIndex),
-              state.history.length - 1
-            );
-          }
+          state.historyIndex = 0;
+          state.historyLength = 1;
           // Keep localStorage in sync so the blocking theme script has correct
           // values on the very next page load (avoids flash even before React mounts).
           try {
@@ -104,7 +119,13 @@ export const useDesignerStore = create<DesignerState>()(
             level: 'info',
             message: 'Designer state rehydrated',
           });
+          // Unblock UI immediately — WASM schema store initializes in background.
           state.setHasHydrated(true);
+          void initWasmSchemaStore(state.schema).then(() => {
+            const meta = syncHistoryMeta();
+            state.historyIndex = meta.historyIndex;
+            state.historyLength = meta.historyLength;
+          });
         }
       },
     }

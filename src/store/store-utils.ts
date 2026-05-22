@@ -1,10 +1,17 @@
+import { shareSchemaStructure } from '@/lib/utils/schema-structure';
+import { syncHistoryMeta, wasmSchemaStore } from '@/lib/wasm-schema-store';
 import type { ComponentNode, LayoutSchema, Zone } from '@/types/schema';
 import type { DesignerState } from './store-types';
 
 export const MAX_HISTORY = 50;
 
-/** Returns a smaller history limit for large schemas to prevent memory buildup. */
+/** Adaptive undo depth — scales down for large page counts and component counts. */
 export const getMaxHistory = (schema: LayoutSchema): number => {
+  const pageCount = schema.pages.length;
+  if (pageCount > 500) return 5;
+  if (pageCount > 200) return 10;
+  if (pageCount > 100) return 15;
+
   const componentCount =
     schema.zones.header.components.length +
     schema.zones.footer.components.length +
@@ -58,24 +65,28 @@ export const buildComponentRegistry = (schema: LayoutSchema): Record<string, Com
 };
 
 export const pushHistory = (
-  state: Pick<DesignerState, 'history' | 'historyIndex' | 'schema'>,
+  state: Pick<DesignerState, 'schema'>,
   newSchema: LayoutSchema
 ): {
   schema: LayoutSchema;
   componentRegistry: Record<string, ComponentNode>;
-  history: LayoutSchema[];
   historyIndex: number;
+  historyLength: number;
 } => {
-  const newHistory = state.history.slice(0, state.historyIndex + 1);
-  newHistory.push(newSchema);
-  if (newHistory.length > MAX_HISTORY) {
-    newHistory.shift();
+  const sharedSchema = shareSchemaStructure(state.schema, newSchema);
+
+  if (wasmSchemaStore.isReady()) {
+    wasmSchemaStore.pushSync(sharedSchema);
+  } else {
+    void wasmSchemaStore.push(sharedSchema);
   }
+
+  const meta = syncHistoryMeta();
+
   return {
-    schema: newSchema,
-    componentRegistry: buildComponentRegistry(newSchema),
-    history: newHistory,
-    historyIndex: newHistory.length - 1,
+    schema: sharedSchema,
+    componentRegistry: buildComponentRegistry(sharedSchema),
+    ...meta,
   };
 };
 
