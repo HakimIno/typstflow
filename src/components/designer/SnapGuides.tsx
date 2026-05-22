@@ -14,16 +14,18 @@ import { useShallow } from 'zustand/react/shallow';
  * Renders vertical and horizontal guide lines when snapping is active during drag.
  */
 export const SnapGuides = memo(function SnapGuides({ pageId }: Props) {
-  const { activeGuides, spacingIndicators, isDragging } = useDesignerStore(
+  const { activeGuides, spacingIndicators, isDragging, dragActivePageId } = useDesignerStore(
     useShallow((state) => ({
       activeGuides: state.dragState.activeGuides,
       spacingIndicators: state.dragState.spacingIndicators,
       isDragging: state.dragState.isDragging,
+      dragActivePageId: state.dragState.activePageId,
     }))
   );
   const _zoom = useDesignerStore((state) => state.zoom);
 
   if (!isDragging) return null;
+  if (dragActivePageId && dragActivePageId !== pageId) return null;
 
   if (
     !activeGuides.vertical.length &&

@@ -2,12 +2,15 @@
 
 import { dragSnapState } from '@/lib/engine/drag-snap-state';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
-import type { SnapPoint } from '@/lib/engine/snap-engine';
+import {
+  SNAP_PAGE_RADIUS,
+  calculateComponentSnap,
+  getSnapPageRange,
+  getWasmLayoutEngine,
+  loadWasmSnapNodes,
+} from '@/lib/engine/wasm-snap';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
-import type {
-  layoutEngine as LayoutEngineType,
-  WasmSpacingIndicator,
-} from '@/lib/wasm-layout-engine';
+import type { WasmSpacingIndicator } from '@/lib/wasm-layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
 import type { ComponentNode } from '@/types/schema';
 import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
@@ -41,32 +44,10 @@ interface DragSourceData {
   }>;
 }
 
-interface WasmFullSnapResult {
-  snapped_x: number;
-  snapped_y: number;
-  guides_x: number[];
-  guides_y: number[];
-  spacing_indicators: WasmSpacingIndicator[];
-}
+const SNAP_SKIP_FRAMES = 1;
+const ENABLE_PERF_MONITORING = false;
+const MAX_OFFSET_PAGES = 20;
 
-// ✅ EXTREME PERFORMANCE MODE for 1000+ pages
-const SNAP_PAGE_RADIUS = 2; // Pages to load for snapping (current ± 2)
-const SNAP_THRESHOLD_MM = 2; // Tighter feel like Figma
-const SNAP_SKIP_FRAMES = 1; // More responsive snap calculation
-const ENABLE_PERF_MONITORING = false; // Set to true for debugging
-
-// ✅ CRITICAL: Only calculate offsets for visible pages, NOT all 1000+
-const MAX_OFFSET_PAGES = 20; // Maximum page offsets to calculate (covers most scroll scenarios)
-
-let wasmEngineCache: typeof LayoutEngineType | null = null;
-const getLayoutEngine = async () => {
-  if (wasmEngineCache) return wasmEngineCache;
-  const { layoutEngine } = await import('@/lib/wasm-layout-engine');
-  wasmEngineCache = layoutEngine;
-  return wasmEngineCache;
-};
-
-// Performance tracking
 const perfMetrics = {
   dragFrameCount: 0,
   snapCalcTime: 0,
@@ -94,8 +75,6 @@ export const DragMonitor = memo(function DragMonitor() {
     pageGap: number;
     paddingTop: number;
     paddingLeft: number;
-    snapPointsX: SnapPoint[];
-    snapPointsY: SnapPoint[];
     initialClientX: number;
     initialClientY: number;
     lastSnapTime: number;
@@ -121,8 +100,6 @@ export const DragMonitor = memo(function DragMonitor() {
     pageGap: 32,
     paddingTop: 48,
     paddingLeft: 64,
-    snapPointsX: [],
-    snapPointsY: [],
     initialClientX: 0,
     initialClientY: 0,
     lastSnapTime: 0,
@@ -146,32 +123,13 @@ export const DragMonitor = memo(function DragMonitor() {
 
         const rect = container.getBoundingClientRect();
         const zoom = Number.parseFloat(container.dataset.zoom || '1');
-        const { schema } = useDesignerStore.getState();
-
-        // Pre-calculate snap points (minimal set)
-        const pointsX: SnapPoint[] = [];
-        const pointsY: SnapPoint[] = [];
+        const { schema, manualGuides } = useDesignerStore.getState();
 
         const { width: pW, height: pH } = getPaperDimensions(
           schema.page.size,
           schema.page.orientation
         );
 
-        // Only edge snapping for performance
-        pointsX.push({ value: 0, type: 'edge', originId: 'page' });
-        pointsX.push({ value: pW, type: 'edge', originId: 'page' });
-        pointsY.push({ value: 0, type: 'edge', originId: 'page' });
-        pointsY.push({ value: pH, type: 'edge', originId: 'page' });
-
-        const { manualGuides } = useDesignerStore.getState();
-        for (const x of manualGuides.vertical) {
-          pointsX.push({ value: x, type: 'edge', originId: 'manual-guide' });
-        }
-        for (const y of manualGuides.horizontal) {
-          pointsY.push({ value: y, type: 'edge', originId: 'manual-guide' });
-        }
-
-        // Page layout constants
         const pageHeightPx = LayoutEngine.mmToPx(pH) * zoom;
         const pageWidthPx = LayoutEngine.mmToPx(pW);
         const pageGap = 32;
@@ -181,8 +139,6 @@ export const DragMonitor = memo(function DragMonitor() {
         const startPageId = data.pageId || schema.pages[0]?.id || '';
         const activePageIdx = schema.pages.findIndex((p) => p.id === startPageId);
 
-        // ✅ CRITICAL FIX: Only calculate offsets for nearby pages, NOT all 1000+
-        // This is the main performance bottleneck fix!
         const offsetStartIdx = Math.max(0, activePageIdx - MAX_OFFSET_PAGES);
         const offsetEndIdx = Math.min(schema.pages.length - 1, activePageIdx + MAX_OFFSET_PAGES);
 
@@ -200,51 +156,20 @@ export const DragMonitor = memo(function DragMonitor() {
           });
         }
 
-        // ✅ Load MINIMAL pages into WASM (only current ± SNAP_PAGE_RADIUS)
-        const pageStartIdx = Math.max(0, activePageIdx - SNAP_PAGE_RADIUS);
-        const pageEndIdx = Math.min(schema.pages.length - 1, activePageIdx + SNAP_PAGE_RADIUS);
+        const { pageStartIdx, pageEndIdx } = getSnapPageRange(
+          Math.max(0, activePageIdx),
+          schema.pages.length,
+          SNAP_PAGE_RADIUS
+        );
 
-        getLayoutEngine()
-          .then((layoutEngine) => {
-            layoutEngine
-              .initWasm()
-              .then(() => {
-                try {
-                  const nodes: Parameters<typeof layoutEngine.loadNodes>[0] = [];
-
-                  // Only body zone from nearby pages
-                  for (let i = pageStartIdx; i <= pageEndIdx; i++) {
-                    const page = schema.pages[i];
-                    if (!page) continue;
-
-                    const zoneKey = `body:${page.id}`;
-                    const bodyOffset = LayoutEngine.calculateZoneOffset('body', schema, page.id);
-
-                    // Limit to 50 components per page max for performance
-                    let count = 0;
-                    for (const c of page.body.components) {
-                      if (c.id === data.id) continue;
-                      if (count++ > 50) break;
-
-                      nodes.push({
-                        id: c.id,
-                        zone: zoneKey,
-                        x: c.x || 0,
-                        y: (c.y || 0) + bodyOffset,
-                        width: c.width || 0,
-                        height: c.height || 0,
-                      });
-                    }
-                  }
-
-                  layoutEngine.loadNodes(nodes);
-                } catch (_e) {
-                  // Silent fail - JS fallback
-                }
-              })
-              .catch(() => {});
-          })
-          .catch(() => {});
+        loadWasmSnapNodes(schema, {
+          excludeIds: data.id ? [data.id] : [],
+          pageStartIdx,
+          pageEndIdx,
+          maxComponentsPerPage: 50,
+          manualGuides,
+          stackPages: false,
+        }).catch(() => {});
 
         dragRef.current = {
           containerRect: rect,
@@ -255,8 +180,6 @@ export const DragMonitor = memo(function DragMonitor() {
           pageGap,
           paddingTop,
           paddingLeft,
-          snapPointsX: pointsX,
-          snapPointsY: pointsY,
           initialClientX: location.initial.input.clientX,
           initialClientY: location.initial.input.clientY,
           lastSnapTime: 0,
@@ -271,7 +194,6 @@ export const DragMonitor = memo(function DragMonitor() {
 
         document.body.classList.add('is-dragging-components');
 
-        // NO store update - just CSS transforms
         const root = document.documentElement;
         root.style.setProperty('--drag-dx', '0px');
         root.style.setProperty('--drag-dy', '0px');
@@ -288,7 +210,6 @@ export const DragMonitor = memo(function DragMonitor() {
 
         cache.frameCounter++;
 
-        // ✅ Calculate page index on-demand (O(1) math, no array lookup needed)
         const scrollContainer = cache.containerElement?.parentElement?.parentElement as HTMLElement;
         const scrollY = location.current.input.clientY - cache.containerRect.top;
         const currentScrollTop = scrollContainer?.scrollTop || 0;
@@ -297,7 +218,6 @@ export const DragMonitor = memo(function DragMonitor() {
           (scrollContainer?.scrollLeft || 0) +
           (location.current.input.clientX - cache.containerRect.left);
 
-        // ✅ O(1) page index calculation (no binary search needed!)
         const activePageIdx = Math.max(
           0,
           Math.min(
@@ -306,7 +226,6 @@ export const DragMonitor = memo(function DragMonitor() {
           )
         );
 
-        // Find page offset from our limited array
         const activePageInfo = cache.pageOffsets.find((o) => o.index === activePageIdx) || {
           id: `page-${activePageIdx}`,
           index: activePageIdx,
@@ -316,18 +235,14 @@ export const DragMonitor = memo(function DragMonitor() {
           height: cache.pageHeightPx,
         };
 
-        // Coordinate calculation
         const relX = (absoluteX - activePageInfo.left - (data.dragOffsetX || 0)) / cache.zoom;
         const relY = (absoluteY - activePageInfo.top - (data.dragOffsetY || 0)) / cache.zoom;
 
         const rawX = LayoutEngine.pxToMm(relX);
         const rawY = LayoutEngine.pxToMm(relY);
 
-        // ✅ Synchronously publish position so drop handlers always read fresh
-        // values, even if async snap calc hasn't completed yet.
         dragSnapState.setRaw(rawX, rawY, activePageInfo.id);
 
-        // ✅ IMMEDIATE CSS feedback (60fps guaranteed)
         const root = document.documentElement;
         const pxDeltaX = location.current.input.clientX - cache.initialClientX;
         const pxDeltaY = location.current.input.clientY - cache.initialClientY;
@@ -335,7 +250,6 @@ export const DragMonitor = memo(function DragMonitor() {
         root.style.setProperty('--drag-dx', `${pxDeltaX / cache.zoom}px`);
         root.style.setProperty('--drag-dy', `${pxDeltaY / cache.zoom}px`);
 
-        // ✅ EARLY EXIT: Skip snap calculation if not moving significantly
         const deltaX = rawX - cache.lastRawX;
         const deltaY = rawY - cache.lastRawY;
         const movedSignificantly = Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5;
@@ -344,7 +258,6 @@ export const DragMonitor = memo(function DragMonitor() {
         cache.lastRawY = rawY;
 
         if (!movedSignificantly && cache.lastSnapResult) {
-          // Reuse last snap result - instant feedback!
           const snapOffsetX = LayoutEngine.mmToPx(cache.lastSnapResult.x - rawX);
           const snapOffsetY = LayoutEngine.mmToPx(cache.lastSnapResult.y - rawY);
 
@@ -361,12 +274,10 @@ export const DragMonitor = memo(function DragMonitor() {
           return;
         }
 
-        // ✅ FRAME SKIPPING: Only calculate snap every N frames
         if (cache.frameCounter % SNAP_SKIP_FRAMES !== 0) {
           return;
         }
 
-        // Throttle to max 30fps for snap calculation
         const now = Date.now();
         if (cache.lastSnapTime && now - cache.lastSnapTime < 33) return;
         cache.lastSnapTime = now;
@@ -376,43 +287,23 @@ export const DragMonitor = memo(function DragMonitor() {
 
         const perfStart = performance.now();
 
-        // Async snap calculation (non-blocking)
-        getLayoutEngine().then((layoutEngine) => {
-          let snapX = rawX;
-          let snapY = rawY;
-          let activeGuidesX: number[] = [];
-          let activeGuidesY: number[] = [];
+        getWasmLayoutEngine().then((layoutEngine) => {
+          const snapResult = calculateComponentSnap(
+            layoutEngine,
+            data.id || 'new',
+            rawX,
+            rawY,
+            width,
+            height,
+            false
+          );
 
-          let fullSnap: WasmFullSnapResult | null = null;
-          try {
-            fullSnap = layoutEngine.calculateSnap(
-              data.id || 'new',
-              rawX,
-              rawY,
-              width,
-              height,
-              SNAP_THRESHOLD_MM,
-              data.zone
-            ) as WasmFullSnapResult | null;
-          } catch {
-            // Fall through to JS
-          }
+          const snapX = snapResult.snappedX;
+          const snapY = snapResult.snappedY;
+          const activeGuidesX = snapResult.activeGuidesX;
+          const activeGuidesY = snapResult.activeGuidesY;
+          const spacingIndicators = snapResult.spacingIndicators;
 
-          let spacingIndicators: WasmSpacingIndicator[] = [];
-
-          if (fullSnap) {
-            const movedX = Math.abs(fullSnap.snapped_x - rawX);
-            const movedY = Math.abs(fullSnap.snapped_y - rawY);
-            if (movedX < SNAP_THRESHOLD_MM || movedY < SNAP_THRESHOLD_MM) {
-              snapX = fullSnap.snapped_x;
-              snapY = fullSnap.snapped_y;
-              activeGuidesX = fullSnap.guides_x;
-              activeGuidesY = fullSnap.guides_y;
-              spacingIndicators = fullSnap.spacing_indicators;
-            }
-          }
-
-          // ✅ Cache snap result for reuse
           cache.lastSnapResult = {
             x: snapX,
             y: snapY,
@@ -421,10 +312,8 @@ export const DragMonitor = memo(function DragMonitor() {
             spacingIndicators,
           };
 
-          // ✅ Publish snapped values synchronously for drop handlers
           dragSnapState.setSnapped(snapX, snapY);
 
-          // Apply snap offset
           const snapOffsetX = LayoutEngine.mmToPx(snapX - rawX);
           const snapOffsetY = LayoutEngine.mmToPx(snapY - rawY);
 
@@ -440,7 +329,6 @@ export const DragMonitor = memo(function DragMonitor() {
             spacingIndicators
           );
 
-          // Performance tracking
           if (ENABLE_PERF_MONITORING) {
             const perfEnd = performance.now();
             const calcTime = perfEnd - perfStart;
@@ -456,7 +344,6 @@ export const DragMonitor = memo(function DragMonitor() {
             }
           }
 
-          // Minimal store update (throttled)
           requestAnimationFrame(() => {
             useDesignerStore.getState().setDragState({
               currentX: snapX,
@@ -508,7 +395,6 @@ export const DragMonitor = memo(function DragMonitor() {
             pill.innerText = `${Math.round(x)}, ${Math.round(y)}mm`;
           }
 
-          // Render spacing indicators using TransientOverlay's DOM structure
           const sides = ['left', 'right', 'top', 'bottom'] as const;
           const activeIndicators = new Map(indicators.map((ind) => [ind.side, ind]));
           for (const side of sides) {
@@ -554,7 +440,6 @@ export const DragMonitor = memo(function DragMonitor() {
       onDrop: ({ source }) => {
         const _data = source.data as unknown as DragSourceData;
 
-        // Clean up visuals
         document.body.classList.remove('is-dragging-components');
         const root = document.documentElement;
 
@@ -570,14 +455,12 @@ export const DragMonitor = memo(function DragMonitor() {
           }
         });
 
-        // Reset drag state
         useDesignerStore.getState().setDragState({
           isDragging: false,
           draggedComponentId: null,
           activePageId: null,
         });
 
-        // Reset cache
         dragRef.current.containerRect = null;
         dragRef.current.containerElement = null;
         dragRef.current.pageOffsets = [];

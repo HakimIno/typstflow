@@ -9,10 +9,18 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useResizable } from '@/hooks/use-resizable';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
-import { SnapEngine } from '@/lib/engine/snap-engine';
+import {
+  SNAP_PAGE_RADIUS,
+  calculateComponentSnap,
+  getSnapPageRange,
+  loadWasmSnapNodes,
+  reloadWasmSnapNodes,
+  toPageLocalGuides,
+  toPageLocalSpacingIndicators,
+} from '@/lib/engine/wasm-snap';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
-import { parseTypstUnit } from '@/lib/utils/units';
 import { detectZoneAtPoint, isDifferentZone } from '@/lib/utils/zone-detector';
+import type { WasmLayoutEngine } from '@/lib/wasm-layout-engine';
 import { ComponentPreview } from '../component-preview';
 import { ActionBar } from './ActionBar';
 import { EditorOverlay } from './EditorOverlay';
@@ -173,7 +181,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     grabOffsetYmm: number;
     hasStartedDrag: boolean;
     initialPositions: Map<string, { x: number; y: number; absY: number; element: HTMLElement }>;
-    snapTargets: { x: number; y: number; width: number; height: number }[];
+    wasmEngine: WasmLayoutEngine | null;
     primaryCompWidth: number;
     primaryCompHeight: number;
     lastSnappedX: number;
@@ -189,7 +197,6 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     lastSnapClientY: number;
     lastSnap: { x: number; y: number; guides: { vertical: number[]; horizontal: number[] } } | null;
     lastSpacingIndicators: any[] | null;
-    cachedSnapPoints?: { x: any[]; y: any[] };
     // Absolute page y at drag start = zone-local y + zone offset (avoids coordinate mismatch with snap.y)
     initialAbsoluteY: number;
   } | null>(null);
@@ -234,7 +241,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         idsToDrag = [componentId];
       }
 
-      const { width: pW, height: pH } = getPaperDimensions(
+      const { height: pH } = getPaperDimensions(
         store.schema.page.size,
         store.schema.page.orientation
       );
@@ -275,61 +282,13 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       const grabXpx = (e.clientX - rect.left) / currentZoom;
       const grabYpx = (e.clientY - rect.top) / currentZoom;
 
-      const snapTargets: { x: number; y: number; width: number; height: number }[] = [];
-      const targetPageId = pageId || store.schema.pages[0]?.id;
-      const page = store.schema.pages.find((p) => p.id === targetPageId);
-      if (page) {
-        const bodyOffset = LayoutEngine.calculateZoneOffset('body', store.schema, targetPageId);
-        for (const c of page.body.components) {
-          if (!idsToDrag.includes(c.id)) {
-            snapTargets.push({
-              x: c.x || 0,
-              y: (c.y || 0) + bodyOffset,
-              width: c.width || 40,
-              height: c.height || 10,
-            });
-          }
-        }
-        const hOffset = LayoutEngine.calculateZoneOffset('header', store.schema, targetPageId);
-        for (const c of store.schema.zones.header.components) {
-          if (!idsToDrag.includes(c.id)) {
-            snapTargets.push({
-              x: c.x || 0,
-              y: (c.y || 0) + hOffset,
-              width: c.width || 40,
-              height: c.height || 10,
-            });
-          }
-        }
-        const fOffset = LayoutEngine.calculateZoneOffset('footer', store.schema, targetPageId);
-        for (const c of store.schema.zones.footer.components) {
-          if (!idsToDrag.includes(c.id)) {
-            snapTargets.push({
-              x: c.x || 0,
-              y: (c.y || 0) + fOffset,
-              width: c.width || 40,
-              height: c.height || 10,
-            });
-          }
-        }
-
-        const mT = parseTypstUnit(store.schema.page.margin.top);
-        const mB = parseTypstUnit(store.schema.page.margin.bottom);
-        const mL = parseTypstUnit(store.schema.page.margin.left);
-        const mR = parseTypstUnit(store.schema.page.margin.right);
-
-        // Margin target
-        snapTargets.push({ x: mL, y: mT, width: pW - mL - mR, height: pH - mT - mB });
-        // Page edges
-        snapTargets.push({ x: 0, y: 0, width: pW, height: pH });
-      }
-
       const grabOffsetXmm = LayoutEngine.pxToMm(grabXpx);
       const grabOffsetYmm = LayoutEngine.pxToMm(grabYpx);
       const cachedDragOffsetXpx = LayoutEngine.mmToPx(grabOffsetXmm) * currentZoom;
       const cachedDragOffsetYpx = LayoutEngine.mmToPx(grabOffsetYmm) * currentZoom;
 
       // targetPageId is already declared above (used for snap targets)
+      const targetPageId = pageId || store.schema.pages[0]?.id;
       const paperContainerEl = document.querySelector<HTMLElement>(
         targetPageId
           ? `[data-paper-container][data-page-id="${targetPageId}"]`
@@ -341,6 +300,12 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       // Match the document-absolute coordinate space: rawY + pageIndex * pageHeight
       const primaryPageIdx = pageId ? store.schema.pages.findIndex((p) => p.id === pageId) : 0;
       const primaryPageAbsOffset = Math.max(0, primaryPageIdx) * pH;
+      const { pageStartIdx, pageEndIdx } = getSnapPageRange(
+        Math.max(0, primaryPageIdx),
+        store.schema.pages.length,
+        SNAP_PAGE_RADIUS
+      );
+
       dragStateRef.current = {
         isActive: true,
         startX: e.clientX,
@@ -351,7 +316,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         grabOffsetYmm,
         hasStartedDrag: false,
         initialPositions,
-        snapTargets,
+        wasmEngine: null,
         primaryCompWidth: component.width || 40,
         primaryCompHeight: component.height || 10,
         lastSnappedX: component.x || 0,
@@ -365,14 +330,21 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         lastSnapClientY: e.clientY,
         lastSnap: null,
         lastSpacingIndicators: null,
-        cachedSnapPoints: SnapEngine.generateSnapPoints(
-          store.schema,
-          store.selectedComponentIds,
-          pageId || undefined,
-          store.manualGuides
-        ),
         initialAbsoluteY: (component.y || 0) + zoneOffset + primaryPageAbsOffset,
       };
+
+      loadWasmSnapNodes(store.schema, {
+        excludeIds: idsToDrag,
+        pageStartIdx,
+        pageEndIdx,
+        manualGuides: store.manualGuides,
+      })
+        .then((engine) => {
+          if (dragStateRef.current?.isActive) {
+            dragStateRef.current.wasmEngine = engine;
+          }
+        })
+        .catch(() => {});
 
       const pageWrapper = element.closest('[data-page-wrapper]');
       if (pageWrapper) {
@@ -426,23 +398,22 @@ export const ComponentWrapper = memo(function ComponentWrapper({
               dragState.activePageId = newPageId;
               dragState.paperContainerEl = paperAtPoint;
               dragState.scrollParentEl = paperAtPoint.closest<HTMLElement>('.overflow-auto');
-              // Refresh snap points for the new page context
-              dragState.cachedSnapPoints = SnapEngine.generateSnapPoints(
-                store.schema,
-                componentId,
-                newPageId,
-                store.manualGuides
-              );
-            }
-          }
 
-          if (!dragState.cachedSnapPoints) {
-            dragState.cachedSnapPoints = SnapEngine.generateSnapPoints(
-              store.schema,
-              componentId,
-              dragState.activePageId || undefined,
-              store.manualGuides
-            );
+              if (dragState.wasmEngine) {
+                const newPageIdx = store.schema.pages.findIndex((p) => p.id === newPageId);
+                const { pageStartIdx, pageEndIdx } = getSnapPageRange(
+                  Math.max(0, newPageIdx),
+                  store.schema.pages.length,
+                  SNAP_PAGE_RADIUS
+                );
+                reloadWasmSnapNodes(dragState.wasmEngine, store.schema, {
+                  excludeIds: store.selectedComponentIds,
+                  pageStartIdx,
+                  pageEndIdx,
+                  manualGuides: store.manualGuides,
+                });
+              }
+            }
           }
 
           // Use cached element refs — avoids document.querySelector on every frame
@@ -484,31 +455,37 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
           let snap = dragState.lastSnap;
           if (movedForSnap || !snap) {
-            const selectedIds = store.selectedComponentIds;
-            const snapResult = SnapEngine.calculateSnap(
-              absRawX,
-              absRawY,
-              dragState.primaryCompWidth,
-              dragState.primaryCompHeight,
-              selectedIds,
-              store.schema,
-              event.altKey,
-              dragState.activePageId || undefined,
-              dragState.cachedSnapPoints
-            );
+            if (dragState.wasmEngine) {
+              const snapResult = calculateComponentSnap(
+                dragState.wasmEngine,
+                componentId,
+                absRawX,
+                absRawY,
+                dragState.primaryCompWidth,
+                dragState.primaryCompHeight,
+                event.altKey
+              );
 
-            // Map SnapEngine.SnapResult to our expected format
-            snap = {
-              x: snapResult.snappedX,
-              y: snapResult.snappedY,
-              guides: {
-                vertical: snapResult.activeGuidesX,
-                horizontal: snapResult.activeGuidesY,
-              },
-            };
+              snap = {
+                x: snapResult.snappedX,
+                y: snapResult.snappedY,
+                guides: {
+                  vertical: snapResult.activeGuidesX,
+                  horizontal: snapResult.activeGuidesY,
+                },
+              };
+
+              dragState.lastSpacingIndicators = snapResult.spacingIndicators;
+            } else {
+              snap = {
+                x: absRawX,
+                y: absRawY,
+                guides: { vertical: [], horizontal: [] },
+              };
+              dragState.lastSpacingIndicators = [];
+            }
 
             dragState.lastSnap = snap;
-            dragState.lastSpacingIndicators = snapResult.spacingIndicators;
             dragState.lastSnapClientX = viewportX;
             dragState.lastSnapClientY = viewportY;
           }
@@ -538,6 +515,16 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             toolbar.style.setProperty('--toolbar-drag-dy', `${ty * currentZoom}px`);
           }
 
+          const pageLocalGuides = toPageLocalGuides(
+            snap.guides.vertical,
+            snap.guides.horizontal,
+            pageAbsOffsetMM
+          );
+          const pageLocalSpacing = toPageLocalSpacingIndicators(
+            dragState.lastSpacingIndicators || [],
+            pageAbsOffsetMM
+          );
+
           // Single store update per frame (Standardized to absolute mm!)
           store.setDragState({
             isDragging: true,
@@ -545,8 +532,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             currentY: snap.y,
             lastSnappedX: snap.x,
             lastSnappedY: snap.y,
-            activeGuides: snap.guides,
-            spacingIndicators: dragState.lastSpacingIndicators || [],
+            activeGuides: pageLocalGuides,
+            spacingIndicators: pageLocalSpacing,
             activePageId: dragState.activePageId,
           });
           // Broadcast position so flow-mode zones can show row highlight
