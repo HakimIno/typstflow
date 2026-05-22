@@ -69,140 +69,137 @@ export const Ruler = memo(
       [isHorizontal]
     );
 
-    const handlePointerMove = useCallback(
-      (e: React.PointerEvent<HTMLDivElement>) => {
-        const drag = dragRef.current;
-        if (!drag) return;
+    const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      if (!drag) return;
 
-        if (
-          !drag.moved &&
-          Math.abs(e.clientX - drag.startX) < 3 &&
-          Math.abs(e.clientY - drag.startY) < 3
-        ) {
-          return;
-        }
+      if (
+        !drag.moved &&
+        Math.abs(e.clientX - drag.startX) < 3 &&
+        Math.abs(e.clientY - drag.startY) < 3
+      ) {
+        return;
+      }
 
-        drag.moved = true;
+      drag.moved = true;
 
-        // Find the paper container under the pointer
-        const elements = document.elementsFromPoint(e.clientX, e.clientY);
-        let paper = elements.find((el) => el.hasAttribute('data-paper-container')) as HTMLElement | null;
-        if (!paper) {
-          paper = document.querySelector('[data-paper-container]') as HTMLElement | null;
-        }
+      // Find the paper container under the pointer
+      const elements = document.elementsFromPoint(e.clientX, e.clientY);
+      let paper = elements.find((el) =>
+        el.hasAttribute('data-paper-container')
+      ) as HTMLElement | null;
+      if (!paper) {
+        paper = document.querySelector('[data-paper-container]') as HTMLElement | null;
+      }
 
-        if (!paper) return;
+      if (!paper) return;
 
-        const rect = paper.getBoundingClientRect();
-        const zoomVal = Number.parseFloat(paper.dataset.zoom || '1');
-        const { schema } = useDesignerStore.getState();
-        const { width, height } = getPaperDimensions(schema.page.size, schema.page.orientation);
+      const rect = paper.getBoundingClientRect();
+      const zoomVal = Number.parseFloat(paper.dataset.zoom || '1');
+      const { schema } = useDesignerStore.getState();
+      const { width, height } = getPaperDimensions(schema.page.size, schema.page.orientation);
 
-        let clamped = 0;
+      let clamped = 0;
+      if (drag.axis === 'horizontal') {
+        // Dragging down from top ruler -> horizontal line (Y coordinate)
+        const mm = LayoutEngine.snap(LayoutEngine.pxToMm((e.clientY - rect.top) / zoomVal), 1);
+        clamped = Math.max(0, Math.min(height, mm));
+      } else {
+        // Dragging right from left ruler -> vertical line (X coordinate)
+        const mm = LayoutEngine.snap(LayoutEngine.pxToMm((e.clientX - rect.left) / zoomVal), 1);
+        clamped = Math.max(0, Math.min(width, mm));
+      }
+
+      drag.currentValue = clamped;
+
+      // Manage temporary DOM indicator
+      let tempLine = document.getElementById('temp-ruler-guide');
+      if (!tempLine) {
+        tempLine = document.createElement('div');
+        tempLine.id = 'temp-ruler-guide';
+        tempLine.className = 'absolute pointer-events-none z-[38] overflow-visible';
+
+        const innerLine = document.createElement('div');
+        innerLine.className = 'absolute border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]';
+
+        const badge = document.createElement('div');
+        badge.id = 'temp-ruler-guide-badge';
+        badge.className =
+          'absolute bg-blue-600 text-[8px] font-bold text-white px-1 py-0.5 rounded shadow-md whitespace-nowrap z-10';
+
         if (drag.axis === 'horizontal') {
-          // Dragging down from top ruler -> horizontal line (Y coordinate)
-          const mm = LayoutEngine.snap(LayoutEngine.pxToMm((e.clientY - rect.top) / zoomVal), 1);
-          clamped = Math.max(0, Math.min(height, mm));
+          tempLine.style.left = '0';
+          tempLine.style.right = '0';
+          tempLine.style.height = '6px';
+          tempLine.style.marginTop = '-3px';
+          tempLine.style.cursor = 'row-resize';
+
+          innerLine.className += ' absolute left-0 right-0 top-1/2 -translate-y-1/2 border-t';
+          innerLine.style.height = '1px';
+
+          badge.style.left = '12px';
+          badge.style.top = '6px';
         } else {
-          // Dragging right from left ruler -> vertical line (X coordinate)
-          const mm = LayoutEngine.snap(LayoutEngine.pxToMm((e.clientX - rect.left) / zoomVal), 1);
-          clamped = Math.max(0, Math.min(width, mm));
+          tempLine.style.top = '0';
+          tempLine.style.bottom = '0';
+          tempLine.style.width = '6px';
+          tempLine.style.marginLeft = '-3px';
+          tempLine.style.cursor = 'col-resize';
+
+          innerLine.className += ' absolute top-0 bottom-0 left-1/2 -translate-x-1/2 border-l';
+          innerLine.style.width = '1px';
+
+          badge.style.top = '12px';
+          badge.style.left = '6px';
         }
 
-        drag.currentValue = clamped;
+        tempLine.appendChild(innerLine);
+        tempLine.appendChild(badge);
+      }
 
-        // Manage temporary DOM indicator
-        let tempLine = document.getElementById('temp-ruler-guide');
-        if (!tempLine) {
-          tempLine = document.createElement('div');
-          tempLine.id = 'temp-ruler-guide';
-          tempLine.className = 'absolute pointer-events-none z-[38] overflow-visible';
-          
-          const innerLine = document.createElement('div');
-          innerLine.className = 'absolute border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]';
-          
-          const badge = document.createElement('div');
-          badge.id = 'temp-ruler-guide-badge';
-          badge.className = 'absolute bg-blue-600 text-[8px] font-bold text-white px-1 py-0.5 rounded shadow-md whitespace-nowrap z-10';
+      // If the paper container has changed, move the element
+      if (drag.paperContainer !== paper) {
+        if (tempLine.parentNode) {
+          tempLine.parentNode.removeChild(tempLine);
+        }
+        paper.appendChild(tempLine);
+        drag.paperContainer = paper;
+      }
 
-          if (drag.axis === 'horizontal') {
-            tempLine.style.left = '0';
-            tempLine.style.right = '0';
-            tempLine.style.height = '6px';
-            tempLine.style.marginTop = '-3px';
-            tempLine.style.cursor = 'row-resize';
+      // Update position and badge text
+      if (drag.axis === 'horizontal') {
+        tempLine.style.top = `${LayoutEngine.mmToPx(clamped)}px`;
+      } else {
+        tempLine.style.left = `${LayoutEngine.mmToPx(clamped)}px`;
+      }
 
-            innerLine.className += ' absolute left-0 right-0 top-1/2 -translate-y-1/2 border-t';
-            innerLine.style.height = '1px';
+      const badge = document.getElementById('temp-ruler-guide-badge');
+      if (badge) {
+        badge.textContent = `${clamped.toFixed(1)}mm`;
+      }
+    }, []);
 
-            badge.style.left = '12px';
-            badge.style.top = '6px';
-          } else {
-            tempLine.style.top = '0';
-            tempLine.style.bottom = '0';
-            tempLine.style.width = '6px';
-            tempLine.style.marginLeft = '-3px';
-            tempLine.style.cursor = 'col-resize';
+    const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      if (!drag) return;
 
-            innerLine.className += ' absolute top-0 bottom-0 left-1/2 -translate-x-1/2 border-l';
-            innerLine.style.width = '1px';
-
-            badge.style.top = '12px';
-            badge.style.left = '6px';
-          }
-
-          tempLine.appendChild(innerLine);
-          tempLine.appendChild(badge);
+      if (drag.moved) {
+        // Remove the temporary guide from DOM
+        const tempLine = document.getElementById('temp-ruler-guide');
+        if (tempLine?.parentNode) {
+          tempLine.parentNode.removeChild(tempLine);
         }
 
-        // If the paper container has changed, move the element
-        if (drag.paperContainer !== paper) {
-          if (tempLine.parentNode) {
-            tempLine.parentNode.removeChild(tempLine);
-          }
-          paper.appendChild(tempLine);
-          drag.paperContainer = paper;
-        }
+        // Add the manual guide permanently to the store
+        const { addManualGuide } = useDesignerStore.getState();
+        addManualGuide(drag.axis, drag.currentValue);
+      }
 
-        // Update position and badge text
-        if (drag.axis === 'horizontal') {
-          tempLine.style.top = `${LayoutEngine.mmToPx(clamped)}px`;
-        } else {
-          tempLine.style.left = `${LayoutEngine.mmToPx(clamped)}px`;
-        }
-
-        const badge = document.getElementById('temp-ruler-guide-badge');
-        if (badge) {
-          badge.textContent = `${clamped.toFixed(1)}mm`;
-        }
-      },
-      []
-    );
-
-    const handlePointerUp = useCallback(
-      (e: React.PointerEvent<HTMLDivElement>) => {
-        const drag = dragRef.current;
-        if (!drag) return;
-
-        if (drag.moved) {
-          // Remove the temporary guide from DOM
-          const tempLine = document.getElementById('temp-ruler-guide');
-          if (tempLine && tempLine.parentNode) {
-            tempLine.parentNode.removeChild(tempLine);
-          }
-
-          // Add the manual guide permanently to the store
-          const { addManualGuide } = useDesignerStore.getState();
-          addManualGuide(drag.axis, drag.currentValue);
-        }
-
-        try {
-          (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-        } catch (_err) {}
-        dragRef.current = null;
-      },
-      []
-    );
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch (_err) {}
+      dragRef.current = null;
+    }, []);
 
     const handleDoubleClick = useCallback(
       (e: React.MouseEvent<HTMLDivElement>) => {

@@ -1103,7 +1103,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         </div>
       )}
 
-      {isSelected && !isLocked && !isTableSheetMode && <ResizeHandles onResizeStart={handleResizeStart} />}
+      {isSelected && !isLocked && !isTableSheetMode && (
+        <ResizeHandles onResizeStart={handleResizeStart} />
+      )}
     </div>
   );
 });

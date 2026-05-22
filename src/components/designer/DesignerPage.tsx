@@ -50,19 +50,12 @@ export const DesignerPage = memo(function DesignerPage({ pageId, pIdx }: Designe
       }}
       className="relative group"
     >
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Focus click handler is for visual designer focus, keyboard focus is handled at canvas level */}
       <div
         data-paper-container
         data-page-id={pageId}
         data-zoom={zoom}
         onClick={() => setActivePage(pageId)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setActivePage(pageId);
-          }
-        }}
-        role="button"
-        tabIndex={0}
         className={clsx(
           'bg-white border border-slate-300 absolute top-0 left-0 shadow-2xl origin-top-left flex-shrink-0 rounded-[4px] contain-page high-perf-gpu',
           activePageId === pageId && 'ring-2 ring-[var(--accent)] ring-offset-2'

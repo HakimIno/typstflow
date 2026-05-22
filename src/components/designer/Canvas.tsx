@@ -167,6 +167,7 @@ export const Canvas = memo(function Canvas() {
   }, [scrollToPageId, pageIds, pageSize, pageOrientation, zoom, canvasLayout, setScrollToPageId]);
 
   // Phase 2: After visibleRange updates the page is now in the DOM — correct with exact element position
+  // biome-ignore lint/correctness/useExhaustiveDependencies: visibleRange trigger is needed to wait for virtualized page element to mount in DOM
   useEffect(() => {
     if (!pendingScrollRef.current || !scrollRef.current) return;
     const id = pendingScrollRef.current;
