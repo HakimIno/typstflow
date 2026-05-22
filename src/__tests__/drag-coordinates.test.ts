@@ -524,6 +524,38 @@ describe('Drag delta: component movement equals mouse delta in logical px', () =
     // ty is in logical pixels; visual display = ty * zoom (inside scaled container)
     expect(ty * zoom).toBeCloseTo(deltaVisualPx, 2);
   });
+
+  it('visual movement = ty * zoom = delta_visual_px (zoom=0.5)', () => {
+    const schema = makeSchema();
+    const zoneOffset = LayoutEngine.calculateZoneOffset('body', schema, 'page-1');
+    const initialAbsoluteY = 15 + zoneOffset;
+    const grabMm = { x: 5, y: 2 };
+    const zoom = 0.5;
+
+    const context = makePaperContext(PAPER_LEFT, PAPER_TOP, zoom);
+    const { dragOffsetXpx, dragOffsetYpx } = computeDragOffset(grabMm, zoom);
+    const { clientX: startX, clientY: startY } = componentViewportPos(
+      PAPER_LEFT,
+      PAPER_TOP,
+      30,
+      initialAbsoluteY,
+      grabMm,
+      zoom
+    );
+
+    const moveMm = 12;
+    const deltaVisualPx = LayoutEngine.mmToPx(moveMm) * zoom;
+    const pos = LayoutEngine.calculateDropPosition(
+      startX,
+      startY + deltaVisualPx,
+      context,
+      dragOffsetXpx,
+      dragOffsetYpx
+    );
+    const ty = LayoutEngine.mmToPx(pos.rawY - initialAbsoluteY);
+
+    expect(ty * zoom).toBeCloseTo(deltaVisualPx, 2);
+  });
 });
 
 // ─── Drop position formula ────────────────────────────────────────────────────

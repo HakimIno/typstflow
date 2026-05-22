@@ -499,9 +499,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           const dxMM = snap.x - primaryInitial.x;
           const dyMM = snap.y - primaryInitial.absY;
 
-          // Convert MM delta to screen PX delta for DOM transform
-          const tx = LayoutEngine.mmToPx(dxMM) / currentZoom;
-          const ty = LayoutEngine.mmToPx(dyMM) / currentZoom;
+          // Local px inside the scaled paper — parent scale(zoom) converts to screen px.
+          const tx = LayoutEngine.mmToPx(dxMM);
+          const ty = LayoutEngine.mmToPx(dyMM);
 
           for (const [, pos] of dragState.initialPositions) {
             pos.element.style.transform = `translate(${tx}px, ${ty}px)`;
