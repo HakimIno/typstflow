@@ -76,12 +76,16 @@ export async function GET() {
             );
             const parsedFamily = readFontFamily(arrayBuffer);
             if (parsedFamily && parsedFamily.trim() && parsedFamily.trim() !== f.family) {
-              console.log(`[API Custom Fonts] Self-healed family name mismatch: "${f.family}" -> "${parsedFamily.trim()}"`);
+              console.log(
+                `[API Custom Fonts] Self-healed family name mismatch: "${f.family}" -> "${parsedFamily.trim()}"`
+              );
               changed = true;
               updated.family = parsedFamily.trim();
             }
           } catch (e: any) {
-            console.warn(`[API Custom Fonts] Failed to self-heal family name for ${f.fileName}: ${e.message}`);
+            console.warn(
+              `[API Custom Fonts] Failed to self-heal family name for ${f.fileName}: ${e.message}`
+            );
           }
 
           healed.push(updated);

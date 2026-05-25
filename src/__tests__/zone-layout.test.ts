@@ -18,7 +18,10 @@ const schema = {
       components: [],
     },
   },
-  pages: [{ id: 'page-1', body: { components: [] } }, { id: 'page-2', body: { components: [] } }],
+  pages: [
+    { id: 'page-1', body: { components: [] } },
+    { id: 'page-2', body: { components: [] } },
+  ],
   groups: [],
 };
 

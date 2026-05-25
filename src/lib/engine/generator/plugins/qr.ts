@@ -12,6 +12,14 @@ export const qrPlugin: ComponentPlugin<QRComponent> = {
     const w = comp.width ?? 20;
     const body = `#qrcode("${escapeStringLiteral(val)}", width: ${w}mm)`;
 
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth, ctx.pretty);
+    return wrapPlacement(
+      comp,
+      body,
+      ctx.offsetX,
+      ctx.offsetY,
+      ctx.flowMode,
+      ctx.fillWidth,
+      ctx.pretty
+    );
   },
 };

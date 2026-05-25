@@ -123,10 +123,7 @@ export const ToggleChipGroup = ({
 );
 
 /** Shared visual — used by both Checkbox and CheckboxField to stay DRY. */
-const CheckboxIndicator = ({
-  checked,
-  className,
-}: { checked: boolean; className?: string }) => (
+const CheckboxIndicator = ({ checked, className }: { checked: boolean; className?: string }) => (
   <div
     className={clsx(
       'w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center shrink-0 transition-all',

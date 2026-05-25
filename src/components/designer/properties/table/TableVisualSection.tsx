@@ -36,7 +36,9 @@ export const TableVisualSection = ({ component }: Props) => {
   };
 
   return (
-    <div className={`${PROPERTY_STACK_CLASS} animate-in fade-in slide-in-from-right-1 duration-200`}>
+    <div
+      className={`${PROPERTY_STACK_CLASS} animate-in fade-in slide-in-from-right-1 duration-200`}
+    >
       {/* 1. Borders & Spacing */}
       <CollapsibleSection label="Borders & Spacing">
         <div className="space-y-2.5">

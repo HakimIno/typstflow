@@ -1,0 +1,396 @@
+{
+  "schema": {
+    "page": {
+      "size": "A4",
+      "orientation": "portrait",
+      "margin": {
+        "top": "5mm",
+        "bottom": "5mm",
+        "left": "5mm",
+        "right": "5mm"
+      }
+    },
+    "zones": {
+      "header": {
+        "id": "header",
+        "components": [
+          {
+            "id": "header-bg",
+            "type": "rectangle",
+            "x": 5,
+            "y": 0,
+            "width": 199.10000000000002,
+            "height": 42,
+            "fill": "#f8fafc",
+            "strokeColor": "#e2e8f0",
+            "strokeWidth": "0.5pt",
+            "radius": "2mm"
+          },
+          {
+            "id": "accent-bar",
+            "type": "line",
+            "x": 5,
+            "y": 0,
+            "width": 198.3,
+            "height": 3,
+            "orientation": "horizontal",
+            "thickness": "5pt",
+            "color": "#2563eb"
+          },
+          {
+            "id": "logo",
+            "type": "text",
+            "x": 9,
+            "y": 5,
+            "width": 75,
+            "height": 8,
+            "content": "TYPSTFLOW",
+            "style": {
+              "fontSize": 18,
+              "fontWeight": "bold",
+              "color": "#2563eb",
+              "letterSpacing": "0.04em"
+            },
+            "align": "left"
+          },
+          {
+            "id": "company-info",
+            "type": "text",
+            "x": 9,
+            "y": 14,
+            "width": 90,
+            "height": 18,
+            "content": "123 ถนนสุขุมวิท แขวงคลองตัน เขตวัฒนา\nกรุงเทพมหานคร 10110\nTel: 02-123-4567  ·  info@typstflow.com",
+            "style": {
+              "fontSize": 8,
+              "color": "#64748b",
+              "lineHeight": 1.45
+            },
+            "align": "left"
+          },
+          {
+            "id": "title-badge-bg",
+            "type": "line",
+            "x": 159,
+            "y": 5,
+            "width": 41,
+            "height": 10,
+            "orientation": "horizontal",
+            "thickness": "10mm",
+            "color": "#2563eb"
+          },
+          {
+            "id": "title",
+            "type": "text",
+            "x": 159,
+            "y": 5.99,
+            "width": 41,
+            "height": 8,
+            "content": "INVOICE",
+            "style": {
+              "fontSize": 14,
+              "fontWeight": "bold",
+              "color": "#ffffff",
+              "letterSpacing": "0.08em"
+            },
+            "align": "center"
+          },
+          {
+            "id": "title-sub",
+            "type": "text",
+            "x": 159,
+            "y": 15,
+            "width": 41,
+            "height": 5,
+            "content": "ใบแจ้งหนี้",
+            "style": {
+              "fontSize": 8,
+              "color": "#94a3b8"
+            },
+            "align": "center"
+          },
+          {
+            "id": "inv-val",
+            "type": "text",
+            "x": 144,
+            "y": 30,
+            "width": 56,
+            "height": 8,
+            "content": "{{invoiceNo}}",
+            "style": {
+              "fontSize": 12,
+              "fontWeight": "bold",
+              "color": "#1e293b"
+            },
+            "align": "right"
+          },
+          {
+            "id": "inv-label",
+            "type": "text",
+            "x": 144,
+            "y": 25,
+            "width": 56,
+            "height": 5,
+            "content": "INVOICE NO.",
+            "style": {
+              "fontSize": 7,
+              "fontWeight": "bold",
+              "color": "#64748b",
+              "letterSpacing": "0.06em"
+            },
+            "align": "right"
+          }
+        ],
+        "minHeight": "48mm"
+      },
+      "footer": {
+        "id": "footer",
+        "components": [
+          {
+            "id": "footer-divider",
+            "type": "line",
+            "x": 5,
+            "y": 0,
+            "width": 199.10000000000002,
+            "height": 1,
+            "orientation": "horizontal",
+            "thickness": "0.75pt",
+            "color": "#cbd5e1"
+          },
+          {
+            "id": "footer-bg",
+            "type": "rectangle",
+            "x": 5,
+            "y": 3,
+            "width": 199.10000000000002,
+            "height": 38,
+            "fill": "#f8fafc",
+            "strokeColor": "#e2e8f0",
+            "strokeWidth": "0.5pt",
+            "radius": "2mm"
+          },
+          {
+            "id": "terms-label",
+            "type": "text",
+            "x": 9,
+            "y": 6,
+            "width": 60,
+            "height": 5,
+            "content": "PAYMENT TERMS",
+            "style": {
+              "fontSize": 7.5,
+              "fontWeight": "bold",
+              "color": "#2563eb",
+              "letterSpacing": "0.08em"
+            }
+          },
+          {
+            "id": "terms-text",
+            "type": "text",
+            "x": 9,
+            "y": 12,
+            "width": 95,
+            "height": 22,
+            "content": "กรุณาชำระภายใน 30 วันนับจากวันที่ออกใบแจ้งหนี้\nโอนเงินเข้าบัญชี: ธนาคารกสิกรไทย 123-4-56789-0\nชื่อบัญชี: บริษัท TypstFlow จำกัด",
+            "style": {
+              "fontSize": 8,
+              "color": "#475569",
+              "lineHeight": 1.45
+            }
+          },
+          {
+            "id": "sig-label",
+            "type": "text",
+            "x": 9,
+            "y": 34,
+            "width": 55,
+            "height": 5,
+            "content": "Authorized Signature",
+            "style": {
+              "fontSize": 7.5,
+              "color": "#94a3b8"
+            }
+          },
+          {
+            "id": "sig-line",
+            "type": "line",
+            "x": 9,
+            "y": 33,
+            "width": 55,
+            "height": 1,
+            "orientation": "horizontal",
+            "thickness": "0.5pt",
+            "color": "#cbd5e1"
+          },
+          {
+            "id": "thankyou",
+            "type": "text",
+            "x": 20.005000000000013,
+            "y": 43,
+            "width": 170,
+            "height": 5,
+            "content": "Thank you for your business!",
+            "align": "center",
+            "style": {
+              "fontSize": 9,
+              "italic": true,
+              "color": "#64748b"
+            }
+          },
+          {
+            "id": "total-val",
+            "type": "text",
+            "x": 154,
+            "y": 22.00999999999999,
+            "width": 48,
+            "height": 8,
+            "content": "{{totalAmount}}",
+            "style": {
+              "fontSize": 14,
+              "fontWeight": "bold",
+              "color": "#000000"
+            },
+            "align": "right"
+          },
+          {
+            "id": "total-label",
+            "type": "text",
+            "x": 154,
+            "y": 13.990000000000009,
+            "width": 48,
+            "height": 5,
+            "content": "TOTAL AMOUNT",
+            "style": {
+              "fontSize": 7.5,
+              "fontWeight": "bold",
+              "color": "#94a3b8",
+              "letterSpacing": "0.06em"
+            },
+            "align": "right"
+          }
+        ],
+        "minHeight": "52mm"
+      }
+    },
+    "pages": [
+      {
+        "id": "page-1",
+        "name": "Invoice Page",
+        "body": {
+          "id": "body",
+          "components": [
+            {
+              "id": "billto-bar",
+              "type": "line",
+              "x": 5,
+              "y": 0,
+              "width": 198.8,
+              "height": 6,
+              "orientation": "horizontal",
+              "thickness": "6mm",
+              "color": "#2563eb"
+            },
+            {
+              "id": "billto-label",
+              "type": "text",
+              "x": 9,
+              "y": 1.5,
+              "width": 80,
+              "height": 4,
+              "content": "BILL TO  ·  ลูกค้า",
+              "style": {
+                "fontSize": 8,
+                "fontWeight": "bold",
+                "color": "#ffffff",
+                "letterSpacing": "0.06em"
+              }
+            },
+            {
+              "id": "billto-box",
+              "type": "rectangle",
+              "x": 5,
+              "y": 6,
+              "width": 199.4,
+              "height": 26,
+              "fill": "#ffffff",
+              "strokeColor": "#e2e8f0",
+              "strokeWidth": "0.5pt"
+            },
+            {
+              "id": "cust-name",
+              "type": "text",
+              "x": 9,
+              "y": 9,
+              "width": 160,
+              "height": 7,
+              "content": "{{customer.name}}",
+              "style": {
+                "fontSize": 11,
+                "fontWeight": "bold",
+                "color": "#1e293b"
+              }
+            },
+            {
+              "id": "cust-addr",
+              "type": "text",
+              "x": 9,
+              "y": 17,
+              "width": 160,
+              "height": 12,
+              "content": "{{customer.address}}",
+              "style": {
+                "fontSize": 9,
+                "color": "#475569",
+                "lineHeight": 1.35
+              }
+            },
+            {
+              "id": "items-label",
+              "type": "text",
+              "x": 5,
+              "y": 36,
+              "width": 50,
+              "height": 5,
+              "content": "ITEMS  ·  รายการ",
+              "style": {
+                "fontSize": 7.5,
+                "fontWeight": "bold",
+                "color": "#64748b",
+                "letterSpacing": "0.08em"
+              }
+            }
+          ],
+          "minHeight": "200mm"
+        },
+        "footer": {
+          "id": "footer",
+          "minHeight": "20mm",
+          "components": []
+        }
+      }
+    ],
+    "groups": [],
+    "fonts": [
+      {
+        "family": "Sarabun",
+        "size": 10,
+        "role": "body",
+        "embedded": true
+      }
+    ],
+    "metadata": {
+      "title": "Standard Invoice",
+      "createdAt": "2026-05-25T05:40:58.107Z",
+      "updatedAt": "2026-05-25T05:40:58.107Z",
+      "author": "TypstFlow"
+    },
+    "id": "professional-invoice",
+    "name": "Standard Pro Invoice",
+    "version": "1.0.0",
+    "variables": [],
+    "dataSchema": []
+  },
+  "data": {},
+  "exportedAt": "2026-05-25T05:53:38.747Z",
+  "version": "1.0.0"
+}

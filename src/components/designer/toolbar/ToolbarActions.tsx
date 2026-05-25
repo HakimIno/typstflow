@@ -1,9 +1,10 @@
 'use client';
 
-import { exportReportPdf, type ExportProgress } from '@/lib/pdf-export';
+import { type ExportProgress, exportReportPdf } from '@/lib/pdf-export';
 import { useDesignerStore } from '@/store/designer-store';
-import { Download, FileSpreadsheet, PanelRight, Play } from 'lucide-react';
+import { Download, FileSpreadsheet, FileStack, PanelRight, Play } from 'lucide-react';
 import { memo, useState } from 'react';
+import { BatchExportModal } from './BatchExportModal';
 import { ToolbarButton } from './ToolbarButton';
 
 type ExportState = 'idle' | ExportProgress['stage'];
@@ -27,6 +28,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
   const [exportProgress, setExportProgress] = useState(0);
   const isExporting = exportState !== 'idle';
   const [isExcelExporting, setIsExcelExporting] = useState(false);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
   const handleExportExcel = async () => {
     setIsExcelExporting(true);
@@ -129,6 +131,16 @@ export const ToolbarActions = memo(function ToolbarActions() {
       </ToolbarButton>
 
       <ToolbarButton
+        icon={FileStack}
+        label="Batch PDF"
+        onClick={() => setIsBatchModalOpen(true)}
+        disabled={isExporting || isExcelExporting}
+        variant="toolbar-item"
+        title="Generate batch PDFs from CSV/Excel data"
+        className="!h-7 !px-3 opacity-80 hover:opacity-100"
+      />
+
+      <ToolbarButton
         icon={isExporting ? undefined : Play}
         label={exportLabel}
         onClick={handleExport}
@@ -141,6 +153,8 @@ export const ToolbarActions = memo(function ToolbarActions() {
           <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
         )}
       </ToolbarButton>
+
+      <BatchExportModal isOpen={isBatchModalOpen} onClose={() => setIsBatchModalOpen(false)} />
     </div>
   );
 });

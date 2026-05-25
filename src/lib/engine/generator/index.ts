@@ -78,7 +78,11 @@ export class TypstGenerator {
     for (const p of customPlugins) this.registry.register(p);
   }
 
-  generate(schema: LayoutSchema, data: Record<string, unknown>, options: GenerateOptions = {}): string {
+  generate(
+    schema: LayoutSchema,
+    data: Record<string, unknown>,
+    options: GenerateOptions = {}
+  ): string {
     const pretty = options.pretty ?? false;
     const parts: string[] = [];
 
@@ -479,7 +483,10 @@ export class TypstGenerator {
     }
 
     const separator = pretty ? '\n\n' : '';
-    return zone.components.map((comp) => renderOne(comp)).filter(Boolean).join(separator);
+    return zone.components
+      .map((comp) => renderOne(comp))
+      .filter(Boolean)
+      .join(separator);
   }
 
   private renderGroupLevel(
@@ -498,7 +505,16 @@ export class TypstGenerator {
       const parts: string[] = [];
       for (const item of items) {
         parts.push(
-          this.renderZoneComponents(schema.pages[0].body, item, global, [], 0, bodyY, schema, pretty)
+          this.renderZoneComponents(
+            schema.pages[0].body,
+            item,
+            global,
+            [],
+            0,
+            bodyY,
+            schema,
+            pretty
+          )
         );
       }
       return parts.join(pretty ? '\n\n' : '');
@@ -541,16 +557,36 @@ export class TypstGenerator {
           : `// GROUP [${group.id}] HEADER\n`
       );
       parts.push(
-        this.renderZoneComponents(group.header, firstItem, global, groupItems, 0, bodyY, schema, pretty)
+        this.renderZoneComponents(
+          group.header,
+          firstItem,
+          global,
+          groupItems,
+          0,
+          bodyY,
+          schema,
+          pretty
+        )
       );
-      parts.push(this.renderGroupLevel(schema, groups, index + 1, groupItems, global, bodyY, pretty));
+      parts.push(
+        this.renderGroupLevel(schema, groups, index + 1, groupItems, global, bodyY, pretty)
+      );
       parts.push(
         pretty
           ? `\n// --- Group · ${group.name || group.id} · ${key} · Footer ---\n\n`
           : `// GROUP [${group.id}] FOOTER\n`
       );
       parts.push(
-        this.renderZoneComponents(group.footer, firstItem, global, groupItems, 0, bodyY, schema, pretty)
+        this.renderZoneComponents(
+          group.footer,
+          firstItem,
+          global,
+          groupItems,
+          0,
+          bodyY,
+          schema,
+          pretty
+        )
       );
     }
     return parts.join('');

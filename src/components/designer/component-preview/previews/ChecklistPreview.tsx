@@ -122,9 +122,7 @@ function CheckboxMark({
     const boxBg = isOutline ? fill : color;
     return (
       <span style={{ ...base, backgroundColor: boxBg }}>
-        <span
-          style={{ display: 'block', width: '55%', height: '13%', backgroundColor: barBg }}
-        />
+        <span style={{ display: 'block', width: '55%', height: '13%', backgroundColor: barBg }} />
       </span>
     );
   }

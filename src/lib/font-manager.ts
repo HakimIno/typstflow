@@ -63,9 +63,14 @@ class FontManager {
             document.fonts.add(fontFace);
             this.registeredInBrowser.add(browserKey);
           } catch (e) {
-            console.warn(`[FontManager] Browser registration failed for cached custom ${browserKey}:`, e);
+            console.warn(
+              `[FontManager] Browser registration failed for cached custom ${browserKey}:`,
+              e
+            );
             if (cameFromCache) {
-              console.log(`[FontManager] Corrupted cache detected for ${browserKey}. Evicting from IndexedDB and retrying from server...`);
+              console.log(
+                `[FontManager] Corrupted cache detected for ${browserKey}. Evicting from IndexedDB and retrying from server...`
+              );
               await fontStorage.deleteFont(family, entry.weight);
               buffer = null; // Trigger fresh download
             } else {
@@ -95,7 +100,10 @@ class FontManager {
               document.fonts.add(fontFace);
               this.registeredInBrowser.add(browserKey);
             } catch (e) {
-              console.error(`[FontManager] Freshly downloaded font registration failed for ${browserKey}:`, e);
+              console.error(
+                `[FontManager] Freshly downloaded font registration failed for ${browserKey}:`,
+                e
+              );
               continue;
             }
 
@@ -234,7 +242,7 @@ class FontManager {
 
   async rehydrate(families: string[]): Promise<void> {
     for (const family of families) {
-      this.installFont(family).catch(() => { });
+      this.installFont(family).catch(() => {});
     }
   }
 

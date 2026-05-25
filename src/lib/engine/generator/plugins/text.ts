@@ -2,7 +2,13 @@ import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { TextComponent } from '@/types/schema';
 import { isVisible, resolveBinding } from '../binding';
 import { formatSetCall } from '../pretty';
-import { escapeStringLiteral, formatColor, formatFontFamily, formatWeight, wrapPlacement } from '../placement';
+import {
+  escapeStringLiteral,
+  formatColor,
+  formatFontFamily,
+  formatWeight,
+  wrapPlacement,
+} from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
 function applyTextTransform(s: string, transform: string | undefined): string {

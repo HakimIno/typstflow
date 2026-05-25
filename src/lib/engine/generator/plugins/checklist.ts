@@ -51,7 +51,7 @@ function cheqSymCode(
   size?: number
 ): string {
   const call = `${fn}(stroke: rgb("${stroke}"), fill: rgb("${fill}"), radius: ${radius}, style: "${checkboxStyle}")`;
-  
+
   // Wrap in text block so that it scales beautifully with text size
   const sizeArg = size !== undefined ? `size: ${size}pt, ` : '';
   return `[#text(${sizeArg}font: "Liberation Sans")[#${call}]]`;
@@ -62,7 +62,7 @@ function symStrokeAndFill(
   checkboxColor: string,
   checkboxFill: string
 ): { stroke: string; fill: string } {
-  // Always return the standard mapping. 
+  // Always return the standard mapping.
   // For checked-sym/canceled-sym: stroke controls the solid box container, fill controls the inner checkmark/dash.
   // For unchecked-sym/incomplete-sym: stroke controls the outline, fill controls the background fill.
   return { stroke: checkboxColor, fill: checkboxFill };
@@ -85,7 +85,7 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
     const checkboxFill = comp.checkboxFill ?? '#ffffff';
     const checkMark = comp.checkMark ?? 'x';
     const checkboxSize = comp.checkboxSize;
-    const resolvedCheckboxSize = checkboxSize ?? (size * 0.85);
+    const resolvedCheckboxSize = checkboxSize ?? size * 0.85;
     const checkboxShape = comp.checkboxShape ?? 'rounded';
     const checkboxStyle = comp.checkboxStyle ?? 'solid';
     const direction = comp.direction ?? 'vertical';
@@ -111,7 +111,8 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
           const lf = comp.labelField ?? 'label';
           const cf = comp.checkedField ?? 'checked';
           const obj = item as Record<string, unknown>;
-          const resolvedLabel = obj[lf] ?? obj['name'] ?? obj['title'] ?? obj['text'] ?? String(item);
+          const resolvedLabel =
+            obj[lf] ?? obj['name'] ?? obj['title'] ?? obj['text'] ?? String(item);
           return {
             label: String(resolvedLabel),
             checked: Boolean(obj[cf] ?? obj['status'] ?? obj['done'] ?? false),
@@ -174,7 +175,14 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
         const checkedFn = cheqSymFn(checkMark);
         const fn = it.checked ? checkedFn : 'my-unchecked-sym';
         const colors = symStrokeAndFill(fn, checkboxColor, checkboxFill);
-        symArg = cheqSymCode(fn, colors.stroke, colors.fill, radiusTypst, checkboxStyle, resolvedCheckboxSize);
+        symArg = cheqSymCode(
+          fn,
+          colors.stroke,
+          colors.fill,
+          radiusTypst,
+          checkboxStyle,
+          resolvedCheckboxSize
+        );
       } else {
         const char =
           listStyle === 'numbered'
@@ -195,7 +203,7 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
       return `#grid(columns: ${colsDef}, column-gutter: 0.35em, align: ${cellAlign}, ${symArgWrapped}, [${it.label}])`;
     };
 
-    // Custom pure drawing-based symbols. 
+    // Custom pure drawing-based symbols.
     // They align mathematically perfectly to the geometric center and are completely immune to custom font metrics distortion!
     const customSymDefs = `
 #let my-unchecked-sym(fill: white, stroke: rgb("#616161"), radius: .1em, style: "solid") = {
@@ -274,6 +282,14 @@ export const checklistPlugin: ComponentPlugin<ChecklistComponent> = {
       body = `${customSymDefs}${textSet}#pad(left: ${indent}mm)[#grid(\n  columns: ${gridCols},\n  gutter: ${spacing}pt,\n${cellLines}\n)]`;
     }
 
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth, ctx.pretty);
+    return wrapPlacement(
+      comp,
+      body,
+      ctx.offsetX,
+      ctx.offsetY,
+      ctx.flowMode,
+      ctx.fillWidth,
+      ctx.pretty
+    );
   },
 };

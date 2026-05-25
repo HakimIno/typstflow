@@ -29,6 +29,14 @@ export const repeaterPlugin: ComponentPlugin<RepeaterComponent> = {
     }
 
     const body = parts.join('');
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth, ctx.pretty);
+    return wrapPlacement(
+      comp,
+      body,
+      ctx.offsetX,
+      ctx.offsetY,
+      ctx.flowMode,
+      ctx.fillWidth,
+      ctx.pretty
+    );
   },
 };

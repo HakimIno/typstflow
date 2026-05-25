@@ -20,16 +20,12 @@ export const signaturePlugin: ComponentPlugin<SignatureComponent> = {
           ? ', dash: "dotted"'
           : '';
     const lineStroke =
-      lineWidthPart || dashPart
-        ? `(paint: ${lineColor}${lineWidthPart}${dashPart})`
-        : lineColor;
+      lineWidthPart || dashPart ? `(paint: ${lineColor}${lineWidthPart}${dashPart})` : lineColor;
 
     const labelSize = comp.labelStyle?.fontSize ?? 8;
     const labelWeight = formatWeight(comp.labelStyle?.fontWeight, 'regular');
     const labelColor = formatColor(comp.labelStyle?.color ?? '#000000');
-    const labelFont = comp.labelStyle?.fontFamily
-      ? `font: "${comp.labelStyle.fontFamily}", `
-      : '';
+    const labelFont = comp.labelStyle?.fontFamily ? `font: "${comp.labelStyle.fontFamily}", ` : '';
 
     const slotBlocks = slots.map((slot) => {
       // Per-slot visibility falls back to component-level defaults
@@ -62,6 +58,14 @@ export const signaturePlugin: ComponentPlugin<SignatureComponent> = {
     const cols = slots.map(() => '1fr').join(', ');
     const gutter = comp.slotSpacing ?? '5mm';
     const body = `#grid(columns: (${cols}), gutter: ${gutter}, ${slotBlocks.join(', ')})`;
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth, ctx.pretty);
+    return wrapPlacement(
+      comp,
+      body,
+      ctx.offsetX,
+      ctx.offsetY,
+      ctx.flowMode,
+      ctx.fillWidth,
+      ctx.pretty
+    );
   },
 };

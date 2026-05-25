@@ -48,15 +48,24 @@ export const TextPreview = memo(function TextPreview({
     if (!w) return 'normal';
     if (typeof w === 'number') return String(w);
     switch (w) {
-      case 'thin': return '100';
-      case 'light': return '300';
-      case 'regular': return 'normal';
-      case 'medium': return '500';
-      case 'semibold': return '600';
-      case 'bold': return 'bold';
-      case 'extrabold': return '800';
-      case 'black': return '900';
-      default: return 'normal';
+      case 'thin':
+        return '100';
+      case 'light':
+        return '300';
+      case 'regular':
+        return 'normal';
+      case 'medium':
+        return '500';
+      case 'semibold':
+        return '600';
+      case 'bold':
+        return 'bold';
+      case 'extrabold':
+        return '800';
+      case 'black':
+        return '900';
+      default:
+        return 'normal';
     }
   })();
 

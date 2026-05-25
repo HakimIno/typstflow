@@ -29,7 +29,8 @@ export const rectanglePlugin: ComponentPlugin<RectangleComponent> = {
       const style = comp.strokeStyle ?? 'solid';
       const dashPart =
         style === 'dashed' ? ', dash: "dashed"' : style === 'dotted' ? ', dash: "dotted"' : '';
-      const capPart = comp.strokeCap && comp.strokeCap !== 'butt' ? `, cap: "${comp.strokeCap}"` : '';
+      const capPart =
+        comp.strokeCap && comp.strokeCap !== 'butt' ? `, cap: "${comp.strokeCap}"` : '';
       const joinPart =
         comp.strokeJoin && comp.strokeJoin !== 'miter' ? `, join: "${comp.strokeJoin}"` : '';
       const strokeDef = `(paint: ${color}, thickness: ${thickness}${dashPart}${capPart}${joinPart})`;
@@ -46,6 +47,14 @@ export const rectanglePlugin: ComponentPlugin<RectangleComponent> = {
     const outsetPart = comp.outset ? `, outset: ${comp.outset}` : '';
 
     const body = `#rect(width: 100%, height: 100%, fill: ${fill}, stroke: ${stroke}${radiusPart}${insetPart}${outsetPart})`;
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth, ctx.pretty);
+    return wrapPlacement(
+      comp,
+      body,
+      ctx.offsetX,
+      ctx.offsetY,
+      ctx.flowMode,
+      ctx.fillWidth,
+      ctx.pretty
+    );
   },
 };

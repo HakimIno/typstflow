@@ -26,9 +26,7 @@ export function generateDocumentBanner(schema: LayoutSchema): string {
 export function formatComponentComment(comp: ComponentNode): string {
   const label = comp.name?.trim() || comp.id;
   const hint = componentContentHint(comp);
-  return hint
-    ? `// ── ${comp.type} · ${label} · ${hint} ──`
-    : `// ── ${comp.type} · ${label} ──`;
+  return hint ? `// ── ${comp.type} · ${label} · ${hint} ──` : `// ── ${comp.type} · ${label} ──`;
 }
 
 function componentContentHint(comp: ComponentNode): string | undefined {

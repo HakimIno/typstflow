@@ -590,8 +590,16 @@
       "dischargeDate": "07/30/2026",
       "symptoms": "A prescription has been written out for the patient, for an acute throat infection.",
       "treatments": [
-        { "code": "Full Check Up", "description": "Full body check up including bloodwork and vital analysis", "amount": 745 },
-        { "code": "Ear & Throat Exam", "description": "Infection check due to persistent localized inflammation", "amount": 1000 }
+        {
+          "code": "Full Check Up",
+          "description": "Full body check up including bloodwork and vital analysis",
+          "amount": 745
+        },
+        {
+          "code": "Ear & Throat Exam",
+          "description": "Infection check due to persistent localized inflammation",
+          "amount": 1000
+        }
       ],
       "subtotal": "1,745.00",
       "taxRate": "9%",
@@ -612,8 +620,16 @@
           "dischargeDate": "07/30/2026",
           "symptoms": "A prescription has been written out for the patient, for an acute throat infection.",
           "treatments": [
-            { "code": "Full Check Up", "description": "Full body check up including bloodwork and vital analysis", "amount": 745 },
-            { "code": "Ear & Throat Exam", "description": "Infection check due to persistent localized inflammation", "amount": 1000 }
+            {
+              "code": "Full Check Up",
+              "description": "Full body check up including bloodwork and vital analysis",
+              "amount": 745
+            },
+            {
+              "code": "Ear & Throat Exam",
+              "description": "Infection check due to persistent localized inflammation",
+              "amount": 1000
+            }
           ],
           "subtotal": "1,745.00",
           "taxRate": "9%",
@@ -634,8 +650,16 @@
           "dischargeDate": "07/31/2026",
           "symptoms": "Follow-up consultation on joint inflammation and prescription of anti-inflammatory therapies.",
           "treatments": [
-            { "code": "Joint Consultation", "description": "Specialized orthopedic consult and ultrasound diagnostics", "amount": 450 },
-            { "code": "Cortisone Therapy", "description": "Targeted intra-articular injection for localized relief", "amount": 800 }
+            {
+              "code": "Joint Consultation",
+              "description": "Specialized orthopedic consult and ultrasound diagnostics",
+              "amount": 450
+            },
+            {
+              "code": "Cortisone Therapy",
+              "description": "Targeted intra-articular injection for localized relief",
+              "amount": 800
+            }
           ],
           "subtotal": "1,250.00",
           "taxRate": "9%",
@@ -656,8 +680,16 @@
           "dischargeDate": "08/01/2026",
           "symptoms": "Patient was admitted for acute respiratory monitoring following sudden breathing difficulties.",
           "treatments": [
-            { "code": "Respiratory Scan", "description": "Advanced spirometry and diagnostic chest radiography", "amount": 950 },
-            { "code": "Oxygen Treatment", "description": "Nebulizer administration and supplementary oxygen therapy", "amount": 600 }
+            {
+              "code": "Respiratory Scan",
+              "description": "Advanced spirometry and diagnostic chest radiography",
+              "amount": 950
+            },
+            {
+              "code": "Oxygen Treatment",
+              "description": "Nebulizer administration and supplementary oxygen therapy",
+              "amount": 600
+            }
           ],
           "subtotal": "1,550.00",
           "taxRate": "9%",
@@ -678,9 +710,21 @@
           "dischargeDate": "08/02/2026",
           "symptoms": "Rehabilitation charges and physiological therapy following minor muscular trauma.",
           "treatments": [
-            { "code": "Trauma Consult", "description": "Clinical assessment by emergency trauma team", "amount": 650 },
-            { "code": "Physiotherapy", "description": "Musculoskeletal exercise and deep-tissue recovery session", "amount": 550 },
-            { "code": "Laceration Care", "description": "Minor wound cleaning and clinical dressing application", "amount": 300 }
+            {
+              "code": "Trauma Consult",
+              "description": "Clinical assessment by emergency trauma team",
+              "amount": 650
+            },
+            {
+              "code": "Physiotherapy",
+              "description": "Musculoskeletal exercise and deep-tissue recovery session",
+              "amount": 550
+            },
+            {
+              "code": "Laceration Care",
+              "description": "Minor wound cleaning and clinical dressing application",
+              "amount": 300
+            }
           ],
           "subtotal": "1,500.00",
           "taxRate": "9%",
@@ -701,9 +745,21 @@
           "dischargeDate": "08/03/2026",
           "symptoms": "Cardiology evaluation and high-resolution EKG diagnostics following elevated heart-rate spikes.",
           "treatments": [
-            { "code": "Cardiology Consult", "description": "Full cardiac risk panel assessment and evaluation", "amount": 1200 },
-            { "code": "High-Res EKG", "description": "Electrocardiogram monitoring and electrical profiling", "amount": 800 },
-            { "code": "Stress Test", "description": "Physical treadmill analysis with metabolic monitoring", "amount": 1100 }
+            {
+              "code": "Cardiology Consult",
+              "description": "Full cardiac risk panel assessment and evaluation",
+              "amount": 1200
+            },
+            {
+              "code": "High-Res EKG",
+              "description": "Electrocardiogram monitoring and electrical profiling",
+              "amount": 800
+            },
+            {
+              "code": "Stress Test",
+              "description": "Physical treadmill analysis with metabolic monitoring",
+              "amount": 1100
+            }
           ],
           "subtotal": "3,100.00",
           "taxRate": "9%",
@@ -724,8 +780,16 @@
           "dischargeDate": "08/04/2026",
           "symptoms": "Clinical toxicological screening and metabolic profiling following unusual biological exposure.",
           "treatments": [
-            { "code": "Toxicology Panel", "description": "Comprehensive blood and enzyme toxicological analysis", "amount": 500 },
-            { "code": "Metabolic Profiling", "description": "Cellular respiratory and energy-efficiency profiling", "amount": 400 }
+            {
+              "code": "Toxicology Panel",
+              "description": "Comprehensive blood and enzyme toxicological analysis",
+              "amount": 500
+            },
+            {
+              "code": "Metabolic Profiling",
+              "description": "Cellular respiratory and energy-efficiency profiling",
+              "amount": 400
+            }
           ],
           "subtotal": "900.00",
           "taxRate": "9%",
@@ -746,8 +810,16 @@
           "dischargeDate": "08/05/2026",
           "symptoms": "Comprehensive physical checkup, muscular flexibility tests, and metabolic baseline screening.",
           "treatments": [
-            { "code": "Executive Checkup", "description": "Elite comprehensive wellness and physical screening", "amount": 1500 },
-            { "code": "Biochemical Assay", "description": "High-density blood chemistry and metabolic profiling", "amount": 750 }
+            {
+              "code": "Executive Checkup",
+              "description": "Elite comprehensive wellness and physical screening",
+              "amount": 1500
+            },
+            {
+              "code": "Biochemical Assay",
+              "description": "High-density blood chemistry and metabolic profiling",
+              "amount": 750
+            }
           ],
           "subtotal": "2,250.00",
           "taxRate": "9%",
@@ -768,9 +840,21 @@
           "dischargeDate": "08/06/2026",
           "symptoms": "Advanced electromagnetic radiation scan and cardiac pacing telemetry inspection.",
           "treatments": [
-            { "code": "Radiation Scan", "description": "Full-body high-resolution radioactive isotope profiling", "amount": 3500 },
-            { "code": "Telemetry Checkup", "description": "Intracardiac voltage telemetry and pacing verification", "amount": 2500 },
-            { "code": "Titanium Dressing", "description": "Biocompatible chest plating review and clinical dress", "amount": 1500 }
+            {
+              "code": "Radiation Scan",
+              "description": "Full-body high-resolution radioactive isotope profiling",
+              "amount": 3500
+            },
+            {
+              "code": "Telemetry Checkup",
+              "description": "Intracardiac voltage telemetry and pacing verification",
+              "amount": 2500
+            },
+            {
+              "code": "Titanium Dressing",
+              "description": "Biocompatible chest plating review and clinical dress",
+              "amount": 1500
+            }
           ],
           "subtotal": "7,500.00",
           "taxRate": "9%",
@@ -791,8 +875,16 @@
           "dischargeDate": "08/07/2026",
           "symptoms": "Diagnostic stress counseling and mental stabilization treatment after severe environmental shock.",
           "treatments": [
-            { "code": "Stress Therapy", "description": "Psychological trauma assessment and coping session", "amount": 350 },
-            { "code": "Sedative Treatment", "description": "Intravenous clinical sedation and recovery sleep ward", "amount": 500 }
+            {
+              "code": "Stress Therapy",
+              "description": "Psychological trauma assessment and coping session",
+              "amount": 350
+            },
+            {
+              "code": "Sedative Treatment",
+              "description": "Intravenous clinical sedation and recovery sleep ward",
+              "amount": 500
+            }
           ],
           "subtotal": "850.00",
           "taxRate": "9%",
@@ -813,9 +905,21 @@
           "dischargeDate": "08/08/2026",
           "symptoms": "Foreign parasite biological scan and hyper-sleep decompression physical therapy.",
           "treatments": [
-            { "code": "Parasite Scan", "description": "High-frequency ultrasound abdominal scan and profiling", "amount": 1800 },
-            { "code": "Cryo-Decompress", "description": "Neuromuscular decompression therapy after hyper-sleep", "amount": 1200 },
-            { "code": "Vital Re-align", "description": "Endocrine balance synthesis and vitamin replacement", "amount": 800 }
+            {
+              "code": "Parasite Scan",
+              "description": "High-frequency ultrasound abdominal scan and profiling",
+              "amount": 1800
+            },
+            {
+              "code": "Cryo-Decompress",
+              "description": "Neuromuscular decompression therapy after hyper-sleep",
+              "amount": 1200
+            },
+            {
+              "code": "Vital Re-align",
+              "description": "Endocrine balance synthesis and vitamin replacement",
+              "amount": 800
+            }
           ],
           "subtotal": "3,800.00",
           "taxRate": "9%",

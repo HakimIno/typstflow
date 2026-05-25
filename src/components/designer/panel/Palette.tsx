@@ -260,8 +260,18 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: Palet
             ...base,
             type: 'signature',
             slots: [
-              { id: 'sig-1', label: 'ผู้อนุมัติ', nameLabel: '(......................)', dateLabel: 'วันที่: ___/___/______' },
-              { id: 'sig-2', label: 'ผู้ตรวจสอบ', nameLabel: '(......................)', dateLabel: 'วันที่: ___/___/______' },
+              {
+                id: 'sig-1',
+                label: 'ผู้อนุมัติ',
+                nameLabel: '(......................)',
+                dateLabel: 'วันที่: ___/___/______',
+              },
+              {
+                id: 'sig-2',
+                label: 'ผู้ตรวจสอบ',
+                nameLabel: '(......................)',
+                dateLabel: 'วันที่: ___/___/______',
+              },
             ],
             showNameLine: true,
             showDateLine: true,
@@ -301,8 +311,10 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: Palet
         'group mx-1.5 flex items-center gap-2.5 rounded-md p-1 transition-all cursor-grab active:cursor-grabbing border border-transparent hover:bg-[var(--bg-widget)] hover:border-[var(--border-subtle)]'
       )}
     >
-      <div className="w-7 h-7 rounded-full  flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(
-         --bg-surface)] group-hover:border-[var(--accent)]/45 transition-all">
+      <div
+        className="w-7 h-7 rounded-full  flex items-center justify-center shrink-0 border border-[var(--border-subtle)] group-hover:bg-[var(
+         --bg-surface)] group-hover:border-[var(--accent)]/45 transition-all"
+      >
         <Icon className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors" />
       </div>
 

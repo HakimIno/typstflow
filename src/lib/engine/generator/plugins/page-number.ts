@@ -38,6 +38,14 @@ export const pageNumberPlugin: ComponentPlugin<PageNumberComponent> = {
       `#set text(font: "${font}", size: ${size}pt, weight: ${weight}, style: "normal", fill: ${color})\n` +
       `#context [${displayWithStyle}]`;
 
-    return wrapPlacement(comp, body, ctx.offsetX, ctx.offsetY, ctx.flowMode, ctx.fillWidth, ctx.pretty);
+    return wrapPlacement(
+      comp,
+      body,
+      ctx.offsetX,
+      ctx.offsetY,
+      ctx.flowMode,
+      ctx.fillWidth,
+      ctx.pretty
+    );
   },
 };

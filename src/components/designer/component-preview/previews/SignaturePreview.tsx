@@ -5,7 +5,9 @@ interface SignaturePreviewProps {
   component: SignatureComponent;
 }
 
-export const SignaturePreview = memo(function SignaturePreview({ component }: SignaturePreviewProps) {
+export const SignaturePreview = memo(function SignaturePreview({
+  component,
+}: SignaturePreviewProps) {
   const slots = component.slots ?? [];
   const showName = component.showNameLine !== false;
   const showDate = component.showDateLine !== false;
@@ -36,12 +38,16 @@ export const SignaturePreview = memo(function SignaturePreview({ component }: Si
             {slot.label}
           </span>
           {showName && (
-            <span style={{ fontSize: labelSize - 1, color: labelColor, opacity: 0.7, lineHeight: 1.3 }}>
+            <span
+              style={{ fontSize: labelSize - 1, color: labelColor, opacity: 0.7, lineHeight: 1.3 }}
+            >
               {slot.nameLabel ?? '(......................)'}
             </span>
           )}
           {showDate && (
-            <span style={{ fontSize: labelSize - 1, color: labelColor, opacity: 0.7, lineHeight: 1.3 }}>
+            <span
+              style={{ fontSize: labelSize - 1, color: labelColor, opacity: 0.7, lineHeight: 1.3 }}
+            >
               {slot.dateLabel ?? 'Date: ___/___/______'}
             </span>
           )}

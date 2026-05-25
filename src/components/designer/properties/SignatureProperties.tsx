@@ -232,9 +232,7 @@ export function SignatureProperties({ component, onUpdate }: SignatureProperties
           <ControlField label="Color">
             <ColorPicker
               color={component.labelStyle?.color ?? '#000000'}
-              onChange={(color) =>
-                onUpdate({ labelStyle: { ...component.labelStyle, color } })
-              }
+              onChange={(color) => onUpdate({ labelStyle: { ...component.labelStyle, color } })}
             />
           </ControlField>
         </PropertyGrid>
@@ -250,9 +248,7 @@ export function SignatureProperties({ component, onUpdate }: SignatureProperties
                 ? 'bold'
                 : 'regular'
             }
-            onChange={(w) =>
-              onUpdate({ labelStyle: { ...component.labelStyle, fontWeight: w } })
-            }
+            onChange={(w) => onUpdate({ labelStyle: { ...component.labelStyle, fontWeight: w } })}
           />
         </PropertyRow>
       </CollapsibleSection>
