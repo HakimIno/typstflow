@@ -1,7 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync } from 'node:fs';
-import path from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 import { EXPORT_JOB_TTL_MS } from '@/lib/export/constants';
-import { prepareExportWorkspace } from '@/lib/server/export-workspace';
+import {
+  prepareExportWorkspace,
+  purgeStaleExportJobDirs,
+  removeExportJobDir,
+} from '@/lib/server/export-workspace';
 import { compileTypstToPdf } from '@/lib/server/typst-compile';
 
 export type ExportJobStatus = 'queued' | 'generating' | 'compiling' | 'done' | 'error';
@@ -20,25 +23,14 @@ export interface ExportJob {
 
 const jobs = new Map<string, ExportJob>();
 
-function tmpDir(): string {
-  const dir = path.join(process.cwd(), '.tmp', 'export-jobs');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
 function purgeStaleJobs(): void {
   const now = Date.now();
   for (const [id, job] of jobs) {
     if (now - job.createdAt < EXPORT_JOB_TTL_MS) continue;
-    if (job.pdfPath && existsSync(job.pdfPath)) {
-      try {
-        unlinkSync(job.pdfPath);
-      } catch {
-        // ignore cleanup errors
-      }
-    }
+    void removeExportJobDir(id);
     jobs.delete(id);
   }
+  void purgeStaleExportJobDirs(EXPORT_JOB_TTL_MS);
 }
 
 function updateJob(id: string, patch: Partial<ExportJob>): ExportJob | undefined {
@@ -67,9 +59,10 @@ export function createExportJob(
   };
   jobs.set(id, job);
 
-  void runExportJob(id, schema, data).catch((err: unknown) => {
+  void runExportJob(id, schema, data).catch(async (err: unknown) => {
     const message = err instanceof Error ? err.message : String(err);
     updateJob(id, { status: 'error', progress: 0, message: 'Export failed', error: message });
+    await removeExportJobDir(id);
   });
 
   return job;
@@ -87,15 +80,8 @@ export function readExportJobPdf(id: string): Buffer | undefined {
   return readFileSync(job.pdfPath);
 }
 
-export function deleteExportJob(id: string): void {
-  const job = jobs.get(id);
-  if (job?.pdfPath && existsSync(job.pdfPath)) {
-    try {
-      unlinkSync(job.pdfPath);
-    } catch {
-      // ignore
-    }
-  }
+export async function deleteExportJob(id: string): Promise<void> {
+  await removeExportJobDir(id);
   jobs.delete(id);
 }
 
@@ -130,7 +116,9 @@ async function runExportJob(
   });
 }
 
-/** Test helper — clear in-memory job store. */
-export function clearExportJobsForTests(): void {
-  for (const id of jobs.keys()) deleteExportJob(id);
+/** Test helper — clear in-memory job store and on-disk workspaces. */
+export async function clearExportJobsForTests(): Promise<void> {
+  for (const id of jobs.keys()) {
+    await deleteExportJob(id);
+  }
 }

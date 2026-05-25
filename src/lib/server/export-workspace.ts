@@ -1,8 +1,9 @@
-import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { FONT_CATALOG } from '@/lib/font-catalog';
 import { TypstGenerator } from '@/lib/engine/generator';
 import { collectFontFamilies, injectImagesIntoSchema } from '@/lib/engine/image-assets';
+import { FONT_CATALOG } from '@/lib/font-catalog';
 import type { LayoutSchema } from '@/types/schema';
 
 const WASM_FONTS_DIR = path.join(process.cwd(), 'src-wasm', 'fonts');
@@ -22,6 +23,50 @@ export interface ExportWorkspace {
   pdfPath: string;
   fontsDir: string;
   packagesDir: string;
+}
+
+export function getExportJobDir(jobId: string): string {
+  return path.join(process.cwd(), '.tmp', 'export-jobs', jobId);
+}
+
+/** Remove a job workspace directory and all nested assets. */
+export async function removeExportJobDir(jobId: string): Promise<void> {
+  const jobDir = getExportJobDir(jobId);
+  try {
+    await rm(jobDir, { recursive: true, force: true });
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== 'ENOENT') {
+      console.warn(`[export-workspace] Failed to remove job dir ${jobId}:`, err);
+    }
+  }
+}
+
+/** Remove on-disk job dirs older than maxAgeMs (covers server restarts). */
+export async function purgeStaleExportJobDirs(maxAgeMs: number): Promise<void> {
+  const base = path.join(process.cwd(), '.tmp', 'export-jobs');
+  if (!existsSync(base)) return;
+
+  const now = Date.now();
+  let entries: Awaited<ReturnType<typeof readdir>>;
+  try {
+    entries = await readdir(base, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const dirPath = path.join(base, entry.name);
+    try {
+      const { mtimeMs } = await stat(dirPath);
+      if (now - mtimeMs >= maxAgeMs) {
+        await rm(dirPath, { recursive: true, force: true });
+      }
+    } catch {
+      // ignore per-entry errors
+    }
+  }
 }
 
 async function copyWasmBuiltinFonts(fontsDir: string): Promise<void> {
@@ -129,7 +174,7 @@ export async function prepareExportWorkspace(
   schemaInput: LayoutSchema,
   data: Record<string, unknown>
 ): Promise<ExportWorkspace> {
-  const jobDir = path.join(process.cwd(), '.tmp', 'export-jobs', jobId);
+  const jobDir = getExportJobDir(jobId);
   const fontsDir = path.join(jobDir, 'fonts');
   const packagesDir = path.join(jobDir, 'packages');
   const typPath = path.join(jobDir, 'main.typ');

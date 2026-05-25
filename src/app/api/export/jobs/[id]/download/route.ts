@@ -30,8 +30,8 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     },
   });
 
-  // Remove job after successful download to free disk space.
-  deleteExportJob(id);
+  // Remove job workspace after successful download to free disk space.
+  await deleteExportJob(id);
 
   return response;
 }

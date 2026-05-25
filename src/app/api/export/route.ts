@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { prepareExportWorkspace } from '@/lib/server/export-workspace';
+import { prepareExportWorkspace, removeExportJobDir } from '@/lib/server/export-workspace';
 import { compileTypstToPdf } from '@/lib/server/typst-compile';
 import type { LayoutSchema } from '@/types/schema';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -13,6 +13,8 @@ const exportSchema = z.object({
 
 /** Synchronous PDF export with full assets/fonts/packages (WYSIWYG with preview). */
 export async function POST(req: NextRequest) {
+  let jobId: string | undefined;
+
   try {
     const body = await req.json();
     const validated = exportSchema.parse(body);
@@ -20,9 +22,9 @@ export async function POST(req: NextRequest) {
     const tmpDir = path.join(process.cwd(), '.tmp');
     if (!existsSync(tmpDir)) mkdirSync(tmpDir, { recursive: true });
 
-    const id = Math.random().toString(36).substring(7);
+    jobId = Math.random().toString(36).substring(7);
     const workspace = await prepareExportWorkspace(
-      id,
+      jobId,
       validated.schema as LayoutSchema,
       validated.data
     );
@@ -42,17 +44,10 @@ export async function POST(req: NextRequest) {
 
     const pdfBuffer = readFileSync(workspace.pdfPath);
 
-    try {
-      unlinkSync(workspace.pdfPath);
-      unlinkSync(workspace.typPath);
-    } catch {
-      // ignore
-    }
-
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="report-${id}.pdf"`,
+        'Content-Disposition': `attachment; filename="report-${jobId}.pdf"`,
       },
     });
   } catch (error) {
@@ -61,5 +56,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } finally {
+    if (jobId) await removeExportJobDir(jobId);
   }
 }
