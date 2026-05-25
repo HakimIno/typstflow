@@ -11,49 +11,33 @@ import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import {
   AlertTriangle,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Database,
-  History,
+  FileText,
   Image,
   Layers,
   ListChecks,
-  ListTodo,
-  Loader2,
-  MessageCircle,
   Mic,
   Minus,
   Pencil,
-  PlayCircle,
   PlusCircle,
-  PlusSquare,
-  RefreshCw,
+  RotateCcw,
   Send,
   Space,
   Sparkles,
   Table,
   Trash2,
   Type,
-  User,
   XCircle,
   Zap,
 } from 'lucide-react';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { BasePanel } from './BasePanel';
 import { PanelHeader } from './PanelHeader';
 
-const MODE_BADGE: Record<
-  NonNullable<AgentMessage['mode']>,
-  { label: string; icon: any; color: string }
-> = {
-  chat: { label: 'Chat', icon: MessageCircle, color: 'text-[var(--text-muted)]' },
-  plan: { label: 'Plan', icon: ListTodo, color: 'text-blue-400' },
-  design: { label: 'Design', icon: Zap, color: 'text-yellow-400' },
-};
-
-const iconMap: Record<string, any> = {
-  get_layout: Layers,
+// ─── Icon map for tool calls ──────────────────────────────────────────────────
+const TOOL_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   add_text: Type,
   add_table: Table,
   add_image: Image,
@@ -61,386 +45,483 @@ const iconMap: Record<string, any> = {
   add_spacer: Space,
   update_component: Pencil,
   delete_component: Trash2,
+  remove_component: Trash2,
   set_sample_data: Database,
+  get_layout: Layers,
+  load_template: FileText,
 };
 
-const statusMap: Record<string, { icon: any; color: string }> = {
-  success: { icon: CheckCircle2, color: 'text-green-500' },
-  error: { icon: XCircle, color: 'text-red-500' },
-  pending: { icon: Loader2, color: 'animate-spin text-blue-500' },
-};
-
-const SUGGESTIONS = [
+// ─── Quick template prompts ───────────────────────────────────────────────────
+const QUICK_TEMPLATES = [
   {
-    icon: Sparkles,
-    label: 'Invoice layout',
-    color: 'text-blue-400',
-    prompt: 'Create a basic invoice layout with company header, items table, and total',
+    label: 'Invoice',
+    prompt: 'Create a professional Thai invoice with company header, items table, VAT, and totals',
   },
   {
-    icon: PlusSquare,
-    label: 'Add table',
-    color: 'text-yellow-400',
-    prompt: 'Add a data table to the body with columns for name, quantity, price, and total',
+    label: 'Report',
+    prompt: 'Create a business report with header, summary stats, data table, and footer',
   },
   {
-    icon: RefreshCw,
-    label: 'Load template',
-    color: 'text-purple-400',
-    prompt: 'Load the invoice template',
+    label: 'Receipt',
+    prompt: 'Create a simple receipt with items, subtotal, VAT 7%, and grand total',
+  },
+  {
+    label: 'Quotation',
+    prompt: 'Create a quotation with customer info, itemized products, terms, and signature area',
   },
 ];
 
-function ToolCallItem({ call }: { call: NonNullable<AgentMessage['toolCalls']>[number] }) {
-  const StatusIcon = statusMap[call.success ? 'success' : 'error'].icon;
-  const ToolIcon = iconMap[call.name] || PlayCircle;
-
+// ─── User message ─────────────────────────────────────────────────────────────
+function UserMessage({ content }: { content: string }) {
   return (
-    <div className="flex items-center gap-1 py-0.5 px-1 group/item" title={call.description}>
-      {call.success !== undefined && (
-        <StatusIcon
-          className={clsx('w-3 h-3', statusMap[call.success ? 'success' : 'error'].color)}
-        />
-      )}
-      <ToolIcon className="w-3.5 h-3.5 text-[var(--text-secondary)] group-hover/item:text-[var(--accent)] transition-colors" />
-      <span className="text-[10px] text-[var(--text-primary)] font-medium">{call.name}</span>
+    <div className="flex justify-end">
+      <div className="max-w-[88%] px-3 py-2 rounded-2xl rounded-tr-none bg-[var(--accent)] text-white text-[11px] leading-relaxed">
+        {content}
+      </div>
     </div>
   );
 }
 
+// ─── Design turn card (diff-style) ───────────────────────────────────────────
+function DesignTurnCard({
+  message,
+  onRevert,
+  isReverted,
+}: {
+  message: AgentMessage;
+  onRevert?: () => void;
+  isReverted: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const addCalls =
+    message.toolCalls?.filter((tc) => tc.name.startsWith('add_') || tc.name === 'load_template') ??
+    [];
+  const updateCalls = message.toolCalls?.filter((tc) => tc.name === 'update_component') ?? [];
+  const removeCalls = message.toolCalls?.filter((tc) => tc.name.includes('remove')) ?? [];
+  const total = message.toolCalls?.length ?? 0;
+
+  return (
+    <div
+      className={clsx(
+        'rounded-xl border overflow-hidden transition-opacity',
+        isReverted
+          ? 'border-[var(--border-subtle)]/30 opacity-40'
+          : 'border-[var(--accent)]/20 bg-[var(--bg-widget)]'
+      )}
+    >
+      {/* Card header */}
+      <div className="flex items-center justify-between px-3 py-2 bg-[var(--bg-surface)]/60 border-b border-[var(--border-subtle)]/40">
+        <div className="flex items-center gap-1.5">
+          {isReverted ? (
+            <RotateCcw className="w-3 h-3 text-[var(--text-muted)]" />
+          ) : (
+            <Zap className="w-3 h-3 text-yellow-400" />
+          )}
+          <span className="text-[10px] font-semibold text-[var(--text-primary)]">
+            {isReverted ? 'Reverted' : `${total} change${total !== 1 ? 's' : ''} applied`}
+          </span>
+        </div>
+        {!isReverted && total > 0 && (
+          <div className="flex items-center gap-2 font-mono">
+            {addCalls.length > 0 && (
+              <span className="text-[9px] text-green-400">+{addCalls.length}</span>
+            )}
+            {updateCalls.length > 0 && (
+              <span className="text-[9px] text-blue-400">~{updateCalls.length}</span>
+            )}
+            {removeCalls.length > 0 && (
+              <span className="text-[9px] text-red-400">-{removeCalls.length}</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* AI text summary */}
+      {!isReverted && message.content && message.content !== 'Working...' && (
+        <p className="px-3 pt-2.5 pb-1 text-[10px] text-[var(--text-secondary)] leading-relaxed">
+          {message.content}
+        </p>
+      )}
+
+      {/* Expandable diff list */}
+      {!isReverted && total > 0 && (
+        <div className="px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center gap-1 text-[9px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+          >
+            <ChevronRight
+              className={clsx('w-2.5 h-2.5 transition-transform', expanded && 'rotate-90')}
+            />
+            <span>Show details</span>
+          </button>
+
+          {expanded && (
+            <div className="mt-2 space-y-0.5 max-h-36 overflow-y-auto">
+              {message.toolCalls?.map((tc, i) => {
+                const TIcon = TOOL_ICONS[tc.name] ?? Zap;
+                const isAdd = tc.name.startsWith('add_') || tc.name === 'load_template';
+                const isRemove = tc.name.includes('remove');
+                return (
+                  <div key={`${tc.name}-${i}`} className="flex items-center gap-2 py-0.5">
+                    <span
+                      className={clsx(
+                        'w-2.5 text-[10px] font-mono font-bold shrink-0',
+                        isAdd ? 'text-green-500' : isRemove ? 'text-red-500' : 'text-blue-500'
+                      )}
+                    >
+                      {isAdd ? '+' : isRemove ? '−' : '~'}
+                    </span>
+                    <TIcon className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+                    <span className="text-[9px] text-[var(--text-muted)] truncate">
+                      {tc.description}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Revert button */}
+      {!isReverted && onRevert && (
+        <div className="px-3 pb-3 pt-1">
+          <button
+            type="button"
+            onClick={onRevert}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-red-500/25 bg-red-500/8 text-red-400 hover:bg-red-500/15 active:scale-[0.98] text-[10px] font-medium transition-all"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Revert these changes
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Plain text message (chat / plan / error) ─────────────────────────────────
+function TextMessage({ message }: { message: AgentMessage }) {
+  const isError = message.content.startsWith('Error:');
+  const isStopped =
+    message.content.includes('(Stopped)') || message.content === 'Generation cancelled.';
+
+  return (
+    <div className="flex items-start gap-2">
+      <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 mt-0.5 bg-[var(--accent-glow)]">
+        <img src="/logo.png" alt="AI" className="w-full h-full object-cover" />
+      </div>
+      <div
+        className={clsx(
+          'flex-1 text-[11px] leading-relaxed px-3 py-2 rounded-2xl rounded-tl-none',
+          isError && 'bg-red-500/10 text-red-400 border border-red-500/20 flex items-start gap-1.5',
+          isStopped && 'bg-red-500/5 text-red-400/60 border border-red-500/10 italic',
+          !isError &&
+            !isStopped &&
+            'bg-[var(--bg-widget)] text-[var(--text-primary)] border border-[var(--border-subtle)]'
+        )}
+      >
+        {isError && <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />}
+        {isError ? message.content.replace('Error: ', '') : message.content}
+      </div>
+    </div>
+  );
+}
+
+// ─── Thinking indicator ───────────────────────────────────────────────────────
+function ThinkingIndicator({ step, elapsed }: { step: string; elapsed: number }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <div className="w-5 h-5 rounded-full bg-[var(--accent-glow)] flex items-center justify-center shrink-0">
+          <Sparkles className="w-2.5 h-2.5 text-[var(--accent)] animate-pulse" />
+        </div>
+        <span className="flex-1 text-[11px] text-[var(--text-secondary)] italic truncate">
+          {step || 'Thinking...'}
+        </span>
+        <span className="text-[9px] font-mono text-[var(--accent)] tabular-nums shrink-0">
+          {elapsed.toFixed(1)}s
+        </span>
+      </div>
+      <div className="ml-7 h-0.5 bg-[var(--border-subtle)] rounded-full overflow-hidden">
+        <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent animate-[shimmer_1.5s_ease-in-out_infinite]" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Main AiPanel ─────────────────────────────────────────────────────────────
 export const AiPanel = memo(function AiPanel() {
   const [input, setInput] = useState('');
+  const [revertedIds, setRevertedIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const { messages, isLoading, thinkingStep, sendMessage, clearMessages, stop } = useAiAgent();
   const [elapsedTime, setElapsedTime] = useState(0);
+
   const aiModel = useDesignerStore((s) => s.aiModel);
   const aiMode = useDesignerStore((s) => s.aiMode);
   const setAiModel = useDesignerStore((s) => s.setAiModel);
   const setAiMode = useDesignerStore((s) => s.setAiMode);
   const rewindToCheckpoint = useDesignerStore((s) => s.rewindToCheckpoint);
 
+  // Elapsed timer while loading
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isLoading) {
-      const start = Date.now();
-      interval = setInterval(() => {
-        setElapsedTime((Date.now() - start) / 1000);
-      }, 100);
-    } else {
+    if (!isLoading) {
       setElapsedTime(0);
+      return;
     }
-    return () => clearInterval(interval);
+    const start = Date.now();
+    const id = setInterval(() => setElapsedTime((Date.now() - start) / 1000), 100);
+    return () => clearInterval(id);
   }, [isLoading]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new message or typing indicator
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on new message
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages.length, isLoading]);
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     const text = input.trim();
     if (!text || isLoading) return;
     setInput('');
     sendMessage(text);
-  };
+  }, [input, isLoading, sendMessage]);
+
+  const handleRevert = useCallback(
+    (msg: AgentMessage) => {
+      if (msg.snapshotIndex === undefined) return;
+      rewindToCheckpoint(msg.snapshotIndex);
+      setRevertedIds((prev) => new Set([...prev, msg.id]));
+    },
+    [rewindToCheckpoint]
+  );
+
+  // Latest non-reverted design turn → drives the sticky revert bar
+  const latestRevertable = [...messages]
+    .reverse()
+    .find(
+      (m) =>
+        m.role === 'assistant' &&
+        m.mode === 'design' &&
+        m.snapshotIndex !== undefined &&
+        !revertedIds.has(m.id) &&
+        (m.toolCalls?.length ?? 0) > 0
+    );
+
+  const modelLabel =
+    AI_MODELS.find((m) => m.id === aiModel)
+      ?.label.split(' ')
+      .slice(-2)
+      .join(' ') ?? 'Model';
 
   return (
     <BasePanel allowOverflow>
-      <PanelHeader title="AI Assistant" icon={Sparkles} />
+      <PanelHeader title="AI Designer" icon={Sparkles} />
 
-      {/* Chat History */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-2 scrollbar-none">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={clsx(
-              'flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-300',
-              msg.role === 'user' ? 'items-end' : 'items-start'
-            )}
+      {/* ── Conversation history ── */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-2.5 py-3 space-y-3 scrollbar-none">
+        {messages.map((msg) => {
+          if (msg.role === 'user') {
+            return <UserMessage key={msg.id} content={msg.content} />;
+          }
+
+          if (
+            msg.role === 'assistant' &&
+            msg.mode === 'design' &&
+            (msg.toolCalls?.length ?? 0) > 0
+          ) {
+            return (
+              <DesignTurnCard
+                key={msg.id}
+                message={msg}
+                onRevert={msg.snapshotIndex !== undefined ? () => handleRevert(msg) : undefined}
+                isReverted={revertedIds.has(msg.id)}
+              />
+            );
+          }
+
+          return <TextMessage key={msg.id} message={msg} />;
+        })}
+
+        {isLoading && <ThinkingIndicator step={thinkingStep} elapsed={elapsedTime} />}
+      </div>
+
+      {/* ── Quick template chips ── */}
+      <div className="shrink-0 px-2.5 py-1.5 flex gap-1.5 overflow-x-auto scrollbar-none border-t border-[var(--border-subtle)]/30">
+        {QUICK_TEMPLATES.map((t) => (
+          <button
+            key={t.label}
+            type="button"
+            onClick={() => {
+              setInput(t.prompt);
+              textareaRef.current?.focus();
+            }}
+            className="shrink-0 px-2.5 py-1 rounded-full bg-[var(--bg-widget)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] text-[9px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all"
           >
-            <div
-              className={clsx(
-                'flex items-center gap-2 mb-0.5',
-                msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-              )}
-            >
-              <div
-                className={clsx(
-                  'w-5 h-5 rounded-md flex items-center justify-center',
-                  msg.role === 'user' ? 'bg-[var(--bg-widget)]' : 'bg-[var(--accent-glow)]'
-                )}
-              >
-                {msg.role === 'user' ? (
-                  <User className="w-3 h-3 text-[var(--text-secondary)]" />
-                ) : (
-                  <div className="rounded-full bg-white">
-                    <img
-                      className="w-5 h-5 rounded-full overflow-hidden"
-                      src="/logo.png"
-                      alt="TypstFlow"
-                    />
-                  </div>
-                )}
-              </div>
-              <span className="text-[8px] font-bold uppercase text-[var(--text-muted)] tracking-wider">
-                {msg.role === 'user' ? 'You' : 'Assistant'}
-              </span>
-            </div>
-
-            <div
-              className={clsx(
-                'max-w-[85%] px-3 py-2 rounded-2xl text-[11px] leading-relaxed transition-all duration-300 select-text cursor-text',
-                msg.role === 'user'
-                  ? 'bg-[var(--accent)] text-white rounded-tr-none shadow-sm'
-                  : msg.content.startsWith('Error:')
-                    ? 'bg-red-500/10 text-red-500 border border-red-500/20 rounded-tl-none font-medium flex flex-col gap-1'
-                    : msg.content.includes('(Stopped)') || msg.content === 'Generation cancelled.'
-                      ? 'bg-red-500/5 text-red-500/80 border border-red-500/10 italic rounded-tl-none opacity-80'
-                      : 'bg-[var(--bg-widget)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-tl-none'
-              )}
-            >
-              {msg.content.startsWith('Error:') ? (
-                <>
-                  <div className="flex items-center gap-1.5 text-red-500 font-bold uppercase text-[9px] tracking-widest">
-                    <AlertTriangle className="w-3 h-3" />
-                    System Error
-                  </div>
-                  <div className="text-[10px] opacity-90">{msg.content.replace('Error: ', '')}</div>
-                </>
-              ) : (
-                msg.content
-              )}
-            </div>
-
-            {msg.role === 'assistant' && msg.mode && msg.mode !== 'chat' && (
-              <div className="flex items-center gap-2 mt-1">
-                <div className="flex items-center gap-1">
-                  {(() => {
-                    const BadgeIcon = MODE_BADGE[msg.mode].icon;
-                    return <BadgeIcon className={clsx('w-3 h-3', MODE_BADGE[msg.mode].color)} />;
-                  })()}
-                  <span
-                    className={clsx(
-                      'text-[9px] font-bold uppercase tracking-widest',
-                      MODE_BADGE[msg.mode].color
-                    )}
-                  >
-                    {MODE_BADGE[msg.mode].label}
-                  </span>
-                </div>
-
-                {msg.mode === 'design' && msg.snapshotIndex !== undefined && (
-                  <button
-                    type="button"
-                    onClick={() => rewindToCheckpoint(msg.snapshotIndex as number)}
-                    className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/40 transition-all active:scale-95"
-                    title="Rewind canvas to before this AI turn"
-                  >
-                    <History className="w-3 h-3" />
-                    <span className="text-[9px] font-bold uppercase tracking-widest">Rewind</span>
-                  </button>
-                )}
-              </div>
-            )}
-
-            {msg.toolCalls && msg.toolCalls.length > 0 && (
-              <div className="max-w-full mt-2 pt-2 border-t border-[var(--border-subtle)]/20">
-                <details className="group">
-                  <summary className="flex items-center gap-2 cursor-pointer list-none text-[9px] font-bold text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
-                    <ChevronRight className="w-2.5 h-2.5 transition-transform group-open:rotate-90" />
-                    <span className="uppercase tracking-widest opacity-80">
-                      System Activity ({msg.toolCalls.length})
-                    </span>
-                  </summary>
-                  <div className="flex flex-col gap-0.5 mt-2 ml-1 pl-3 border-l border-[var(--border-subtle)]/30">
-                    {msg.toolCalls.map((tc, i) => (
-                      <ToolCallItem key={`${tc.name}-${i}`} call={tc} />
-                    ))}
-                  </div>
-                </details>
-              </div>
-            )}
-          </div>
+            {t.label}
+          </button>
         ))}
+      </div>
 
-        {isLoading && (
-          <div className="m-2 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-500 relative overflow-hidden">
-            {/* Glowing background effect */}
-            <div
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--accent-glow)] to-transparent opacity-30 animate-shimmer"
-              style={{ width: '200%' }}
-            />
-
-            <div className="flex items-center gap-3 relative z-10">
-              <div className="relative flex items-center justify-center w-4 h-4">
-                <Sparkles className="w-3.5 h-3.5 text-[var(--accent)] animate-pulse" />
-                <div className="absolute inset-0 rounded-full border border-[var(--accent)]/30 animate-ping" />
-              </div>
-              <div className="flex-1">
-                <span className="text-[11px] font-medium text-transparent bg-clip-text bg-gradient-to-r from-[var(--text-primary)] via-[var(--accent)] to-[var(--text-primary)] bg-[length:200%_auto] animate-shimmer-text tracking-wide">
-                  {thinkingStep || 'Thinking...'}
-                </span>
-              </div>
-              <span className="text-[9px] font-mono text-[var(--accent)] bg-[var(--accent)]/10 px-1.5 py-0.5 rounded-[var(--radius-sm)] tabular-nums">
-                {elapsedTime.toFixed(1)}s
+      {/* ── Composer area ── */}
+      <div className="shrink-0 border-t border-[var(--border-default)] bg-[var(--bg-widget)]">
+        {/* Sticky revert bar — visible when there are revertable changes */}
+        {!isLoading && latestRevertable && (
+          <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-[var(--border-subtle)]/40 bg-yellow-500/5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Zap className="w-3 h-3 text-yellow-400 shrink-0" />
+              <span className="text-[9px] text-[var(--text-muted)] truncate">
+                {latestRevertable.toolCalls?.length ?? 0} pending changes
               </span>
             </div>
-
-            {/* Sleek animated progress line */}
-            <div className="w-full h-[2px] bg-[var(--border-subtle)] overflow-hidden rounded-full relative z-10">
-              <div className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-[var(--accent)]/0 via-[var(--accent)] to-[var(--accent)]/0 animate-shimmer-fast w-1/2" />
-            </div>
+            <button
+              type="button"
+              onClick={() => handleRevert(latestRevertable)}
+              className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-[9px] font-medium transition-all"
+            >
+              <RotateCcw className="w-2.5 h-2.5" />
+              Revert
+            </button>
           </div>
         )}
-      </div>
 
-      {/* Quick Suggestions */}
-      <div className="px-2 py-1 flex items-center gap-1.5 overflow-x-auto scrollbar-none no-scrollbar">
-        {SUGGESTIONS.map((s) => {
-          const SugIcon = s.icon;
-          return (
-            <button
-              key={s.label}
-              onClick={() => {
-                setInput(s.prompt);
+        <div className="p-1.5">
+          <div className="rounded-xl bg-[var(--bg-app)] border border-[var(--border-subtle)] focus-within:border-[var(--accent)]/50 transition-colors overflow-hidden">
+            <textarea
+              ref={textareaRef}
+              rows={3}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--bg-widget)] hover:bg-[var(--bg-hover)] border border-[var(--border-subtle)] rounded-full transition-all shrink-0 group"
-            >
-              <SugIcon className={clsx('w-3 h-3', s.color)} />
-              <span className="text-[9px] font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
-                {s.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+              placeholder="Describe your template... (Enter to send)"
+              className="w-full bg-transparent border-none outline-none ring-0 text-[11px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] px-3 pt-3 pb-1 resize-none leading-relaxed"
+            />
 
-      {/* Input Area */}
-      <div className="p-0.5 bg-[var(--bg-widget)] border-t border-[var(--border-default)] relative z-50 overflow-visible">
-        <div className="flex flex-col rounded-lg bg-[var(--bg-app)] overflow-visible">
-          <textarea
-            rows={2}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="Describe what you want to build..."
-            className="w-full bg-transparent border-none outline-none ring-0 focus:ring-0 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] p-4 pt-5 resize-none min-h-[80px] leading-relaxed"
-          />
-
-          <div className="flex items-center justify-between p-0.5">
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={clearMessages}
-                title="Clear chat"
-                className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-              >
-                <PlusCircle className="w-6 h-6" />
-              </button>
-
-              <div className="w-[1px] h-3.5 bg-white/10" />
-
-              <DropdownMenu
-                side="top"
-                trigger={
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-white/5 rounded-lg transition-colors group"
-                  >
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] group-hover:text-[var(--text-primary)]">
-                      {AI_MODELS.find((m) => m.id === aiModel)
-                        ?.label.toLowerCase()
-                        .replace(/\s+/g, '-') || aiModel.split('/').pop()}
-                    </span>
-                    <ChevronDown className="w-3 h-3 text-[var(--text-muted)]" />
-                  </button>
-                }
-              >
-                <DropdownMenuHeader>Select AI Model</DropdownMenuHeader>
-                {AI_MODELS.map((model) => (
-                  <DropdownMenuItem
-                    key={model.id}
-                    label={model.label}
-                    onClick={() => setAiModel(model.id)}
-                    className={aiModel === model.id ? 'bg-white/5 text-[var(--accent)]' : ''}
-                    rightElement={
-                      <span className="text-[9px] uppercase tracking-tighter opacity-50">
-                        {model.tier}
-                      </span>
-                    }
-                  />
-                ))}
-              </DropdownMenu>
-
-              <DropdownMenu
-                side="top"
-                trigger={
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-white/5 rounded-lg transition-colors group"
-                  >
-                    {aiMode === 'plan' ? (
-                      <ListChecks className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-primary)]" />
-                    ) : (
-                      <Zap className="w-3.5 h-3.5 text-yellow-400" />
-                    )}
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] group-hover:text-[var(--text-primary)]">
-                      {aiMode === 'plan' ? 'Plan' : 'Act'}
-                    </span>
-                  </button>
-                }
-              >
-                <DropdownMenuHeader>Agent Mode</DropdownMenuHeader>
-                <DropdownMenuItem
-                  icon={() => <ListChecks className="w-3.5 h-3.5" />}
-                  label="Plan Mode"
-                  onClick={() => setAiMode('plan')}
-                  className={aiMode === 'plan' ? 'bg-white/5 text-[var(--accent)]' : ''}
-                />
-                <DropdownMenuItem
-                  icon={() => <Zap className="w-3.5 h-3.5" />}
-                  label="Act Mode"
-                  onClick={() => setAiMode('act')}
-                  className={aiMode === 'act' ? 'bg-white/5 text-[var(--accent)]' : ''}
-                />
-              </DropdownMenu>
-            </div>
-
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                className="p-2 rounded-full bg-[var(--bg-widget)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--accent)] transition-all active:scale-95"
-              >
-                <Mic className="w-4 h-4" />
-              </button>
-
-              {isLoading ? (
+            <div className="flex items-center justify-between px-2 pb-1.5">
+              {/* Left controls */}
+              <div className="flex items-center gap-0.5">
                 <button
                   type="button"
-                  onClick={stop}
-                  className="p-2 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)] transition-all animate-in zoom-in duration-200"
-                  title="Stop generation"
+                  onClick={clearMessages}
+                  title="New conversation"
+                  className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                 >
-                  <XCircle className="w-4 h-4" />
+                  <PlusCircle className="w-3.5 h-3.5" />
                 </button>
-              ) : (
-                input.trim() && (
+
+                <div className="w-px h-3 bg-white/10 mx-0.5" />
+
+                {/* Model picker */}
+                <DropdownMenu
+                  side="top"
+                  trigger={
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      <span className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-primary)] max-w-[64px] truncate">
+                        {modelLabel}
+                      </span>
+                      <ChevronDown className="w-2.5 h-2.5 text-[var(--text-muted)] shrink-0" />
+                    </button>
+                  }
+                >
+                  <DropdownMenuHeader>AI Model</DropdownMenuHeader>
+                  {AI_MODELS.map((model) => (
+                    <DropdownMenuItem
+                      key={model.id}
+                      label={model.label}
+                      onClick={() => setAiModel(model.id)}
+                      className={aiModel === model.id ? 'bg-white/5 text-[var(--accent)]' : ''}
+                      rightElement={
+                        <span className="text-[9px] uppercase tracking-tighter opacity-40">
+                          {model.tier}
+                        </span>
+                      }
+                    />
+                  ))}
+                </DropdownMenu>
+
+                {/* Mode picker */}
+                <DropdownMenu
+                  side="top"
+                  trigger={
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      {aiMode === 'plan' ? (
+                        <ListChecks className="w-3 h-3 text-[var(--text-muted)]" />
+                      ) : (
+                        <Zap className="w-3 h-3 text-yellow-400" />
+                      )}
+                      <ChevronDown className="w-2.5 h-2.5 text-[var(--text-muted)] shrink-0" />
+                    </button>
+                  }
+                >
+                  <DropdownMenuHeader>Agent Mode</DropdownMenuHeader>
+                  <DropdownMenuItem
+                    icon={() => <ListChecks className="w-3.5 h-3.5" />}
+                    label="Plan — describe first"
+                    onClick={() => setAiMode('plan')}
+                    className={aiMode === 'plan' ? 'bg-white/5 text-[var(--accent)]' : ''}
+                  />
+                  <DropdownMenuItem
+                    icon={() => <Zap className="w-3.5 h-3.5" />}
+                    label="Act — build directly"
+                    onClick={() => setAiMode('act')}
+                    className={aiMode === 'act' ? 'bg-white/5 text-[var(--accent)]' : ''}
+                  />
+                </DropdownMenu>
+              </div>
+
+              {/* Right controls */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="p-1.5 rounded-full bg-[var(--bg-widget)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--accent)]/30 transition-all"
+                  title="Voice input (coming soon)"
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                </button>
+
+                {isLoading ? (
+                  <button
+                    type="button"
+                    onClick={stop}
+                    title="Stop generation"
+                    className="p-1.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
                   <button
                     type="button"
                     onClick={handleSend}
-                    className="p-2 rounded-full bg-[var(--accent)] text-white shadow-[var(--accent-glow)] transition-all animate-in zoom-in duration-200"
+                    disabled={!input.trim()}
+                    className={clsx(
+                      'p-1.5 rounded-full transition-all',
+                      input.trim()
+                        ? 'bg-[var(--accent)] text-white shadow-[0_0_12px_rgba(var(--accent-rgb,99,102,241),0.4)]'
+                        : 'bg-[var(--bg-widget)] text-[var(--text-muted)] border border-[var(--border-subtle)]'
+                    )}
                   >
                     <Send className="w-3.5 h-3.5" />
                   </button>
-                )
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -187,6 +187,7 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: Palet
           return {
             ...base,
             type: 'columns',
+            gap: '10mm',
             columns: [
               { width: '1fr', components: [] },
               { width: '1fr', components: [] },

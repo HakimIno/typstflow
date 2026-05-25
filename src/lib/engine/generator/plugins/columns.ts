@@ -8,7 +8,7 @@ export const columnsPlugin: ComponentPlugin<ColumnLayoutComponent> = {
   render(comp, ctx: RenderContext): string {
     if (!isVisible(comp.visible, ctx.local, ctx.global)) return '';
 
-    const gap = comp.gap ?? '10pt';
+    const gap = comp.gap ?? '10mm';
     const widths = comp.columns.map((c) => c.width.replace('*', 'fr')).join(', ');
 
     const colContents = comp.columns

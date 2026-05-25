@@ -1,3 +1,14 @@
+import {
+  CREATIVE_PROCESS,
+  DESIGN_PRINCIPLES,
+  INTENT_FORMAT,
+  type LayoutDims,
+  MODE_BLOCKS,
+  PERSONA,
+  SAMPLE_DATA_GUIDE,
+  buildCanvasContext,
+  buildTechnicalConstraints,
+} from '@/lib/ai/prompt-config';
 import type { ComponentNode, LayoutSchema } from '@/types/schema';
 import type { NextRequest } from 'next/server';
 
@@ -265,10 +276,10 @@ const PAPER_DIMS: Record<string, { w: number; h: number }> = {
   Legal: { w: 215.9, h: 355.6 },
 };
 
-// ─── Quick prompt (single-action, no workflow, no get_layout) ────────────────
+// ─── Shared dimension calculator ─────────────────────────────────────────────
 
-function buildQuickPrompt(schema: LayoutSchema): string {
-  const { page, zones, pages } = schema;
+function calcDims(schema: LayoutSchema): LayoutDims {
+  const { page } = schema;
   const base = PAPER_DIMS[page.size] ?? PAPER_DIMS.A4;
   const [pageW, pageH] = page.orientation === 'landscape' ? [base.h, base.w] : [base.w, base.h];
   const ml = parseMarginMm(page.margin.left);
@@ -277,35 +288,61 @@ function buildQuickPrompt(schema: LayoutSchema): string {
   const mb = parseMarginMm(page.margin.bottom);
   const usableW = Math.round(pageW - ml - mr);
   const usableH = Math.round(pageH - mt - mb);
-  const cx = Math.round(usableW / 2);
-  const cy = Math.round(usableH / 2);
+  return {
+    pageSize: page.size,
+    orientation: page.orientation,
+    pageW,
+    pageH,
+    mt,
+    mr,
+    mb,
+    ml,
+    usableW,
+    usableH,
+  };
+}
 
-  const headerSummary = zones.header.components.map(summarizeComponent).join(' | ') || 'empty';
-  const footerSummary = zones.footer.components.map(summarizeComponent).join(' | ') || 'empty';
-  const bodyLines = pages.map(
-    (p, i) => `  Page ${i + 1}: ${p.body.components.map(summarizeComponent).join(' | ') || 'empty'}`
-  );
+function collectCanvasState(schema: LayoutSchema, includePageId = false) {
+  const { zones, pages, dataSchema } = schema;
+  return {
+    headerSummary: zones.header.components.map(summarizeComponent).join(' | ') || 'empty',
+    footerSummary: zones.footer.components.map(summarizeComponent).join(' | ') || 'empty',
+    bodyLines: pages.map(
+      (p, i) =>
+        `  Page ${i + 1}${includePageId ? ` (id:${p.id})` : ''}: ${
+          p.body.components.map(summarizeComponent).join(' | ') || 'empty'
+        }`
+    ),
+    dataFields:
+      dataSchema.length > 0
+        ? dataSchema.map((f) => `${f.path}:${f.type}`).join(', ')
+        : 'none defined',
+  };
+}
+
+// ─── Quick prompt (single-action, no workflow, no get_layout) ────────────────
+
+function buildQuickPrompt(schema: LayoutSchema): string {
+  const dims = calcDims(schema);
+  const canvas = collectCanvasState(schema);
+  const cx = Math.round(dims.usableW / 2);
+  const cy = Math.round(dims.usableH / 2);
 
   return `PDF designer. Execute the user's single action with ONE tool call. No get_layout, no planning, no follow-up steps.
-Canvas: ${page.size} ${pageW}×${pageH}mm | USABLE: ${usableW}×${usableH}mm | center=(${cx},${cy})
+Canvas: ${dims.pageSize} ${dims.pageW}×${dims.pageH}mm | USABLE: ${dims.usableW}×${dims.usableH}mm | center=(${cx},${cy})
 Coordinates in mm. zone options: header | body | footer.
 CURRENT LAYOUT:
-Header: ${headerSummary}
-${bodyLines.join('\n')}
-Footer: ${footerSummary}
+Header: ${canvas.headerSummary}
+${canvas.bodyLines.join('\n')}
+Footer: ${canvas.footerSummary}
 Call exactly one tool now.`;
 }
 
 // ─── Chat prompt (lightweight, no tools) ─────────────────────────────────────
 
 function buildChatPrompt(schema: LayoutSchema, sessionIntent?: string): string {
-  const { page, zones, pages, dataSchema } = schema;
-  const base = PAPER_DIMS[page.size] ?? PAPER_DIMS.A4;
-  const [pageW, pageH] = page.orientation === 'landscape' ? [base.h, base.w] : [base.w, base.h];
-  const ml = parseMarginMm(page.margin.left);
-  const mr = parseMarginMm(page.margin.right);
-  const usableW = Math.round(pageW - ml - mr);
-
+  const { zones, pages, dataSchema } = schema;
+  const dims = calcDims(schema);
   const totalComponents = [
     ...zones.header.components,
     ...zones.footer.components,
@@ -317,149 +354,41 @@ function buildChatPrompt(schema: LayoutSchema, sessionIntent?: string): string {
   return `You are a helpful assistant for TypstFlow, a PDF report designer.
 Answer questions conversationally. Do NOT use any tools — just reply in plain text.
 ${intentBlock}
-Current document: ${page.size} ${page.orientation} (${pageW}×${pageH}mm, usable width ${usableW}mm)
+Current document: ${dims.pageSize} ${dims.orientation} (${dims.pageW}×${dims.pageH}mm, usable width ${dims.usableW}mm)
 Components on canvas: ${totalComponents} total (header: ${zones.header.components.length}, body: ${pages.reduce((n, p) => n + p.body.components.length, 0)}, footer: ${zones.footer.components.length})
 Data fields: ${dataFields}`;
 }
 
 // ─── Design prompt (full agent) ───────────────────────────────────────────────
+
 function buildSystemPrompt(
   schema: LayoutSchema,
   sessionIntent?: string,
   aiMode?: 'plan' | 'act'
 ): string {
-  const { page, zones, pages, dataSchema } = schema;
-
-  const base = PAPER_DIMS[page.size] ?? PAPER_DIMS.A4;
-  const [pageW, pageH] = page.orientation === 'landscape' ? [base.h, base.w] : [base.w, base.h];
-  const ml = parseMarginMm(page.margin.left);
-  const mr = parseMarginMm(page.margin.right);
-  const mt = parseMarginMm(page.margin.top);
-  const mb = parseMarginMm(page.margin.bottom);
-  const usableW = Math.round(pageW - ml - mr);
-  const usableH = Math.round(pageH - mt - mb);
-  const mid = Math.round(usableW * 0.55);
-  const rightW = usableW - mid;
-
-  const headerSummary = zones.header.components.map(summarizeComponent).join(' | ') || 'empty';
-  const footerSummary = zones.footer.components.map(summarizeComponent).join(' | ') || 'empty';
-  const bodyLines = pages.map(
-    (p, i) =>
-      `  Page ${i + 1} (id:${p.id}): ${p.body.components.map(summarizeComponent).join(' | ') || 'empty'}`
-  );
-  const dataFields =
-    dataSchema.length > 0
-      ? dataSchema.map((f) => `${f.path}:${f.type}`).join(', ')
-      : 'none defined';
+  const dims = calcDims(schema);
+  const canvas = collectCanvasState(schema, true);
 
   const intentBlock = sessionIntent
     ? `\n## SESSION MEMORY (maintain these choices — do NOT override)\n${sessionIntent}\n`
     : '';
 
-  const modeBlock =
-    aiMode === 'plan'
-      ? '\n## MODE: PLAN — describe your full layout plan with exact mm positions before any tool calls.'
-      : '\n## MODE: ACT — build directly and efficiently, batch 4–6 tool calls per round.';
+  const modeBlock = `\n${MODE_BLOCKS[aiMode ?? 'act']}`;
 
-  return `You are a senior PDF layout designer for TypstFlow. You create polished, production-ready business documents that look like they were designed by a professional graphic designer — not auto-generated.
+  return `${PERSONA}
 ${intentBlock}${modeBlock}
 
-## Canvas
-Page: ${page.size} ${page.orientation} ${pageW}×${pageH}mm | margins t=${mt} r=${mr} b=${mb} l=${ml}mm
-USABLE AREA: ${usableW}×${usableH}mm | x:0–${usableW}mm, y:0–${usableH}mm per zone
-Zones: header=top strip | body=main content | footer=bottom strip
-Bindings: {{field}} for scalar values, {{items}} for arrays bound to tables
+${buildCanvasContext(dims, canvas)}
 
-## Design Principles — apply EVERY time
-VISUAL HIERARCHY (3 tiers):
-  Tier 1 — Identity: Company name / Document title. 18–22pt bold, dark theme color. Commands attention.
-  Tier 2 — Structure: Section labels, column headers, subtitles. 10–12pt semibold, primary accent color.
-  Tier 3 — Data: Body text, table cells, addresses. 9–10pt, #333333. Readable, not dominant.
+${DESIGN_PRINCIPLES}
 
-LAYOUT GRID (two-column):
-  Left column:  x=0, w=${mid}mm — billing party info, description, terms
-  Right column: x=${mid}, w=${rightW}mm — document refs, dates, amounts (right-aligned)
+${buildTechnicalConstraints(dims)}
 
-COLOR DISCIPLINE — pick ONE theme, use consistently:
-  navy:   dark=#1a1a2e | primary=#4361ee | accent=#7b9eff | tint=#eef0ff
-  teal:   dark=#0d3b38 | primary=#0a9396 | accent=#52b788 | tint=#e8f4f3
-  slate:  dark=#1e293b | primary=#6366f1 | accent=#a5b4fc | tint=#eef2ff
-  maroon: dark=#2d0a0a | primary=#c1121f | accent=#e63946 | tint=#fff5f5
-  forest: dark=#0f2818 | primary=#2d6a4f | accent=#52b788 | tint=#d8f3dc
+${CREATIVE_PROCESS}
 
-  Apply: dark → titles/headings | primary → accent lines, table header bg, section labels | tint → subtle panel bg | accent → highlights only
+${SAMPLE_DATA_GUIDE}
 
-WHITESPACE: 5–8mm between sections. 3mm min between adjacent elements. Never pack edge-to-edge.
-ALIGNMENT: Labels left-aligned, values right-aligned within their column. Consistent x-positions for the same role.
-
-## Element Sizing Guide
-  Text heights: 1 line=6mm | 2 lines=10mm | 3 lines=14mm
-  Table: minimum 30mm height, add 7mm per expected data row
-  Logo: 35×18mm | Company name: h=8mm | Address line: h=5mm
-  Section gap (spacer): 5–8mm | Divider line: thickness=0.3–0.5mm
-
-## Standard Invoice / Report Recipe
-HEADER ZONE — brand identity strip:
-  • image:   x=0,  y=2,  w=35, h=18  ← logo
-  • text:    x=40, y=2,  w=${usableW - 40}, h=8   ← Company Name, 16pt bold, dark color
-  • text:    x=40, y=11, w=${usableW - 40}, h=5   ← tagline/website, 8pt, #888888
-  • line:    x=0,  y=21, w=${usableW}, thickness=0.4mm, primary color ← brand separator
-
-BODY — Document Header block (y=0–35mm):
-  • text: x=0,    y=0,  w=${mid}, h=10  ← "TAX INVOICE" / "QUOTATION", 20pt bold, dark color
-  • text: x=${mid}, y=0,  w=${rightW}, h=6, right-align ← "Doc No: {{invoice.number}}", 9pt label
-  • text: x=${mid}, y=7,  w=${rightW}, h=6, right-align ← "Date: {{invoice.date}}", 9pt
-  • text: x=${mid}, y=14, w=${rightW}, h=6, right-align ← "Due: {{invoice.dueDate}}", 9pt
-  • line: x=0,    y=22, w=${usableW}, thickness=0.25mm, #e0e0e0 ← subtle separator
-
-BODY — Party Info block (y=25–60mm):
-  • text: x=0,   y=25, w=5,   h=5  ← "BILL TO", 7pt bold, primary color (section label)
-  • text: x=0,   y=30, w=${mid - 5}, h=7  ← client name, 11pt bold
-  • text: x=0,   y=38, w=${mid - 5}, h=5  ← address line 1, 9pt #555
-  • text: x=0,   y=43, w=${mid - 5}, h=5  ← address line 2 / tax ID, 9pt #555
-  • text: x=${mid}, y=25, w=5,  h=5  ← "FROM", 7pt bold, primary color
-  • text: x=${mid}, y=30, w=${rightW}, h=7  ← our company short name, 11pt bold
-  • text: x=${mid}, y=38, w=${rightW}, h=5  ← our address, 9pt #555
-
-BODY — Items Table (y=65–145mm):
-  • table: x=0, y=65, w=${usableW}, h=80, dataSource={{items}}
-    columns: description(auto,left), qty(20mm,center), unit(25mm,right), amount(30mm,right)
-    style: headerBackground=primary color, headerText=#ffffff, borderColor=#e0e0e0, cellPadding=5pt
-
-BODY — Totals block (y≈150mm, right column):
-  • line:  x=${mid}, y=150, w=${rightW}, thickness=0.25mm, #cccccc
-  • text:  x=${mid}, y=153, w=${rightW}, h=6, right-align ← "Subtotal: {{invoice.subtotal}}", 9pt
-  • text:  x=${mid}, y=160, w=${rightW}, h=6, right-align ← "VAT 7%: {{invoice.vat}}", 9pt
-  • line:  x=${mid}, y=168, w=${rightW}, thickness=0.4mm, primary color
-  • text:  x=${mid}, y=170, w=${rightW}, h=8, right-align ← "TOTAL: {{invoice.total}}", 13pt bold, primary color
-
-FOOTER ZONE — legal/contact strip:
-  • text: x=0,     y=2, w=${mid}, h=5  ← contact info, 7.5pt, #888888
-  • text: x=${mid}, y=2, w=${rightW}, h=5, right-align ← "Page {{page}} of {{totalPages}}", 7.5pt, #888888
-
-## Mandatory Workflow
-1. get_layout → read what exists and available y-space
-2. Pick color theme → commit. Use dark color for headings, primary for accents, tint for backgrounds.
-3. HEADER ZONE: logo + company name + separator line (3–4 elements)
-4. BODY doc-header block: title + reference numbers + date (4–5 elements)
-5. BODY party-info block: bill-to + from columns (5–6 elements)
-6. BODY data table: columns with field bindings
-7. BODY totals block: subtotal/tax/total text + lines
-8. FOOTER ZONE: contact + page number
-9. set_sample_data → EVERY {{binding}} with realistic Thai business data (company name in Thai, 13-digit tax ID, THB amounts with commas)
-
-## Sample Data Quality Standard
-Thai context: company name e.g. "บริษัท เทคโนโลยี จำกัด", tax ID "0105537123456", address real-sounding Thai street. Amounts in THB (e.g. 15750.00). Arrays: 3–5 rows with varied, plausible values.
-
-DATA FIELDS: ${dataFields}
-
-CURRENT LAYOUT:
-Header: ${headerSummary}
-${bodyLines.join('\n')}
-Footer: ${footerSummary}
-
-End every response with:
-<intent>{"docType":"...","colorTheme":"...","primaryColor":"...","accentColor":"...","decisions":["..."]}</intent>`;
+${INTENT_FORMAT}`;
 }
 
 export async function POST(req: NextRequest) {

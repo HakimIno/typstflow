@@ -211,7 +211,6 @@ function ColumnSlot({
   zoneKey,
   pageId,
   pageIndex,
-  totalPages,
 }: ColumnSlotProps) {
   const { isDraggedOver, ref } = useColumnDropTarget(columnLayoutId, colIdx);
 
@@ -219,12 +218,11 @@ function ColumnSlot({
     <div
       ref={ref}
       className={cn(
-        'column-slot-wrapper flex flex-col relative w-full min-h-[50px] rounded-lg transition-all border border-transparent',
+        'column-slot-wrapper flex flex-col relative w-full min-h-[50px] transition-all border border-transparent',
         isDraggedOver
           ? 'bg-[var(--accent-glow)]/15 border-dashed border-[var(--accent)]'
           : 'bg-transparent hover:border-slate-800/10 dark:hover:border-slate-300/5'
       )}
-      style={{ gap: '6px', padding: '4px' }}
     >
       {col.components.map((child: any) => (
         <ComponentWrapper
@@ -238,13 +236,15 @@ function ColumnSlot({
         />
       ))}
 
-      {col.components.length === 0 && (
+      {col.components.length === 0 && !isDraggedOver && (
         <div className="absolute inset-0 flex items-center justify-center border border-dashed border-slate-700/50 p-2 select-none pointer-events-none">
-          <span className="text-[9px] uppercase font-bold tracking-wider text-slate-500">
+          <span className="text-[8px] uppercase font-bold tracking-wider text-slate-400">
             Empty Column
           </span>
         </div>
       )}
+
+      
     </div>
   );
 }

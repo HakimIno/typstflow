@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { ColorPicker } from '../../../shared/ColorPicker';
+import { ControlField, PropertyGrid } from '../Shared';
 import { MiniInput } from './TableShared';
 
 interface Props {
@@ -54,220 +55,196 @@ export const TableColumnsSection = ({ component }: Props) => {
 
   return (
     <div className="space-y-1 min-w-0">
-      {component.columns.map((col, idx) => (
-        <div
-          key={col.id}
-          className="flex flex-col bg-[var(--bg-surface)] border border-[var(--border-default)] rounded shadow-sm group/col overflow-hidden"
-        >
-          {/* Compact row */}
+      {component.columns.map((col, idx) => {
+        return (
           <div
-            className={clsx(
-              'w-full flex items-center gap-2 p-1.5 cursor-pointer transition-colors border-0 text-left',
-              expandedColIndex === idx ? 'bg-[var(--accent-glow)]' : 'hover:bg-[var(--bg-hover)]'
-            )}
-            onClick={() => setExpandedColIndex(expandedColIndex === idx ? null : idx)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                setExpandedColIndex(expandedColIndex === idx ? null : idx);
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            aria-expanded={expandedColIndex === idx}
+            key={col.id}
+            className="flex flex-col bg-[var(--bg-surface)] border border-[var(--border-default)] rounded shadow-sm group/col overflow-hidden transition-all"
           >
-            <span className="w-4 h-4 flex items-center justify-center bg-[var(--bg-widget)] text-[8px] font-bold text-[var(--text-muted)] rounded-full shrink-0">
-              {idx + 1}
-            </span>
-            <div className="flex-1 min-w-0 flex flex-col">
-              <span className="text-[10px] font-bold text-[var(--text-primary)] truncate">
-                {col.header || 'Untitled'}
-              </span>
-              <span className="text-[8px] text-[var(--text-muted)] font-mono truncate">
-                {col.field ? `{${col.field}}` : 'unbound'}
-              </span>
+            {/* Compact row */}
+            <div className="w-full flex items-center pr-2 hover:bg-[var(--bg-hover)] transition-colors">
+              <button
+                type="button"
+                className={clsx(
+                  'flex-1 flex items-center gap-2 p-2 text-left transition-colors border-0',
+                  expandedColIndex === idx && 'bg-[var(--accent-glow)]'
+                )}
+                onClick={() => setExpandedColIndex(expandedColIndex === idx ? null : idx)}
+                aria-expanded={expandedColIndex === idx}
+              >
+                <span className="w-4 h-4 flex items-center justify-center bg-[var(--bg-widget)] text-[8px] font-bold text-[var(--text-muted)] rounded-full shrink-0">
+                  {idx + 1}
+                </span>
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <span className="text-[10px] font-bold text-[var(--text-primary)] truncate">
+                    {col.header || 'Untitled'}
+                  </span>
+                  <span className="text-[8px] text-[var(--text-muted)] font-mono truncate mt-0.5">
+                    {col.field ? `{${col.field}}` : 'unbound'}
+                  </span>
+                </div>
+                <span className="text-[9px] font-mono text-[var(--text-muted)] bg-[var(--bg-widget)] px-1 py-0.5 rounded border border-[var(--border-default)] shrink-0 mr-1">
+                  {col.width}
+                </span>
+                {expandedColIndex === idx ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
+                )}
+              </button>
+              <button
+                type="button"
+                className="p-1 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded opacity-0 group-hover/col:opacity-100 transition-all shrink-0 ml-0.5"
+                onClick={() => {
+                  const newCols = component.columns.filter((_, i) => i !== idx);
+                  updateComponent(component.id, { columns: newCols } as any);
+                }}
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
             </div>
-            <span className="text-[9px] font-mono text-[var(--text-muted)] bg-[var(--bg-widget)] px-1 py-0.5 rounded border border-[var(--border-default)]">
-              {col.width}
-            </span>
-            {expandedColIndex === idx ? (
-              <ChevronDown className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
-            ) : (
-              <ChevronRight className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
-            )}
-            <button
-              type="button"
-              className="p-1 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded opacity-0 group-hover/col:opacity-100 transition-all shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                const newCols = component.columns.filter((_, i) => i !== idx);
-                updateComponent(component.id, { columns: newCols } as any);
-              }}
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
-          </div>
 
-          {/* Expanded */}
-          {expandedColIndex === idx && (
-            <div className="p-2 bg-[var(--bg-widget)] border-t border-[var(--border-default)] space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
-                    Header
-                  </span>
-                  <MiniInput
-                    value={col.header || ''}
-                    onChange={(v) => updateColumn(idx, { header: v })}
-                    placeholder="Column Header"
-                  />
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
-                    Field Binding
-                  </span>
-                  <MiniInput
-                    value={col.field || ''}
-                    onChange={(v) => updateColumn(idx, { field: v })}
-                    placeholder="e.g. qty"
-                    mono
-                  />
-                </div>
-              </div>
-              <div className="flex flex-wrap items-end gap-2">
-                <div className="flex flex-col gap-0.5 min-w-[60px]">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
-                    Width
-                  </span>
-                  <MiniInput
-                    value={col.width}
-                    onChange={(v) => updateColumn(idx, { width: v })}
-                    className="w-full"
-                  />
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
-                    Colspan
-                  </span>
-                  <MiniInput
-                    type="number"
-                    value={col.colspan || 1}
-                    onChange={(v) =>
-                      updateColumn(idx, { colspan: Math.max(1, Number.parseInt(v) || 1) })
-                    }
-                    className="w-10 text-center"
-                  />
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
-                    Format
-                  </span>
-                  <Select
-                    value={col.format || 'text'}
-                    onValueChange={(val) => updateColumn(idx, { format: val })}
-                  >
-                    <SelectTrigger className="h-[22px] text-[9px] bg-[var(--bg-surface)] border-[var(--border-default)] px-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(() => {
-                        const dataType = col.field ? getValueType(sampleData, col.field) : 'string';
-                        const applicable = getApplicableFormats(dataType);
-                        const options = [
-                          { id: 'text', label: 'Text' },
-                          { id: 'number', label: 'Number' },
-                          { id: 'currency-thb', label: '฿ THB' },
-                          { id: 'currency-usd', label: '$ USD' },
-                          { id: 'percent', label: '%' },
-                          { id: 'date-th', label: 'Date TH' },
-                          { id: 'date-en', label: 'Date EN' },
-                          { id: 'boolean', label: 'Bool' },
-                        ];
-                        return options
-                          .filter((opt) => applicable.includes(opt.id as any))
-                          .map((opt) => (
-                            <SelectItem key={opt.id} value={opt.id} className="text-[9px]">
-                              {opt.label}
-                            </SelectItem>
-                          ));
-                      })()}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
-                    Align
-                  </span>
-                  <div className="flex border border-[var(--border-default)] rounded overflow-hidden">
-                    {[
-                      { id: 'left', Icon: AlignLeft },
-                      { id: 'center', Icon: AlignCenter },
-                      { id: 'right', Icon: AlignRight },
-                    ].map(({ id, Icon }) => (
-                      <button
-                        type="button"
-                        key={id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          updateColumn(idx, { align: id });
-                        }}
-                        className={clsx(
-                          'p-0.5 transition-all',
-                          (col.align || 'left') === id
-                            ? 'bg-[var(--accent)] text-white'
-                            : 'bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                        )}
-                      >
-                        <Icon className="w-3 h-3" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[var(--border-default)]">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
-                    Cell BG
-                  </span>
-                  <ColorPicker
-                    color={col.background || '#ffffff'}
-                    onChange={(color) => updateColumn(idx, { background: color })}
-                  />
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
-                    Border
-                  </span>
-                  <MiniInput
-                    value={col.borderWidth || ''}
-                    onChange={(v) => updateColumn(idx, { borderWidth: v })}
-                    placeholder="0.5pt"
-                    mono
-                  />
-                </div>
-              </div>
-              {component.autoGroupFooter && (
-                <div className="pt-1 border-t border-[var(--border-default)]">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
-                      Footer Expr (Auto Group)
-                    </span>
+            {/* Expanded */}
+            {expandedColIndex === idx && (
+              <div className="p-2.5 bg-[var(--bg-widget)] border-t border-[var(--border-default)] space-y-3 animate-in fade-in duration-200">
+                <PropertyGrid cols={2}>
+                  <ControlField label="Header">
                     <MiniInput
-                      value={col.footerExpr || ''}
-                      onChange={(v) => updateColumn(idx, { footerExpr: v })}
-                      placeholder="{{SUM(...)}} or static text"
+                      value={col.header || ''}
+                      onChange={(v) => updateColumn(idx, { header: v })}
+                      placeholder="Column Header"
+                    />
+                  </ControlField>
+                  <ControlField label="Field Binding">
+                    <MiniInput
+                      value={col.field || ''}
+                      onChange={(v) => updateColumn(idx, { field: v })}
+                      placeholder="e.g. qty"
                       mono
                     />
+                  </ControlField>
+                </PropertyGrid>
+
+                <PropertyGrid cols={2}>
+                  <ControlField label="Width">
+                    <MiniInput
+                      value={col.width}
+                      onChange={(v) => updateColumn(idx, { width: v })}
+                    />
+                  </ControlField>
+                  <ControlField label="Colspan">
+                    <MiniInput
+                      type="number"
+                      value={col.colspan || 1}
+                      onChange={(v) =>
+                        updateColumn(idx, { colspan: Math.max(1, Number.parseInt(v) || 1) })
+                      }
+                    />
+                  </ControlField>
+                </PropertyGrid>
+
+                <PropertyGrid cols={2}>
+                  <ControlField label="Format">
+                    <Select
+                      value={col.format || 'text'}
+                      onValueChange={(val) => updateColumn(idx, { format: val })}
+                    >
+                      <SelectTrigger className="h-6 text-[9px] bg-[var(--bg-surface)] border-[var(--border-default)] px-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(() => {
+                          const dataType = col.field
+                            ? getValueType(sampleData, col.field)
+                            : 'string';
+                          const applicable = getApplicableFormats(dataType);
+                          const options = [
+                            { id: 'text', label: 'Text' },
+                            { id: 'number', label: 'Number' },
+                            { id: 'currency-thb', label: '฿ THB' },
+                            { id: 'currency-usd', label: '$ USD' },
+                            { id: 'percent', label: '%' },
+                            { id: 'date-th', label: 'Date TH' },
+                            { id: 'date-en', label: 'Date EN' },
+                            { id: 'boolean', label: 'Bool' },
+                          ];
+                          return options
+                            .filter((opt) => applicable.includes(opt.id as any))
+                            .map((opt) => (
+                              <SelectItem key={opt.id} value={opt.id} className="text-[9px]">
+                                {opt.label}
+                              </SelectItem>
+                            ));
+                        })()}
+                      </SelectContent>
+                    </Select>
+                  </ControlField>
+                  <ControlField label="Align">
+                    <div className="flex border border-[var(--border-default)] rounded overflow-hidden h-6 w-full">
+                      {[
+                        { id: 'left', Icon: AlignLeft },
+                        { id: 'center', Icon: AlignCenter },
+                        { id: 'right', Icon: AlignRight },
+                      ].map(({ id, Icon }) => (
+                        <button
+                          type="button"
+                          key={id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateColumn(idx, { align: id });
+                          }}
+                          className={clsx(
+                            'flex-1 flex items-center justify-center transition-all',
+                            (col.align || 'left') === id
+                              ? 'bg-[var(--accent)] text-white'
+                              : 'bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                          )}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                        </button>
+                      ))}
+                    </div>
+                  </ControlField>
+                </PropertyGrid>
+
+                <PropertyGrid cols={2}>
+                  <ControlField label="Cell BG">
+                    <ColorPicker
+                      color={col.background || '#ffffff'}
+                      onChange={(color) => updateColumn(idx, { background: color })}
+                    />
+                  </ControlField>
+                  <ControlField label="Border">
+                    <MiniInput
+                      value={col.borderWidth || ''}
+                      onChange={(v) => updateColumn(idx, { borderWidth: v })}
+                      placeholder="0.5pt"
+                      mono
+                    />
+                  </ControlField>
+                </PropertyGrid>
+
+                {component.autoGroupFooter && (
+                  <div className="pt-2 border-t border-[var(--border-default)]/60 animate-in slide-in-from-top-1 duration-200">
+                    <ControlField label="Footer Expr (Auto Group)">
+                      <MiniInput
+                        value={col.footerExpr || ''}
+                        onChange={(v) => updateColumn(idx, { footerExpr: v })}
+                        placeholder="{{SUM(...)}} or static text"
+                        mono
+                      />
+                    </ControlField>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      ))}
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
       <button
         type="button"
         onClick={addColumn}
-        className="w-full flex items-center justify-center gap-1.5 p-0.5 bg-white/[0.04] hover:bg-white/[0.08] text-[var(--accent)] text-[10px] font-bold rounded border border-dashed border-[var(--border-default)] transition-all"
+        className="w-full flex items-center justify-center gap-1.5 p-1 bg-white/[0.04] hover:bg-white/[0.08] text-[var(--accent)] text-[10px] font-bold rounded border border-dashed border-[var(--border-default)] transition-all"
       >
         <Plus className="w-3 h-3" />
         Add New Column

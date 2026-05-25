@@ -27,8 +27,11 @@ export const TableDataSection = ({ component }: Props) => {
   const patchGroupStyle = (stylePatch: Partial<typeof groupHeaderStyle>) =>
     patch({ groupHeaderStyle: { ...groupHeaderStyle, ...stylePatch } });
 
+  const hasGrouping = !!component.groupBy;
+
   return (
     <div className={`${PROPERTY_STACK_CLASS} animate-in fade-in duration-200`}>
+      {/* 1. Data Source & Behavior */}
       <CollapsibleSection label="Data Source & Behavior">
         <div className={TABLE_FIELD_STACK}>
           <BindingField
@@ -49,6 +52,7 @@ export const TableDataSection = ({ component }: Props) => {
         </div>
       </CollapsibleSection>
 
+      {/* 2. Data Grouping */}
       <CollapsibleSection label="Data Grouping">
         <div className={TABLE_FIELD_STACK}>
           <BindingField
@@ -60,45 +64,57 @@ export const TableDataSection = ({ component }: Props) => {
             placeholder="department"
             mono
           />
-          <BindingField
-            label="Header Text"
-            value={component.groupHeaderFormat || ''}
-            onChange={(v) => patch({ groupHeaderFormat: v })}
-            sampleData={sampleData}
-            onBindingSelect={(_path, binding) => patch({ groupHeaderFormat: binding })}
-            placeholder="Group: {{department}}"
-            appendBinding
-          />
-          <InsetSection label="Group Header Style">
-            <CompactTextStyleFields style={groupHeaderStyle} onPatch={patchGroupStyle} />
-          </InsetSection>
+          {hasGrouping && (
+            <div className="space-y-3.5 pt-2 border-t border-[var(--border-default)]/60 animate-in fade-in duration-200">
+              <BindingField
+                label="Header Text"
+                value={component.groupHeaderFormat || ''}
+                onChange={(v) => patch({ groupHeaderFormat: v })}
+                sampleData={sampleData}
+                onBindingSelect={(_path, binding) => patch({ groupHeaderFormat: binding })}
+                placeholder="Group: {{department}}"
+                appendBinding
+              />
+              <InsetSection label="Group Header Style">
+                <CompactTextStyleFields style={groupHeaderStyle} onPatch={patchGroupStyle} />
+              </InsetSection>
+            </div>
+          )}
         </div>
       </CollapsibleSection>
 
+      {/* 3. Summaries & Totals */}
       <CollapsibleSection label="Summaries & Totals">
         <div className={TABLE_FIELD_STACK}>
-          <SettingToggle
-            label="Auto Subtotal"
-            description="Per group"
-            value={!!component.autoGroupFooter}
-            onChange={(v) => patch({ autoGroupFooter: v })}
-          />
-          {component.autoGroupFooter && (
-            <ControlField label="Footer Label">
-              <MiniInput
-                value={component.autoGroupFooterLabel ?? 'Subtotal'}
-                onChange={(v) => patch({ autoGroupFooterLabel: v })}
-                placeholder="Subtotal"
-                className="w-full"
+          {hasGrouping && (
+            <div className="space-y-3 pb-3 border-b border-[var(--border-default)]/60 animate-in fade-in duration-200">
+              <SettingToggle
+                label="Auto Subtotal"
+                description="Per group"
+                value={!!component.autoGroupFooter}
+                onChange={(v) => patch({ autoGroupFooter: v })}
               />
-            </ControlField>
+              {component.autoGroupFooter && (
+                <div className="pl-2 border-l-2 border-[var(--accent)] animate-in slide-in-from-left-1 duration-200">
+                  <ControlField label="Footer Label">
+                    <MiniInput
+                      value={component.autoGroupFooterLabel ?? 'Subtotal'}
+                      onChange={(v) => patch({ autoGroupFooterLabel: v })}
+                      placeholder="Subtotal"
+                      className="w-full"
+                    />
+                  </ControlField>
+                </div>
+              )}
+              <SettingToggle
+                label="Repeat Notes"
+                description="Per group"
+                value={!!component.repeatSummaryOnGroup}
+                onChange={(v) => patch({ repeatSummaryOnGroup: v })}
+              />
+            </div>
           )}
-          <SettingToggle
-            label="Repeat Notes"
-            description="Per group"
-            value={!!component.repeatSummaryOnGroup}
-            onChange={(v) => patch({ repeatSummaryOnGroup: v })}
-          />
+
           <InsetSection label="Manual Summary Rows" contentClassName="space-y-1.5">
             {(component.summaryRows || []).map((row, idx) => (
               <SummaryRowEditor
@@ -123,7 +139,7 @@ export const TableDataSection = ({ component }: Props) => {
               />
             ))}
             <AddRowButton
-              label="Add Summary"
+              label="Add Summary Row"
               onClick={() =>
                 patch({
                   summaryRows: [
