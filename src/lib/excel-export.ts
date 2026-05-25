@@ -77,7 +77,7 @@ export async function exportSchemaToExcel(schema: LayoutSchema, sampleData: unkn
 
   const tables = findAllTables(schema);
   if (tables.length === 0) {
-    throw new Error('ไม่พบตารางในเทมเพลตปัจจุบันสำหรับการนำออกข้อมูล Excel');
+    throw new Error('No tables found in the current template for Excel export.');
   }
 
   const workbook = new ExcelJS.Workbook();

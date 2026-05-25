@@ -118,10 +118,13 @@ export const DragMonitor = memo(function DragMonitor() {
         const data = source.data as unknown as DragSourceData;
         if (data.type !== 'canvas-item' && data.type !== 'new-component') return;
 
+        const scrollEl = document.querySelector('[data-canvas-scroll-container]') as HTMLElement;
+        if (!scrollEl) return;
+
+        const rect = scrollEl.getBoundingClientRect();
         const container = document.querySelector('[data-paper-container]') as HTMLElement;
         if (!container) return;
 
-        const rect = container.getBoundingClientRect();
         const zoom = Number.parseFloat(container.dataset.zoom || '1');
         const { schema, manualGuides } = useDesignerStore.getState();
 
@@ -133,7 +136,7 @@ export const DragMonitor = memo(function DragMonitor() {
         const pageHeightPx = LayoutEngine.mmToPx(pH) * zoom;
         const pageWidthPx = LayoutEngine.mmToPx(pW);
         const pageGap = 32;
-        const paddingTop = 48;
+        const paddingTop = 96; // pt-24 in Canvas.tsx = 96px
         const paddingLeft = 64;
 
         const startPageId = data.pageId || schema.pages[0]?.id || '';
@@ -173,7 +176,7 @@ export const DragMonitor = memo(function DragMonitor() {
 
         dragRef.current = {
           containerRect: rect,
-          containerElement: container,
+          containerElement: scrollEl,
           zoom,
           pageHeightPx,
           pageWidthPx,
@@ -210,13 +213,11 @@ export const DragMonitor = memo(function DragMonitor() {
 
         cache.frameCounter++;
 
-        const scrollContainer = cache.containerElement?.parentElement?.parentElement as HTMLElement;
-        const scrollY = location.current.input.clientY - cache.containerRect.top;
+        const scrollContainer = cache.containerElement as HTMLElement;
         const currentScrollTop = scrollContainer?.scrollTop || 0;
-        const absoluteY = currentScrollTop + scrollY;
-        const absoluteX =
-          (scrollContainer?.scrollLeft || 0) +
-          (location.current.input.clientX - cache.containerRect.left);
+        const currentScrollLeft = scrollContainer?.scrollLeft || 0;
+        const absoluteY = currentScrollTop + (location.current.input.clientY - cache.containerRect.top);
+        const absoluteX = currentScrollLeft + (location.current.input.clientX - cache.containerRect.left);
 
         const activePageIdx = Math.max(
           0,

@@ -20,6 +20,7 @@ export interface DialogOptions {
   initialValue?: string;
   onConfirm?: (value?: string) => void;
   onCancel?: () => void;
+  hideCancel?: boolean;
 }
 
 export interface DialogState extends DialogOptions {

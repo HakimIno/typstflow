@@ -112,13 +112,15 @@ export function AlertDialog() {
         </div>
 
         <div className="flex items-center justify-end gap-2 p-2 bg-[var(--bg-app)]/30 border-t border-[var(--border-default)]">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-md transition-colors"
-          >
-            {dialog.cancelLabel || 'Cancel'}
-          </button>
+          {!dialog.hideCancel && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-md transition-colors"
+            >
+              {dialog.cancelLabel || 'Cancel'}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleConfirm}
