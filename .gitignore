@@ -48,5 +48,8 @@ next-env.d.ts
 /.tmp/
 /scratch/
 
+# Runtime data (SQLite shares DB)
+/.data/
+
 /imageexm/*
 /examples/*

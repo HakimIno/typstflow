@@ -7,6 +7,7 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
+  Blocks,
   Minus,
   MoreHorizontal,
   MoreVertical,
@@ -42,6 +43,7 @@ export interface BulkEditActions {
   updateByType: (type: ComponentNode['type'], updates: Partial<ComponentNode>) => void;
   updateStyleByType: (type: ComponentNode['type'], updates: Partial<TextStyle>) => void;
   deleteAll: () => void;
+  saveAsBlock: () => void;
 }
 
 interface BulkEditPanelProps {
@@ -343,11 +345,20 @@ export const BulkEditPanel = memo(function BulkEditPanel({
             );
           })}
 
-          <div className="px-2.5 py-2">
+          <div className="px-2.5 py-2 flex gap-2">
+            <button
+              type="button"
+              onClick={actions.saveAsBlock}
+              className="flex items-center justify-center gap-1.5 flex-1 h-7 rounded-[3px] bg-violet-600/10 hover:bg-violet-600/80 text-violet-400 hover:text-white border border-violet-600/25 transition-colors text-[9px] font-bold uppercase tracking-wide"
+              title="Save selected components as a reusable block"
+            >
+              <Blocks className="w-3 h-3" />
+              Save Block
+            </button>
             <button
               type="button"
               onClick={actions.deleteAll}
-              className="flex items-center justify-center gap-2 w-full h-7 rounded-[3px] bg-red-600/10 hover:bg-red-600/80 text-red-500 hover:text-white border border-red-600/25 transition-colors text-[9px] font-bold uppercase tracking-wide"
+              className="flex items-center justify-center gap-2 flex-1 h-7 rounded-[3px] bg-red-600/10 hover:bg-red-600/80 text-red-500 hover:text-white border border-red-600/25 transition-colors text-[9px] font-bold uppercase tracking-wide"
             >
               <Trash2 className="w-3 h-3" />
               Delete {selectedComponents.length}

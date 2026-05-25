@@ -7,6 +7,7 @@ import clsx from 'clsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus } from 'lucide-react';
 import { memo, useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface CanvasToolbarProps {
   mode?: 'design' | 'preview';
@@ -21,6 +22,8 @@ export const CanvasToolbar = memo(function CanvasToolbar({
   totalPageCount: customTotalPageCount,
   onPageChange,
 }: CanvasToolbarProps) {
+  const pathname = usePathname();
+  const isViewPage = pathname?.startsWith('/view/');
   const zoom = useDesignerStore((state) => state.zoom);
   const setZoom = useDesignerStore((state) => state.setZoom);
   const pageSize = useDesignerStore((state) => state.schema.page.size);
@@ -134,7 +137,8 @@ export const CanvasToolbar = memo(function CanvasToolbar({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={clsx(
-        'absolute bottom-4 left-[30rem] -translate-x-1/2 z-50 flex flex-col items-center p-4'
+        'absolute bottom-4 -translate-x-1/2 z-50 flex flex-col items-center p-4',
+        isViewPage ? 'left-1/2' : 'left-[30rem]'
       )}
     >
       <motion.div

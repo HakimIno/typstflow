@@ -17,7 +17,7 @@ import type {
   TextStyle,
 } from '@/types/schema';
 import { clsx } from 'clsx';
-import { Database, Layout, Lock, Palette, Settings, Trash2 } from 'lucide-react';
+import { Blocks, Database, Layout, Lock, Palette, Settings, Trash2 } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { DesignerInput } from '../shared/DesignerInput';
@@ -98,6 +98,8 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
   const updateComponents = useDesignerStore((state) => state.updateComponents);
   const removeComponent = useDesignerStore((state) => state.removeComponent);
   const removeComponents = useDesignerStore((state) => state.removeComponents);
+  const saveBlock = useDesignerStore((state) => state.saveBlock);
+  const selectedZone = useDesignerStore((state) => state.selectedZone) ?? 'body';
 
   const isLocked = selectedComponent ? lockedComponentIds.includes(selectedComponent.id) : false;
 
@@ -185,6 +187,12 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         applyBulkMap(updatesMap);
       },
       deleteAll: () => removeComponents(selectedComponentIds),
+      saveAsBlock: () =>
+        saveBlock(
+          `Block (${bulkSelectedComponents.length})`,
+          bulkSelectedComponents,
+          selectedZone
+        ),
     };
 
     return <BulkEditPanel selectedComponents={bulkSelectedComponents} actions={bulkActions} />;
@@ -487,20 +495,36 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
             </span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => removeComponent(selectedComponent.id)}
-          disabled={isLocked}
-          className={clsx(
-            'p-1 rounded transition-colors',
-            isLocked
-              ? 'opacity-20 cursor-not-allowed text-[var(--text-muted)]'
-              : 'hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500'
-          )}
-          title={isLocked ? 'Cannot delete locked component' : 'Delete component'}
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => saveBlock(selectedComponent.name ?? selectedComponent.type, [selectedComponent], selectedZone)}
+            disabled={isLocked}
+            className={clsx(
+              'p-1 rounded transition-colors',
+              isLocked
+                ? 'opacity-20 cursor-not-allowed text-[var(--text-muted)]'
+                : 'hover:bg-violet-500/10 text-[var(--text-muted)] hover:text-violet-400'
+            )}
+            title="Save as reusable block"
+          >
+            <Blocks className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => removeComponent(selectedComponent.id)}
+            disabled={isLocked}
+            className={clsx(
+              'p-1 rounded transition-colors',
+              isLocked
+                ? 'opacity-20 cursor-not-allowed text-[var(--text-muted)]'
+                : 'hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500'
+            )}
+            title={isLocked ? 'Cannot delete locked component' : 'Delete component'}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Tabs Navigation */}

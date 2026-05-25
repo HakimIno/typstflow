@@ -1,4 +1,11 @@
-import type { ComponentNode, GroupDefinition, LayoutSchema, Zone, ZoneKey } from '@/types/schema';
+import type {
+  ComponentNode,
+  GroupDefinition,
+  LayoutSchema,
+  SavedBlock,
+  Zone,
+  ZoneKey,
+} from '@/types/schema';
 import type { FontSlice } from './slices/font-slice';
 
 export interface SpacingIndicator {
@@ -289,4 +296,10 @@ export interface DesignerState extends FontSlice {
 
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
+
+  // Component Library (Saved Blocks)
+  savedBlocks: SavedBlock[];
+  saveBlock: (name: string, components: ComponentNode[], sourceZone: ZoneKey) => void;
+  deleteBlock: (id: string) => void;
+  insertBlock: (blockId: string, targetZone: ZoneKey, targetPageId?: string) => void;
 }

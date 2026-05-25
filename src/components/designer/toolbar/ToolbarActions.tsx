@@ -3,9 +3,10 @@
 import { findAllTables } from '@/lib/excel-export';
 import { type ExportProgress, exportReportPdf } from '@/lib/pdf-export';
 import { useDesignerStore } from '@/store/designer-store';
-import { Download, FileSpreadsheet, FileStack, PanelRight, Play } from 'lucide-react';
+import { Download, FileSpreadsheet, FileStack, Link2, PanelRight, Play } from 'lucide-react';
 import { memo, useState } from 'react';
 import { BatchExportModal } from './BatchExportModal';
+import { ShareModal } from './ShareModal';
 import { ToolbarButton } from './ToolbarButton';
 
 type ExportState = 'idle' | ExportProgress['stage'];
@@ -30,6 +31,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
   const isExporting = exportState !== 'idle';
   const [isExcelExporting, setIsExcelExporting] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const handleExportExcel = async () => {
     if (findAllTables(schema).length === 0) {
@@ -146,6 +148,15 @@ export const ToolbarActions = memo(function ToolbarActions() {
       </ToolbarButton>
 
       <ToolbarButton
+        icon={Link2}
+        label="Share"
+        onClick={() => setIsShareModalOpen(true)}
+        variant="toolbar-item"
+        title="Create a read-only share link"
+        className="!h-7 !px-3 opacity-80 hover:opacity-100"
+      />
+
+      <ToolbarButton
         icon={FileStack}
         label="Batch PDF"
         onClick={() => setIsBatchModalOpen(true)}
@@ -170,6 +181,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
       </ToolbarButton>
 
       <BatchExportModal isOpen={isBatchModalOpen} onClose={() => setIsBatchModalOpen(false)} />
+      <ShareModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} />
     </div>
   );
 });

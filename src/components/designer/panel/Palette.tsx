@@ -3,9 +3,11 @@
 import { DesignerInput } from '@/components/shared/DesignerInput';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
+import type { SavedBlock } from '@/types/schema';
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { clsx } from 'clsx';
 import {
+  Blocks,
   Columns,
   FileDown,
   Hash,
@@ -15,12 +17,14 @@ import {
   ListTree,
   Minus,
   PenLine,
+  Plus,
   QrCode,
   RectangleHorizontal,
   ScanLine,
   Search,
   Space,
   Table,
+  Trash2,
   Type,
 } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
@@ -71,6 +75,12 @@ const CATEGORIES = [
 
 export const Palette = memo(function Palette() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'elements' | 'blocks'>('elements');
+  const savedBlocks = useDesignerStore((s) => s.savedBlocks);
+  const deleteBlock = useDesignerStore((s) => s.deleteBlock);
+  const insertBlock = useDesignerStore((s) => s.insertBlock);
+  const activePageId = useDesignerStore((s) => s.activePageId);
+  const activeZone = useDesignerStore((s) => s.selectedZone) ?? 'body';
 
   const filteredCategories = useMemo(
     () =>
@@ -89,38 +99,144 @@ export const Palette = memo(function Palette() {
     <BasePanel>
       <PanelHeader title="Element Library" icon={LayoutDashboard} />
 
-      {/* Search Bar - Compact */}
-      <div className="p-2 border-b border-[var(--border-default)] shrink-0">
-        <div className="relative group">
-          <DesignerInput
-            type="text"
-            placeholder="Search tools..."
-            value={searchQuery}
-            onChange={(v: string) => setSearchQuery(v)}
-            className="pr-8"
-          />
-          <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
-        </div>
+      {/* Tab switcher */}
+      <div className="flex border-b border-[var(--border-default)] shrink-0">
+        <button
+          type="button"
+          onClick={() => setActiveTab('elements')}
+          className={clsx(
+            'flex-1 py-1.5 text-[11px] font-semibold transition-colors',
+            activeTab === 'elements'
+              ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] -mb-px'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+          )}
+        >
+          Elements
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('blocks')}
+          className={clsx(
+            'flex-1 py-1.5 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1',
+            activeTab === 'blocks'
+              ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] -mb-px'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+          )}
+        >
+          <Blocks className="w-3 h-3" />
+          Blocks
+          {savedBlocks.length > 0 && (
+            <span className="ml-0.5 bg-[var(--accent)]/20 text-[var(--accent)] text-[9px] font-bold px-1 rounded-full">
+              {savedBlocks.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Categories Content - Dense List */}
-      <div className="flex-1 overflow-y-auto scrollbar-none py-1">
-        {filteredCategories.map((cat) => (
-          <div key={cat.id} className="mb-2 last:mb-0">
-            <div className="h-7 px-3 flex items-center gap-2 text-[var(--text-muted)]">
-              <span className="text-[10px] font-bold uppercase tracking-[0.12em]">{cat.label}</span>
-              <div className="flex-1 h-px bg-[var(--border-default)] opacity-70" />
-            </div>
-
-            <div className="grid grid-cols-1">
-              {cat.items.map((item) => (
-                <PaletteItem key={item.type} {...item} />
-              ))}
+      {activeTab === 'elements' && (
+        <>
+          {/* Search Bar */}
+          <div className="p-2 border-b border-[var(--border-default)] shrink-0">
+            <div className="relative group">
+              <DesignerInput
+                type="text"
+                placeholder="Search tools..."
+                value={searchQuery}
+                onChange={(v: string) => setSearchQuery(v)}
+                className="pr-8"
+              />
+              <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] group-focus-within:text-[var(--text-secondary)] transition-colors" />
             </div>
           </div>
-        ))}
-      </div>
+
+          {/* Categories Content */}
+          <div className="flex-1 overflow-y-auto scrollbar-none py-1">
+            {filteredCategories.map((cat) => (
+              <div key={cat.id} className="mb-2 last:mb-0">
+                <div className="h-7 px-3 flex items-center gap-2 text-[var(--text-muted)]">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.12em]">{cat.label}</span>
+                  <div className="flex-1 h-px bg-[var(--border-default)] opacity-70" />
+                </div>
+                <div className="grid grid-cols-1">
+                  {cat.items.map((item) => (
+                    <PaletteItem key={item.type} {...item} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'blocks' && (
+        <div className="flex-1 overflow-y-auto scrollbar-none py-2 px-2">
+          {savedBlocks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+              <Blocks className="w-8 h-8 text-[var(--text-muted)] opacity-40" />
+              <p className="text-xs text-[var(--text-muted)]">No saved blocks yet</p>
+              <p className="text-[11px] text-[var(--text-muted)] opacity-60 leading-snug px-4">
+                Select components and click "Save as Block" in the properties panel
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {savedBlocks.map((block) => (
+                <BlockItem
+                  key={block.id}
+                  block={block}
+                  onInsert={() =>
+                    insertBlock(block.id, activeZone, activePageId ?? undefined)
+                  }
+                  onDelete={() => deleteBlock(block.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </BasePanel>
+  );
+});
+
+const BlockItem = memo(function BlockItem({
+  block,
+  onInsert,
+  onDelete,
+}: {
+  block: SavedBlock;
+  onInsert: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="group flex items-center gap-2 rounded-md px-2 py-1.5 border border-transparent hover:bg-[var(--bg-widget)] hover:border-[var(--border-subtle)] transition-all">
+      <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 border border-[var(--border-subtle)] bg-[var(--accent)]/10">
+        <Blocks className="w-3.5 h-3.5 text-[var(--accent)]" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] text-[var(--text-secondary)] font-medium truncate">{block.name}</p>
+        <p className="text-[10px] text-[var(--text-muted)]">
+          {block.components.length} component{block.components.length !== 1 ? 's' : ''} · {block.sourceZone}
+        </p>
+      </div>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <button
+          type="button"
+          onClick={onInsert}
+          className="p-1 rounded hover:bg-[var(--accent)]/20 text-[var(--accent)] transition-colors"
+          title="Insert block"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="p-1 rounded hover:bg-red-500/20 text-red-400 transition-colors"
+          title="Delete block"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
   );
 });
 

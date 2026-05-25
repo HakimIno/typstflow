@@ -6,6 +6,7 @@ import { agentLogger } from '@/lib/utils/agent-logger';
 import { validateAndRepairSchema } from '@/lib/utils/schema-validator';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { createBlocksSlice } from './slices/blocks-slice';
 import { createDialogSlice } from './slices/dialog-slice';
 import { createFontSlice } from './slices/font-slice';
 import { createGuidesSlice } from './slices/guides-slice';
@@ -34,6 +35,7 @@ export const useDesignerStore = create<DesignerState>()(
       ...createDialogSlice(...a),
       ...createFontSlice()(...a),
       ...createGuidesSlice(...a),
+      ...createBlocksSlice(...a),
       // Override schema/history/componentRegistry with proper initial values
       schema: BLANK_SCHEMA,
       componentRegistry: buildComponentRegistry(BLANK_SCHEMA),

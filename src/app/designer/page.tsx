@@ -28,6 +28,34 @@ export default function DesignerPage() {
   useKeyboardShortcuts();
   useFontInstaller(); // Re-register persisted fonts on hydration
 
+  // Auto-import shared template if query param is present
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const importId = params.get('import');
+    if (importId) {
+      // Clear query params from URL so reloading doesn't re-import
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+
+      // Fetch and import the share schema
+      (async () => {
+        try {
+          const res = await fetch(`/api/share/${importId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.schema) {
+              const importSchema = useDesignerStore.getState().importSchema;
+              importSchema(JSON.stringify({ schema: data.schema, data: data.sampleData }));
+            }
+          }
+        } catch (e) {
+          console.error('Failed to import shared template:', e);
+        }
+      })();
+    }
+  }, []);
+
   useEffect(() => {
     const handleLog = (type: string, ...args: any[]) => {
       const msg = `[${type.toUpperCase()}] ${args

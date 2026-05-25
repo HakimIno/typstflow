@@ -526,3 +526,14 @@ export interface DataFieldDefinition {
   description?: string;
   example?: unknown;
 }
+
+
+export interface SavedBlock {
+  id: string;
+  name: string;
+  description?: string;
+  components: ComponentNode[];
+  /** Zone the block was saved from (hint for where to paste it) */
+  sourceZone: ZoneKey;
+  createdAt: number;
+}
