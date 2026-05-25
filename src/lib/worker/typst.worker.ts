@@ -379,6 +379,43 @@ self.onmessage = async (e: MessageEvent) => {
         if (payload?.id) cancelledIds.add(payload.id as string);
         break;
       }
+      case 'RENDER_PREVIEW_PAGES': {
+        const { schema, data, pageIndices } = payload as {
+          schema: unknown;
+          data: Record<string, unknown>;
+          pageIndices: number[];
+        };
+        const now = new Date();
+        bridge.set_today(now.getFullYear(), now.getMonth() + 1, now.getDate());
+        const preparedSchema = injectImagesIntoSchema(schema);
+        const generator = new TypstGenerator();
+
+        for (const pageIndex of pageIndices) {
+          if (cancelledIds.has(id)) {
+            cancelledIds.delete(id);
+            return;
+          }
+          const typstCode = generator.generatePageAtIndex(preparedSchema, pageIndex, data);
+          const svgString = bridge.render_svg(typstCode);
+          const svg =
+            svgString
+              .split('<!-- PAGE_BREAK -->')
+              .find((s: string) => s.trim().length > 0) ?? svgString;
+          self.postMessage({
+            id,
+            type: 'preview_page',
+            payload: { pageIndex, svg },
+          });
+          await new Promise((r) => setTimeout(r, 0));
+        }
+
+        if (cancelledIds.has(id)) {
+          cancelledIds.delete(id);
+        } else {
+          self.postMessage({ id, type: 'success', payload: null });
+        }
+        break;
+      }
       case 'RENDER_REPORT_SVG_STREAM': {
         const { schema, data } = payload;
         const now = new Date();

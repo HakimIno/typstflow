@@ -256,6 +256,21 @@ describe('TypstGenerator — multi-page output', () => {
     ],
   };
 
+  it('uses strong pagebreaks between designer pages', () => {
+    const emptyMultiPage: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        { id: 'p1', name: 'Page 1', body: { id: 'body', components: [] } },
+        { id: 'p2', name: 'Page 2', body: { id: 'body', components: [] } },
+        { id: 'p3', name: 'Page 3', body: { id: 'body', components: [] } },
+      ],
+    };
+    const output = generate(emptyMultiPage);
+    expect(output.match(/\n#pagebreak\(\)\n/g)?.length).toBe(2);
+    expect(output).not.toContain('#pagebreak(weak: true)');
+    expect(output).not.toContain('#box()');
+  });
+
   it('inserts #pagebreak() between pages', () => {
     const output = generate(schema);
     expect(output).toContain('#pagebreak(');

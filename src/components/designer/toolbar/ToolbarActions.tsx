@@ -1,17 +1,20 @@
 'use client';
 
-import type { PdfExportStage } from '@/lib/typst-wasm';
+import { exportReportPdf, type ExportProgress } from '@/lib/pdf-export';
 import { useDesignerStore } from '@/store/designer-store';
 import { Download, FileSpreadsheet, PanelRight, Play } from 'lucide-react';
 import { memo, useState } from 'react';
 import { ToolbarButton } from './ToolbarButton';
 
-type ExportState = 'idle' | PdfExportStage;
+type ExportState = 'idle' | ExportProgress['stage'];
 
 const EXPORT_LABEL: Record<ExportState, string> = {
   idle: 'Export PDF',
-  compressing: 'Optimizing...',
-  compiling: 'Compiling...',
+  compressing: 'Optimizing…',
+  compiling: 'Compiling…',
+  queued: 'Queued…',
+  generating: 'Generating…',
+  downloading: 'Downloading…',
 };
 
 export const ToolbarActions = memo(function ToolbarActions() {
@@ -21,6 +24,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
   const toggleRightSidebar = useDesignerStore((state) => state.toggleRightSidebar);
 
   const [exportState, setExportState] = useState<ExportState>('idle');
+  const [exportProgress, setExportProgress] = useState(0);
   const isExporting = exportState !== 'idle';
   const [isExcelExporting, setIsExcelExporting] = useState(false);
 
@@ -43,25 +47,28 @@ export const ToolbarActions = memo(function ToolbarActions() {
   };
 
   const handleExport = async () => {
-    const { renderReportToPdf } = await import('@/lib/typst-wasm');
-    const { downloadPdf } = await import('@/lib/export-utils');
+    setExportState('compiling');
+    setExportProgress(5);
 
-    setExportState('compressing');
     try {
-      const pdfBytes = await renderReportToPdf(schema, sampleData, (stage) => {
-        setExportState(stage);
+      await exportReportPdf(schema, sampleData, (p) => {
+        setExportState(p.stage);
+        setExportProgress(p.progress);
       });
-      downloadPdf(pdfBytes, `${schema.name || 'report'}.pdf`);
     } catch (error) {
       console.error('Export failed:', error);
       useDesignerStore.getState().showDialog({
         title: 'Export Failed',
-        message: 'Failed to generate PDF. Check console for details.',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to generate PDF. Check console for details.',
         variant: 'danger',
         confirmLabel: 'Close',
       });
     } finally {
       setExportState('idle');
+      setExportProgress(0);
     }
   };
 
@@ -82,6 +89,11 @@ export const ToolbarActions = memo(function ToolbarActions() {
       });
     }
   };
+
+  const exportLabel =
+    isExporting && exportProgress > 0
+      ? `${EXPORT_LABEL[exportState]} ${exportProgress}%`
+      : EXPORT_LABEL[exportState];
 
   return (
     <div className="flex items-center gap-1.5">
@@ -118,11 +130,11 @@ export const ToolbarActions = memo(function ToolbarActions() {
 
       <ToolbarButton
         icon={isExporting ? undefined : Play}
-        label={EXPORT_LABEL[exportState]}
+        label={exportLabel}
         onClick={handleExport}
         disabled={isExporting || isExcelExporting}
         variant="primary"
-        title="Generate optimized PDF"
+        title="Generate PDF (browser for small docs, server Typst CLI for 200+ pages)"
         className="!h-7 !px-3 shadow-sm shadow-[var(--accent-glow)]"
       >
         {isExporting && (

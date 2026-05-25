@@ -9,7 +9,9 @@ import {
   PRETTY_FORMAT_HELPERS,
 } from './preamble';
 import { finalizePrettyOutput, formatComponentComment, generateDocumentBanner } from './pretty';
+import { emitFixedPageBreak } from './pagebreak';
 import { PluginRegistry } from './registry';
+import { shouldRenderZone } from './zone-visibility';
 import type { ComponentPlugin, RenderContext } from './types';
 
 import { barcodePlugin } from './plugins/barcode';
@@ -186,7 +188,7 @@ export class TypstGenerator {
 
       for (let i = 0; i < batchItems.length; i++) {
         const item = batchItems[i] as Record<string, unknown>;
-        if (i > 0) parts.push('\n#pagebreak(weak: true)\n#box()\n');
+        if (i > 0) parts.push(emitFixedPageBreak(pretty));
         parts.push(
           this.renderDocument(schema, item, data, 0, bodyY, headerY, footerY, hasFlowBody, pretty)
         );
@@ -231,6 +233,163 @@ export class TypstGenerator {
     return pretty ? finalizePrettyOutput(raw) : raw;
   }
 
+  /**
+   * Typst source for a single designer page (preview incremental compile).
+   * Requires a simple multi-page layout — no batch, groups, or flow body.
+   */
+  generatePageAtIndex(
+    schema: LayoutSchema,
+    pageIndex: number,
+    data: Record<string, unknown>
+  ): string {
+    if (schema.batchDataSource) {
+      throw new Error('generatePageAtIndex: batchDataSource not supported');
+    }
+    if (schema.groups && schema.groups.length > 0) {
+      throw new Error('generatePageAtIndex: groups not supported');
+    }
+    if (schema.pages.some((p) => p.body.layoutMode === 'flow')) {
+      throw new Error('generatePageAtIndex: flow body not supported');
+    }
+    if (pageIndex < 0 || pageIndex >= schema.pages.length) {
+      throw new Error(`generatePageAtIndex: invalid pageIndex ${pageIndex}`);
+    }
+
+    const pretty = false;
+    const parts: string[] = [
+      generateImports(pretty),
+      generatePageSetup(schema, pretty),
+      generateFonts(schema, pretty),
+      FORMAT_HELPERS,
+    ];
+
+    const pageH = paperHeightMm(schema.page.size, schema.page.orientation === 'landscape');
+    const headerH = Number.parseFloat(schema.zones.header.minHeight ?? '0');
+    const footerH = Number.parseFloat(schema.zones.footer.minHeight ?? '0');
+    const hasFlowBody = false;
+
+    if (schema.zones.header.repeatOnEveryPage) {
+      const headerContent = this.renderZoneComponents(
+        schema.zones.header,
+        data,
+        data,
+        [],
+        0,
+        0,
+        schema,
+        pretty
+      );
+      parts.push(`\n#set page(header: [${headerContent}])\n`);
+    }
+
+    if (schema.zones.footer.repeatOnEveryPage) {
+      const footerY = pageH - footerH;
+      const footerContent = this.renderZoneComponents(
+        schema.zones.footer,
+        data,
+        data,
+        [],
+        0,
+        footerY,
+        schema,
+        pretty
+      );
+      parts.push(`\n#set page(footer: [${footerContent}])\n`);
+    }
+
+    parts.push('\n// --- Report ---\n');
+
+    const bodyY = headerH;
+    const headerY = 0;
+    const footerY = pageH - footerH;
+
+    parts.push(
+      this.renderPageAtIndex(
+        schema,
+        pageIndex,
+        data,
+        data,
+        0,
+        bodyY,
+        headerY,
+        footerY,
+        hasFlowBody,
+        pretty
+      )
+    );
+
+    return parts.join('');
+  }
+
+  private renderPageAtIndex(
+    schema: LayoutSchema,
+    pageIndex: number,
+    localData: Record<string, unknown>,
+    globalData: Record<string, unknown>,
+    offsetX: number,
+    bodyOffsetY: number,
+    headerOffsetY: number,
+    footerOffsetY: number,
+    nativeBands = false,
+    pretty = false
+  ): string {
+    const totalPages = schema.pages.length;
+    const pageDef = schema.pages[pageIndex];
+    let t = '';
+
+    const h = schema.zones.header;
+    if (!h.repeatOnEveryPage && shouldRenderZone(h, pageIndex, totalPages, 'header')) {
+      t += pretty
+        ? `\n// --- Page ${pageIndex + 1} · Header ---\n\n`
+        : `// --- PAGE ${pageIndex + 1} HEADER ---\n`;
+      t += this.renderZoneComponents(
+        h,
+        localData,
+        globalData,
+        [],
+        offsetX,
+        headerOffsetY,
+        schema,
+        pretty
+      );
+      if (pretty) t += '\n';
+    }
+
+    t += pretty
+      ? `\n// --- Page ${pageIndex + 1} · Body ---\n\n`
+      : `// --- PAGE ${pageIndex + 1} BODY ---\n`;
+    t += this.renderZoneComponents(
+      pageDef.body,
+      localData,
+      globalData,
+      [],
+      offsetX,
+      bodyOffsetY,
+      schema,
+      pretty
+    );
+
+    const f = schema.zones.footer;
+    if (!f.repeatOnEveryPage && shouldRenderZone(f, pageIndex, totalPages, 'footer')) {
+      t += pretty
+        ? `\n// --- Page ${pageIndex + 1} · Footer ---\n\n`
+        : `// --- PAGE ${pageIndex + 1} FOOTER ---\n`;
+      t += this.renderZoneComponents(
+        f,
+        localData,
+        globalData,
+        [],
+        offsetX,
+        footerOffsetY,
+        schema,
+        pretty
+      );
+      if (pretty) t += '\n';
+    }
+
+    return t;
+  }
+
   private renderDocument(
     schema: LayoutSchema,
     localData: Record<string, unknown>,
@@ -246,59 +405,19 @@ export class TypstGenerator {
     const totalPages = schema.pages.length;
 
     for (let i = 0; i < totalPages; i++) {
-      const pageDef = schema.pages[i];
-      if (i > 0) t += pretty ? '\n#pagebreak(weak: true)\n#box()\n\n' : '\n#pagebreak(weak: true)\n#box()\n';
-
-      // Header — skip if using native bands (#set page(header: ...) handles it)
-      const h = schema.zones.header;
-      if (!h.repeatOnEveryPage && shouldRenderZone(h, i, totalPages, 'header')) {
-        t += pretty
-          ? `\n// --- Page ${i + 1} · Header ---\n\n`
-          : `// --- PAGE ${i + 1} HEADER ---\n`;
-        t += this.renderZoneComponents(
-          h,
-          localData,
-          globalData,
-          [],
-          offsetX,
-          headerOffsetY,
-          schema,
-          pretty
-        );
-        if (pretty) t += '\n';
-      }
-
-      // Body
-      t += pretty ? `\n// --- Page ${i + 1} · Body ---\n\n` : `// --- PAGE ${i + 1} BODY ---\n`;
-      t += this.renderZoneComponents(
-        pageDef.body,
+      if (i > 0) t += emitFixedPageBreak(pretty);
+      t += this.renderPageAtIndex(
+        schema,
+        i,
         localData,
         globalData,
-        [],
         offsetX,
         bodyOffsetY,
-        schema,
+        headerOffsetY,
+        footerOffsetY,
+        nativeBands,
         pretty
       );
-
-      // Footer — skip if using native bands
-      const f = schema.zones.footer;
-      if (!f.repeatOnEveryPage && shouldRenderZone(f, i, totalPages, 'footer')) {
-        t += pretty
-          ? `\n// --- Page ${i + 1} · Footer ---\n\n`
-          : `// --- PAGE ${i + 1} FOOTER ---\n`;
-        t += this.renderZoneComponents(
-          f,
-          localData,
-          globalData,
-          [],
-          offsetX,
-          footerOffsetY,
-          schema,
-          pretty
-        );
-        if (pretty) t += '\n';
-      }
     }
 
     return t;
@@ -439,25 +558,6 @@ export class TypstGenerator {
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
-
-function shouldRenderZone(
-  zone: Zone,
-  pageIndex: number,
-  totalPages: number,
-  _type: 'header' | 'footer'
-): boolean {
-  if (zone.repeatOnEveryPage) return true;
-  if (zone.showOnFirstPageOnly) return pageIndex === 0;
-  if (zone.showOnLastPageOnly) return pageIndex === totalPages - 1;
-
-  // Default behavior if no flags are set:
-  // Headers usually show on first page by default if not global.
-  // Footers usually show on last page by default if not global?
-  // Actually, the user says "Footer page 1 shows in page 2 even if not global".
-  // This implies they expect it to be page-specific, but it's a GLOBAL zone.
-  // So if it's not set to repeat, it should only show on page 1 (Report Footer).
-  return pageIndex === 0;
-}
 
 function paperHeightMm(size: string, landscape: boolean): number {
   const dims: Record<string, [number, number]> = {

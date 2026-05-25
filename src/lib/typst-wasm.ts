@@ -12,6 +12,7 @@ const pendingRequests = new Map<
     resolve: (value: any) => void;
     reject: (reason?: any) => void;
     onProgress?: (pages: string[], startIdx: number) => void;
+    onPreviewPage?: (pageIndex: number, svg: string) => void;
     onStage?: (stage: PdfExportStage) => void;
   }
 >();
@@ -57,6 +58,12 @@ function getWorker(): Worker {
       // SVG streaming chunk: { pages: string[], startIdx: number }
       request.onProgress?.(payload.pages, payload.startIdx);
       return; // keep request alive — more chunks incoming
+    }
+
+    if (type === 'preview_page') {
+      // Incremental per-page preview: { pageIndex: number, svg: string }
+      request.onPreviewPage?.(payload.pageIndex, payload.svg);
+      return;
     }
 
     if (type === 'stage') {
@@ -136,15 +143,7 @@ export async function renderReportToSvgStream(
 
   // Cancel the previous stream: reject its Promise so the caller's await unblocks,
   // and tell the worker to stop posting chunks for that id.
-  if (activeStreamId) {
-    const prev = pendingRequests.get(activeStreamId);
-    if (prev) {
-      prev.reject(new Error('CANCELLED'));
-      pendingRequests.delete(activeStreamId);
-    }
-    w.postMessage({ type: 'CANCEL', id: 'cancel-cmd', payload: { id: activeStreamId } });
-    activeStreamId = null;
-  }
+  cancelActiveStream(w);
 
   const id = generateId();
   activeStreamId = id;
@@ -166,6 +165,59 @@ export async function renderReportToSvgStream(
       onProgress: onChunk,
     });
     w.postMessage({ type: 'RENDER_REPORT_SVG_STREAM', id, payload: { schema, data } });
+  });
+}
+
+function cancelActiveStream(w: Worker): void {
+  if (!activeStreamId) return;
+  const prev = pendingRequests.get(activeStreamId);
+  if (prev) {
+    prev.reject(new Error('CANCELLED'));
+    pendingRequests.delete(activeStreamId);
+  }
+  w.postMessage({ type: 'CANCEL', id: 'cancel-cmd', payload: { id: activeStreamId } });
+  activeStreamId = null;
+}
+
+/**
+ * Compiles only the given page indices (incremental preview cache).
+ * Calls onPage for each finished page. Cancels prior in-flight preview work.
+ */
+export async function renderPreviewPages(
+  schema: any,
+  data: any,
+  pageIndices: number[],
+  onPage: (pageIndex: number, svg: string) => void
+): Promise<void> {
+  if (pageIndices.length === 0) return;
+
+  const w = getWorker();
+  cancelActiveStream(w);
+
+  const id = generateId();
+  activeStreamId = id;
+
+  if (!isWorkerReady && workerReadyPromise) {
+    await workerReadyPromise;
+  }
+
+  return new Promise((resolve, reject) => {
+    pendingRequests.set(id, {
+      resolve: (v) => {
+        if (activeStreamId === id) activeStreamId = null;
+        resolve(v);
+      },
+      reject: (reason) => {
+        if (activeStreamId === id) activeStreamId = null;
+        reject(reason);
+      },
+      onPreviewPage: onPage,
+    });
+    w.postMessage({
+      type: 'RENDER_PREVIEW_PAGES',
+      id,
+      payload: { schema, data, pageIndices },
+    });
   });
 }
 
