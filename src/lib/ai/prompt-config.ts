@@ -67,7 +67,7 @@ TYPOGRAPHY THAT COMMUNICATES
 - Fine print / legal: 7–8pt, #666 or lighter
 
 BREATHING ROOM
-Whitespace is not wasted space — it is visual punctuation.
+- Whitespace is not wasted space — it is visual punctuation.
 - Between major sections: 6–12mm
 - Between related elements: 2–4mm
 - Never crowd edges: minimum 0mm from zone boundary (the zone IS your margin)
@@ -76,7 +76,23 @@ ALIGNMENT SYSTEM
 Pick one and commit — mixing alignment styles looks unintentional:
 - Left-anchored: all labels and data left-aligned with consistent x-indentation
 - Two-column: left column for sender/context, right column for refs/amounts
-- Centered: only for ceremonial documents (certificates, awards)`;
+- Centered: only for ceremonial documents (certificates, awards)
+
+DESIGN TOOLKIT — CHOOSE THE RIGHT ELEMENT FOR CREATIVE LAYOUTS
+Choose specialized components to build highly premium, professional layouts:
+- text: For labels, short titles, blocks of text.
+- table: For listing items, tabular rows (e.g. invoice items, data lists).
+- summary-box: For totals, taxes, and subtotal summaries at the bottom of transactions. Much cleaner and more structured than multiple text blocks.
+- checklist: For checklists, todo lists, tasks, itemized lists with bullet/number/checkbox styles.
+- line: Horizontal separator to divide sections.
+- spacer: Adds vertical breathing room in flow layout mode.
+- image: For logos, barcodes, photos.
+- barcode: Native barcode display (code128, ean13, pdf417) for tracking.
+- qr: QR code representation for links/payees.
+- rectangle: Create border blocks, banner backgrounds, or styled container cards.
+- signature: Place signature blocks at the bottom with lines for names and dates.
+- page-number: Add page numbers (e.g. "{{page}} of {{totalPages}}") inside headers/footers.
+- page-break-indicator: Mark where content breaks between pages.`;
 
 // ─── Technical constraints ────────────────────────────────────────────────────
 // These are facts about TypstFlow's coordinate system that the AI must respect.
@@ -86,15 +102,29 @@ export function buildTechnicalConstraints(dims: LayoutDims): string {
   return `## Technical Constraints (TypstFlow API)
 
 COORDINATE SYSTEM
-- All positions in millimeters (mm), origin at top-left of each zone
-- x: 0 → ${dims.usableW}mm (left → right), y: 0 → zone height (top → bottom)
+- All positions in millimeters (mm), origin at top-left of each zone.
+- x = 0 is the physical left edge of the page.
+- y = 0 is the physical top of the zone.
+- Page: ${dims.pageSize} ${dims.orientation}, dimensions ${dims.pageW}×${dims.pageH}mm.
+- Margins: Left margin is at X = ${dims.ml}mm. Right margin boundary is at X = ${dims.pageW - dims.mr}mm.
+- Usable width for content is from X = ${dims.ml}mm to X = ${dims.pageW - dims.mr}mm (total usable width: ${dims.usableW}mm).
+- ALWAYS place elements within the margins. For example:
+  - Left-aligned elements should start exactly at X = ${dims.ml}mm.
+  - Full-width elements (like tables, horizontal lines) should start at X = ${dims.ml}mm and have width = ${dims.usableW}mm.
+  - Right-aligned elements must end exactly at X = ${dims.pageW - dims.mr}mm (so x + width = ${dims.pageW - dims.mr}mm).
+  - Centered elements should be placed such that their midpoint is at the center of the usable width (X = ${dims.ml + dims.usableW / 2}mm).
 - Elements must stay within zone bounds — no overflow between zones
-- Page: ${dims.pageSize} ${dims.orientation}, usable area ${dims.usableW}×${dims.usableH}mm (margins already subtracted)
 
 ZONES
-- header: top strip, appears on pages based on repeatOnEveryPage setting
-- body: main content area, the largest zone
-- footer: bottom strip, page numbers / legal text
+- header: top strip, appears on pages based on repeatOnEveryPage setting.
+- body: main content area, the largest zone.
+- footer: bottom strip, page numbers / legal text.
+
+ZONE LAYOUT MODES (Prevent Overlapping)
+Each zone has a layoutMode which can be either 'absolute' or 'flow'. You can toggle/set this using the update_zone tool!
+- 'absolute' Mode (Default): All components use fixed x & y positioning. Essential for static, pixel-perfect placement. WARNING: If you put a dynamic table or checklist in an absolute zone, its height can grow with rows and overlap anything placed below it!
+- 'flow' Mode: Components stack vertically in the list order. They automatically push downstream elements down to prevent overlap! In flow mode, y coordinates are ignored for vertical rendering (array order determines vertical flow), but x and width are still used for horizontal offset and width.
+- CRITICAL RULE: If a zone has dynamic content (like a data table, Checklist with variable tasks, or variable text paragraphs), you MUST call update_zone(zone: ..., updates: { layoutMode: "flow" }) first. This ensures components naturally stack and never overlap!
 
 DATA BINDINGS
 - Scalar: {{field.path}} — renders a single value
@@ -121,6 +151,17 @@ Before placing any element, answer these three questions:
 Then design accordingly. Do not default to a generic invoice layout for every request.
 
 Build in logical content order — let the layout emerge from the information hierarchy, not from a template. Use get_layout to check available space before placing large elements. Batch multiple add_* calls per round for efficiency.
+
+RECREATING LAYOUT FROM UPLOADED IMAGES
+If the user uploads an image/screenshot of a template (e.g., an official memorandum "บันทึกข้อความ", a custom invoice, or a form):
+1. **Analyze layout structure:** Identify headers, section separators, vertical alignments, columns, tables, summary grids, checklist items, and signature sections.
+2. **Prevent Overlap:** If the layout has rows of text, lists of tasks, checklists, or data tables, you MUST switch the target zone to 'flow' layout mode first using \`update_zone(zone: "body", updates: { layoutMode: "flow" })\`. This ensures components stack cleanly without overlapping.
+3. **Choose the correct components:**
+   - Use \`add_signature\` for signing sections at the bottom instead of placing lines and text manually.
+   - Use \`add_summary_box\` for invoice/bill totals.
+   - Use \`add_checklist\` for checklists or bulleted item lists.
+   - Use \`add_rectangle\` for colored header banners or structural box borders.
+4. **Sample Data:** Read the actual text, names, values, and numbers shown in the uploaded screenshot. After building the elements, always call \`set_sample_data\` and inject those exact values so that the generated preview looks identical to their screenshot.
 
 After building the layout, always call set_sample_data with realistic data that matches the document context.`;
 

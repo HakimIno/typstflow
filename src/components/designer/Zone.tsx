@@ -5,6 +5,7 @@ import { useZoneResize } from '@/hooks/use-zone-resize';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { cn } from '@/lib/utils/cn';
 import { getZoneComponents } from '@/lib/utils/schema-mutators';
+import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { Layers, Move, Workflow } from 'lucide-react';
@@ -55,6 +56,7 @@ export const Zone = memo(function Zone({
   });
 
   const updateZone = useDesignerStore((s) => s.updateZone);
+  const margin = useDesignerStore((s) => s.schema.page.margin);
 
   const toggleLayoutMode = useCallback(
     (e: React.MouseEvent) => {
@@ -278,7 +280,13 @@ export const Zone = memo(function Zone({
                 </p>
               </div>
             ) : isFlowZone ? (
-              <div className="relative w-full min-h-full flex flex-col overflow-visible">
+              <div
+                className="relative w-full min-h-full flex flex-col overflow-visible"
+                style={{
+                  paddingLeft: `${LayoutEngine.mmToPx(parseTypstUnit(margin.left))}px`,
+                  paddingRight: `${LayoutEngine.mmToPx(parseTypstUnit(margin.right))}px`,
+                }}
+              >
                 {/* Drop highlight overlay — height matches the target slot */}
                 {dragHighlight && (
                   <div

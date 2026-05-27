@@ -1,3 +1,4 @@
+import { DEFAULT_AI_MODEL } from '@/lib/utils/ai-models';
 import type { StateCreator } from 'zustand';
 import type { DesignerState } from '../store-types';
 
@@ -44,7 +45,7 @@ export const createUISlice: StateCreator<DesignerState, [], [], UISlice> = (set,
   theme: 'dark' as DesignerState['theme'],
   primaryColor: '#8B5CF6',
   canvasLayout: 'vertical' as DesignerState['canvasLayout'],
-  aiModel: 'anthropic/claude-sonnet-4-5',
+  aiModel: DEFAULT_AI_MODEL,
   aiMode: 'plan' as DesignerState['aiMode'],
   _hasHydrated: false,
   scrollToPageId: null,

@@ -619,7 +619,9 @@ function renderStructuredCell(
   if (cellFill) args.push(`fill: ${formatColor(cellFill)}`);
 
   // Combine horizontal and vertical alignment
-  const hAlign = cellAlign || textStyle.align || 'left';
+  const rawHAlign = cellAlign || textStyle.align || 'left';
+  const isJustify = rawHAlign === 'justify';
+  const hAlign = isJustify ? 'left' : rawHAlign;
   const vAlign = cellVAlign || 'horizon';
   const vAlignTypst = vAlign === 'top' ? 'top' : vAlign === 'bottom' ? 'bottom' : 'horizon';
   args.push(`align: ${hAlign} + ${vAlignTypst}`);
@@ -659,7 +661,8 @@ function renderStructuredCell(
     inner = `#rotate(-90deg, reflow: true)[${inner}]`;
   }
 
-  const wrapped = `[\n    #set par(leading: ${leading}em)\n    #set text(size: ${size}pt, fill: ${color}, weight: ${weight})\n    ${inner}\n  ]`;
+  const justify = isJustify || (cellStyle?.justify ?? false);
+  const wrapped = `[\n    #set par(leading: ${leading}em, justify: ${justify})\n    #set text(size: ${size}pt, fill: ${color}, weight: ${weight})\n    ${inner}\n  ]`;
 
   if (args.length === 0) return `    ${wrapped},\n`;
   return `    table.cell(${args.join(', ')})${wrapped},\n`;

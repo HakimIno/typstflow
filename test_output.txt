@@ -1,0 +1,306 @@
+bun test v1.3.11 (af24e281)
+
+src/__tests__/multi-select-drag.test.ts:
+(pass) Multi-select Drag Drift Regression > components in different zones should move by the same absolute distance [0.44ms]
+(pass) Multi-select Drag Drift Regression > FIXED logic: components move by same absolute distance [0.24ms]
+
+src/__tests__/typst-utils.test.ts:
+(pass) Typst Sanitization (escapeTypst) > should pass through normal text without changes [0.49ms]
+(pass) Typst Sanitization (escapeTypst) > should handle null or undefined gracefully
+(pass) Typst Sanitization (escapeTypst) > should escape command character (#)
+(pass) Typst Sanitization (escapeTypst) > should escape backslash (\) correctly
+(pass) Typst Sanitization (escapeTypst) > should escape markup characters (*, _, [, ]) [0.13ms]
+(pass) Typst Sanitization (escapeTypst) > should escape other special characters (~, @, $, <, >, `)
+(pass) Typst Sanitization (escapeTypst) > should handle complex mixed strings [0.05ms]
+(pass) Typst Sanitization (escapeTypst) > should not break Thai language characters [0.03ms]
+
+src/__tests__/schema.test.ts:
+(pass) LayoutSchema structural contract > creates a valid minimal schema [0.23ms]
+(pass) LayoutSchema structural contract > schema.pages[0].body is a Zone with components array
+(pass) LayoutSchema structural contract > supports multiple pages [0.05ms]
+(pass) PageConfig > accepts A4, A5, Letter, Legal sizes [0.09ms]
+(pass) PageConfig > accepts portrait and landscape orientations
+(pass) PageConfig > margin values use unit strings [0.04ms]
+(pass) Zone > has an id and components array [0.05ms]
+(pass) Zone > accepts optional minHeight [0.02ms]
+(pass) ComponentNode discriminated union > text component has correct shape [0.09ms]
+(pass) ComponentNode discriminated union > line component has correct shape [0.04ms]
+(pass) ComponentNode discriminated union > image component has correct shape [0.03ms]
+(pass) ComponentNode discriminated union > table component has dataSource and columns [0.11ms]
+(pass) BaseComponent coordinate fields > x, y, width, height are in millimeters (numbers) [0.16ms]
+(pass) BaseComponent coordinate fields > all fields are optional in BaseComponent (x, y can be undefined) [0.04ms]
+(pass) BindingExpression pattern > recognizes {{binding}} format in text content [0.35ms]
+(pass) BindingExpression pattern > allows mixed static + binding content [0.50ms]
+
+src/__tests__/zone-layout.test.ts:
+(pass) ZoneLayoutCache > O(1) page index lookup [0.88ms]
+(pass) ZoneLayoutCache > matches LayoutEngine.calculateZoneOffset [0.14ms]
+(pass) ZoneLayoutCache > computeZoneOffset matches known values [0.12ms]
+
+src/__tests__/schema-mutators.test.ts:
+(pass) getZoneComponents > returns header components [0.35ms]
+(pass) getZoneComponents > returns footer components [0.03ms]
+(pass) getZoneComponents > returns body components for a specific pageId [0.09ms]
+(pass) getZoneComponents > falls back to first page when pageId is omitted [0.06ms]
+(pass) getZoneComponents > returns empty array for unknown pageId [0.04ms]
+(pass) getZoneComponents > returns empty array for null pageId (falls back to first page) [0.13ms]
+(pass) findComponentInSchema > finds component in header [0.31ms]
+(pass) findComponentInSchema > finds component in footer [0.03ms]
+(pass) findComponentInSchema > finds component in first page body [0.10ms]
+(pass) findComponentInSchema > finds component in second page body
+(pass) findComponentInSchema > returns null for unknown id [0.02ms]
+(pass) findComponentInSchema > returns null for empty schema [0.12ms]
+(pass) mapComponentInSchema > transforms a component in the header zone [0.58ms]
+(pass) mapComponentInSchema > transforms a component in the footer zone [0.06ms]
+(pass) mapComponentInSchema > transforms a component in page-1 body [0.22ms]
+(pass) mapComponentInSchema > transforms a component in page-2 body [0.10ms]
+(pass) mapComponentInSchema > returns changed=false and same schema ref for unknown id [0.08ms]
+(pass) mapComponentInSchema > does NOT mutate the original schema (immutability) [0.10ms]
+(pass) mapComponentInSchema > zones and pages NOT targeted remain same reference [0.07ms]
+(pass) mapComponentInSchema > only the modified page changes reference [0.12ms]
+(pass) removeComponentFromSchema > removes a component from header [0.54ms]
+(pass) removeComponentFromSchema > removes a component from footer [0.11ms]
+(pass) removeComponentFromSchema > removes a component from page-1 body [0.16ms]
+(pass) removeComponentFromSchema > removes a component from page-2 body
+(pass) removeComponentFromSchema > returns changed=false and same ref for unknown id [0.15ms]
+(pass) removeComponentFromSchema > does NOT mutate original schema [0.06ms]
+(pass) removeComponentsFromSchema > removes multiple components from the same zone [0.13ms]
+(pass) removeComponentsFromSchema > removes components across multiple zones in one pass [0.14ms]
+(pass) removeComponentsFromSchema > removes components from multiple pages [0.15ms]
+(pass) removeComponentsFromSchema > returns changed=false for empty ids array [0.04ms]
+(pass) removeComponentsFromSchema > returns changed=false when no ids match [0.09ms]
+(pass) removeComponentsFromSchema > handles partial matches (some ids found, some not) [0.10ms]
+(pass) removeComponentsFromSchema > does NOT mutate original schema [0.05ms]
+(pass) reorderComponentInSchema > bringToFront > moves component to end in header [0.30ms]
+(pass) reorderComponentInSchema > bringToFront > is a no-op for already-last component (still changed=true) [0.11ms]
+(pass) reorderComponentInSchema > bringToFront > moves component to end in page body [0.20ms]
+(pass) reorderComponentInSchema > sendToBack > moves component to front in header [0.01ms]
+(pass) reorderComponentInSchema > sendToBack > moves component to front in page body [0.08ms]
+(pass) reorderComponentInSchema > moveUp > swaps component with next in body [0.12ms]
+(pass) reorderComponentInSchema > moveUp > returns null (no change) when component is already at top [0.07ms]
+(pass) reorderComponentInSchema > moveUp > does not change page-2 when modifying page-1 [0.08ms]
+(pass) reorderComponentInSchema > moveDown > swaps component with previous in body [0.09ms]
+(pass) reorderComponentInSchema > moveDown > returns null (no change) when component is already at bottom [0.05ms]
+(pass) reorderComponentInSchema > edge cases > returns changed=false and same ref for unknown id [0.04ms]
+(pass) reorderComponentInSchema > edge cases > does NOT mutate original schema
+(pass) reorderComponentInSchema > edge cases > only the modified zone/page changes reference [0.07ms]
+(pass) reorderComponentInSchema > edge cases > works on footer zone [0.11ms]
+(pass) Integration — simulating store action patterns > updateComponent pattern: partial update via mapComponentInSchema [0.12ms]
+(pass) Integration — simulating store action patterns > renameComponent pattern: name update via mapComponentInSchema [0.10ms]
+(pass) Integration — simulating store action patterns > removeComponents + re-select pattern [0.07ms]
+
+src/__tests__/drag-coordinates.test.ts:
+(pass) getComponentPosition (utils) > finds a component in the header zone [0.16ms]
+(pass) getComponentPosition (utils) > finds a component in the footer zone [0.06ms]
+(pass) getComponentPosition (utils) > finds a component in body on page 1
+(pass) getComponentPosition (utils) > finds a component in body on page 2 [0.11ms]
+(pass) getComponentPosition (utils) > returns null for an unknown id
+(pass) getComponentPosition (utils) > returns zone-local y (NOT absolute page y) [0.08ms]
+(pass) getComponentById (utils) > returns component + zoneKey for header component [0.08ms]
+(pass) getComponentById (utils) > returns component + zoneKey + pageId for body component [0.05ms]
+(pass) getComponentById (utils) > returns null for unknown id [0.05ms]
+(pass) calculateZoneOffset — drag system boundary conditions > header: offset = 0 [0.08ms]
+(pass) calculateZoneOffset — drag system boundary conditions > body: offset = headerHeight when header repeats
+(pass) calculateZoneOffset — drag system boundary conditions > footer: offset = pageHeight - footerHeight
+(pass) calculateZoneOffset — drag system boundary conditions > initialAbsoluteY for header component h1 = y + 0 = 5
+(pass) calculateZoneOffset — drag system boundary conditions > initialAbsoluteY for body component b1 = y + headerHeight = 35
+(pass) calculateZoneOffset — drag system boundary conditions > initialAbsoluteY for footer component f1 = y + footerOffset
+(pass) Zero-jump invariant — ty must be 0 at drag start > header component, zoom=1: ty=0 at drag start
+(pass) Zero-jump invariant — ty must be 0 at drag start > body component, zoom=1: ty=0 at drag start
+(pass) Zero-jump invariant — ty must be 0 at drag start > body component, zoom=1.5: ty=0 at drag start (zoom-independent) [0.89ms]
+(pass) Zero-jump invariant — ty must be 0 at drag start > body component, zoom=0.5: ty=0 at drag start [0.18ms]
+(pass) Zero-jump invariant — ty must be 0 at drag start > footer component, zoom=1: ty=0 at drag start [0.10ms]
+(pass) Zero-jump invariant — ty must be 0 at drag start > footer component, zoom=2: ty=0 at drag start [0.09ms]
+(pass) Zero-jump invariant — ty must be 0 at drag start > body component top-left grab (0,0): ty=0 at drag start [0.05ms]
+(pass) Regression: old zone-local y formula causes jump at drag start > OLD formula (snap.y - zone-local-y) gives zoneOffset at drag start, NOT 0 [0.11ms]
+(pass) Regression: old zone-local y formula causes jump at drag start > body component with large header (40mm) — old formula jumps 40mm at start [0.05ms]
+(pass) Drag delta: component movement equals mouse delta in logical px > moving mouse 20mm right: tx = mmToPx(20) logical px [0.20ms]
+(pass) Drag delta: component movement equals mouse delta in logical px > moving mouse 10mm down at zoom=1.5: ty = mmToPx(10) logical px [0.15ms]
+(pass) Drag delta: component movement equals mouse delta in logical px > visual movement = ty * zoom = delta_visual_px (zoom=2) [0.13ms]
+(pass) Drop position formula: lastSnappedY - zoneOffset = zone-local y > same-zone drop in body: zone-local y is restored [0.08ms]
+(pass) Drop position formula: lastSnappedY - zoneOffset = zone-local y > cross-zone drop body → header: zone offset is 0, stored y = absolute y [0.08ms]
+(pass) Drop position formula: lastSnappedY - zoneOffset = zone-local y > cross-zone drop header → body: stored y = snapY - headerHeight [0.05ms]
+(pass) Drop position formula: lastSnappedY - zoneOffset = zone-local y > drop in footer: stored y is distance from footer top [0.05ms]
+(pass) Drop position formula: lastSnappedY - zoneOffset = zone-local y > stored y is never negative for valid snap positions [0.03ms]
+(pass) calculateMagneticSnap > no targets → returns raw position unchanged [0.26ms]
+(pass) calculateMagneticSnap > target outside threshold → no snap, no guides [0.06ms]
+(pass) calculateMagneticSnap > left-edge to left-edge snap: dragging.x ≈ target.x [0.09ms]
+(pass) calculateMagneticSnap > right-to-right edge snap: dragging.right ≈ target.right [0.04ms]
+(pass) calculateMagneticSnap > center-to-center horizontal snap
+(pass) calculateMagneticSnap > top-to-top vertical snap: dragging.y ≈ target.y [0.11ms]
+(pass) calculateMagneticSnap > bottom-to-top snap: dragging.bottom ≈ target.y [0.04ms]
+(pass) calculateMagneticSnap > snaps both X and Y simultaneously [0.04ms]
+(pass) calculateMagneticSnap > nearest target wins when multiple in range
+(pass) calculateMagneticSnap > exactly at threshold boundary: snaps (<=) [0.10ms]
+(pass) calculateMagneticSnap > just beyond threshold: no snap [0.02ms]
+(pass) calculateMagneticSnap > guide value is the target edge being snapped to
+(pass) calculateDropPosition edge cases > mouse exactly at paper top-left (no offset): rawX=rawY=0 [0.13ms]
+(pass) calculateDropPosition edge cases > negative relative position is clamped to 0 in snapped output [0.04ms]
+(pass) calculateDropPosition edge cases > scale=2 (zoom-out): same visual delta maps to 2x more mm [0.06ms]
+(pass) calculateDropPosition edge cases > drag offset shifts position correctly [0.07ms]
+(pass) calculateDropPosition edge cases > rawX and x differ by at most snap grid (0.1mm) [0.07ms]
+
+src/__tests__/font-storage.test.ts:
+(pass) fontStorage IndexedDB Cache > gracefully handles non-browser (undefined indexedDB) environment [0.68ms]
+(pass) fontStorage IndexedDB Cache > with Mocked IndexedDB > retrieves cached font correctly when exists [3.04ms]
+(pass) fontStorage IndexedDB Cache > with Mocked IndexedDB > returns null when font does not exist in store [2.80ms]
+(pass) fontStorage IndexedDB Cache > with Mocked IndexedDB > saves font to indexedDB successfully [2.56ms]
+(pass) fontStorage IndexedDB Cache > with Mocked IndexedDB > deletes font from indexedDB successfully [3.24ms]
+
+src/__tests__/layout-engine.test.ts:
+(pass) LayoutEngine.snap > snaps to 0.1mm grid by default
+(pass) LayoutEngine.snap > respects a custom step size [0.13ms]
+(pass) LayoutEngine.snap > snaps 0 to 0 [0.02ms]
+(pass) LayoutEngine.pxToMm / mmToPx > pxToMm: 96px ≈ 25.4mm [0.02ms]
+(pass) LayoutEngine.pxToMm / mmToPx > mmToPx: 25.4mm ≈ 96px
+(pass) LayoutEngine.pxToMm / mmToPx > round-trip: mm → px → mm returns original
+(pass) LayoutEngine.getCurrentDpiRatio > returns 1 (standardized)
+(pass) LayoutEngine.calculateDropPosition > calculates position correctly with no offsets
+(pass) LayoutEngine.calculateDropPosition > clamps negative values to 0
+(pass) LayoutEngine.calculateDropPosition > accounts for drag offsets [0.27ms]
+(pass) LayoutEngine.calculateDropPosition > accounts for scale transform [0.04ms]
+(pass) LayoutEngine.calculateDropPosition > raw coordinates are returned unsnapped
+(pass) LayoutEngine.isPositionInBounds > returns true for in-bounds coordinates
+(pass) LayoutEngine.isPositionInBounds > returns false for out-of-bounds coordinates
+(pass) LayoutEngine.distance > calculates distance between same point as 0 [0.25ms]
+(pass) LayoutEngine.distance > calculates distance correctly (3-4-5 right triangle) [0.02ms]
+(pass) LayoutEngine.distance > is symmetric [0.04ms]
+(pass) LayoutEngine.findNearestSnapPoint > snaps to nearest 0.1mm by default [0.05ms]
+(pass) LayoutEngine.findNearestSnapPoint > snaps to custom step
+(pass) LayoutEngine.calculateZoneOffset > header zone offset is always 0 [0.18ms]
+(pass) LayoutEngine.calculateZoneOffset > body zone offset equals header height on first page [0.06ms]
+(pass) LayoutEngine.calculateZoneOffset > body zone offset is 0 when header does not repeat and we are on page 2 [0.02ms]
+(pass) LayoutEngine.calculateZoneOffset > body zone offset equals header height on page 2 when header repeats [0.03ms]
+(pass) LayoutEngine.calculateZoneOffset > footer zone offset = pageHeight - footerHeight (A4 portrait) [0.14ms]
+(pass) LayoutEngine.calculateZoneOffset > footer is not visible on page 2 when not repeated (returns 0) [0.04ms]
+(pass) LayoutEngine.getDebugInfo > returns expected debug shape [0.07ms]
+
+src/__tests__/preview-cache.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '@/lib/preview/constants' from '/Users/weerachit/Documents/so-report/typstflow/src/__tests__/preview-cache.test.ts'
+-------------------------------
+
+
+src/__tests__/table-widths.test.ts:
+(pass) table column width resolution > resolves mixed fixed, percent, and fractional widths to component-width mm [0.49ms]
+(pass) table column width resolution > uses the same resolved widths for designer percentages [0.16ms]
+(pass) table column width resolution > scales fixed-only columns to fill the component width [0.08ms]
+(pass) table column width resolution > scales overflowing fixed columns down to the component width [0.05ms]
+
+src/__tests__/performance-sprint.test.ts:
+(pass) getMaxHistory — adaptive history limits > returns 50 for small schemas (< 100 components) [0.75ms]
+(pass) getMaxHistory — adaptive history limits > returns 30 for medium schemas (100–200 components) [0.19ms]
+(pass) getMaxHistory — adaptive history limits > returns 20 for large schemas (200–500 components) [0.46ms]
+(pass) getMaxHistory — adaptive history limits > returns 10 for very large schemas (> 500 components) [0.35ms]
+(pass) getMaxHistory — adaptive history limits > counts header + footer + body + group components [0.22ms]
+(pass) pushHistory — constant MAX_HISTORY = 50 for reliable undo/redo > always caps history at 50 regardless of schema size [7.58ms]
+(pass) pushHistory — constant MAX_HISTORY = 50 for reliable undo/redo > small schema also caps at 50 [1.11ms]
+(pass) pushHistory — constant MAX_HISTORY = 50 for reliable undo/redo > historyIndex points to the latest entry after 15 pushes [0.09ms]
+(pass) markFontsInstalledBatch — single fontLoadedAt update > serial markFontInstalled(N) triggers N state updates — the OLD behavior [0.48ms]
+(pass) markFontsInstalledBatch — single fontLoadedAt update > markFontsInstalledBatch(N) triggers exactly 1 state update — the NEW behavior
+(pass) markFontsInstalledBatch — single fontLoadedAt update > batch saves (N-1) Typst recompiles — concrete numbers [0.93ms]
+(pass) markFontsInstalledBatch — single fontLoadedAt update > batch installs all fonts correctly into installedFonts [0.11ms]
+(pass) markFontsInstalledBatch — single fontLoadedAt update > batch clears all families from loadingFonts in one update
+(pass) markFontsInstalledBatch — single fontLoadedAt update > markFontsInstalledBatch([]) is a no-op — does not update fontLoadedAt
+(pass) buildComponentRegistry — per-component lookup correctness > indexes all components by ID for O(1) lookup [0.37ms]
+(pass) buildComponentRegistry — per-component lookup correctness > changing one component does not affect other components references
+
+src/__tests__/export-phase1.test.ts:
+(pass) getExportPageCount > returns schema page count without batch [0.28ms]
+(pass) getExportPageCount > multiplies by batch items when batchDataSource is set [0.38ms]
+(pass) shouldUseServerExport > uses WASM for documents at threshold [0.11ms]
+(pass) shouldUseServerExport > uses server above threshold [0.19ms]
+
+src/__tests__/constants.test.ts:
+(pass) mmToPx > converts 25.4mm to exactly 96px (1 inch at 96 DPI)
+(pass) mmToPx > converts 0mm to 0px
+(pass) mmToPx > converts 210mm (A4 width) to correct px
+(pass) mmToPx > is the inverse of pxToMm (round-trip px→mm→px)
+(pass) pxToMm > converts 96px to 25.4mm (1 inch)
+(pass) pxToMm > converts 0px to 0mm
+(pass) pxToMm > is the inverse of mmToPx
+(pass) getDpiRatio > returns 1 (standardized logical ratio)
+(pass) SNAP_GRID_MM > is 0.1mm (sub-mm precision)
+
+src/__tests__/column-layout.test.ts:
+(pass) Column Layout Recursive Features > recursively finds nested components in Column Layouts
+(pass) Column Layout Recursive Features > recursively locates component zone key and page id [0.12ms]
+(pass) Column Layout Recursive Features > recursively updates nested component within Column Layouts
+(pass) Column Layout Recursive Features > recursively deletes nested component within Column Layouts
+
+src/__tests__/virtualization.test.ts:
+(pass) Virtualization Coordinate Logic > should calculate correct absolute Y for components across pages [0.47ms]
+(pass) Virtualization Coordinate Logic > should handle empty pages without errors
+(pass) Virtualization Coordinate Logic > should produce correct viewport intersection results [0.26ms]
+
+src/__tests__/units.test.ts:
+(pass) parseTypstUnit > returns 0 for undefined input
+(pass) parseTypstUnit > returns 0 for empty string
+(pass) parseTypstUnit > parses millimeters (mm) correctly
+(pass) parseTypstUnit > parses centimeters (cm) correctly — 1cm = 10mm
+(pass) parseTypstUnit > parses inches (in) correctly — 1in = 25.4mm
+(pass) parseTypstUnit > parses points (pt) correctly — 1pt ≈ 0.352778mm
+(pass) parseTypstUnit > defaults to pt when no unit is given (Typst default)
+(pass) parseTypstUnit > returns 0 for invalid/non-numeric strings
+
+src/__tests__/typst-generator.test.ts:
+(pass) TypstGenerator — page setup > generates correct #set page() for A4 portrait
+(pass) TypstGenerator — page setup > sets flipped: true for landscape orientation
+(pass) TypstGenerator — page setup > generates correct #set text() with font family and size
+(pass) TypstGenerator — text component > renders text inside a #place directive [2.27ms]
+(pass) TypstGenerator — text component > renders bold text weight
+(pass) TypstGenerator — text component > renders font size from style
+(pass) TypstGenerator — data binding resolution > resolves binding to data value
+(pass) TypstGenerator — data binding resolution > keeps binding placeholder when data is missing [0.72ms]
+(pass) TypstGenerator — escapeTypst > escapes Typst special characters: # * _ [0.10ms]
+(pass) TypstGenerator — line component > renders #line() with stroke
+(pass) TypstGenerator — multi-page output > uses strong pagebreaks between designer pages [0.40ms]
+(pass) TypstGenerator — multi-page output > inserts #pagebreak() between pages [0.16ms]
+(pass) TypstGenerator — multi-page output > renders content from both pages [0.09ms]
+(pass) TypstGenerator — image component > renders #image() for virtual asset paths [0.04ms]
+(pass) TypstGenerator — image component > renders FILE NOT FOUND for unknown paths [0.24ms]
+(pass) TypstGenerator — image component > renders No Image placeholder for empty src [0.07ms]
+(pass) TypstGenerator — plugin override > allows overriding a built-in plugin
+(pass) TypstGenerator — flow zone mode > uses #block() without #place() in flow mode [0.34ms]
+(pass) TypstGenerator — flow zone mode > adds gap (#v) between flow components [0.24ms]
+(pass) TypstGenerator — flow zone mode > uses no gap (#v) when flowGap not set (default 0mm matches designer) [0.20ms]
+(pass) TypstGenerator — flow zone mode > injects native page margins and header/footer bands when header has height
+(pass) TypstGenerator — flow zone mode > absolute mode (default) still uses #place() [0.33ms]
+(pass) TypstGenerator — flow zone mode > does not use component y as vertical spacing for flow tables [2.13ms]
+(pass) TypstGenerator — table component > emits exact millimeter column widths resolved from the designer component width [0.20ms]
+(pass) TypstGenerator — pretty export > includes document banner and section headers [0.20ms]
+(pass) TypstGenerator — pretty export > labels components and formats #place blocks on multiple lines [0.45ms]
+(pass) TypstGenerator — pretty export > compact mode stays single-line for #place
+
+src/__tests__/batch-export.test.ts:
+(pass) Batch PDF Export Utilities > extractSchemaBindings > should extract simple bindings in text content
+(pass) Batch PDF Export Utilities > extractSchemaBindings > should extract from aggregates like SUM and COUNT
+(pass) Batch PDF Export Utilities > extractSchemaBindings > should include paths declared in dataSchema [0.10ms]
+(pass) Batch PDF Export Utilities > setNestedValue mapping reconstruction > should correctly build a nested object structure from flat CSV mappings [0.21ms]
+(pass) Batch PDF Export Utilities > setNestedValue mapping reconstruction > should auto-parse JSON-like strings (arrays and objects) when mapped [0.42ms]
+
+src/__tests__/keyboard-actions.test.ts:
+[system] Designer state rehydrated 
+[ai-agent] Loading template: blank 
+(pass) Keyboard Actions (Store) > should copy selected components to clipboard [1.87ms]
+[ai-agent] Loading template: blank 
+(pass) Keyboard Actions (Store) > should paste components from clipboard with offset
+[ai-agent] Loading template: blank 
+(pass) Keyboard Actions (Store) > should duplicate selected components [1.58ms]
+[ai-agent] Loading template: blank 
+(pass) Keyboard Actions (Store) > should nudge selected components correctly [0.87ms]
+[ai-agent] Loading template: blank 
+(pass) Keyboard Actions (Store) > should undo and redo nudges [0.74ms]
+
+src/__tests__/excel-export.test.ts:
+(pass) findAllTables > correctly extracts table components from nested schema zones [0.28ms]
+
+1 tests failed:
+
+ 245 pass
+ 1 fail
+ 1 error
+ 466 expect() calls
+Ran 246 tests across 20 files. [206.00ms]

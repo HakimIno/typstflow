@@ -9,6 +9,7 @@ import {
   buildCanvasContext,
   buildTechnicalConstraints,
 } from '@/lib/ai/prompt-config';
+import { resolveAiModel } from '@/lib/utils/ai-models';
 import type { ComponentNode, LayoutSchema } from '@/types/schema';
 import type { NextRequest } from 'next/server';
 
@@ -230,6 +231,230 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'add_barcode',
+      description: 'Add a barcode component for scanning/inventory identification.',
+      parameters: {
+        type: 'object',
+        properties: {
+          zone: { type: 'string', enum: ['header', 'body', 'footer'], description: 'Target zone' },
+          x: { type: 'number', description: 'X position in mm' },
+          y: { type: 'number', description: 'Y position in mm' },
+          width: { type: 'number', description: 'Width in mm' },
+          height: { type: 'number', description: 'Height in mm' },
+          value: { type: 'string', description: 'Barcode value expression e.g. {{invoice.id}}' },
+          format: { type: 'string', enum: ['code128', 'ean13', 'pdf417'], description: 'Barcode format' },
+        },
+        required: ['zone', 'x', 'y', 'width', 'height', 'value'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_qr',
+      description: 'Add a QR code component e.g. for payments, web URLs, or check-ins.',
+      parameters: {
+        type: 'object',
+        properties: {
+          zone: { type: 'string', enum: ['header', 'body', 'footer'], description: 'Target zone' },
+          x: { type: 'number', description: 'X position in mm' },
+          y: { type: 'number', description: 'Y position in mm' },
+          width: { type: 'number', description: 'Width in mm' },
+          height: { type: 'number', description: 'Height in mm' },
+          value: { type: 'string', description: 'QR content/URL expression e.g. {{invoice.paymentUrl}}' },
+        },
+        required: ['zone', 'x', 'y', 'width', 'height', 'value'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_summary_box',
+      description: 'Add a structured summary box for totals, sub-totals, discounts, tax, and grand totals.',
+      parameters: {
+        type: 'object',
+        properties: {
+          zone: { type: 'string', enum: ['header', 'body', 'footer'] },
+          x: { type: 'number', description: 'X position in mm' },
+          y: { type: 'number', description: 'Y position in mm' },
+          width: { type: 'number', description: 'Width in mm' },
+          height: { type: 'number', description: 'Height in mm' },
+          rows: {
+            type: 'array',
+            description: 'Rows to show inside the summary box',
+            items: {
+              type: 'object',
+              properties: {
+                label: { type: 'string', description: 'Display label' },
+                value: { type: 'string', description: 'Value expression e.g. {{invoice.total}}' },
+                style: { type: 'string', enum: ['normal', 'subtotal', 'total', 'highlight'] },
+                separator: { type: 'boolean' }
+              },
+              required: ['label', 'value']
+            }
+          }
+        },
+        required: ['zone', 'x', 'y', 'width', 'height', 'rows'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_page_break_indicator',
+      description: 'Add a manual page break indicator to the layout.',
+      parameters: {
+        type: 'object',
+        properties: {
+          zone: { type: 'string', enum: ['header', 'body', 'footer'] },
+          x: { type: 'number' },
+          y: { type: 'number' },
+          width: { type: 'number' },
+          height: { type: 'number' },
+          label: { type: 'string', description: 'Optional helper text e.g. "Continued on next page..."' },
+          style: { type: 'string', enum: ['solid', 'dashed', 'dotted'] },
+          showPageNumber: { type: 'boolean' }
+        },
+        required: ['zone', 'x', 'y', 'width', 'height'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_page_number',
+      description: 'Add a page number component to render current/total pages dynamically.',
+      parameters: {
+        type: 'object',
+        properties: {
+          zone: { type: 'string', enum: ['header', 'body', 'footer'] },
+          x: { type: 'number' },
+          y: { type: 'number' },
+          width: { type: 'number' },
+          height: { type: 'number' },
+          format: { type: 'string', description: 'String format e.g. "{{page}} / {{totalPages}}"' },
+          fontSize: { type: 'number' },
+          color: { type: 'string', description: 'Hex color code' },
+          align: { type: 'string', enum: ['left', 'center', 'right', 'justify'] }
+        },
+        required: ['zone', 'x', 'y', 'width', 'height', 'format'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_checklist',
+      description: 'Add a checklist (bulleted, numbered, checkbox, etc.) to the layout.',
+      parameters: {
+        type: 'object',
+        properties: {
+          zone: { type: 'string', enum: ['header', 'body', 'footer'] },
+          x: { type: 'number' },
+          y: { type: 'number' },
+          width: { type: 'number' },
+          height: { type: 'number' },
+          listStyle: { type: 'string', enum: ['bullet', 'numbered', 'alpha', 'roman', 'checkbox', 'dash', 'custom'] },
+          items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                label: { type: 'string' },
+                checked: { type: 'boolean' }
+              },
+              required: ['label']
+            }
+          },
+          dataSource: { type: 'string', description: 'Data array binding for dynamic checklist items, e.g. {{tasks}}' },
+          labelField: { type: 'string', description: 'Field name for labels within data objects' },
+          checkedField: { type: 'string', description: 'Field name for checked boolean within data objects' }
+        },
+        required: ['zone', 'x', 'y', 'width', 'height', 'listStyle'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_rectangle',
+      description: 'Add a rectangle component for backgrounds, banners, or borders.',
+      parameters: {
+        type: 'object',
+        properties: {
+          zone: { type: 'string', enum: ['header', 'body', 'footer'] },
+          x: { type: 'number' },
+          y: { type: 'number' },
+          width: { type: 'number' },
+          height: { type: 'number' },
+          fill: { type: 'string', description: 'Hex background fill color e.g. #f0f0f0' },
+          radius: { type: 'string', description: 'Corner radius in mm e.g. "2mm"' },
+          strokeColor: { type: 'string', description: 'Hex border color' },
+          strokeWidth: { type: 'string', description: 'Border stroke width e.g. "0.5mm"' }
+        },
+        required: ['zone', 'x', 'y', 'width', 'height'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_signature',
+      description: 'Add a signature signing area component (often at the bottom of forms/invoices).',
+      parameters: {
+        type: 'object',
+        properties: {
+          zone: { type: 'string', enum: ['header', 'body', 'footer'] },
+          x: { type: 'number' },
+          y: { type: 'number' },
+          width: { type: 'number' },
+          height: { type: 'number' },
+          slots: {
+            type: 'array',
+            description: 'Signing slots (e.g. Creator, Approved By)',
+            items: {
+              type: 'object',
+              properties: {
+                label: { type: 'string', description: 'Title above/below signature e.g. Authorized Signature' },
+                nameLabel: { type: 'string', description: 'Placeholder for print name e.g. Name: _______________' },
+                dateLabel: { type: 'string', description: 'Placeholder for date e.g. Date: _______________' }
+              },
+              required: ['label']
+            }
+          },
+          showNameLine: { type: 'boolean' },
+          showDateLine: { type: 'boolean' }
+        },
+        required: ['zone', 'x', 'y', 'width', 'height', 'slots'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_zone',
+      description: 'Configure zone settings such as changing layout mode (absolute vs flow) and spacing.',
+      parameters: {
+        type: 'object',
+        properties: {
+          zone: { type: 'string', enum: ['header', 'body', 'footer'], description: 'The zone to update' },
+          updates: {
+            type: 'object',
+            properties: {
+              layoutMode: { type: 'string', enum: ['absolute', 'flow'], description: 'Layout mode: absolute (coordinate-based) or flow (vertically stacked elements).' },
+              flowGap: { type: 'string', description: 'Vertical space between flow components, e.g. "4mm" or "0mm"' }
+            },
+            required: ['layoutMode']
+          }
+        },
+        required: ['zone', 'updates'],
+      },
+    },
+  },
 ] as const;
 
 function summarizeComponent(c: ComponentNode): string {
@@ -410,7 +635,7 @@ export async function POST(req: NextRequest) {
     model?: string;
     aiMode?: 'plan' | 'act';
   };
-  const model = body.model ?? process.env.OPENROUTER_MODEL_NAME ?? 'anthropic/claude-sonnet-4-5';
+  const model = resolveAiModel(body.model ?? process.env.OPENROUTER_MODEL_NAME);
 
   const isChatMode = body.mode === 'chat';
   const isPlanMode = body.mode === 'plan';

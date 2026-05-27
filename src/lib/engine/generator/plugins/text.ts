@@ -38,10 +38,13 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
 
     const size = s?.fontSize ?? 10;
     const weight = formatWeight(s?.fontWeight);
-    const align = comp.align ?? 'left';
+    const rawAlign = comp.align ?? 'left';
+    // Typst uses set par(justify: true) for justified text, not set align(justify)
+    const isJustify = rawAlign === 'justify';
+    const align = isJustify ? 'left' : rawAlign;
     const leading = s?.lineHeight ? s.lineHeight - 0.65 : 0.75;
     const tracking = s?.letterSpacing || '0pt';
-    const justify = s?.justify ?? false;
+    const justify = isJustify || (s?.justify ?? false);
     const color = formatColor(s?.color ?? '#000000');
     const font = formatFontFamily(s?.fontFamily ?? 'Sarabun');
     const fontStyle = 'normal'; // Use skew for reliable faux italics across all custom fonts

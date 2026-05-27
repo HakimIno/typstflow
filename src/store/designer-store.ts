@@ -2,6 +2,7 @@
 export type { DialogOptions } from './store-types';
 
 import { indexedDBStorage } from '@/lib/async-storage';
+import { resolveAiModel } from '@/lib/utils/ai-models';
 import { agentLogger } from '@/lib/utils/agent-logger';
 import { validateAndRepairSchema } from '@/lib/utils/schema-validator';
 import { create } from 'zustand';
@@ -85,6 +86,7 @@ export const useDesignerStore = create<DesignerState>()(
           const validSchema = validateAndRepairSchema(state.schema, BLANK_SCHEMA);
           if (validSchema !== state.schema) state.schema = validSchema;
           state.componentRegistry = buildComponentRegistry(state.schema);
+          state.aiModel = resolveAiModel(state.aiModel);
           // Validate persisted history — clamp index or seed from schema if corrupt/empty.
           if (!Array.isArray(state.history) || state.history.length === 0) {
             state.history = [state.schema];

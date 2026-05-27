@@ -72,9 +72,14 @@ const QUICK_TEMPLATES = [
 ];
 
 // ─── User message ─────────────────────────────────────────────────────────────
-function UserMessage({ content }: { content: string }) {
+function UserMessage({ content, image }: { content: string; image?: string }) {
   return (
-    <div className="flex justify-end">
+    <div className="flex flex-col items-end gap-1.5 justify-end">
+      {image && (
+        <div className="max-w-[88%] rounded-xl overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-widget)]">
+          <img src={image} alt="Uploaded attachment" className="max-h-48 object-contain" />
+        </div>
+      )}
       <div className="max-w-[88%] px-3 py-2 rounded-2xl rounded-tr-none bg-[var(--accent)] text-white text-[11px] leading-relaxed">
         {content}
       </div>
@@ -259,6 +264,50 @@ export const AiPanel = memo(function AiPanel() {
   const [revertedIds, setRevertedIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1024;
+        const MAX_HEIGHT = 1024;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = Math.round((width * MAX_HEIGHT) / height);
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          setAttachedImage(dataUrl);
+        } else {
+          setAttachedImage(event.target?.result as string);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
   const { messages, isLoading, thinkingStep, sendMessage, clearMessages, stop } = useAiAgent();
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -289,10 +338,12 @@ export const AiPanel = memo(function AiPanel() {
 
   const handleSend = useCallback(() => {
     const text = input.trim();
-    if (!text || isLoading) return;
+    if ((!text && !attachedImage) || isLoading) return;
     setInput('');
-    sendMessage(text);
-  }, [input, isLoading, sendMessage]);
+    setAttachedImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    sendMessage(text || 'Analyze this image and recreate its layout.', attachedImage ?? undefined);
+  }, [input, attachedImage, isLoading, sendMessage]);
 
   const handleRevert = useCallback(
     (msg: AgentMessage) => {
@@ -329,7 +380,7 @@ export const AiPanel = memo(function AiPanel() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-2.5 py-3 space-y-3 scrollbar-none">
         {messages.map((msg) => {
           if (msg.role === 'user') {
-            return <UserMessage key={msg.id} content={msg.content} />;
+            return <UserMessage key={msg.id} content={msg.content} image={msg.image} />;
           }
 
           if (
@@ -394,6 +445,24 @@ export const AiPanel = memo(function AiPanel() {
 
         <div className="p-1.5">
           <div className="rounded-xl bg-[var(--bg-app)] border border-[var(--border-subtle)] focus-within:border-[var(--accent)]/50 transition-colors overflow-hidden">
+            {attachedImage && (
+              <div className="px-3 pt-2.5 flex items-center gap-2">
+                <div className="relative w-12 h-12 rounded-lg border border-[var(--border-subtle)] overflow-hidden bg-[var(--bg-app)] shrink-0">
+                  <img src={attachedImage} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAttachedImage(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                  >
+                    <XCircle className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+                <span className="text-[9px] text-[var(--text-muted)]">Image attached</span>
+              </div>
+            )}
             <textarea
               ref={textareaRef}
               rows={3}
@@ -421,38 +490,55 @@ export const AiPanel = memo(function AiPanel() {
                   <PlusCircle className="w-3.5 h-3.5" />
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload template image"
+                  className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                >
+                  <Image className="w-3.5 h-3.5" />
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+
                 <div className="w-px h-3 bg-white/10 mx-0.5" />
 
-                {/* Model picker */}
-                <DropdownMenu
-                  side="top"
-                  trigger={
-                    <button
-                      type="button"
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
-                    >
-                      <span className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-primary)] max-w-[64px] truncate">
-                        {modelLabel}
-                      </span>
-                      <ChevronDown className="w-2.5 h-2.5 text-[var(--text-muted)] shrink-0" />
-                    </button>
-                  }
-                >
-                  <DropdownMenuHeader>AI Model</DropdownMenuHeader>
-                  {AI_MODELS.map((model) => (
-                    <DropdownMenuItem
-                      key={model.id}
-                      label={model.label}
-                      onClick={() => setAiModel(model.id)}
-                      className={aiModel === model.id ? 'bg-white/5 text-[var(--accent)]' : ''}
-                      rightElement={
-                        <span className="text-[9px] uppercase tracking-tighter opacity-40">
-                          {model.tier}
+                {AI_MODELS.length > 1 && (
+                  <DropdownMenu
+                    side="top"
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+                      >
+                        <span className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-primary)] max-w-[64px] truncate">
+                          {modelLabel}
                         </span>
-                      }
-                    />
-                  ))}
-                </DropdownMenu>
+                        <ChevronDown className="w-2.5 h-2.5 text-[var(--text-muted)] shrink-0" />
+                      </button>
+                    }
+                  >
+                    <DropdownMenuHeader>AI Model</DropdownMenuHeader>
+                    {AI_MODELS.map((model) => (
+                      <DropdownMenuItem
+                        key={model.id}
+                        label={model.label}
+                        onClick={() => setAiModel(model.id)}
+                        className={aiModel === model.id ? 'bg-white/5 text-[var(--accent)]' : ''}
+                        rightElement={
+                          <span className="text-[9px] uppercase tracking-tighter opacity-40">
+                            {model.tier}
+                          </span>
+                        }
+                      />
+                    ))}
+                  </DropdownMenu>
+                )}
 
                 {/* Mode picker */}
                 <DropdownMenu

@@ -1,15 +1,25 @@
 'use client';
 
+import { resolveAiModel } from '@/lib/utils/ai-models';
 import { useDesignerStore } from '@/store/designer-store';
 import type {
+  BarcodeComponent,
+  ChecklistComponent,
   ComponentNode,
   ImageComponent,
   LayoutSchema,
   LineComponent,
+  PageBreakIndicatorComponent,
+  PageNumberComponent,
+  QRComponent,
+  RectangleComponent,
+  SignatureComponent,
   SpacerComponent,
+  SummaryBoxComponent,
   TableColumn,
   TableComponent,
   TextComponent,
+  Zone,
   ZoneKey,
 } from '@/types/schema';
 import { useCallback, useRef, useState } from 'react';
@@ -22,6 +32,7 @@ export interface AgentMessage {
   mode?: 'chat' | 'plan' | 'design';
   snapshotIndex?: number;
   toolCalls?: Array<{ name: string; success: boolean; description: string }>;
+  image?: string;
 }
 
 // ─── Session Memory ───────────────────────────────────────────────────────────
@@ -237,6 +248,150 @@ function execTool(name: string, args: Record<string, unknown>): string {
       return `Added ${args.height}mm spacer to ${zone}`;
     }
 
+    case 'add_barcode': {
+      const comp: BarcodeComponent = {
+        id: crypto.randomUUID(),
+        type: 'barcode',
+        x: args.x as number,
+        y: args.y as number,
+        width: args.width as number,
+        height: args.height as number,
+        value: args.value as string,
+        format: (args.format as BarcodeComponent['format']) ?? 'code128',
+      };
+      store.addComponent(zone, comp, pageId);
+      return `Added barcode to ${zone}`;
+    }
+
+    case 'add_qr': {
+      const comp: QRComponent = {
+        id: crypto.randomUUID(),
+        type: 'qr',
+        x: args.x as number,
+        y: args.y as number,
+        width: args.width as number,
+        height: args.height as number,
+        value: args.value as string,
+      };
+      store.addComponent(zone, comp, pageId);
+      return `Added QR code to ${zone}`;
+    }
+
+    case 'add_summary_box': {
+      const comp: SummaryBoxComponent = {
+        id: crypto.randomUUID(),
+        type: 'summary-box',
+        x: args.x as number,
+        y: args.y as number,
+        width: args.width as number,
+        height: args.height as number,
+        rows: (args.rows as SummaryBoxComponent['rows']) ?? [],
+      };
+      store.addComponent(zone, comp, pageId);
+      return `Added summary box to ${zone}`;
+    }
+
+    case 'add_page_break_indicator': {
+      const comp: PageBreakIndicatorComponent = {
+        id: crypto.randomUUID(),
+        type: 'page-break-indicator',
+        x: args.x as number,
+        y: args.y as number,
+        width: args.width as number,
+        height: args.height as number,
+        label: args.label as string | undefined,
+        style: (args.style as PageBreakIndicatorComponent['style']) ?? 'dashed',
+        showPageNumber: args.showPageNumber as boolean | undefined,
+      };
+      store.addComponent(zone, comp, pageId);
+      return `Added page break indicator to ${zone}`;
+    }
+
+    case 'add_page_number': {
+      const comp: PageNumberComponent = {
+        id: crypto.randomUUID(),
+        type: 'page-number',
+        x: args.x as number,
+        y: args.y as number,
+        width: args.width as number,
+        height: args.height as number,
+        format: args.format as string,
+        style: {
+          fontSize: (args.fontSize as number | undefined) ?? 9,
+          color: (args.color as string | undefined) ?? '#666666',
+          align: (args.align as PageNumberComponent['style']['align']) ?? 'center',
+        },
+      };
+      store.addComponent(zone, comp, pageId);
+      return `Added page number to ${zone}`;
+    }
+
+    case 'add_checklist': {
+      const comp: ChecklistComponent = {
+        id: crypto.randomUUID(),
+        type: 'checklist',
+        x: args.x as number,
+        y: args.y as number,
+        width: args.width as number,
+        height: args.height as number,
+        listStyle: (args.listStyle as ChecklistComponent['listStyle']) ?? 'checkbox',
+        items: (args.items as ChecklistComponent['items']) ?? [],
+        dataSource: args.dataSource as string | undefined,
+        labelField: args.labelField as string | undefined,
+        checkedField: args.checkedField as string | undefined,
+      };
+      store.addComponent(zone, comp, pageId);
+      return `Added checklist to ${zone}`;
+    }
+
+    case 'add_rectangle': {
+      const comp: RectangleComponent = {
+        id: crypto.randomUUID(),
+        type: 'rectangle',
+        x: args.x as number,
+        y: args.y as number,
+        width: args.width as number,
+        height: args.height as number,
+        fill: args.fill as string | undefined,
+        radius: args.radius as string | undefined,
+        strokeColor: args.strokeColor as string | undefined,
+        strokeWidth: args.strokeWidth as string | undefined,
+      };
+      store.addComponent(zone, comp, pageId);
+      return `Added rectangle to ${zone}`;
+    }
+
+    case 'add_signature': {
+      const comp: SignatureComponent = {
+        id: crypto.randomUUID(),
+        type: 'signature',
+        x: args.x as number,
+        y: args.y as number,
+        width: args.width as number,
+        height: args.height as number,
+        slots: (args.slots as SignatureComponent['slots']) ?? [],
+        showNameLine: args.showNameLine as boolean | undefined,
+        showDateLine: args.showDateLine as boolean | undefined,
+      };
+      store.addComponent(zone, comp, pageId);
+      return `Added signature to ${zone}`;
+    }
+
+    case 'update_zone': {
+      const updates: Partial<Zone> = {};
+      if (args.updates && typeof args.updates === 'object') {
+        const u = args.updates as Record<string, unknown>;
+        if (u.layoutMode !== undefined) {
+          updates.layoutMode = u.layoutMode as Zone['layoutMode'];
+        }
+        if (u.flowGap !== undefined) {
+          updates.flowGap = u.flowGap as string;
+        }
+      }
+      store.updateZone(zone, updates, pageId);
+      return `Updated zone ${zone} settings`;
+    }
+
     case 'update_component': {
       const safeUpdates = ensureTableIds(args.updates as AnyRecord);
       store.updateComponent(
@@ -366,16 +521,12 @@ function quickClassify(text: string): IntentMode | null {
   return null; // uncertain — let the server classifier decide
 }
 
-async function classifyIntent(
-  message: string,
-  signal?: AbortSignal,
-  classifierModel?: string
-): Promise<IntentMode> {
+async function classifyIntent(message: string, signal?: AbortSignal): Promise<IntentMode> {
   try {
     const res = await fetch('/api/chat/classify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, classifierModel }),
+      body: JSON.stringify({ message }),
       signal,
     });
     if (!res.ok) return 'design';
@@ -454,7 +605,14 @@ function persistMessages(msgs: AgentMessage[]): void {
       JSON.stringify(msgs.map((m) => ({ ...m, timestamp: m.timestamp.toISOString() })))
     );
   } catch {
-    // localStorage may be unavailable (private browsing quota)
+    try {
+      localStorage.setItem(
+        STORAGE_MESSAGES_KEY,
+        JSON.stringify(
+          msgs.map((m) => ({ ...m, image: undefined, timestamp: m.timestamp.toISOString() }))
+        )
+      );
+    } catch {}
   }
 }
 
@@ -494,11 +652,13 @@ export function useAiAgent() {
   }, []);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, image?: string) => {
+      const model = resolveAiModel(aiModel);
       const userMsg: AgentMessage = {
         id: crypto.randomUUID(),
         role: 'user',
         content,
+        image,
         timestamp: new Date(),
       };
       const uiHistory = [...messages, userMsg];
@@ -552,13 +712,17 @@ export function useAiAgent() {
         const sessionIntent = serializeMemory(sessionMemoryRef.current);
 
         // Quick client-side classify first — skip network round-trip for obvious cases
-        const quickResult = quickClassify(content);
         let intent: IntentMode;
-        if (quickResult) {
-          intent = quickResult;
+        if (image) {
+          intent = 'design';
         } else {
-          setThinkingStep('Classifying intent...');
-          intent = await classifyIntent(content, controller.signal, aiModel);
+          const quickResult = quickClassify(content);
+          if (quickResult) {
+            intent = quickResult;
+          } else {
+            setThinkingStep('Classifying intent...');
+            intent = await classifyIntent(content, controller.signal);
+          }
         }
         if (controller.signal.aborted) return;
 
@@ -573,7 +737,23 @@ export function useAiAgent() {
         // Build initial API message window — strip intent blocks from history to save tokens
         const windowedHistory: ApiMsg[] = uiHistory
           .slice(-HISTORY_WINDOW)
-          .map((m) => ({ role: m.role, content: stripIntentBlock(m.content) }));
+          .map((m, idx, arr) => {
+            const isLatest = idx === arr.length - 1;
+            const textContent = stripIntentBlock(m.content);
+            if (m.role === 'user' && m.image && isLatest) {
+              return {
+                role: 'user',
+                content: [
+                  { type: 'text', text: textContent },
+                  {
+                    type: 'image_url',
+                    image_url: { url: m.image },
+                  },
+                ] as any,
+              };
+            }
+            return { role: m.role, content: textContent };
+          });
 
         let apiMessages: ApiMsg[] = windowedHistory;
         const allToolCalls: NonNullable<AgentMessage['toolCalls']> = [];
@@ -589,7 +769,7 @@ export function useAiAgent() {
             sessionIntent || undefined,
             controller.signal,
             'chat',
-            aiModel,
+            model,
             aiMode
           );
           finalText = data.choices?.[0]?.message?.content ?? '';
@@ -610,7 +790,7 @@ export function useAiAgent() {
             sessionIntent || undefined,
             controller.signal,
             'plan',
-            aiModel,
+            model,
             aiMode
           );
           finalText = stripIntentBlock(data.choices?.[0]?.message?.content ?? '');
@@ -631,7 +811,7 @@ export function useAiAgent() {
             undefined,
             controller.signal,
             'quick',
-            aiModel,
+            model,
             aiMode
           );
           const msg = data.choices?.[0]?.message;
@@ -680,7 +860,7 @@ export function useAiAgent() {
             sessionIntent || undefined,
             controller.signal,
             'design',
-            aiModel,
+            model,
             aiMode
           );
           const msg = data.choices?.[0]?.message;
@@ -764,7 +944,7 @@ export function useAiAgent() {
               sessionIntent || undefined,
               controller.signal,
               'design',
-              aiModel,
+              model,
               aiMode
             );
             const dataTool = dataResp.choices?.[0]?.message?.tool_calls?.find(
@@ -824,7 +1004,7 @@ export function useAiAgent() {
         setThinkingStep('');
       }
     },
-    [messages]
+    [messages, aiModel, aiMode]
   );
 
   const clearMessages = useCallback(() => {
