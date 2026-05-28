@@ -303,6 +303,25 @@ export class TypstBridge {
         wasm.typstbridge_register_image(this.__wbg_ptr, ptr0, len0, ptr1, len1);
     }
     /**
+     * Remove background from image bytes using flood-fill from the 4 corners.
+     * `tolerance` controls how similar a pixel must be to the background colour (0–255).
+     * Returns PNG bytes with the background made transparent.
+     * @param {Uint8Array} data
+     * @param {number} tolerance
+     * @returns {Uint8Array}
+     */
+    remove_background(data, tolerance) {
+        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.typstbridge_remove_background(this.__wbg_ptr, ptr0, len0, tolerance);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
+    }
+    /**
      * @param {string} source_code
      * @param {string | null} [pdf_standard]
      * @returns {Uint8Array}

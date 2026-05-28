@@ -543,6 +543,15 @@ self.onmessage = async (e: MessageEvent) => {
         self.postMessage({ id, type: 'success', payload: jsonStr });
         break;
       }
+      case 'REMOVE_BACKGROUND': {
+        const { data, tolerance } = payload as { data: Uint8Array; tolerance: number };
+        // remove_background is added after bun run build:wasm
+        const pngBytes = (bridge as any).remove_background(data, tolerance) as Uint8Array;
+        self.postMessage({ id, type: 'success', payload: pngBytes }, {
+          transfer: [pngBytes.buffer],
+        } as any);
+        break;
+      }
     }
   } catch (err: any) {
     console.error('Typst Worker [RENDER ERROR]:', err);

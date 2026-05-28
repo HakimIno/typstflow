@@ -54,6 +54,12 @@ export class TypstBridge {
      */
     register_font(data: Uint8Array): boolean;
     register_image(virtual_path: string, data: Uint8Array): void;
+    /**
+     * Remove background from image bytes using flood-fill from the 4 corners.
+     * `tolerance` controls how similar a pixel must be to the background colour (0–255).
+     * Returns PNG bytes with the background made transparent.
+     */
+    remove_background(data: Uint8Array, tolerance: number): Uint8Array;
     render_pdf(source_code: string, pdf_standard?: string | null): Uint8Array;
     render_svg(source_code: string): string;
     /**
@@ -75,6 +81,7 @@ export interface InitOutput {
     readonly typstbridge_parse_xlsx: (a: number, b: number, c: number) => [number, number, number, number];
     readonly typstbridge_register_font: (a: number, b: number, c: number) => number;
     readonly typstbridge_register_image: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly typstbridge_remove_background: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly typstbridge_render_pdf: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly typstbridge_render_svg: (a: number, b: number, c: number) => [number, number, number, number];
     readonly typstbridge_set_today: (a: number, b: number, c: number, d: number) => void;

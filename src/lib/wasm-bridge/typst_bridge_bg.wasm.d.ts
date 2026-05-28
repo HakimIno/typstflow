@@ -9,6 +9,7 @@ export const typstbridge_parse_csv: (a: number, b: number, c: number) => [number
 export const typstbridge_parse_xlsx: (a: number, b: number, c: number) => [number, number, number, number];
 export const typstbridge_register_font: (a: number, b: number, c: number) => number;
 export const typstbridge_register_image: (a: number, b: number, c: number, d: number, e: number) => void;
+export const typstbridge_remove_background: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const typstbridge_render_pdf: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
 export const typstbridge_render_svg: (a: number, b: number, c: number) => [number, number, number, number];
 export const typstbridge_set_today: (a: number, b: number, c: number, d: number) => void;

@@ -2312,6 +2312,7 @@ dependencies = [
  "calamine",
  "comemo 0.4.0",
  "csv",
+ "image",
  "js-sys",
  "rstar",
  "serde",

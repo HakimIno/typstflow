@@ -5,10 +5,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/Select';
+import { removeBackground } from '@/lib/typst-wasm';
 import { optimizeImage } from '@/lib/utils/image-optimizer';
 import type { ImageComponent } from '@/types/schema';
 import { clsx } from 'clsx';
-import { ImageIcon, Link, Loader2, Upload, X } from 'lucide-react';
+import { ImageIcon, Link, Loader2, Scissors, Upload, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { DesignerInput } from '../../shared/DesignerInput';
 import { CollapsibleSection, PropertyRow } from './Shared';
@@ -56,6 +57,8 @@ function ImageUploader({
   const fileRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState(component.src?.startsWith('http') ? component.src : '');
   const [loading, setLoading] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
+  const [tolerance, setTolerance] = useState(30);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'upload' | 'url'>('upload');
 
@@ -145,6 +148,26 @@ function ImageUploader({
     setError(null);
   }, [onUpdate]);
 
+  const handleRemoveBg = useCallback(async () => {
+    const srcData = component.srcData;
+    if (!srcData) return;
+    setRemovingBg(true);
+    setError(null);
+    try {
+      const comma = srcData.indexOf(',');
+      const base64 = srcData.slice(comma + 1);
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const resultDataUrl = await removeBackground(bytes, tolerance);
+      onUpdate({ srcData: resultDataUrl, mimeType: 'image/png' });
+    } catch (err: any) {
+      setError(err.message || 'Remove background failed');
+    } finally {
+      setRemovingBg(false);
+    }
+  }, [component.srcData, tolerance, onUpdate]);
+
   return (
     <div className="border-b border-[var(--border-default)]">
       <div className="flex border-b border-[var(--border-default)]">
@@ -167,23 +190,58 @@ function ImageUploader({
       </div>
 
       {previewSrc ? (
-        <div
-          className="relative mx-3 my-2 rounded border border-[var(--border-default)] overflow-hidden bg-white/[0.02]"
-          style={{ height: 80 }}
-        >
-          <img src={previewSrc} alt="preview" className="w-full h-full object-contain" />
-          <button
-            type="button"
-            onClick={handleClear}
-            className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-0.5 transition-all"
+        <>
+          <div
+            className="relative mx-3 my-2 rounded border border-[var(--border-default)] overflow-hidden bg-white/[0.02]"
+            style={{ height: 80 }}
           >
-            {loading ? (
-              <Loader2 className="w-2.5 h-2.5 animate-spin" />
-            ) : (
-              <X className="w-2.5 h-2.5" />
-            )}
-          </button>
-        </div>
+            <img src={previewSrc} alt="preview" className="w-full h-full object-contain" />
+            <button
+              type="button"
+              onClick={handleClear}
+              className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-0.5 transition-all"
+            >
+              {loading ? (
+                <Loader2 className="w-2.5 h-2.5 animate-spin" />
+              ) : (
+                <X className="w-2.5 h-2.5" />
+              )}
+            </button>
+          </div>
+
+          {/* Remove Background */}
+          <div className="mx-3 mb-2 space-y-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-bold shrink-0">
+                Tolerance
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={120}
+                value={tolerance}
+                onChange={(e) => setTolerance(Number(e.target.value))}
+                className="flex-1 h-1 accent-[var(--accent)]"
+              />
+              <span className="text-[9px] text-[var(--text-secondary)] w-5 text-right tabular-nums">
+                {tolerance}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleRemoveBg}
+              disabled={removingBg || loading}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-[var(--border-default)] rounded text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider transition-all disabled:opacity-50"
+            >
+              {removingBg ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Scissors className="w-3 h-3" />
+              )}
+              {removingBg ? 'Removing…' : 'Remove BG'}
+            </button>
+          </div>
+        </>
       ) : (
         <button
           type="button"

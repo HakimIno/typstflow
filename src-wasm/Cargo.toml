@@ -25,6 +25,7 @@ typst-library = "0.14.2"
 typst-svg = "0.14.2"
 typst-pdf = "0.14.2"
 rstar = "0.12"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 
 [profile.release]
 lto = true

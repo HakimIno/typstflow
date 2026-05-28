@@ -10,6 +10,7 @@ use wasm_bindgen::prelude::*;
 
 mod parsers;
 mod world;
+pub mod image_processing;
 pub mod layout_engine;
 pub mod table_engine;
 pub mod zone_layout;
@@ -200,6 +201,14 @@ impl TypstBridge {
 
         typst_pdf::pdf(&doc, &options)
             .map_err(|err| JsValue::from_str(&format!("PDF generation failed: {:?}", err)))
+    }
+
+    /// Remove background from image bytes using flood-fill from the 4 corners.
+    /// `tolerance` controls how similar a pixel must be to the background colour (0–255).
+    /// Returns PNG bytes with the background made transparent.
+    pub fn remove_background(&self, data: &[u8], tolerance: u8) -> Result<Vec<u8>, JsValue> {
+        image_processing::remove_background_impl(data, tolerance)
+            .map_err(|e| JsValue::from_str(&e))
     }
 
     pub fn parse_csv(&self, csv_data: &str) -> Result<String, JsValue> {

@@ -291,3 +291,21 @@ export async function parseCsv(data: Uint8Array): Promise<string> {
 export async function parseXlsx(data: Uint8Array): Promise<string> {
   return callWorker('PARSE_XLSX', data);
 }
+
+/**
+ * Remove the background of an image using flood-fill from the 4 corners (Rust WASM).
+ * `imageBytes` — raw image bytes (PNG / JPEG / WebP).
+ * `tolerance`  — colour distance threshold (0-255). Higher = more aggressive removal.
+ * Returns a PNG data URL with the background made transparent.
+ */
+export async function removeBackground(imageBytes: Uint8Array, tolerance: number): Promise<string> {
+  const copy = imageBytes.slice(0);
+  const pngBytes: Uint8Array = await callWorker('REMOVE_BACKGROUND', { data: copy, tolerance }, [
+    copy.buffer,
+  ]);
+  const parts: string[] = [];
+  for (let i = 0; i < pngBytes.length; i += 8192) {
+    parts.push(String.fromCharCode(...pngBytes.subarray(i, Math.min(i + 8192, pngBytes.length))));
+  }
+  return `data:image/png;base64,${btoa(parts.join(''))}`;
+}
