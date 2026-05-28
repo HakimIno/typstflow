@@ -60,11 +60,11 @@ export const ShareModal = memo(function ShareModal({ isOpen, onClose }: ShareMod
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#18181f] border border-white/10 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+      <div className="bg-(--bg-surface) border border-white/10 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
-            <Link2 className="w-4 h-4 text-violet-400" />
+            <Link2 className="w-4 h-4 text-(--accent)" />
             <h2 className="font-semibold text-sm text-white">Share Template</h2>
           </div>
           <button
@@ -84,7 +84,7 @@ export const ShareModal = memo(function ShareModal({ isOpen, onClose }: ShareMod
             <button
               type="button"
               onClick={handleCreate}
-              className="w-full py-2 px-4 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"
+              className="w-full py-2 px-4 bg-(--accent) hover:opacity-90 text-white text-sm font-medium rounded-lg transition-opacity"
             >
               Create Share Link
             </button>
@@ -120,7 +120,7 @@ export const ShareModal = memo(function ShareModal({ isOpen, onClose }: ShareMod
               href={shareUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-(--accent) hover:opacity-80 transition-opacity"
             >
               <ExternalLink className="w-3 h-3" />
               Preview in new tab

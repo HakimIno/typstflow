@@ -33,6 +33,7 @@ import { GeometryProperties } from './properties/GeometryProperties';
 import { GroupProperties } from './properties/GroupProperties';
 import { ImageProperties } from './properties/ImageProperties';
 import { LineProperties } from './properties/LineProperties';
+import { RectangleProperties } from './properties/RectangleProperties';
 import { ReportConfigPanel } from './properties/ReportConfigPanel';
 import {
   CollapsibleSection,
@@ -42,7 +43,6 @@ import {
   PropertyRow,
   SectionHeader,
 } from './properties/Shared';
-import { RectangleProperties } from './properties/RectangleProperties';
 import { SignatureProperties } from './properties/SignatureProperties';
 import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
 import { TypographyProperties } from './properties/TypographyProperties';
@@ -188,11 +188,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
       },
       deleteAll: () => removeComponents(selectedComponentIds),
       saveAsBlock: () =>
-        saveBlock(
-          `Block (${bulkSelectedComponents.length})`,
-          bulkSelectedComponents,
-          selectedZone
-        ),
+        saveBlock(`Block (${bulkSelectedComponents.length})`, bulkSelectedComponents, selectedZone),
     };
 
     return <BulkEditPanel selectedComponents={bulkSelectedComponents} actions={bulkActions} />;
@@ -212,6 +208,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 <TypographyProperties
                   style={(selectedComponent as any).style}
                   onUpdateStyle={handleStyleUpdate}
+                  allowBlockSettings={isText(selectedComponent)}
                 />
               )}
               {isLine(selectedComponent) && (
@@ -498,7 +495,13 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
         <div className="flex items-center gap-0.5">
           <button
             type="button"
-            onClick={() => saveBlock(selectedComponent.name ?? selectedComponent.type, [selectedComponent], selectedZone)}
+            onClick={() =>
+              saveBlock(
+                selectedComponent.name ?? selectedComponent.type,
+                [selectedComponent],
+                selectedZone
+              )
+            }
             disabled={isLocked}
             className={clsx(
               'p-1 rounded transition-colors',

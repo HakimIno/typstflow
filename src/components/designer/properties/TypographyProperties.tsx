@@ -28,9 +28,14 @@ import { CollapsibleSection, ControlField, PropertyGrid } from './Shared';
 interface TypographyPropertiesProps {
   style: any;
   onUpdateStyle: (updates: any) => void;
+  allowBlockSettings?: boolean;
 }
 
-export function TypographyProperties({ style, onUpdateStyle }: TypographyPropertiesProps) {
+export function TypographyProperties({
+  style,
+  onUpdateStyle,
+  allowBlockSettings = false,
+}: TypographyPropertiesProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const customFonts = useDesignerStore((s) => s.customFonts || []);
 
@@ -298,6 +303,56 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
               </ControlField>
             </PropertyGrid>
 
+            {/* Tabular Numbers & Vertical Alignment */}
+            <PropertyGrid cols={2}>
+              <ControlField label="Number Width">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdateStyle({
+                      numberWidth: style?.numberWidth === 'tabular' ? 'proportional' : 'tabular',
+                    })
+                  }
+                  className={clsx(
+                    'w-full h-6 flex items-center justify-center border rounded-[4px] text-[9px] font-bold transition-all',
+                    style?.numberWidth === 'tabular'
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                      : 'bg-[var(--bg-widget)] border-[var(--border-default)] text-[var(--text-muted)] hover:bg-white/[0.08]'
+                  )}
+                >
+                  {style?.numberWidth === 'tabular' ? 'Tabular' : 'Proportional'}
+                </button>
+              </ControlField>
+
+              {allowBlockSettings ? (
+                <ControlField label="Vertical Align" vertical={false} className="items-center">
+                  <div className="flex border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)] shrink-0 w-full">
+                    {[
+                      { id: 'top', label: 'Top' },
+                      { id: 'middle', label: 'Mid' },
+                      { id: 'bottom', label: 'Bot' },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => onUpdateStyle({ verticalAlign: item.id })}
+                        className={clsx(
+                          'flex-1 py-1 flex items-center justify-center transition-all h-5 text-[8.5px] font-bold',
+                          (style?.verticalAlign || 'top') === item.id
+                            ? 'bg-[var(--accent)] text-white'
+                            : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/[0.04]'
+                        )}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </ControlField>
+              ) : (
+                <div />
+              )}
+            </PropertyGrid>
+
             {/* Inline Highlight Color */}
             <PropertyGrid cols={1}>
               <ControlField label="Text Highlight">
@@ -357,6 +412,68 @@ export function TypographyProperties({ style, onUpdateStyle }: TypographyPropert
                 />
               </ControlField>
             </PropertyGrid>
+
+            {/* Block Background Settings */}
+            {allowBlockSettings && (
+              <>
+                <div className="border-t border-dashed border-[var(--border-subtle)] my-1 pt-1.5 text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
+                  Block Background
+                </div>
+                <PropertyGrid cols={1}>
+                  <ControlField label="Fill Color">
+                    <div className="flex gap-1.5 items-center w-full">
+                      <div className="flex-1">
+                        <ColorPicker
+                          color={style?.background || '#ffffff'}
+                          onChange={(color) => onUpdateStyle({ background: color })}
+                        />
+                      </div>
+                      {style?.background && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onUpdateStyle({
+                              background: undefined,
+                              backgroundPadding: undefined,
+                              backgroundRadius: undefined,
+                            })
+                          }
+                          className="h-6 px-2 text-[8px] font-bold text-red-400 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 rounded transition-all shrink-0"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </ControlField>
+                </PropertyGrid>
+
+                <PropertyGrid cols={2}>
+                  <ControlField label="Padding">
+                    <DesignerInput
+                      type="text"
+                      variant="mini"
+                      disabled={!style?.background}
+                      value={style?.backgroundPadding || '5pt'}
+                      onChange={(v) => onUpdateStyle({ backgroundPadding: v })}
+                      placeholder="5pt"
+                      mono
+                    />
+                  </ControlField>
+
+                  <ControlField label="Corner Radius">
+                    <DesignerInput
+                      type="text"
+                      variant="mini"
+                      disabled={!style?.background}
+                      value={style?.backgroundRadius || '0pt'}
+                      onChange={(v) => onUpdateStyle({ backgroundRadius: v })}
+                      placeholder="4pt"
+                      mono
+                    />
+                  </ControlField>
+                </PropertyGrid>
+              </>
+            )}
           </div>
         )}
       </div>

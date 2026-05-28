@@ -105,6 +105,74 @@ describe('TypstGenerator — text component', () => {
     const output = generate(schema);
     expect(output).toContain('size: 12pt');
   });
+
+  it('renders vertical alignment, tabular numbers, background padding, radius and fallback alignment', () => {
+    const customSchema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              {
+                id: 'text-custom',
+                type: 'text',
+                x: 10,
+                y: 10,
+                width: 80,
+                height: 10,
+                content: 'Aligned text',
+                style: {
+                  fontSize: 10,
+                  align: 'center',
+                  verticalAlign: 'middle',
+                  numberWidth: 'tabular',
+                  background: '#ff0000',
+                  backgroundPadding: '8pt',
+                  backgroundRadius: '4pt',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const output = new TypstGenerator().generate(customSchema, {});
+    expect(output).toContain('set align(horizon + center)');
+    expect(output).toContain('number-width: "tabular"');
+    expect(output).toContain('#block(fill: rgb("#ff0000"), width: 100%, height: 100%, inset: 8pt, radius: 4pt)');
+  });
+
+  it('omits height: 100% in flow mode background block', () => {
+    const flowSchema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            layoutMode: 'flow',
+            components: [
+              {
+                id: 'text-flow-bg',
+                type: 'text',
+                content: 'Flow bg text',
+                style: {
+                  background: '#00ff00',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const output = new TypstGenerator().generate(flowSchema, {});
+    expect(output).toContain('#block(fill: rgb("#00ff00"), width: 100%, inset: 5pt)');
+    expect(output).not.toContain('height: 100%');
+  });
 });
 
 describe('TypstGenerator — data binding resolution', () => {

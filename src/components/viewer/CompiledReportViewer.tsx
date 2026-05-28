@@ -316,11 +316,16 @@ export const CompiledReportViewer = memo(function CompiledReportViewer({
           )}
 
           {svgContent && svgContent.length > 0 && (
-            <footer className="py-8 text-center text-xs text-white/20 border-t border-white/5 mt-12 w-full max-w-[200px] shrink-0">
-              Made with{' '}
-              <a href="/" className="text-violet-400 hover:text-violet-300">
-                TypstFlow
-              </a>
+            <footer className="w-full shrink-0 mt-16 mb-8 px-6">
+              <div className="flex items-center justify-center gap-2 py-3 px-5 rounded-full  w-fit mx-auto">
+                <span className="text-xs text-white/35">Made with</span>
+                <a
+                  href="/"
+                  className="text-xs font-semibold text-(--accent) hover:opacity-80 transition-opacity tracking-wide"
+                >
+                  TypstFlow
+                </a>
+              </div>
             </footer>
           )}
         </div>

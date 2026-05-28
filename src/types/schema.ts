@@ -142,6 +142,10 @@ export interface TextStyle {
   justify?: boolean;
   align?: 'left' | 'center' | 'right' | 'justify'; // New: Text alignment within container
   background?: string; // hex
+  backgroundPadding?: string; // padding inside the block (e.g. "5pt" or "2mm")
+  backgroundRadius?: string; // border-radius for background (e.g. "4pt" or "2mm")
+  verticalAlign?: 'top' | 'middle' | 'bottom';
+  numberWidth?: 'tabular' | 'proportional';
   hyphenate?: boolean;
 }
 
@@ -526,7 +530,6 @@ export interface DataFieldDefinition {
   description?: string;
   example?: unknown;
 }
-
 
 export interface SavedBlock {
   id: string;
