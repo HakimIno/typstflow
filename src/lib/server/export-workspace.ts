@@ -48,7 +48,7 @@ export async function purgeStaleExportJobDirs(maxAgeMs: number): Promise<void> {
   if (!existsSync(base)) return;
 
   const now = Date.now();
-  let entries: Awaited<ReturnType<typeof readdir>>;
+  let entries: any[];
   try {
     entries = await readdir(base, { withFileTypes: true });
   } catch {
@@ -189,6 +189,19 @@ export async function prepareExportWorkspace(
       await writeFile(path.join(jobDir, fileName), Buffer.from(bytes));
     },
   });
+
+  // Write XML file if standard is PDF/A-3b and embedXml is checked
+  if (schema.pdfConfig?.standard === 'pdf-a-3b' && schema.pdfConfig?.embedXml) {
+    const { resolvePath } = await import('@/lib/engine/generator/binding');
+    const xmlDataPath = schema.pdfConfig.xmlDataPath || 'xmlData';
+    const xmlString = resolvePath(xmlDataPath, data);
+    if (typeof xmlString === 'string' && xmlString) {
+      await writeFile(path.join(jobDir, 'invoice.xml'), xmlString);
+    } else {
+      const fallbackXml = `<?xml version="1.0" encoding="UTF-8"?>\n<!-- Warning: XML data not found in dataset at path "${xmlDataPath}" -->\n<empty/>`;
+      await writeFile(path.join(jobDir, 'invoice.xml'), fallbackXml);
+    }
+  }
 
   await materializeFonts(schema, fontsDir);
   await copyTypstPackages(packagesDir);

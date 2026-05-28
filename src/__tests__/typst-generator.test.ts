@@ -142,7 +142,9 @@ describe('TypstGenerator — text component', () => {
     const output = new TypstGenerator().generate(customSchema, {});
     expect(output).toContain('set align(horizon + center)');
     expect(output).toContain('number-width: "tabular"');
-    expect(output).toContain('#block(fill: rgb("#ff0000"), width: 100%, height: 100%, inset: 8pt, radius: 4pt)');
+    expect(output).toContain(
+      '#block(fill: rgb("#ff0000"), width: 100%, height: 100%, inset: 8pt, radius: 4pt)'
+    );
   });
 
   it('omits height: 100% in flow mode background block', () => {

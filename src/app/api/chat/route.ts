@@ -245,7 +245,11 @@ const TOOLS = [
           width: { type: 'number', description: 'Width in mm' },
           height: { type: 'number', description: 'Height in mm' },
           value: { type: 'string', description: 'Barcode value expression e.g. {{invoice.id}}' },
-          format: { type: 'string', enum: ['code128', 'ean13', 'pdf417'], description: 'Barcode format' },
+          format: {
+            type: 'string',
+            enum: ['code128', 'ean13', 'pdf417'],
+            description: 'Barcode format',
+          },
         },
         required: ['zone', 'x', 'y', 'width', 'height', 'value'],
       },
@@ -264,7 +268,10 @@ const TOOLS = [
           y: { type: 'number', description: 'Y position in mm' },
           width: { type: 'number', description: 'Width in mm' },
           height: { type: 'number', description: 'Height in mm' },
-          value: { type: 'string', description: 'QR content/URL expression e.g. {{invoice.paymentUrl}}' },
+          value: {
+            type: 'string',
+            description: 'QR content/URL expression e.g. {{invoice.paymentUrl}}',
+          },
         },
         required: ['zone', 'x', 'y', 'width', 'height', 'value'],
       },
@@ -274,7 +281,8 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'add_summary_box',
-      description: 'Add a structured summary box for totals, sub-totals, discounts, tax, and grand totals.',
+      description:
+        'Add a structured summary box for totals, sub-totals, discounts, tax, and grand totals.',
       parameters: {
         type: 'object',
         properties: {
@@ -292,11 +300,11 @@ const TOOLS = [
                 label: { type: 'string', description: 'Display label' },
                 value: { type: 'string', description: 'Value expression e.g. {{invoice.total}}' },
                 style: { type: 'string', enum: ['normal', 'subtotal', 'total', 'highlight'] },
-                separator: { type: 'boolean' }
+                separator: { type: 'boolean' },
               },
-              required: ['label', 'value']
-            }
-          }
+              required: ['label', 'value'],
+            },
+          },
         },
         required: ['zone', 'x', 'y', 'width', 'height', 'rows'],
       },
@@ -315,9 +323,12 @@ const TOOLS = [
           y: { type: 'number' },
           width: { type: 'number' },
           height: { type: 'number' },
-          label: { type: 'string', description: 'Optional helper text e.g. "Continued on next page..."' },
+          label: {
+            type: 'string',
+            description: 'Optional helper text e.g. "Continued on next page..."',
+          },
           style: { type: 'string', enum: ['solid', 'dashed', 'dotted'] },
-          showPageNumber: { type: 'boolean' }
+          showPageNumber: { type: 'boolean' },
         },
         required: ['zone', 'x', 'y', 'width', 'height'],
       },
@@ -339,7 +350,7 @@ const TOOLS = [
           format: { type: 'string', description: 'String format e.g. "{{page}} / {{totalPages}}"' },
           fontSize: { type: 'number' },
           color: { type: 'string', description: 'Hex color code' },
-          align: { type: 'string', enum: ['left', 'center', 'right', 'justify'] }
+          align: { type: 'string', enum: ['left', 'center', 'right', 'justify'] },
         },
         required: ['zone', 'x', 'y', 'width', 'height', 'format'],
       },
@@ -358,21 +369,30 @@ const TOOLS = [
           y: { type: 'number' },
           width: { type: 'number' },
           height: { type: 'number' },
-          listStyle: { type: 'string', enum: ['bullet', 'numbered', 'alpha', 'roman', 'checkbox', 'dash', 'custom'] },
+          listStyle: {
+            type: 'string',
+            enum: ['bullet', 'numbered', 'alpha', 'roman', 'checkbox', 'dash', 'custom'],
+          },
           items: {
             type: 'array',
             items: {
               type: 'object',
               properties: {
                 label: { type: 'string' },
-                checked: { type: 'boolean' }
+                checked: { type: 'boolean' },
               },
-              required: ['label']
-            }
+              required: ['label'],
+            },
           },
-          dataSource: { type: 'string', description: 'Data array binding for dynamic checklist items, e.g. {{tasks}}' },
+          dataSource: {
+            type: 'string',
+            description: 'Data array binding for dynamic checklist items, e.g. {{tasks}}',
+          },
           labelField: { type: 'string', description: 'Field name for labels within data objects' },
-          checkedField: { type: 'string', description: 'Field name for checked boolean within data objects' }
+          checkedField: {
+            type: 'string',
+            description: 'Field name for checked boolean within data objects',
+          },
         },
         required: ['zone', 'x', 'y', 'width', 'height', 'listStyle'],
       },
@@ -394,7 +414,7 @@ const TOOLS = [
           fill: { type: 'string', description: 'Hex background fill color e.g. #f0f0f0' },
           radius: { type: 'string', description: 'Corner radius in mm e.g. "2mm"' },
           strokeColor: { type: 'string', description: 'Hex border color' },
-          strokeWidth: { type: 'string', description: 'Border stroke width e.g. "0.5mm"' }
+          strokeWidth: { type: 'string', description: 'Border stroke width e.g. "0.5mm"' },
         },
         required: ['zone', 'x', 'y', 'width', 'height'],
       },
@@ -404,7 +424,8 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'add_signature',
-      description: 'Add a signature signing area component (often at the bottom of forms/invoices).',
+      description:
+        'Add a signature signing area component (often at the bottom of forms/invoices).',
       parameters: {
         type: 'object',
         properties: {
@@ -419,15 +440,24 @@ const TOOLS = [
             items: {
               type: 'object',
               properties: {
-                label: { type: 'string', description: 'Title above/below signature e.g. Authorized Signature' },
-                nameLabel: { type: 'string', description: 'Placeholder for print name e.g. Name: _______________' },
-                dateLabel: { type: 'string', description: 'Placeholder for date e.g. Date: _______________' }
+                label: {
+                  type: 'string',
+                  description: 'Title above/below signature e.g. Authorized Signature',
+                },
+                nameLabel: {
+                  type: 'string',
+                  description: 'Placeholder for print name e.g. Name: _______________',
+                },
+                dateLabel: {
+                  type: 'string',
+                  description: 'Placeholder for date e.g. Date: _______________',
+                },
               },
-              required: ['label']
-            }
+              required: ['label'],
+            },
           },
           showNameLine: { type: 'boolean' },
-          showDateLine: { type: 'boolean' }
+          showDateLine: { type: 'boolean' },
         },
         required: ['zone', 'x', 'y', 'width', 'height', 'slots'],
       },
@@ -437,19 +467,32 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'update_zone',
-      description: 'Configure zone settings such as changing layout mode (absolute vs flow) and spacing.',
+      description:
+        'Configure zone settings such as changing layout mode (absolute vs flow) and spacing.',
       parameters: {
         type: 'object',
         properties: {
-          zone: { type: 'string', enum: ['header', 'body', 'footer'], description: 'The zone to update' },
+          zone: {
+            type: 'string',
+            enum: ['header', 'body', 'footer'],
+            description: 'The zone to update',
+          },
           updates: {
             type: 'object',
             properties: {
-              layoutMode: { type: 'string', enum: ['absolute', 'flow'], description: 'Layout mode: absolute (coordinate-based) or flow (vertically stacked elements).' },
-              flowGap: { type: 'string', description: 'Vertical space between flow components, e.g. "4mm" or "0mm"' }
+              layoutMode: {
+                type: 'string',
+                enum: ['absolute', 'flow'],
+                description:
+                  'Layout mode: absolute (coordinate-based) or flow (vertically stacked elements).',
+              },
+              flowGap: {
+                type: 'string',
+                description: 'Vertical space between flow components, e.g. "4mm" or "0mm"',
+              },
             },
-            required: ['layoutMode']
-          }
+            required: ['layoutMode'],
+          },
         },
         required: ['zone', 'updates'],
       },

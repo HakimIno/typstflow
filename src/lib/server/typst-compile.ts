@@ -9,6 +9,7 @@ export interface TypstCompileOptions {
   rootDir: string;
   fontDir: string;
   packageDir: string;
+  pdfStandard?: string;
 }
 
 /** Resolve Typst CLI binary (env TYPST_PATH, PATH, or common install locations). */
@@ -49,9 +50,13 @@ export function compileTypstToPdf(options: TypstCompileOptions): Promise<void> {
     options.fontDir,
     '--package-path',
     options.packageDir,
-    options.inputPath,
-    options.outputPath,
   ];
+
+  if (options.pdfStandard) {
+    args.push('--pdf-standard', options.pdfStandard);
+  }
+
+  args.push(options.inputPath, options.outputPath);
 
   return new Promise((resolve, reject) => {
     const proc = spawn(typst, args, {

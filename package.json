@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "build:wasm": "cd src-wasm && rm -rf pkg && wasm-pack build --target web && cp pkg/typst_bridge* ../src/lib/wasm-bridge/"
+    "build:wasm": "cd src-wasm && rm -rf pkg && wasm-pack build --target web --mode no-install && cp pkg/typst_bridge* ../src/lib/wasm-bridge/"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "^1.7.10",

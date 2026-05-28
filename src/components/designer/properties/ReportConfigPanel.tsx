@@ -30,6 +30,7 @@ const ZONE_LAYOUT_HINT: Record<'absolute' | 'flow', string> = {
 
 export const ReportConfigPanel = memo(function ReportConfigPanel() {
   const pageConfig = useDesignerStore(useShallow((s) => s.schema.page));
+  const pdfConfig = useDesignerStore(useShallow((s) => s.schema.pdfConfig));
   const pages = useDesignerStore(useShallow((s) => s.schema.pages));
   const zones = useDesignerStore(useShallow((s) => s.schema.zones));
   const activePageId = useDesignerStore((s) => s.activePageId);
@@ -45,6 +46,15 @@ export const ReportConfigPanel = memo(function ReportConfigPanel() {
 
   const patchPage = (patch: Partial<PageConfig>) =>
     updateSchema({ page: { ...pageConfig, ...patch } });
+
+  const patchPdfConfig = (patch: any) =>
+    updateSchema({
+      pdfConfig: {
+        standard: 'pdf-1.7',
+        ...pdfConfig,
+        ...patch,
+      },
+    });
 
   const zone =
     selectedZoneKey === 'body'
@@ -120,6 +130,57 @@ export const ReportConfigPanel = memo(function ReportConfigPanel() {
             </ControlField>
           ))}
         </PropertyGrid>
+      </CollapsibleSection>
+
+      <CollapsibleSection label="PDF Settings">
+        <div className={PANEL_FIELD_STACK}>
+          <ControlField label="Standard">
+            <Select
+              value={pdfConfig?.standard || 'pdf-1.7'}
+              onValueChange={(val) => patchPdfConfig({ standard: val as any })}
+            >
+              <SelectTrigger className={PANEL_SELECT_TRIGGER}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pdf-1.7">PDF 1.7 (Default)</SelectItem>
+                <SelectItem value="pdf-a-3b">PDF/A-3b (Archival & XML)</SelectItem>
+              </SelectContent>
+            </Select>
+          </ControlField>
+
+          {pdfConfig?.standard === 'pdf-a-3b' && (
+            <div className="flex flex-col gap-2 mt-1">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="embed-xml"
+                  checked={pdfConfig?.embedXml || false}
+                  onChange={(e) => patchPdfConfig({ embedXml: e.target.checked })}
+                  className="rounded border-[var(--border-muted)] bg-transparent text-[var(--accent)] focus:ring-[var(--accent)] h-3.5 w-3.5"
+                />
+                <label
+                  htmlFor="embed-xml"
+                  className="text-xs text-[var(--text-normal)] cursor-pointer select-none"
+                >
+                  Embed XML Invoice
+                </label>
+              </div>
+
+              {pdfConfig?.embedXml && (
+                <ControlField label="XML Data Path">
+                  <PanelMiniInput
+                    value={pdfConfig?.xmlDataPath || 'xmlData'}
+                    onChange={(v) => patchPdfConfig({ xmlDataPath: v.trim() })}
+                    mono
+                    placeholder="xmlData"
+                    className="w-full"
+                  />
+                </ControlField>
+              )}
+            </div>
+          )}
+        </div>
       </CollapsibleSection>
 
       {activePage && (

@@ -106,6 +106,7 @@ async function runExportJob(
     rootDir: workspace.jobDir,
     fontDir: workspace.fontsDir,
     packageDir: workspace.packagesDir,
+    pdfStandard: (schema as any).pdfConfig?.standard === 'pdf-a-3b' ? 'a-3b' : undefined,
   });
 
   updateJob(id, {

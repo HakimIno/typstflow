@@ -1,4 +1,3 @@
-
 'use client';
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';
@@ -38,9 +37,10 @@ const ComponentBlock = memo(function ComponentBlock({
   const w = LayoutEngine.mmToPx(component.width ?? 30) * zoom;
   const h = LayoutEngine.mmToPx(component.height ?? 10) * zoom;
   const colorClass = COMPONENT_COLORS[component.type] ?? 'bg-slate-100 border-slate-300';
-  const label = component.type === 'text' && 'content' in component
-    ? (component as { content?: string }).content?.slice(0, 40) ?? component.type
-    : component.type;
+  const label =
+    component.type === 'text' && 'content' in component
+      ? ((component as { content?: string }).content?.slice(0, 40) ?? component.type)
+      : component.type;
 
   return (
     <div
@@ -94,12 +94,14 @@ export const ReadOnlyCanvas = memo(function ReadOnlyCanvas({
   const pageWpx = LayoutEngine.mmToPx(pageW);
   const pageHpx = LayoutEngine.mmToPx(pageH);
 
-  const headerH = schema.zones.header.components.length > 0
-    ? parseTypstUnit(schema.zones.header.minHeight ?? '20mm')
-    : 0;
-  const footerH = schema.zones.footer.components.length > 0
-    ? parseTypstUnit(schema.zones.footer.minHeight ?? '15mm')
-    : 0;
+  const headerH =
+    schema.zones.header.components.length > 0
+      ? parseTypstUnit(schema.zones.header.minHeight ?? '20mm')
+      : 0;
+  const footerH =
+    schema.zones.footer.components.length > 0
+      ? parseTypstUnit(schema.zones.footer.minHeight ?? '15mm')
+      : 0;
 
   return (
     <div className="flex flex-col items-center gap-2 w-full">
@@ -147,19 +149,11 @@ export const ReadOnlyCanvas = memo(function ReadOnlyCanvas({
 
           {/* Header zone */}
           {schema.zones.header.components.length > 0 && (
-            <ZoneLayer
-              zone={schema.zones.header}
-              zoom={zoom}
-              offsetY={0}
-            />
+            <ZoneLayer zone={schema.zones.header} zoom={zoom} offsetY={0} />
           )}
 
           {/* Body zone */}
-          <ZoneLayer
-            zone={page.body}
-            zoom={zoom}
-            offsetY={headerH}
-          />
+          <ZoneLayer zone={page.body} zoom={zoom} offsetY={headerH} />
 
           {/* Footer zone */}
           {schema.zones.footer.components.length > 0 && (

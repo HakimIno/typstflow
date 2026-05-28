@@ -735,25 +735,23 @@ export function useAiAgent() {
         setThinkingStep(STEP_LABELS[intent]);
 
         // Build initial API message window — strip intent blocks from history to save tokens
-        const windowedHistory: ApiMsg[] = uiHistory
-          .slice(-HISTORY_WINDOW)
-          .map((m, idx, arr) => {
-            const isLatest = idx === arr.length - 1;
-            const textContent = stripIntentBlock(m.content);
-            if (m.role === 'user' && m.image && isLatest) {
-              return {
-                role: 'user',
-                content: [
-                  { type: 'text', text: textContent },
-                  {
-                    type: 'image_url',
-                    image_url: { url: m.image },
-                  },
-                ] as any,
-              };
-            }
-            return { role: m.role, content: textContent };
-          });
+        const windowedHistory: ApiMsg[] = uiHistory.slice(-HISTORY_WINDOW).map((m, idx, arr) => {
+          const isLatest = idx === arr.length - 1;
+          const textContent = stripIntentBlock(m.content);
+          if (m.role === 'user' && m.image && isLatest) {
+            return {
+              role: 'user',
+              content: [
+                { type: 'text', text: textContent },
+                {
+                  type: 'image_url',
+                  image_url: { url: m.image },
+                },
+              ] as any,
+            };
+          }
+          return { role: m.role, content: textContent };
+        });
 
         let apiMessages: ApiMsg[] = windowedHistory;
         const allToolCalls: NonNullable<AgentMessage['toolCalls']> = [];

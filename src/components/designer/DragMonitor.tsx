@@ -216,8 +216,10 @@ export const DragMonitor = memo(function DragMonitor() {
         const scrollContainer = cache.containerElement as HTMLElement;
         const currentScrollTop = scrollContainer?.scrollTop || 0;
         const currentScrollLeft = scrollContainer?.scrollLeft || 0;
-        const absoluteY = currentScrollTop + (location.current.input.clientY - cache.containerRect.top);
-        const absoluteX = currentScrollLeft + (location.current.input.clientX - cache.containerRect.left);
+        const absoluteY =
+          currentScrollTop + (location.current.input.clientY - cache.containerRect.top);
+        const absoluteX =
+          currentScrollLeft + (location.current.input.clientX - cache.containerRect.left);
 
         const activePageIdx = Math.max(
           0,

@@ -304,18 +304,21 @@ export class TypstBridge {
     }
     /**
      * @param {string} source_code
+     * @param {string | null} [pdf_standard]
      * @returns {Uint8Array}
      */
-    render_pdf(source_code) {
+    render_pdf(source_code, pdf_standard) {
         const ptr0 = passStringToWasm0(source_code, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.typstbridge_render_pdf(this.__wbg_ptr, ptr0, len0);
+        var ptr1 = isLikeNone(pdf_standard) ? 0 : passStringToWasm0(pdf_standard, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len1 = WASM_VECTOR_LEN;
+        const ret = wasm.typstbridge_render_pdf(this.__wbg_ptr, ptr0, len0, ptr1, len1);
         if (ret[3]) {
             throw takeFromExternrefTable0(ret[2]);
         }
-        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
-        return v2;
+        return v3;
     }
     /**
      * @param {string} source_code

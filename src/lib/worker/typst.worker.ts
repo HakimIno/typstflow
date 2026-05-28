@@ -1,4 +1,5 @@
 import { TypstGenerator } from '../engine/generator';
+import { resolvePath } from '../engine/generator/binding';
 import init, { TypstBridge } from '../wasm-bridge/typst_bridge';
 
 let bridge: TypstBridge | null = null;
@@ -172,6 +173,29 @@ async function compressImageForPdf(dataUrl: string): Promise<string> {
     return result;
   } catch {
     return dataUrl; // Graceful fallback — never break export on compression error
+  }
+}
+
+function registerXmlIfEnabled(schema: any, data: any) {
+  if (schema.pdfConfig?.standard === 'pdf-a-3b' && schema.pdfConfig?.embedXml) {
+    try {
+      const xmlDataPath = schema.pdfConfig.xmlDataPath || 'xmlData';
+      const xmlString = resolvePath(xmlDataPath, data);
+      if (typeof xmlString === 'string' && xmlString) {
+        const xmlBytes = new TextEncoder().encode(xmlString);
+        bridge?.register_image('invoice.xml', xmlBytes);
+      } else {
+        workerLog(
+          'warn',
+          `XML data not found at path "${xmlDataPath}". Registering placeholder XML to prevent compile failure.`
+        );
+        const fallbackXml = `<?xml version="1.0" encoding="UTF-8"?>\n<!-- Warning: XML data not found in dataset at path "${xmlDataPath}" -->\n<empty/>`;
+        const xmlBytes = new TextEncoder().encode(fallbackXml);
+        bridge?.register_image('invoice.xml', xmlBytes);
+      }
+    } catch (err) {
+      workerLog('error', `Failed to embed XML data: ${err}`);
+    }
   }
 }
 
@@ -356,7 +380,7 @@ self.onmessage = async (e: MessageEvent) => {
         break;
       }
       case 'RENDER_PDF': {
-        const pdf = bridge.render_pdf(payload);
+        const pdf = bridge.render_pdf(payload, undefined);
         self.postMessage({ id, type: 'success', payload: pdf }, {
           transfer: [pdf.buffer],
         } as any);
@@ -367,6 +391,7 @@ self.onmessage = async (e: MessageEvent) => {
         const now = new Date();
         bridge.set_today(now.getFullYear(), now.getMonth() + 1, now.getDate());
         const preparedSchema = injectImagesIntoSchema(schema);
+        registerXmlIfEnabled(preparedSchema, data);
         const generator = new TypstGenerator();
         const typstCode = generator.generate(preparedSchema, data);
         const svg = bridge.render_svg(typstCode);
@@ -388,6 +413,7 @@ self.onmessage = async (e: MessageEvent) => {
         const now = new Date();
         bridge.set_today(now.getFullYear(), now.getMonth() + 1, now.getDate());
         const preparedSchema = injectImagesIntoSchema(schema);
+        registerXmlIfEnabled(preparedSchema, data);
         const generator = new TypstGenerator();
 
         for (const pageIndex of pageIndices) {
@@ -420,6 +446,7 @@ self.onmessage = async (e: MessageEvent) => {
         const now = new Date();
         bridge.set_today(now.getFullYear(), now.getMonth() + 1, now.getDate());
         const preparedSchema = injectImagesIntoSchema(schema);
+        registerXmlIfEnabled(preparedSchema, data);
         const generator = new TypstGenerator();
         const typstCode = generator.generate(preparedSchema, data);
         workerLog(
@@ -471,9 +498,10 @@ self.onmessage = async (e: MessageEvent) => {
         // Stage 2: compile Typst → PDF via WASM
         self.postMessage({ id, type: 'stage', payload: 'compiling' });
         const preparedSchema = injectImagesIntoSchema(schema);
+        registerXmlIfEnabled(preparedSchema, data);
         const generator = new TypstGenerator();
         const typstCode = generator.generate(preparedSchema, data);
-        const pdf = bridge.render_pdf(typstCode);
+        const pdf = bridge.render_pdf(typstCode, preparedSchema.pdfConfig?.standard);
 
         self.postMessage({ id, type: 'success', payload: pdf }, {
           transfer: [pdf.buffer],

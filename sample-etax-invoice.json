@@ -1,0 +1,30 @@
+{
+  "invoiceNumber": "RC928",
+  "bookNumber": "003",
+  "issueDate": "16/11/2563",
+  "seller": {
+    "name": "บริษัท ไอแท็กซ์ อินคอปเปอร์เรชั่น จำกัด",
+    "taxId": "0123456587698",
+    "telephone": "0899999999",
+    "address": "1872 ถนนเหรียญทอง แขวงทรัพย์ เขตสิน กรุงเทพมหานคร 10118"
+  },
+  "buyer": {
+    "name": "นายกรนพ ศรีสวัสดิ์",
+    "taxId": "1092300098712",
+    "telephone": "0812322222",
+    "address": "123 ถนนบางแสน แขวงบางแสน เขตบ่อน้ำ กรุงเทพมหานคร 10230"
+  },
+  "items": [
+    {
+      "seq": 1,
+      "description": "ช็อคโกแลตเหรียญทอง",
+      "quantity": 1,
+      "price": 934.58,
+      "amount": 934.58
+    }
+  ],
+  "subtotal": 934.58,
+  "vat": 65.42,
+  "total": 1000.0,
+  "xmlData": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<rsm:CrossIndustryInvoice xmlns:rsm=\"urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100\" xmlns:ram=\"urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100\">\n  <rsm:ExchangedDocumentContext>\n    <ram:GuidelineSpecifiedDocumentContextParameter>\n      <ram:ID>ER3-2569</ram:ID>\n    </ram:GuidelineSpecifiedDocumentContextParameter>\n  </rsm:ExchangedDocumentContext>\n  <rsm:ExchangedDocument>\n    <ram:ID>RC928</ram:ID>\n    <ram:Name>ใบกำกับภาษี/ใบเสร็จรับเงิน</ram:Name>\n    <ram:IssueDateTime>2020-11-16T09:30:00</ram:IssueDateTime>\n  </rsm:ExchangedDocument>\n  <rsm:SupplyChainTransaction>\n    <ram:ApplicableHeaderTradeAgreement>\n      <ram:SellerTradeParty>\n        <ram:Name>บริษัท ไอแท็กซ์ อินคอปเปอร์เรชั่น จำกัด</ram:Name>\n        <ram:SpecifiedTaxRegistration>\n          <ram:ID>0123456587698</ram:ID>\n        </ram:SpecifiedTaxRegistration>\n      </ram:SellerTradeParty>\n      <ram:BuyerTradeParty>\n        <ram:Name>นายกรนพ ศรีสวัสดิ์</ram:Name>\n        <ram:SpecifiedTaxRegistration>\n          <ram:ID>1092300098712</ram:ID>\n        </ram:SpecifiedTaxRegistration>\n      </ram:BuyerTradeParty>\n    </ram:ApplicableHeaderTradeAgreement>\n    <ram:ApplicableHeaderTradeSettlement>\n      <ram:SpecifiedTradeAllowanceCharge>\n        <ram:ChargeIndicator>false</ram:ChargeIndicator>\n        <ram:ActualAmount>0.00</ram:ActualAmount>\n      </ram:SpecifiedTradeAllowanceCharge>\n      <ram:SpecifiedTradeSettlementHeaderMonetarySummation>\n        <ram:LineTotalAmount>934.58</ram:LineTotalAmount>\n        <ram:TaxBasisTotalAmount>934.58</ram:TaxBasisTotalAmount>\n        <ram:TaxTotalAmount>65.42</ram:TaxTotalAmount>\n        <ram:GrandTotalAmount>1000.00</ram:GrandTotalAmount>\n      </ram:SpecifiedTradeSettlementHeaderMonetarySummation>\n    </ram:ApplicableHeaderTradeSettlement>\n  </rsm:SupplyChainTransaction>\n</rsm:CrossIndustryInvoice>"
+}

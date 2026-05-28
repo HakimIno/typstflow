@@ -11,6 +11,9 @@ import { FONT_CATALOG } from '@/lib/font-catalog';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import {
+  AlignCenterVertical,
+  AlignEndVertical,
+  AlignStartVertical,
   CaseSensitive,
   ChevronDown,
   ChevronUp,
@@ -286,6 +289,30 @@ export function TypographyProperties({
                 </Select>
               </ControlField>
 
+              {/* Underline Style */}
+              <ControlField label="Underline Style">
+                <Select
+                  disabled={!style?.underline}
+                  value={style?.underlineStyle || 'solid'}
+                  onValueChange={(val) => onUpdateStyle({ underlineStyle: val })}
+                >
+                  <SelectTrigger className="w-full h-6 bg-[var(--bg-widget)] border-[var(--border-default)] text-[9.5px] hover:border-[var(--text-muted)] transition-all">
+                    <SelectValue placeholder="Underline Style" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10000]">
+                    <SelectItem value="solid" className="text-[10px]">
+                      Solid
+                    </SelectItem>
+                    <SelectItem value="dotted" className="text-[10px]">
+                      Dotted
+                    </SelectItem>
+                    <SelectItem value="dashed" className="text-[10px]">
+                      Dashed
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </ControlField>
+
               {/* Hyphenation */}
               <ControlField label="Hyphenate">
                 <button
@@ -325,25 +352,26 @@ export function TypographyProperties({
               </ControlField>
 
               {allowBlockSettings ? (
-                <ControlField label="Vertical Align" vertical={false} className="items-center">
+                <ControlField label="Vertical Align">
                   <div className="flex border border-[var(--border-default)] rounded-[4px] overflow-hidden bg-[var(--bg-widget)] shrink-0 w-full">
                     {[
-                      { id: 'top', label: 'Top' },
-                      { id: 'middle', label: 'Mid' },
-                      { id: 'bottom', label: 'Bot' },
+                      { id: 'top', icon: AlignStartVertical, title: 'Align Top' },
+                      { id: 'middle', icon: AlignCenterVertical, title: 'Align Middle' },
+                      { id: 'bottom', icon: AlignEndVertical, title: 'Align Bottom' },
                     ].map((item) => (
                       <button
                         key={item.id}
                         type="button"
+                        title={item.title}
                         onClick={() => onUpdateStyle({ verticalAlign: item.id })}
                         className={clsx(
-                          'flex-1 py-1 flex items-center justify-center transition-all h-5 text-[8.5px] font-bold',
+                          'flex-1 py-1 flex items-center justify-center transition-all h-5',
                           (style?.verticalAlign || 'top') === item.id
                             ? 'bg-[var(--accent)] text-white'
                             : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/[0.04]'
                         )}
                       >
-                        {item.label}
+                        <item.icon className="w-3.5 h-3.5" />
                       </button>
                     ))}
                   </div>

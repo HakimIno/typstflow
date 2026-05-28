@@ -170,7 +170,7 @@ impl TypstBridge {
         Ok(all_svgs)
     }
 
-    pub fn render_pdf(&self, source_code: &str) -> Result<Vec<u8>, JsValue> {
+    pub fn render_pdf(&self, source_code: &str, pdf_standard: Option<String>) -> Result<Vec<u8>, JsValue> {
         let world = WasmWorld::new(source_code, self);
         let doc: typst::layout::PagedDocument =
             typst::compile(&world).output.map_err(|err| {
@@ -180,7 +180,25 @@ impl TypstBridge {
                 JsValue::from_str(&format!("Compilation failed: {:?}", err))
             })?;
 
-        typst_pdf::pdf(&doc, &Default::default())
+        let mut options = typst_pdf::PdfOptions::default();
+        if let Some(ref std_str) = pdf_standard {
+            let std_str_lower = std_str.to_lowercase();
+            if std_str_lower == "a-3b" || std_str_lower == "pdf-a-3b" {
+                if let Ok(stds) = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_3b]) {
+                    options.standards = stds;
+                }
+            } else if std_str_lower == "a-3u" || std_str_lower == "pdf-a-3u" {
+                if let Ok(stds) = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_3u]) {
+                    options.standards = stds;
+                }
+            } else if std_str_lower == "a-3a" || std_str_lower == "pdf-a-3a" {
+                if let Ok(stds) = typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_3a]) {
+                    options.standards = stds;
+                }
+            }
+        }
+
+        typst_pdf::pdf(&doc, &options)
             .map_err(|err| JsValue::from_str(&format!("PDF generation failed: {:?}", err)))
     }
 

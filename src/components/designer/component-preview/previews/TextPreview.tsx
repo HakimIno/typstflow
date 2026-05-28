@@ -38,10 +38,14 @@ export const TextPreview = memo(function TextPreview({
   const hasBinding = (component.content || '').includes('{{');
   const displayValue = hasBinding ? formatValue(resolvedValue, component.format) : resolvedValue;
 
-  const decorations: string[] = [];
-  if (component.style?.underline) decorations.push('underline');
-  if (component.style?.strikethrough) decorations.push('line-through');
-  const textDecoration = decorations.length > 0 ? decorations.join(' ') : 'none';
+  const hasUnderline = component.style?.underline;
+  const underlineStyle = component.style?.underlineStyle ?? 'solid';
+  const hasStrikethrough = component.style?.strikethrough;
+
+  const textDecorationLine =
+    [hasUnderline ? 'underline' : '', hasStrikethrough ? 'line-through' : '']
+      .filter(Boolean)
+      .join(' ') || 'none';
 
   const fontWeight = (() => {
     const w = component.style?.fontWeight;
@@ -89,7 +93,8 @@ export const TextPreview = memo(function TextPreview({
         fontSize: `${component.style?.fontSize || 10}pt`,
         fontWeight,
         fontStyle: component.style?.italic ? 'italic' : 'normal',
-        textDecoration,
+        textDecorationLine,
+        textDecorationStyle: hasUnderline ? underlineStyle : undefined,
         color: component.style?.color || '#0f172a',
         textAlign: align === 'justify' ? 'justify' : align,
         lineHeight: component.style?.lineHeight || '1.4',

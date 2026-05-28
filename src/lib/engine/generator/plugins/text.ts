@@ -74,7 +74,12 @@ export const textPlugin: ComponentPlugin<TextComponent> = {
 
     let mainContent = innerContent;
     if (underline) {
-      mainContent = `#underline[${mainContent}]`;
+      const underlineStyle = s?.underlineStyle ?? 'solid';
+      if (underlineStyle === 'solid') {
+        mainContent = `#underline[${mainContent}]`;
+      } else {
+        mainContent = `#underline(stroke: (paint: ${color}, thickness: 0.5pt, dash: "${underlineStyle}"))[${mainContent}]`;
+      }
     }
     if (strikethrough) {
       mainContent = `#strike[${mainContent}]`;

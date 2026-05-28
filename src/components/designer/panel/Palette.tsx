@@ -154,7 +154,9 @@ export const Palette = memo(function Palette() {
             {filteredCategories.map((cat) => (
               <div key={cat.id} className="mb-2 last:mb-0">
                 <div className="h-7 px-3 flex items-center gap-2 text-[var(--text-muted)]">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em]">{cat.label}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.12em]">
+                    {cat.label}
+                  </span>
                   <div className="flex-1 h-px bg-[var(--border-default)] opacity-70" />
                 </div>
                 <div className="grid grid-cols-1">
@@ -184,9 +186,7 @@ export const Palette = memo(function Palette() {
                 <BlockItem
                   key={block.id}
                   block={block}
-                  onInsert={() =>
-                    insertBlock(block.id, activeZone, activePageId ?? undefined)
-                  }
+                  onInsert={() => insertBlock(block.id, activeZone, activePageId ?? undefined)}
                   onDelete={() => deleteBlock(block.id)}
                 />
               ))}
@@ -213,9 +213,12 @@ const BlockItem = memo(function BlockItem({
         <Blocks className="w-3.5 h-3.5 text-[var(--accent)]" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[12px] text-[var(--text-secondary)] font-medium truncate">{block.name}</p>
+        <p className="text-[12px] text-[var(--text-secondary)] font-medium truncate">
+          {block.name}
+        </p>
         <p className="text-[10px] text-[var(--text-muted)]">
-          {block.components.length} component{block.components.length !== 1 ? 's' : ''} · {block.sourceZone}
+          {block.components.length} component{block.components.length !== 1 ? 's' : ''} ·{' '}
+          {block.sourceZone}
         </p>
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">

@@ -1,3 +1,9 @@
+export interface PdfConfig {
+  standard: 'pdf-1.7' | 'pdf-a-3b';
+  embedXml?: boolean;
+  xmlDataPath?: string; // Data field that contains the XML string
+}
+
 export interface LayoutSchema {
   id: string;
   name: string;
@@ -14,6 +20,7 @@ export interface LayoutSchema {
   batchDataSource?: string; // New: Path to the array for batch processing
   variables: VariableDefinition[]; // user-defined reusable values
   dataSchema: DataFieldDefinition[]; // expected input data shape
+  pdfConfig?: PdfConfig; // Optional PDF standard and attachment config
   metadata: {
     title: string;
     createdAt: string;
@@ -131,6 +138,7 @@ export interface TextStyle {
   color?: string; // hex
   italic?: boolean;
   underline?: boolean;
+  underlineStyle?: 'solid' | 'dashed' | 'dotted';
   strikethrough?: boolean;
   smallcaps?: boolean;
   highlight?: string; // hex background highlight for inline text

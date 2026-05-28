@@ -37,7 +37,8 @@ export const ToolbarActions = memo(function ToolbarActions() {
     if (findAllTables(schema).length === 0) {
       useDesignerStore.getState().showDialog({
         title: 'Cannot Export Excel',
-        message: 'The current template has no tables. Add a table to the template before exporting data.',
+        message:
+          'The current template has no tables. Add a table to the template before exporting data.',
         variant: 'warning',
         confirmLabel: 'OK',
         hideCancel: true,
@@ -52,10 +53,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
     } catch (error) {
       useDesignerStore.getState().showDialog({
         title: 'Excel Export Failed',
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to export table data to Excel.',
+        message: error instanceof Error ? error.message : 'Failed to export table data to Excel.',
         variant: 'danger',
         confirmLabel: 'OK',
         hideCancel: true,

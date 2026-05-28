@@ -199,6 +199,11 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         for (let x = 0; x < row.cells.length; x++) {
           const cell = row.cells[x];
           const val = resolveBinding(cell.content, ctx.local, ctx.global);
+          const fmt = cell.format ?? 'text';
+          const formattedVal =
+            fmt !== 'text'
+              ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(val)}")`
+              : escapeTypst(val);
           const cellKey = `header:${x}`;
           const specificKey = `header:${y}:${x}`;
           parts.push(
@@ -209,7 +214,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
                 color: headerColor,
                 weight: headerWeight,
               },
-              val,
+              formattedVal,
               cellKey,
               specificKey,
               style?.cellStyles
@@ -286,13 +291,18 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           for (let x = 0; x < row.cells.length; x++) {
             const cell = row.cells[x];
             const val = resolveBinding(cell.content, item as Record<string, unknown>, ctx.global);
+            const fmt = cell.format ?? 'text';
+            const formattedVal =
+              fmt !== 'text'
+                ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(val)}")`
+                : escapeTypst(val);
             const cellKey = `data:${x}`;
             const specificKey = `data:${y}:${x}`;
             parts.push(
               renderStructuredCell(
                 cell,
                 { size: bodyFontSize, color: bodyColor, weight: 'regular' },
-                val,
+                formattedVal,
                 cellKey,
                 specificKey,
                 style?.cellStyles
@@ -468,13 +478,18 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         for (let x = 0; x < row.cells.length; x++) {
           const cell = row.cells[x];
           const val = resolveBinding(cell.content, ctx.local, ctx.global, dataItems);
+          const fmt = cell.format ?? 'text';
+          const formattedVal =
+            fmt !== 'text'
+              ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(val)}")`
+              : escapeTypst(val);
           const cellKey = `footer:${x}`;
           const specificKey = `footer:${y}:${x}`;
           parts.push(
             renderStructuredCell(
               cell,
               { size: bodyFontSize, color: bodyColor, weight: 'bold' },
-              val,
+              formattedVal,
               cellKey,
               specificKey,
               style?.cellStyles

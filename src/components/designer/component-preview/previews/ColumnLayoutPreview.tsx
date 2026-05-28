@@ -204,14 +204,7 @@ interface ColumnSlotProps {
   totalPages: any;
 }
 
-function ColumnSlot({
-  columnLayoutId,
-  colIdx,
-  col,
-  zoneKey,
-  pageId,
-  pageIndex,
-}: ColumnSlotProps) {
+function ColumnSlot({ columnLayoutId, colIdx, col, zoneKey, pageId, pageIndex }: ColumnSlotProps) {
   const { isDraggedOver, ref } = useColumnDropTarget(columnLayoutId, colIdx);
 
   return (
@@ -243,8 +236,6 @@ function ColumnSlot({
           </span>
         </div>
       )}
-
-      
     </div>
   );
 }

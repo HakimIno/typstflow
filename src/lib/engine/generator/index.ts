@@ -97,6 +97,20 @@ export class TypstGenerator {
       pretty ? PRETTY_FORMAT_HELPERS : FORMAT_HELPERS
     );
 
+    if (schema.pdfConfig?.standard === 'pdf-a-3b') {
+      const docTitle = schema.name || 'Report';
+      parts.push(
+        `#set document(title: "${docTitle.replace(/"/g, '\\"')}", date: datetime.today())\n`
+      );
+      if (schema.pdfConfig?.embedXml) {
+        parts.push(
+          pretty
+            ? '\n// --- PDF/A Attachments ---\n#pdf.attach("invoice.xml", mime-type: "application/xml", description: "e-Tax Invoice XML Data", relationship: "alternative")\n'
+            : '\n#pdf.attach("invoice.xml", mime-type: "application/xml", description: "e-Tax Invoice XML Data", relationship: "alternative")\n'
+        );
+      }
+    }
+
     const pageH = paperHeightMm(schema.page.size, schema.page.orientation === 'landscape');
     const headerH = Number.parseFloat(schema.zones.header.minHeight ?? '0');
     const footerH = Number.parseFloat(schema.zones.footer.minHeight ?? '0');
