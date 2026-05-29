@@ -91,7 +91,7 @@ export const ImagePreview = memo(function ImagePreview({
 
   return (
     <div
-      className="w-full h-full overflow-hidden flex items-center justify-center bg-slate-50"
+      className="w-full h-full overflow-hidden flex items-center justify-center"
       style={{
         // Isolate paint/layout so sibling re-renders don't trigger a repaint here.
         contain: 'strict',
@@ -112,7 +112,8 @@ export const ImagePreview = memo(function ImagePreview({
         style={{
           width: '100%',
           height: '100%',
-          objectFit: component.fit ?? 'contain',
+          // 'stretch' is a Typst-specific value; CSS uses 'fill' for the same behaviour.
+          objectFit: component.fit === 'stretch' ? 'fill' : (component.fit ?? 'contain'),
           // Avoid sub-pixel jitter by snapping to device pixels.
           imageRendering: 'auto',
         }}
