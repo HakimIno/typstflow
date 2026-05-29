@@ -20,7 +20,7 @@ import { createSelectionSlice } from './slices/selection-slice';
 import { createTemplateSlice } from './slices/template-slice';
 import { createUISlice } from './slices/ui-slice';
 import type { DesignerState } from './store-types';
-import { BLANK_SCHEMA, buildComponentRegistry } from './store-utils';
+import { BLANK_SCHEMA, buildComponentRegistry, stripSrcDataForHistory } from './store-utils';
 
 export const useDesignerStore = create<DesignerState>()(
   persist(
@@ -48,7 +48,13 @@ export const useDesignerStore = create<DesignerState>()(
       storage: createJSONStorage(() => indexedDBStorage),
       partialize: (state: DesignerState) => {
         const { dragState, _hasHydrated, dialog, componentRegistry, loadingFonts, ...rest } = state;
-        return rest;
+        // Strip srcData from every history snapshot before writing to IndexedDB.
+        // Without this, 50 history entries × N large images = potentially gigabytes
+        // of base64 data in browser storage, causing extremely slow serialization.
+        return {
+          ...rest,
+          history: rest.history.map(stripSrcDataForHistory),
+        };
       },
       version: 4,
       migrate: (persistedState: any, version: number) => {

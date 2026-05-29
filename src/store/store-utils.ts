@@ -19,6 +19,56 @@ export const getMaxHistory = (schema: LayoutSchema): number => {
   return MAX_HISTORY;
 };
 
+/**
+ * Returns a history-safe copy of the schema with `srcData` stripped from all
+ * image components.  The live `schema` keeps srcData for canvas preview; history
+ * entries only need layout/positioning data (src is retained for display URL).
+ *
+ * This avoids storing potentially hundreds of MBs of base64 strings in the
+ * undo/redo stack and in IndexedDB persistence.
+ */
+export const stripSrcDataForHistory = (schema: LayoutSchema): LayoutSchema => {
+  const stripComp = (comp: ComponentNode): ComponentNode => {
+    if (comp.type === 'image' && (comp as any).srcData) {
+      const { srcData: _dropped, ...rest } = comp as any;
+      return rest as ComponentNode;
+    }
+    // Recurse into column layouts
+    if (comp.type === 'columns' && (comp as any).columns) {
+      return {
+        ...comp,
+        columns: (comp as any).columns.map((col: any) => ({
+          ...col,
+          components: (col.components ?? []).map(stripComp),
+        })),
+      } as ComponentNode;
+    }
+    return comp;
+  };
+
+  const stripZone = (zone: Zone): Zone => ({
+    ...zone,
+    components: zone.components.map(stripComp),
+  });
+
+  return {
+    ...schema,
+    zones: {
+      header: stripZone(schema.zones.header),
+      footer: stripZone(schema.zones.footer),
+    },
+    pages: schema.pages.map((page) => ({
+      ...page,
+      body: stripZone(page.body),
+    })),
+    groups: (schema.groups ?? []).map((g) => ({
+      ...g,
+      header: stripZone(g.header),
+      footer: stripZone(g.footer),
+    })),
+  };
+};
+
 export const buildComponentRegistry = (schema: LayoutSchema): Record<string, ComponentNode> => {
   const registry: Record<string, ComponentNode> = {};
 
@@ -66,8 +116,11 @@ export const pushHistory = (
   history: LayoutSchema[];
   historyIndex: number;
 } => {
+  // Strip srcData before pushing to history to avoid unbounded memory growth
+  // from large base64 image data in every undo/redo snapshot.
+  const historyEntry = stripSrcDataForHistory(newSchema);
   const newHistory = state.history.slice(0, state.historyIndex + 1);
-  newHistory.push(newSchema);
+  newHistory.push(historyEntry);
   if (newHistory.length > MAX_HISTORY) {
     newHistory.shift();
   }

@@ -3,6 +3,7 @@ import type {
   ChecklistComponent,
   ColumnLayoutComponent,
   ComponentNode,
+  ImageComponent,
   PageNumberComponent,
   QRComponent,
   RectangleComponent,
@@ -31,6 +32,8 @@ interface Props {
   pageIndex?: number;
   totalPages?: number;
   autoHeight?: boolean;
+  /** True while the parent wrapper is being dragged — forwarded to image preview for GPU hinting */
+  isDragging?: boolean;
 }
 
 export const ComponentPreview = memo(function ComponentPreview({
@@ -38,6 +41,7 @@ export const ComponentPreview = memo(function ComponentPreview({
   pageIndex = 0,
   totalPages = 1,
   autoHeight,
+  isDragging = false,
 }: Props) {
   const sampleData = useDesignerStore((state) => state.sampleData);
 
@@ -57,7 +61,7 @@ export const ComponentPreview = memo(function ComponentPreview({
     case 'spacer':
       return <SpacerPreview component={component} />;
     case 'image':
-      return <ImagePreview component={component} />;
+      return <ImagePreview component={component as ImageComponent} isDragging={isDragging} />;
     case 'barcode':
       return <BarcodePreview component={component} sampleData={sampleData} />;
     case 'qr':

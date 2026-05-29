@@ -1,4 +1,7 @@
-use image::{DynamicImage, GenericImage, GenericImageView, Rgba};
+
+
+
+use image::{DynamicImage, Rgba};
 use std::collections::VecDeque;
 
 fn color_dist(a: Rgba<u8>, b: Rgba<u8>) -> i32 {
@@ -84,3 +87,4 @@ pub fn remove_background_impl(data: &[u8], tolerance: u8) -> Result<Vec<u8>, Str
         .map_err(|e| e.to_string())?;
     Ok(buf.into_inner())
 }
+

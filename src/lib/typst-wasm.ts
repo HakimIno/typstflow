@@ -303,9 +303,13 @@ export async function removeBackground(imageBytes: Uint8Array, tolerance: number
   const pngBytes: Uint8Array = await callWorker('REMOVE_BACKGROUND', { data: copy, tolerance }, [
     copy.buffer,
   ]);
+  return bytesToPngDataUrl(pngBytes);
+}
+
+function bytesToPngDataUrl(bytes: Uint8Array): string {
   const parts: string[] = [];
-  for (let i = 0; i < pngBytes.length; i += 8192) {
-    parts.push(String.fromCharCode(...pngBytes.subarray(i, Math.min(i + 8192, pngBytes.length))));
+  for (let i = 0; i < bytes.length; i += 8192) {
+    parts.push(String.fromCharCode(...bytes.subarray(i, Math.min(i + 8192, bytes.length))));
   }
   return `data:image/png;base64,${btoa(parts.join(''))}`;
 }

@@ -214,6 +214,25 @@
     content-visibility: auto;
   }
 
+  /* Image-specific drag optimizations:
+   * During drag, image previews are promoted to their own GPU compositor layers.
+   * This prevents the browser from re-rasterising image content on every drag frame.
+   * The `contain: strict` set inline on ImagePreview already establishes an
+   * independent paint layer; `will-change: contents` here further hints that
+   * the layer should be cached and not invalidated by sibling changes. */
+  .is-dragging-components [data-designer-component] img {
+    will-change: transform;
+    /* Prevent sub-pixel smoothing recalculations during transform */
+    transform: translateZ(0);
+  }
+
+  /* Non-image component previews during drag: disable pointer events and
+   * heavy compositing to reduce GPU overdraw across the canvas. */
+  .is-dragging-components [data-designer-component]:not(.is-moving) img {
+    /* Already promoted above; force opacity to 1 to avoid alpha blend recalc */
+    opacity: 1;
+  }
+
   /* Extreme Performance: Only active during zone resize */
   .is-resizing-zone {
     cursor: ns-resize !important;
@@ -343,4 +362,67 @@
         100%;
     }
   }
+
+  /* AI processing — Apple "Lift Subject" iridescent shimmer */
+  @keyframes ai-shimmer-sweep {
+    0%   { background-position: -150% 150%; }
+    100% { background-position: 250% -50%; }
+  }
+  @keyframes ai-shimmer-pulse {
+    0%, 100% {
+      box-shadow:
+        inset 0 0 0 1.5px rgba(180, 200, 255, 0.35),
+        inset 0 0 30px rgba(180, 200, 255, 0.12);
+    }
+    50% {
+      box-shadow:
+        inset 0 0 0 1.5px rgba(220, 200, 255, 0.7),
+        inset 0 0 50px rgba(200, 180, 255, 0.25);
+    }
+  }
+  .ai-scan-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 10;
+    border-radius: inherit;
+    animation: ai-shimmer-pulse 2.4s ease-in-out infinite;
+  }
+  .ai-scan-overlay::before {
+    /* Iridescent diagonal band — multi-hue, Apple-style */
+    content: '';
+    position: absolute;
+    inset: -25%;
+    background: linear-gradient(
+      115deg,
+      transparent 38%,
+      rgba(140, 200, 255, 0.0) 43%,
+      rgba(170, 200, 255, 0.45) 46%,
+      rgba(200, 170, 255, 0.55) 49%,
+      rgba(240, 180, 220, 0.50) 51%,
+      rgba(255, 200, 170, 0.40) 54%,
+      rgba(140, 200, 255, 0.0) 57%,
+      transparent 62%
+    );
+    background-size: 220% 220%;
+    background-repeat: no-repeat;
+    animation: ai-shimmer-sweep 2.4s cubic-bezier(0.55, 0.05, 0.45, 0.95) infinite;
+    will-change: background-position;
+    filter: blur(2px);
+  }
+  .ai-scan-overlay::after {
+    /* Subtle radial glow that breathes — adds depth */
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(200, 180, 255, 0.08) 0%,
+      transparent 60%
+    );
+    animation: ai-shimmer-pulse 2.4s ease-in-out infinite;
+  }
+  /* Hide the legacy scan line node */
+  .ai-scan-line { display: none; }
 }

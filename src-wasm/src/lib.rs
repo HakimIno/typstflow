@@ -211,6 +211,7 @@ impl TypstBridge {
             .map_err(|e| JsValue::from_str(&e))
     }
 
+
     pub fn parse_csv(&self, csv_data: &str) -> Result<String, JsValue> {
         parsers::parse_csv_bytes(csv_data.as_bytes())
     }

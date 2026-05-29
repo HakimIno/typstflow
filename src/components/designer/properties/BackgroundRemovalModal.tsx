@@ -1,14 +1,17 @@
 'use client';
 
+import { removeBackground as imglyRemoveBackground } from '@imgly/background-removal';
 import { removeBackground } from '@/lib/typst-wasm';
 import {
   Check,
   Circle,
+  Download,
   Loader2,
   Maximize,
   Pencil,
   RotateCcw,
   Scissors,
+  Sparkles,
   Square,
   Wand2,
   X,
@@ -19,7 +22,7 @@ import { createPortal } from 'react-dom';
 import { SegmentedControl, ToggleChip, ToggleChipGroup } from './Shared';
 
 type BrushShape = 'circle' | 'square';
-type EditMode = 'manual' | 'auto';
+type EditMode = 'manual' | 'auto' | 'ai';
 
 interface BackgroundRemovalModalProps {
   srcData: string;
@@ -40,6 +43,9 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
   const [tolerance, setTolerance] = useState(30);
   const [removing, setRemoving] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
+  const [aiProgress, setAiProgress] = useState<{ loaded: number; total: number } | null>(null);
+  const [aiPhase, setAiPhase] = useState<'idle' | 'downloading' | 'inferencing'>('idle');
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const modeRef = useRef<EditMode>('manual');
   const brushSizeRef = useRef(brushSize);
@@ -518,6 +524,79 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
     }
   }, [tolerance, pushHistory]);
 
+  const handleAiRemove = useCallback(async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    setRemoving(true);
+    setAiError(null);
+    try {
+      // 1. Snapshot canvas → Blob
+      const sourceBlob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/png'),
+      );
+      if (!sourceBlob) throw new Error('canvas blob failed');
+
+      // 2. Run imgly — uses WebGPU when available, falls back to WASM SIMD threads.
+      //    Enforce a 3s minimum so the shimmer animation always gets a moment to shine,
+      //    even when WebGPU finishes inference in 0.5-1s.
+      setAiPhase('downloading');
+      const MIN_DURATION_MS = 3000;
+      const startedAt = performance.now();
+      const inferencePromise = imglyRemoveBackground(sourceBlob, {
+        device: 'gpu',
+        model: 'isnet_fp16',
+        output: { format: 'image/png' },
+        progress: (key: string, current: number, total: number) => {
+          if (key.startsWith('fetch')) {
+            setAiPhase('downloading');
+            setAiProgress({ loaded: current, total });
+          } else {
+            setAiPhase('inferencing');
+            setAiProgress(null);
+          }
+        },
+      });
+      const [resultBlob] = await Promise.all([
+        inferencePromise,
+        new Promise<void>((resolve) => {
+          inferencePromise.finally(() => {
+            const elapsed = performance.now() - startedAt;
+            const remaining = Math.max(0, MIN_DURATION_MS - elapsed);
+            setTimeout(resolve, remaining);
+          });
+        }),
+      ]);
+
+      // 3. Draw result back onto canvas
+      const url = URL.createObjectURL(resultBlob);
+      try {
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error('result decode failed'));
+          img.src = url;
+        });
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        pushHistory();
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[BgRemoval] AI remove failed:', err);
+      setAiError(msg);
+    } finally {
+      setRemoving(false);
+      setAiPhase('idle');
+      setAiProgress(null);
+    }
+  }, [pushHistory]);
+
   const handleApply = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -528,6 +607,7 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
   const modeOptions = [
     { value: 'manual' as EditMode, label: 'Manual', icon: Pencil },
     { value: 'auto' as EditMode, label: 'Auto', icon: Zap },
+    { value: 'ai' as EditMode, label: 'AI', icon: Sparkles },
   ];
 
   const modal = (
@@ -689,6 +769,74 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
                 </p>
               </>
             )}
+
+            {mode === 'ai' && (
+              <>
+                <p className="text-[8px] text-[var(--text-muted)] leading-relaxed">
+                  ISNet salient-object segmentation. Detects subjects automatically — works
+                  on people, products, animals. Uses WebGPU when available.
+                </p>
+
+                {aiPhase === 'downloading' && aiProgress && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                        Downloading model
+                      </p>
+                      <span className="text-[9px] font-mono text-[var(--text-secondary)]">
+                        {aiProgress.total
+                          ? `${Math.round((aiProgress.loaded / aiProgress.total) * 100)}%`
+                          : `${(aiProgress.loaded / 1024 / 1024).toFixed(1)} MB`}
+                      </span>
+                    </div>
+                    <div className="h-1 bg-white/[0.06] rounded overflow-hidden">
+                      <div
+                        className="h-full bg-[var(--accent)] transition-all"
+                        style={{
+                          width: aiProgress.total
+                            ? `${(aiProgress.loaded / aiProgress.total) * 100}%`
+                            : '50%',
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {aiPhase === 'inferencing' && (
+                  <div className="flex items-center gap-1.5 text-[9px] text-[var(--text-secondary)]">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Running inference… (0.5-3s)
+                  </div>
+                )}
+
+                {aiError && (
+                  <div className="text-[8px] text-red-400 leading-relaxed border border-red-400/20 bg-red-400/[0.04] rounded p-1.5">
+                    {aiError}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleAiRemove}
+                  disabled={removing}
+                  className="w-full flex items-center justify-center gap-1.5 h-7 bg-[var(--accent)] hover:bg-[var(--accent)]/90 disabled:opacity-50 text-white text-[9px] font-bold uppercase tracking-wide rounded-[3px] transition-all"
+                >
+                  {removing ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : aiPhase === 'idle' ? (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5" />
+                  )}
+                  {removing ? 'Processing…' : 'Smart Extract'}
+                </button>
+
+                <p className="text-[8px] text-[var(--text-muted)] leading-relaxed">
+                  First use downloads the model (~80MB, cached after). WebGPU accelerated.
+                  Use Manual mode to clean up edges if needed.
+                </p>
+              </>
+            )}
           </div>
 
           <div className="flex gap-2 p-3 border-t border-[var(--border-default)] shrink-0">
@@ -743,6 +891,8 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
                 userSelect: 'none',
               }}
             />
+            {/* AI shimmer overlay — Apple "Lift Subject" style, visible during AI processing */}
+            {removing && mode === 'ai' && <div className="ai-scan-overlay" />}
           </div>
         </div>
       </div>
