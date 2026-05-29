@@ -2,6 +2,7 @@ import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { type ZoneLayoutCache, getZoneLayoutCache } from '@/lib/utils/zone-layout';
 import type { WasmLayoutEngine } from '@/lib/wasm-layout-engine';
 import type { LayoutSchema } from '@/types/schema';
+import { parseTypstUnit } from './units';
 
 export type WasmSnapNode = Parameters<WasmLayoutEngine['loadNodes']>[0][number];
 
@@ -141,6 +142,50 @@ export function buildWasmSnapNodes(
       pageId,
       x: 0,
       y: pageAbsY + pageHeight / 2 - 0.005,
+      width: pageWidth,
+      height: 0.01,
+    });
+
+    // 2. Margin Guides (using the margin settings in schema.page.margin)
+    const marginTop = parseTypstUnit(schema.page.margin.top);
+    const marginBottom = parseTypstUnit(schema.page.margin.bottom);
+    const marginLeft = parseTypstUnit(schema.page.margin.left);
+    const marginRight = parseTypstUnit(schema.page.margin.right);
+
+    const marginZone = `margin:${pageId}`;
+    nodes.push({
+      id: `${PAGE_EDGE_PREFIX}-ml-${pageId}`,
+      zone: marginZone,
+      pageId,
+      x: marginLeft,
+      y: pageAbsY,
+      width: 0.01,
+      height: pageHeight,
+    });
+    nodes.push({
+      id: `${PAGE_EDGE_PREFIX}-mr-${pageId}`,
+      zone: marginZone,
+      pageId,
+      x: pageWidth - marginRight,
+      y: pageAbsY,
+      width: 0.01,
+      height: pageHeight,
+    });
+    nodes.push({
+      id: `${PAGE_EDGE_PREFIX}-mt-${pageId}`,
+      zone: marginZone,
+      pageId,
+      x: 0,
+      y: pageAbsY + marginTop,
+      width: pageWidth,
+      height: 0.01,
+    });
+    nodes.push({
+      id: `${PAGE_EDGE_PREFIX}-mb-${pageId}`,
+      zone: marginZone,
+      pageId,
+      x: 0,
+      y: pageAbsY + pageHeight - marginBottom,
       width: pageWidth,
       height: 0.01,
     });

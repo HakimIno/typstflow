@@ -607,6 +607,7 @@ impl LayoutEngine {
         height: f64,
         threshold: f64,
         zone_filter: Option<String>,
+        page_filter: Option<String>,
     ) -> Result<JsValue, JsValue> {
         if x.is_nan() || y.is_nan() || width.is_nan() || height.is_nan() {
             return Ok(serde_wasm_bindgen::to_value(&FullSnapResult {
@@ -647,35 +648,47 @@ impl LayoutEngine {
         let center_x = x + width / 2.0;
         let center_y = y + height / 2.0;
 
+        // Perform broader axis-independent searches to find elements that are aligned but separated
+        // Query 1: For vertical guides (matching X positions) -> wide Y search (500mm covers the page height)
         let x_min = (x - threshold).min(x + width + threshold);
         let x_max = (x - threshold).max(x + width + threshold);
+        let y_min_broad = y - 500.0;
+        let y_max_broad = y + height + 500.0;
+        let search_area_x = AABB::from_corners([x_min, y_min_broad], [x_max, y_max_broad]);
+
+        // Query 2: For horizontal guides (matching Y positions) -> wide X search (500mm covers the page width)
+        let x_min_broad = x - 500.0;
+        let x_max_broad = x + width + 500.0;
         let y_min = (y - threshold).min(y + height + threshold);
         let y_max = (y - threshold).max(y + height + threshold);
-        let search_area = AABB::from_corners([x_min, y_min], [x_max, y_max]);
+        let search_area_y = AABB::from_corners([x_min_broad, y_min], [x_max_broad, y_max]);
 
         let mut best_dx: Option<f64> = None;
         let mut best_dy: Option<f64> = None;
         let mut min_dx = threshold;
         let mut min_dy = threshold;
 
-        for node in self.tree.locate_in_envelope_intersecting(&search_area) {
-            if node.id == id {
-                continue;
-            }
-            if let Some(z) = zone {
-                if node.zone != z {
+        // Check vertical snapping (matching X coordinates)
+        if !equal_x {
+            for node in self.tree.locate_in_envelope_intersecting(&search_area_x) {
+                if node.id == id {
                     continue;
                 }
-            }
+                if let Some(z) = zone {
+                    if node.zone != z {
+                        continue;
+                    }
+                }
+                if let Some(ref p) = page_filter {
+                    if node.page_id.as_ref() != Some(p) {
+                        continue;
+                    }
+                }
 
-            let nl = node.x;
-            let nr = node.x + node.width;
-            let nc = node.x + node.width / 2.0;
-            let nt = node.y;
-            let nb = node.y + node.height;
-            let ncy = node.y + node.height / 2.0;
+                let nl = node.x;
+                let nr = node.x + node.width;
+                let nc = node.x + node.width / 2.0;
 
-            if !equal_x {
                 for &tx in &[nl, nr, nc] {
                     for &mx in &[left, right, center_x] {
                         let dx = tx - mx;
@@ -686,7 +699,29 @@ impl LayoutEngine {
                     }
                 }
             }
-            if !equal_y {
+        }
+
+        // Check horizontal snapping (matching Y coordinates)
+        if !equal_y {
+            for node in self.tree.locate_in_envelope_intersecting(&search_area_y) {
+                if node.id == id {
+                    continue;
+                }
+                if let Some(z) = zone {
+                    if node.zone != z {
+                        continue;
+                    }
+                }
+                if let Some(ref p) = page_filter {
+                    if node.page_id.as_ref() != Some(p) {
+                        continue;
+                    }
+                }
+
+                let nt = node.y;
+                let nb = node.y + node.height;
+                let ncy = node.y + node.height / 2.0;
+
                 for &ty in &[nt, nb, ncy] {
                     for &my in &[top, bottom, center_y] {
                         let dy = ty - my;
@@ -727,8 +762,8 @@ impl LayoutEngine {
         let has_x_snap = best_dx.is_some() || equal_x;
         let has_y_snap = best_dy.is_some() || equal_y;
 
-        if has_x_snap || has_y_snap {
-            for node in self.tree.locate_in_envelope_intersecting(&search_area) {
+        if has_x_snap {
+            for node in self.tree.locate_in_envelope_intersecting(&search_area_x) {
                 if node.id == id {
                     continue;
                 }
@@ -737,28 +772,48 @@ impl LayoutEngine {
                         continue;
                     }
                 }
+                if let Some(ref p) = page_filter {
+                    if node.page_id.as_ref() != Some(p) {
+                        continue;
+                    }
+                }
                 let nl = node.x;
                 let nr = node.x + node.width;
                 let nc = node.x + node.width / 2.0;
+
+                for &gx in &[final_left, final_right, final_center_x] {
+                    for &nx in &[nl, nr, nc] {
+                        if (gx - nx).abs() < tol && !guides_x.contains(&gx) {
+                            guides_x.push(gx);
+                        }
+                    }
+                }
+            }
+        }
+
+        if has_y_snap {
+            for node in self.tree.locate_in_envelope_intersecting(&search_area_y) {
+                if node.id == id {
+                    continue;
+                }
+                if let Some(z) = zone {
+                    if node.zone != z {
+                        continue;
+                    }
+                }
+                if let Some(ref p) = page_filter {
+                    if node.page_id.as_ref() != Some(p) {
+                        continue;
+                    }
+                }
                 let nt = node.y;
                 let nb = node.y + node.height;
                 let ncy = node.y + node.height / 2.0;
 
-                if has_x_snap {
-                    for &gx in &[final_left, final_right, final_center_x] {
-                        for &nx in &[nl, nr, nc] {
-                            if (gx - nx).abs() < tol && !guides_x.contains(&gx) {
-                                guides_x.push(gx);
-                            }
-                        }
-                    }
-                }
-                if has_y_snap {
-                    for &gy in &[final_top, final_bottom, final_center_y] {
-                        for &ny in &[nt, nb, ncy] {
-                            if (gy - ny).abs() < tol && !guides_y.contains(&gy) {
-                                guides_y.push(gy);
-                            }
+                for &gy in &[final_top, final_bottom, final_center_y] {
+                    for &ny in &[nt, nb, ncy] {
+                        if (gy - ny).abs() < tol && !guides_y.contains(&gy) {
+                            guides_y.push(gy);
                         }
                     }
                 }

@@ -36,14 +36,17 @@ export class LayoutEngine {
      * @param {number} height
      * @param {number} threshold
      * @param {string | null} [zone_filter]
+     * @param {string | null} [page_filter]
      * @returns {any}
      */
-    calculate_snap(id, x, y, width, height, threshold, zone_filter) {
+    calculate_snap(id, x, y, width, height, threshold, zone_filter, page_filter) {
         const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         var ptr1 = isLikeNone(zone_filter) ? 0 : passStringToWasm0(zone_filter, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         var len1 = WASM_VECTOR_LEN;
-        const ret = wasm.layoutengine_calculate_snap(this.__wbg_ptr, ptr0, len0, x, y, width, height, threshold, ptr1, len1);
+        var ptr2 = isLikeNone(page_filter) ? 0 : passStringToWasm0(page_filter, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len2 = WASM_VECTOR_LEN;
+        const ret = wasm.layoutengine_calculate_snap(this.__wbg_ptr, ptr0, len0, x, y, width, height, threshold, ptr1, len1, ptr2, len2);
         if (ret[2]) {
             throw takeFromExternrefTable0(ret[1]);
         }

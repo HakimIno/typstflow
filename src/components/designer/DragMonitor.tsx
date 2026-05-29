@@ -298,7 +298,8 @@ export const DragMonitor = memo(function DragMonitor() {
             rawY,
             width,
             height,
-            false
+            false,
+            activePageInfo.id
           );
 
           const snapX = snapResult.snappedX;

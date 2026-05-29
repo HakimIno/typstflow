@@ -57,6 +57,44 @@ export const Zone = memo(function Zone({
 
   const updateZone = useDesignerStore((s) => s.updateZone);
   const margin = useDesignerStore((s) => s.schema.page.margin);
+  const setSelectedZone = useDesignerStore((s) => s.setSelectedZone);
+  const clearSelection = useDesignerStore((s) => s.clearSelection);
+  const setActivePage = useDesignerStore((s) => s.setActivePage);
+
+  const handleZoneClick = useCallback(
+    (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const isZoneRoot = target === containerRef.current || target === contentRef.current;
+      const isEmptyArea =
+        target.classList.contains('min-h-full') ||
+        target.classList.contains('absolute') ||
+        target.tagName === 'SPAN';
+
+      if (isZoneRoot || isEmptyArea) {
+        e.stopPropagation();
+        clearSelection();
+        setSelectedZone(zoneKey);
+        if (pageId) {
+          setActivePage(pageId);
+        }
+      }
+    },
+    [zoneKey, pageId, clearSelection, setSelectedZone, setActivePage]
+  );
+
+  const handleZoneKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        clearSelection();
+        setSelectedZone(zoneKey);
+        if (pageId) {
+          setActivePage(pageId);
+        }
+      }
+    },
+    [zoneKey, pageId, clearSelection, setSelectedZone, setActivePage]
+  );
 
   const toggleLayoutMode = useCallback(
     (e: React.MouseEvent) => {
@@ -202,6 +240,8 @@ export const Zone = memo(function Zone({
           'ring-1 ring-[var(--accent)] z-50 shadow-lg !transition-none will-change-[height] [contain:size_layout]',
         hidden && 'pointer-events-none'
       )}
+      onClick={handleZoneClick}
+      onKeyDown={handleZoneKeyDown}
     >
       {/* Vertical Side Label (External to Paper) */}
       {!hidden && (

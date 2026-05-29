@@ -302,4 +302,5 @@ export interface DesignerState extends FontSlice {
   saveBlock: (name: string, components: ComponentNode[], sourceZone: ZoneKey) => void;
   deleteBlock: (id: string) => void;
   insertBlock: (blockId: string, targetZone: ZoneKey, targetPageId?: string) => void;
+  renameBlock: (id: string, name: string) => void;
 }

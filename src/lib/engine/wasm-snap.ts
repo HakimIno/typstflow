@@ -34,7 +34,8 @@ export function calculateComponentSnap(
   y: number,
   width: number,
   height: number,
-  isAltKeyPressed: boolean
+  isAltKeyPressed: boolean,
+  pageId?: string
 ): ComponentSnapResult {
   if (isAltKeyPressed) {
     return {
@@ -46,7 +47,16 @@ export function calculateComponentSnap(
     };
   }
 
-  const fullSnap = engine.calculateSnap(id, x, y, width, height, SNAP_THRESHOLD_MM);
+  const fullSnap = engine.calculateSnap(
+    id,
+    x,
+    y,
+    width,
+    height,
+    SNAP_THRESHOLD_MM,
+    undefined,
+    pageId
+  );
   if (!fullSnap) {
     return {
       snappedX: Math.round(x),

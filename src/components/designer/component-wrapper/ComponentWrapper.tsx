@@ -462,7 +462,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
                 absRawY,
                 dragState.primaryCompWidth,
                 dragState.primaryCompHeight,
-                event.altKey
+                event.altKey,
+                dragState.activePageId || undefined
               );
 
               snap = {

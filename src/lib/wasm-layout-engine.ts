@@ -158,7 +158,8 @@ export class WasmLayoutEngine {
     width: number,
     height: number,
     threshold = 2,
-    zoneFilter?: string
+    zoneFilter?: string,
+    pageFilter?: string
   ): WasmFullSnapResult | null {
     if (!this.engine) return null;
     try {
@@ -169,7 +170,8 @@ export class WasmLayoutEngine {
         width,
         height,
         threshold,
-        zoneFilter
+        zoneFilter,
+        pageFilter
       ) as WasmFullSnapResult | null;
     } catch {
       return null;
