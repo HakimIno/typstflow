@@ -8,11 +8,11 @@ import {
 import { removeBackground } from '@/lib/typst-wasm';
 import { optimizeImage } from '@/lib/utils/image-optimizer';
 import type { ImageComponent } from '@/types/schema';
-import { clsx } from 'clsx';
-import { ImageIcon, Link, Loader2, Scissors, Upload, X } from 'lucide-react';
+import { Link, Loader2, Scissors, Upload, Wand2, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { DesignerInput } from '../../shared/DesignerInput';
-import { CollapsibleSection, PropertyRow } from './Shared';
+import { BackgroundRemovalModal } from './BackgroundRemovalModal';
+import { CollapsibleSection, PropertyRow, SegmentedControl } from './Shared';
 
 interface ImagePropertiesProps {
   component: ImageComponent;
@@ -60,9 +60,12 @@ function ImageUploader({
   const [removingBg, setRemovingBg] = useState(false);
   const [tolerance, setTolerance] = useState(30);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<'upload' | 'url'>('upload');
+  const [showBgModal, setShowBgModal] = useState(false);
+  const [tab, setTab] = useState<'upload' | 'url'>(
+    component.src?.startsWith('http') ? 'url' : 'upload'
+  );
 
-  const previewSrc = component.srcData || (component.src?.startsWith('http') ? '' : '');
+  const previewSrc = component.srcData || (component.src?.startsWith('http') ? component.src : '');
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -168,38 +171,41 @@ function ImageUploader({
     }
   }, [component.srcData, tolerance, onUpdate]);
 
+  const tabOptions = [
+    { value: 'upload' as const, label: 'Upload', icon: Upload },
+    { value: 'url' as const, label: 'URL', icon: Link },
+  ];
+
   return (
-    <div className="border-b border-[var(--border-default)]">
-      <div className="flex border-b border-[var(--border-default)]">
-        {(['upload', 'url'] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={clsx(
-              'flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all',
-              tab === t
-                ? 'bg-[var(--accent)] text-white'
-                : 'bg-white/[0.02] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-            )}
-          >
-            {t === 'upload' ? <Upload className="w-2.5 h-2.5" /> : <Link className="w-2.5 h-2.5" />}
-            {t === 'upload' ? 'Upload' : 'URL'}
-          </button>
-        ))}
-      </div>
+    <div className="space-y-3 pt-1">
+      {showBgModal && component.srcData && (
+        <BackgroundRemovalModal
+          srcData={component.srcData}
+          onApply={(newSrcData) => onUpdate({ srcData: newSrcData, mimeType: 'image/png' })}
+          onClose={() => setShowBgModal(false)}
+        />
+      )}
+
+      <SegmentedControl
+        options={tabOptions}
+        value={tab}
+        onChange={(v) => {
+          setTab(v);
+          setError(null);
+        }}
+      />
 
       {previewSrc ? (
-        <>
+        <div className="space-y-3">
           <div
-            className="relative mx-3 my-2 rounded border border-[var(--border-default)] overflow-hidden bg-white/[0.02]"
+            className="relative rounded border border-[var(--border-default)] overflow-hidden bg-white/[0.02] flex items-center justify-center group"
             style={{ height: 80 }}
           >
-            <img src={previewSrc} alt="preview" className="w-full h-full object-contain" />
+            <img src={previewSrc} alt="preview" className="w-full h-full object-contain p-1.5" />
             <button
               type="button"
               onClick={handleClear}
-              className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-0.5 transition-all"
+              className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-black/85 text-white rounded-full p-1 transition-all shadow"
             >
               {loading ? (
                 <Loader2 className="w-2.5 h-2.5 animate-spin" />
@@ -209,106 +215,122 @@ function ImageUploader({
             </button>
           </div>
 
-          {/* Remove Background */}
-          <div className="mx-3 mb-2 space-y-1">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-bold shrink-0">
-                Tolerance
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={120}
-                value={tolerance}
-                onChange={(e) => setTolerance(Number(e.target.value))}
-                className="flex-1 h-1 accent-[var(--accent)]"
-              />
-              <span className="text-[9px] text-[var(--text-secondary)] w-5 text-right tabular-nums">
-                {tolerance}
-              </span>
+          {component.srcData && (
+            <div className="space-y-2 bg-white/[0.01] p-2.5 rounded border border-[var(--border-default)]/40">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-bold shrink-0">
+                  Clean Background
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[8px] text-[var(--text-muted)] w-12 font-bold uppercase tracking-wider">
+                  Tolerance
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={120}
+                  value={tolerance}
+                  onChange={(e) => setTolerance(Number(e.target.value))}
+                  className="flex-1 h-1 accent-[var(--accent)] bg-white/10 rounded-lg cursor-pointer"
+                />
+                <span className="text-[9px] text-[var(--text-secondary)] w-6 text-right font-mono">
+                  {tolerance}
+                </span>
+              </div>
+
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleRemoveBg}
+                  disabled={removingBg || loading}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] hover:text-white border border-[var(--border-default)] rounded text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider transition-all disabled:opacity-50"
+                >
+                  {removingBg ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-[var(--accent)]" />
+                  ) : (
+                    <Scissors className="w-3 h-3" />
+                  )}
+                  {removingBg ? 'Removing…' : 'Auto'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowBgModal(true)}
+                  disabled={removingBg || loading}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-white/[0.04] hover:bg-[var(--accent)]/10 hover:border-[var(--accent)]/50 hover:text-[var(--accent)] border border-[var(--border-default)] rounded text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider transition-all disabled:opacity-50"
+                >
+                  <Wand2 className="w-3 h-3" />
+                  Edit
+                </button>
+              </div>
             </div>
+          )}
+        </div>
+      ) : (
+        tab === 'upload' && (
+          <div className="space-y-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileInput}
+            />
             <button
               type="button"
-              onClick={handleRemoveBg}
-              disabled={removingBg || loading}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-[var(--border-default)] rounded text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider transition-all disabled:opacity-50"
+              onClick={() => !loading && fileRef.current?.click()}
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+              disabled={loading}
+              className="w-full h-24 rounded-md border-2 border-dashed border-[var(--border-default)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/[0.02] flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all group focus:outline-none"
             >
-              {removingBg ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-[var(--accent)]" />
               ) : (
-                <Scissors className="w-3 h-3" />
+                <div className="w-7 h-7 rounded-full bg-white/[0.02] border border-[var(--border-default)] flex items-center justify-center group-hover:border-[var(--accent)]/50 group-hover:bg-[var(--accent)]/[0.04] transition-all">
+                  <Upload className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors" />
+                </div>
               )}
-              {removingBg ? 'Removing…' : 'Remove BG'}
+              <div className="text-center">
+                <span className="text-[9px] text-[var(--text-secondary)] font-bold uppercase tracking-wider block">
+                  {loading ? 'Optimizing...' : 'Click or Drag Image'}
+                </span>
+                <span className="text-[7.5px] text-[var(--text-muted)] block mt-0.5">
+                  PNG, JPG, WebP — optimized on upload
+                </span>
+              </div>
             </button>
           </div>
-        </>
-      ) : (
-        <button
-          type="button"
-          className="mx-3 my-2 rounded border-2 border-dashed border-[var(--border-default)] flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-[var(--border-accent)] hover:bg-[var(--accent-glow)] transition-all"
-          style={{ height: 64 }}
-          onClick={() => tab === 'upload' && !loading && fileRef.current?.click()}
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          disabled={loading}
-        >
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />
-          ) : (
-            <ImageIcon className="w-4 h-4 text-[var(--text-muted)]" />
-          )}
-          <span className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-widest">
-            {loading ? 'Optimizing...' : 'No Image'}
-          </span>
-        </button>
-      )}
-
-      {tab === 'upload' && (
-        <div className="px-3 pb-2">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileInput}
-          />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-[var(--border-default)] rounded text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider transition-all disabled:opacity-50"
-          >
-            <Upload className="w-3 h-3" />
-            Browse file…
-          </button>
-          <p className="mt-1 text-[8px] text-slate-300 text-center">
-            PNG, JPG, WebP — optimized on upload
-          </p>
-        </div>
+        )
       )}
 
       {tab === 'url' && (
-        <div className="px-3 pb-2 space-y-1.5">
-          <div className="flex gap-1">
+        <div className="space-y-1.5">
+          <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider font-bold">
+            Image URL
+          </span>
+          <div className="flex gap-1.5">
             <DesignerInput
               type="url"
               value={urlInput}
               onChange={(v) => setUrlInput(v)}
               onKeyDown={(e) => e.key === 'Enter' && handleUrlLoad()}
               placeholder="https://example.com/logo.png"
-              className="flex-1 font-mono text-[9px]"
+              className="flex-1 font-mono text-[9px] h-6 bg-[var(--bg-widget)] border-[var(--border-default)]"
               disabled={loading}
             />
             <button
               type="button"
               onClick={handleUrlLoad}
               disabled={loading || !urlInput.trim()}
-              className="flex items-center gap-1 px-2 h-6 bg-[var(--accent)] hover:bg-[var(--accent)]/80 disabled:opacity-40 text-white text-[9px] font-bold rounded transition-all"
+              className="flex items-center justify-center px-3 h-6 bg-[var(--accent)] hover:bg-[var(--accent)]/90 disabled:opacity-40 text-white text-[9px] font-bold rounded transition-all shrink-0"
             >
-              {loading ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : 'Load'}
+              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Load'}
             </button>
           </div>
-          {error && <p className="text-[8px] text-red-500 font-medium">{error}</p>}
+          {error && <p className="text-[8px] text-red-500 font-semibold">{error}</p>}
         </div>
       )}
     </div>
