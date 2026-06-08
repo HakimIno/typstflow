@@ -5,7 +5,6 @@ import { useZoneResize } from '@/hooks/use-zone-resize';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { cn } from '@/lib/utils/cn';
 import { getZoneComponents } from '@/lib/utils/schema-mutators';
-import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { Layers, Move, Workflow } from 'lucide-react';
@@ -56,7 +55,6 @@ export const Zone = memo(function Zone({
   });
 
   const updateZone = useDesignerStore((s) => s.updateZone);
-  const margin = useDesignerStore((s) => s.schema.page.margin);
   const setSelectedZone = useDesignerStore((s) => s.setSelectedZone);
   const clearSelection = useDesignerStore((s) => s.clearSelection);
   const setActivePage = useDesignerStore((s) => s.setActivePage);
@@ -320,13 +318,10 @@ export const Zone = memo(function Zone({
                 </p>
               </div>
             ) : isFlowZone ? (
-              <div
-                className="relative w-full min-h-full flex flex-col overflow-visible"
-                style={{
-                  paddingLeft: `${LayoutEngine.mmToPx(parseTypstUnit(margin.left))}px`,
-                  paddingRight: `${LayoutEngine.mmToPx(parseTypstUnit(margin.right))}px`,
-                }}
-              >
+              // No page-margin padding: flow components are positioned by their own x
+              // (measured from the paper edge, like absolute mode), so the designer matches
+              // the Typst output 1:1 and follows exactly where the user placed each element.
+              <div className="relative w-full min-h-full flex flex-col overflow-visible">
                 {/* Drop highlight overlay — height matches the target slot */}
                 {dragHighlight && (
                   <div

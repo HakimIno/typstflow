@@ -560,7 +560,9 @@ describe('TypstGenerator — flow zone mode', () => {
     expect(output).toContain('margin: (top: 30mm, bottom: 15mm');
     expect(output).toContain('#set page(header:');
     expect(output).toContain('#set page(footer:');
-    // Body flow must NOT have a leading #v() offset — native margin handles it
+    // Body flow must NOT have a leading #v() offset — native margin handles it.
+    // Horizontal position comes solely from each component's own x (no page-margin
+    // offset), so the body starts directly with the component block.
     const bodyIdx = output.indexOf('// --- PAGE 1 BODY ---');
     const bodySection = output.slice(bodyIdx);
     expect(bodySection.startsWith('// --- PAGE 1 BODY ---\n#block(')).toBe(true);

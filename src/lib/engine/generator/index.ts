@@ -493,6 +493,9 @@ export class TypstGenerator {
         .map((comp) => renderOne(comp))
         .filter(Boolean)
         .join(separator);
+      // No page-margin offset: each flow component is positioned by its own x via
+      // #pad(left: x) (page margin is 0mm, so x is measured from the paper edge — the
+      // exact position the user placed it in the designer, matching absolute mode).
       return leadingSpace + content;
     }
 
