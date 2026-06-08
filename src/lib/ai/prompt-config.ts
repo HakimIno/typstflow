@@ -152,18 +152,35 @@ Then design accordingly. Do not default to a generic invoice layout for every re
 
 Build in logical content order — let the layout emerge from the information hierarchy, not from a template. Use get_layout to check available space before placing large elements. Batch multiple add_* calls per round for efficiency.
 
-RECREATING LAYOUT FROM UPLOADED IMAGES
-If the user uploads an image/screenshot of a template (e.g., an official memorandum "บันทึกข้อความ", a custom invoice, or a form):
-1. **Analyze layout structure:** Identify headers, section separators, vertical alignments, columns, tables, summary grids, checklist items, and signature sections.
-2. **Prevent Overlap:** If the layout has rows of text, lists of tasks, checklists, or data tables, you MUST switch the target zone to 'flow' layout mode first using \`update_zone(zone: "body", updates: { layoutMode: "flow" })\`. This ensures components stack cleanly without overlapping.
-3. **Choose the correct components:**
-   - Use \`add_signature\` for signing sections at the bottom instead of placing lines and text manually.
-   - Use \`add_summary_box\` for invoice/bill totals.
-   - Use \`add_checklist\` for checklists or bulleted item lists.
-   - Use \`add_rectangle\` for colored header banners or structural box borders.
-4. **Sample Data:** Read the actual text, names, values, and numbers shown in the uploaded screenshot. After building the elements, always call \`set_sample_data\` and inject those exact values so that the generated preview looks identical to their screenshot.
+RECREATING A LAYOUT FROM AN UPLOADED IMAGE / PDF PAGE
+When an image is attached it is a faithful render of an existing document (often the first page of a PDF — e.g. an official memorandum "บันทึกข้อความ", a tax invoice, a form, or a certificate). Your job is to reproduce it as a 1:1 reconstruction, not a loose interpretation. Follow this protocol exactly:
 
-After building the layout, always call set_sample_data with realistic data that matches the document context.`;
+STEP 1 — MATCH THE PAGE
+Look at the page proportions and content. Infer the paper size and orientation, then call \`set_page\` FIRST (before placing anything). Most Thai business/government documents are A4 portrait. Estimate the margins from the whitespace around the content block and pass them too. Getting the page right makes every later coordinate land correctly.
+
+STEP 2 — MEASURE, DON'T GUESS
+Treat the image as the page. For every element, estimate its position and size as a FRACTION of the page, then convert to mm using the page dimensions you just set:
+- x_mm ≈ (left_edge_fraction) × pageWidth ; y_mm ≈ (top_edge_fraction) × pageHeight
+- width_mm ≈ (element_width_fraction) × pageWidth
+Work top-to-bottom, left-to-right. Preserve the reading order, indentation, and column alignment you see. Right-aligned numbers (totals, amounts) must stay right-aligned to the same edge.
+
+STEP 3 — PREVENT OVERLAP
+If the document contains stacked rows of text, lists, checklists, or data tables, call \`update_zone(zone: "body", updates: { layoutMode: "flow" })\` BEFORE adding those elements so they stack cleanly and never overlap.
+
+STEP 4 — CHOOSE THE RIGHT COMPONENT (don't fake structure with loose text)
+   - \`table\` for any tabular/itemized grid — recreate every visible column with its header label and relative width.
+   - \`add_summary_box\` for invoice/bill totals, VAT, subtotal, grand total blocks.
+   - \`add_signature\` for signing areas at the bottom (lines for name/date) — never hand-place lines+text.
+   - \`add_checklist\` for checkbox/bulleted/numbered lists.
+   - \`add_rectangle\` for colored header banners, boxes, or framed sections.
+   - \`add_line\` for horizontal rules and section dividers.
+   - \`add_barcode\` / \`add_qr\` when a barcode or QR is visible.
+Match fonts coarsely: title sizes, bold section labels, and small fine print should reflect the relative sizes you see. Sample the actual colors of banners, header backgrounds, and rules.
+
+STEP 5 — TRANSCRIBE EXACT CONTENT
+Read the real text, labels, names, IDs, dates, and numbers printed in the image — including Thai text — and use them verbatim. For repeating table rows, use \`{{binding}}\` columns, then call \`set_sample_data\` with the exact values visible in the document so the preview looks identical to the upload. Do not invent placeholder text when the real text is legible.
+
+After building the layout, always call set_sample_data so the rendered preview matches the source document.`;
 
 // ─── Sample data guide ────────────────────────────────────────────────────────
 // Describes what "realistic" mock data looks like.

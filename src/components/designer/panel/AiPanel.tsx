@@ -7,6 +7,7 @@ import {
 } from '@/components/shared/DropdownMenu';
 import { type AgentMessage, useAiAgent } from '@/hooks/use-ai-agent';
 import { AI_MODELS } from '@/lib/utils/ai-models';
+import { isPdfFile, pdfFirstPageToImage } from '@/lib/utils/pdf-to-image';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import {
@@ -15,9 +16,11 @@ import {
   ChevronRight,
   Database,
   FileText,
+  FileUp,
   Image,
   Layers,
   ListChecks,
+  Loader2,
   Mic,
   Minus,
   Pencil,
@@ -266,48 +269,75 @@ export const AiPanel = memo(function AiPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  // 'pdf' when the attachment came from a rasterized PDF — drives the UI hint.
+  const [attachedKind, setAttachedKind] = useState<'image' | 'pdf'>('image');
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new window.Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1024;
-        const MAX_HEIGHT = 1024;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height = Math.round((height * MAX_WIDTH) / width);
-            width = MAX_WIDTH;
+  // Downscale a raster image to a max longest-edge while keeping aspect ratio.
+  // High enough (2000px) that dense fine print stays legible to the vision model.
+  const resizeImageDataUrl = useCallback(
+    (src: string, maxEdge = 2000): Promise<string> =>
+      new Promise((resolve) => {
+        const img = new window.Image();
+        img.onload = () => {
+          let { width, height } = img;
+          const longest = Math.max(width, height);
+          if (longest > maxEdge) {
+            const ratio = maxEdge / longest;
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
           }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width = Math.round((width * MAX_HEIGHT) / height);
-            height = MAX_HEIGHT;
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(src);
+            return;
           }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => resolve(src);
+        img.src = src;
+      }),
+    []
+  );
+
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setFileError(null);
+      setIsProcessingFile(true);
+      try {
+        if (isPdfFile(file)) {
+          // Rasterize the first page at high resolution for accurate extraction.
+          const dataUrl = await pdfFirstPageToImage(file);
           setAttachedImage(dataUrl);
+          setAttachedKind('pdf');
         } else {
-          setAttachedImage(event.target?.result as string);
+          const src = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => resolve(ev.target?.result as string);
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
+          });
+          const dataUrl = await resizeImageDataUrl(src);
+          setAttachedImage(dataUrl);
+          setAttachedKind('image');
         }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  }, []);
+      } catch (err) {
+        setFileError(
+          err instanceof Error ? err.message : 'Could not read that file. Try a PNG, JPG, or PDF.'
+        );
+      } finally {
+        setIsProcessingFile(false);
+      }
+    },
+    [resizeImageDataUrl]
+  );
 
   const { messages, isLoading, thinkingStep, sendMessage, clearMessages, stop } = useAiAgent();
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -338,12 +368,17 @@ export const AiPanel = memo(function AiPanel() {
 
   const handleSend = useCallback(() => {
     const text = input.trim();
-    if ((!text && !attachedImage) || isLoading) return;
+    if ((!text && !attachedImage) || isLoading || isProcessingFile) return;
+    const defaultPrompt =
+      attachedKind === 'pdf'
+        ? 'This is the first page of an existing PDF document. Reconstruct its exact layout — page size, margins, every text block, table, line, and signature area — and recreate it 1:1 in the canvas, then fill in the real values you can read from it.'
+        : 'Analyze this image and recreate its layout as closely as possible.';
     setInput('');
     setAttachedImage(null);
+    setFileError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    sendMessage(text || 'Analyze this image and recreate its layout.', attachedImage ?? undefined);
-  }, [input, attachedImage, isLoading, sendMessage]);
+    sendMessage(text || defaultPrompt, attachedImage ?? undefined);
+  }, [input, attachedImage, attachedKind, isLoading, isProcessingFile, sendMessage]);
 
   const handleRevert = useCallback(
     (msg: AgentMessage) => {
@@ -445,7 +480,19 @@ export const AiPanel = memo(function AiPanel() {
 
         <div className="p-1.5">
           <div className="rounded-xl bg-[var(--bg-app)] border border-[var(--border-subtle)] focus-within:border-[var(--accent)]/50 transition-colors overflow-hidden">
-            {attachedImage && (
+            {isProcessingFile && (
+              <div className="px-3 pt-2.5 flex items-center gap-2 text-[9px] text-[var(--text-muted)]">
+                <Loader2 className="w-3 h-3 animate-spin text-[var(--accent)]" />
+                Rendering PDF page…
+              </div>
+            )}
+            {fileError && !isProcessingFile && (
+              <div className="px-3 pt-2.5 flex items-center gap-1.5 text-[9px] text-red-400">
+                <AlertTriangle className="w-3 h-3 shrink-0" />
+                {fileError}
+              </div>
+            )}
+            {attachedImage && !isProcessingFile && (
               <div className="px-3 pt-2.5 flex items-center gap-2">
                 <div className="relative w-12 h-12 rounded-lg border border-[var(--border-subtle)] overflow-hidden bg-[var(--bg-app)] shrink-0">
                   <img src={attachedImage} alt="Preview" className="w-full h-full object-cover" />
@@ -460,7 +507,11 @@ export const AiPanel = memo(function AiPanel() {
                     <XCircle className="w-2.5 h-2.5" />
                   </button>
                 </div>
-                <span className="text-[9px] text-[var(--text-muted)]">Image attached</span>
+                <span className="text-[9px] text-[var(--text-muted)]">
+                  {attachedKind === 'pdf'
+                    ? 'PDF page attached — AI will reconstruct this layout'
+                    : 'Image attached'}
+                </span>
               </div>
             )}
             <textarea
@@ -493,16 +544,21 @@ export const AiPanel = memo(function AiPanel() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  title="Upload template image"
-                  className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  disabled={isProcessingFile}
+                  title="Upload an image or PDF to recreate its layout"
+                  className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-40"
                 >
-                  <Image className="w-3.5 h-3.5" />
+                  {isProcessingFile ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <FileUp className="w-3.5 h-3.5" />
+                  )}
                 </button>
                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileChange}
-                  accept="image/*"
+                  accept="image/*,application/pdf"
                   className="hidden"
                 />
 
@@ -596,10 +652,10 @@ export const AiPanel = memo(function AiPanel() {
                   <button
                     type="button"
                     onClick={handleSend}
-                    disabled={!input.trim()}
+                    disabled={(!input.trim() && !attachedImage) || isProcessingFile}
                     className={clsx(
                       'p-1.5 rounded-full transition-all',
-                      input.trim()
+                      (input.trim() || attachedImage) && !isProcessingFile
                         ? 'bg-[var(--accent)] text-white shadow-[0_0_12px_rgba(var(--accent-rgb,99,102,241),0.4)]'
                         : 'bg-[var(--bg-widget)] text-[var(--text-muted)] border border-[var(--border-subtle)]'
                     )}

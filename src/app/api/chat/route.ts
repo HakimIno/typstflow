@@ -215,6 +215,40 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'set_page',
+      description:
+        'Set the page size, orientation, and margins to match the source document. Call this FIRST when recreating a layout from an uploaded image/PDF so coordinates map correctly.',
+      parameters: {
+        type: 'object',
+        properties: {
+          size: {
+            type: 'string',
+            enum: ['A4', 'A5', 'Letter', 'Legal'],
+            description: 'Paper size — infer from the document proportions (A4 ≈ 1:1.41).',
+          },
+          orientation: {
+            type: 'string',
+            enum: ['portrait', 'landscape'],
+            description: 'Page orientation',
+          },
+          margin: {
+            type: 'object',
+            description: 'Page margins as CSS-like values, e.g. "15mm", "2cm".',
+            properties: {
+              top: { type: 'string' },
+              bottom: { type: 'string' },
+              left: { type: 'string' },
+              right: { type: 'string' },
+            },
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'set_sample_data',
       description:
         'Inject realistic mock data so the layout renders with actual values instead of empty bindings. Always call this after building a layout.',

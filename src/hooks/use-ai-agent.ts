@@ -409,6 +409,26 @@ function execTool(name: string, args: Record<string, unknown>): string {
       store.loadTemplate(args.name as Parameters<typeof store.loadTemplate>[0]);
       return `Loaded template "${args.name}"`;
 
+    case 'set_page': {
+      const current = useDesignerStore.getState().schema.page;
+      const m = (args.margin as Record<string, string> | undefined) ?? {};
+      store.updateSchema({
+        page: {
+          ...current,
+          size: (args.size as typeof current.size | undefined) ?? current.size,
+          orientation:
+            (args.orientation as typeof current.orientation | undefined) ?? current.orientation,
+          margin: {
+            top: m.top ?? current.margin.top,
+            bottom: m.bottom ?? current.margin.bottom,
+            left: m.left ?? current.margin.left,
+            right: m.right ?? current.margin.right,
+          },
+        },
+      });
+      return `Set page to ${args.size ?? current.size} ${args.orientation ?? current.orientation}`;
+    }
+
     case 'set_sample_data': {
       store.setSampleData(args.data as Record<string, unknown>);
       return 'Sample data injected';
