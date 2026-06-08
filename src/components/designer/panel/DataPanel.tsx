@@ -644,12 +644,14 @@ function ExplorerItem({
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-[var(--text-muted)] truncate leading-tight transition-colors group-hover:text-[var(--accent)]">
+        <p className="text-[13px] text-[var(--text-muted)] truncate leading-tight transition-colors group-hover:text-[var(--accent)]">
           {path}
         </p>
-        <p className="text-[9px] text-[var(--text-muted)] truncate font-medium uppercase tracking-[0.08em] leading-tight opacity-70">
-          {type}
-        </p>
+        <div className="px-1 py-0.5 rounded-sm bg-[var(--bg-widget)] w-fit">
+          <p className="text-[9px] text-[var(--text-muted)] truncate uppercase tracking-[0.08em] leading-tight opacity-70">
+            {type}
+          </p>
+        </div>
       </div>
 
       <button

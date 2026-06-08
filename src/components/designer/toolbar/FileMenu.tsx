@@ -98,11 +98,6 @@ export function FileMenu() {
         <DropdownMenuHeader>Document Actions</DropdownMenuHeader>
 
         <DropdownMenuItem icon={FilePlus} label="New Blank Report" onClick={handleNew} />
-        <DropdownMenuItem
-          icon={FilePlus}
-          label="Load Multi-Invoice Example"
-          onClick={() => loadTemplate('multi-invoice')}
-        />
 
         <DropdownMenuSeparator />
 

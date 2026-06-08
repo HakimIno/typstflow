@@ -548,3 +548,12 @@ export interface SavedBlock {
   sourceZone: ZoneKey;
   createdAt: number;
 }
+
+/** A full report design saved by the user (e.g. uploaded JSON) and selectable from the Templates panel. */
+export interface CustomTemplate {
+  id: string;
+  name: string;
+  schema: LayoutSchema;
+  sampleData?: Record<string, unknown>;
+  createdAt: number;
+}

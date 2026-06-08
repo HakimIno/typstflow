@@ -189,13 +189,13 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'load_template',
-      description: 'Load a predefined report template. This replaces the current layout.',
+      description: 'Reset the canvas to a blank layout. This replaces the current layout.',
       parameters: {
         type: 'object',
         properties: {
           name: {
             type: 'string',
-            enum: ['blank', 'invoice', 'complex', 'invoice-with-breaks', 'tax-invoice'],
+            enum: ['blank'],
             description: 'Template to load',
           },
         },

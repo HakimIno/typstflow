@@ -9,6 +9,7 @@ import { AiPanel } from '@/components/designer/panel/AiPanel';
 import { DataPanel } from '@/components/designer/panel/DataPanel';
 import { LayersPanel } from '@/components/designer/panel/LayersPanel';
 import { Palette } from '@/components/designer/panel/Palette';
+import { TemplatesPanel } from '@/components/designer/panel/TemplatesPanel';
 import { AlertDialog } from '@/components/shared/AlertDialog';
 import { DesignerErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { useFontInstaller } from '@/hooks/use-font-installer';
@@ -156,6 +157,8 @@ export default function DesignerPage() {
     switch (activeTab) {
       case 'palette':
         return <Palette />;
+      case 'templates':
+        return <TemplatesPanel />;
       case 'outline':
         return <LayersPanel />;
       case 'data':

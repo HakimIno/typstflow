@@ -282,7 +282,7 @@ const LayerItem = memo(
               <DesignerInput
                 autoFocus
                 variant="ghost"
-                className="text-[12px] font-medium p-0 text-[var(--accent)]"
+                className="text-xs p-0 text-[var(--accent)]"
                 value={name}
                 onChange={(v: string) => setName(v)}
                 onBlur={handleRename}
@@ -291,7 +291,7 @@ const LayerItem = memo(
             ) : (
               <span
                 className={clsx(
-                  'block text-[13px] font-medium truncate leading-tight transition-colors',
+                  'block text-xs  truncate leading-tight transition-colors',
                   isSelected
                     ? 'text-[var(--accent)]'
                     : 'text-[var(--text-muted)] group-hover:text-[var(--accent)]'

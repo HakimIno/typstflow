@@ -57,7 +57,7 @@ export const createUISlice: StateCreator<DesignerState, [], [], UISlice> = (set,
       viewMode: mode,
       isRightSidebarOpen: mode === 'preview' || mode === 'split' ? true : state.isRightSidebarOpen,
     })),
-  setActiveTab: (tab: 'palette' | 'outline' | 'data' | 'ai') =>
+  setActiveTab: (tab: DesignerState['activeTab']) =>
     set({ activeTab: tab, isSidebarOpen: true }),
   setActivePage: (pageId: string | null) => set({ activePageId: pageId }),
   setSidebarOpen: (open: boolean) => set({ isSidebarOpen: open }),

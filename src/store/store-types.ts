@@ -1,5 +1,6 @@
 import type {
   ComponentNode,
+  CustomTemplate,
   GroupDefinition,
   LayoutSchema,
   SavedBlock,
@@ -41,7 +42,7 @@ export interface DesignerState extends FontSlice {
   // App State
   viewMode: 'design' | 'preview' | 'split';
   zoom: number;
-  activeTab: 'palette' | 'outline' | 'data' | 'ai';
+  activeTab: 'palette' | 'outline' | 'data' | 'ai' | 'templates';
   activePageId: string | null;
   isSidebarOpen: boolean;
   isRightSidebarOpen: boolean;
@@ -214,7 +215,7 @@ export interface DesignerState extends FontSlice {
   setSampleData: (data: Record<string, unknown>) => void;
   setZoom: (zoom: number) => void;
   setViewMode: (mode: 'design' | 'preview' | 'split') => void;
-  setActiveTab: (tab: 'palette' | 'outline' | 'data' | 'ai') => void;
+  setActiveTab: (tab: DesignerState['activeTab']) => void;
   setActivePage: (pageId: string | null) => void;
   setScrollToPageId: (pageId: string | null) => void;
   setSidebarOpen: (open: boolean) => void;
@@ -224,9 +225,7 @@ export interface DesignerState extends FontSlice {
   undo: () => void;
   redo: () => void;
   rewindToCheckpoint: (checkpointIndex: number) => void;
-  loadTemplate: (
-    name: 'blank' | 'invoice' | 'complex' | 'invoice-with-breaks' | 'tax-invoice' | 'multi-invoice'
-  ) => void;
+  loadTemplate: (name: 'blank') => void;
   setTheme: (theme: 'dark' | 'light') => void;
   setPrimaryColor: (color: string) => void;
   setAiModel: (model: string) => void;
@@ -303,4 +302,14 @@ export interface DesignerState extends FontSlice {
   deleteBlock: (id: string) => void;
   insertBlock: (blockId: string, targetZone: ZoneKey, targetPageId?: string) => void;
   renameBlock: (id: string, name: string) => void;
+
+  // Custom Templates (user-uploaded designs, shown in the Templates panel)
+  customTemplates: CustomTemplate[];
+  addCustomTemplate: (
+    name: string,
+    schema: LayoutSchema,
+    sampleData?: Record<string, unknown>
+  ) => void;
+  deleteCustomTemplate: (id: string) => void;
+  applyCustomTemplate: (id: string) => void;
 }

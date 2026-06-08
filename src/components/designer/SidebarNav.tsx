@@ -2,7 +2,7 @@
 
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
-import { Cpu, Layers, Layout, Settings2, Sparkles } from 'lucide-react';
+import { Cpu, Layers, Layout, LayoutTemplate, Settings2, Sparkles } from 'lucide-react';
 import { memo } from 'react';
 
 export const SidebarNav = memo(function SidebarNav() {
@@ -13,12 +13,13 @@ export const SidebarNav = memo(function SidebarNav() {
 
   const navItems = [
     { id: 'palette' as const, icon: Layout, label: 'Elements' },
+    { id: 'templates' as const, icon: LayoutTemplate, label: 'Templates' },
     { id: 'outline' as const, icon: Layers, label: 'Layers' },
     { id: 'data' as const, icon: Cpu, label: 'Data' },
     { id: 'ai' as const, icon: Sparkles, label: 'AI Designer' },
   ];
 
-  const handleTabClick = (tabId: 'palette' | 'outline' | 'data' | 'ai') => {
+  const handleTabClick = (tabId: 'palette' | 'outline' | 'data' | 'ai' | 'templates') => {
     if (activeTab === tabId && isSidebarOpen) {
       setSidebarOpen(false);
     } else {
