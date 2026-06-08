@@ -4,6 +4,7 @@ import { renderReportToSvg } from '@/lib/typst-wasm';
 import { useDesignerStore } from '@/store/designer-store';
 import type { CustomTemplate, LayoutSchema } from '@/types/schema';
 import { Icon } from '@iconify/react';
+import clsx from 'clsx';
 import { LayoutTemplate, Trash2 } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -61,6 +62,7 @@ export const TemplatesPanel = memo(function TemplatesPanel() {
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'builtin' | 'saved'>('builtin');
 
   const confirmAndApply = (label: string, apply: () => void) => {
     showDialog({
@@ -134,22 +136,46 @@ export const TemplatesPanel = memo(function TemplatesPanel() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide p-2.5 space-y-4">
+      {/* Tabs Navigation */}
+      <div className="grid grid-cols-2 border-b border-[var(--border-default)] bg-white/[0.012]">
+        {(
+          [
+            { id: 'builtin', label: 'Built-in', count: BUILT_IN_TEMPLATES.length },
+            { id: 'saved', label: 'Saved', count: customTemplates.length },
+          ] as const
+        ).map((tab) => (
+          <button
+            type="button"
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={clsx(
+              'h-8 flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] transition-all border-b-2',
+              activeTab === tab.id
+                ? 'border-[var(--accent)] text-[var(--accent)] bg-white/[0.025]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/[0.02]'
+            )}
+          >
+            {tab.label}
+            {tab.count > 0 && (
+              <span className="px-1 min-w-[14px] text-center rounded-full bg-white/10 text-[8px] leading-[14px] text-[var(--text-secondary)]">
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto scrollbar-hide p-2.5">
         {error && (
-          <div className="flex items-start gap-2 p-2 rounded-md bg-red-500/10 border border-red-500/30 text-[10px] text-red-400">
+          <div className="flex items-start gap-2 p-2 mb-3 rounded-md bg-red-500/10 border border-red-500/30 text-[10px] text-red-400">
             <Icon icon="lucide:alert-circle" className="w-3.5 h-3.5 shrink-0 mt-px" />
             <span className="break-all">{error}</span>
           </div>
         )}
 
-        {/* Built-in templates */}
-        <section>
-          <div className="h-6 flex items-center gap-2 text-[var(--text-muted)] mb-2">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em]">Built-in</span>
-            <div className="flex-1 h-px bg-[var(--border-default)] opacity-70" />
-          </div>
-          {BUILT_IN_TEMPLATES.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2.5">
+        {activeTab === 'builtin' &&
+          (BUILT_IN_TEMPLATES.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2.5 animate-in fade-in duration-200">
               {BUILT_IN_TEMPLATES.map((tpl) => (
                 <TemplateCard
                   key={tpl.id}
@@ -163,25 +189,20 @@ export const TemplatesPanel = memo(function TemplatesPanel() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center gap-2 py-8 text-center text-[var(--text-muted)]">
-              <Icon icon="lucide:layout-template" className="w-6 h-6 opacity-50" />
-              <p className="text-[10px] leading-relaxed">
-                No built-in templates yet.
-                <br />
-                Upload a design or start from blank.
-              </p>
-            </div>
-          )}
-        </section>
+            <EmptyState
+              message={
+                <>
+                  No built-in templates yet.
+                  <br />
+                  Upload a design or start from blank.
+                </>
+              }
+            />
+          ))}
 
-        {/* Saved (uploaded) templates */}
-        {customTemplates.length > 0 && (
-          <section>
-            <div className="h-6 flex items-center gap-2 text-[var(--text-muted)] mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.12em]">Saved</span>
-              <div className="flex-1 h-px bg-[var(--border-default)] opacity-70" />
-            </div>
-            <div className="grid grid-cols-2 gap-2.5">
+        {activeTab === 'saved' &&
+          (customTemplates.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2.5 animate-in fade-in duration-200">
               {customTemplates.map((tpl) => (
                 <TemplateCard
                   key={tpl.id}
@@ -195,8 +216,17 @@ export const TemplatesPanel = memo(function TemplatesPanel() {
                 />
               ))}
             </div>
-          </section>
-        )}
+          ) : (
+            <EmptyState
+              message={
+                <>
+                  No saved templates yet.
+                  <br />
+                  Use Upload to add your own design.
+                </>
+              }
+            />
+          ))}
       </div>
     </BasePanel>
   );
@@ -296,6 +326,15 @@ const TemplateThumbnail = memo(function TemplateThumbnail({
           <div className="w-4 h-4 rounded-full border-2 border-slate-200 border-t-[var(--accent)] animate-spin" />
         </div>
       )}
+    </div>
+  );
+});
+
+const EmptyState = memo(function EmptyState({ message }: { message: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-[var(--text-muted)] animate-in fade-in duration-200">
+      <Icon icon="lucide:layout-template" className="w-6 h-6 opacity-50" />
+      <p className="text-[10px] leading-relaxed">{message}</p>
     </div>
   );
 });
