@@ -72,11 +72,11 @@ export const FORMAT_HELPERS = `
 }
 
 #let fmt_number(v) = {
-  let val = if type(v) == "string" {
+  let val = if type(v) == str {
     let t = v.trim()
     if t == "" { 0 } else { let f = float(t); if f == none { t } else { f } }
   } else { v }
-  if type(val) == "float" or type(val) == "integer" {
+  if type(val) == float or type(val) == int {
     let s = str(val)
     if s.contains(".") {
       let parts = s.split(".")
@@ -88,19 +88,20 @@ export const FORMAT_HELPERS = `
 }
 
 #let fmt_currency_thb(v) = {
-  let n = if type(v) == "string" { let t = v.trim(); if t == "" { 0 } else { float(t) } } else { v }
+  let n = if type(v) == str { let t = v.trim(); if t == "" { 0 } else { float(t) } } else { v }
   "฿" + fmt_number(n)
 }
 
 #let fmt_currency_usd(v) = {
-  let n = if type(v) == "string" { let t = v.trim(); if t == "" { 0 } else { float(t) } } else { v }
+  let n = if type(v) == str { let t = v.trim(); if t == "" { 0 } else { float(t) } } else { v }
   "$" + fmt_number(n)
 }
 
 #let fmt_date_th(v) = {
-  if type(v) != "string" or v == "" { return str(v) }
+  if type(v) != str or v == "" { return str(v) }
   let months = ("มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม")
-  if v.len() >= 10 {
+  // Only parse strict ISO dates (YYYY-MM-DD); otherwise return raw value
+  if v.len() >= 10 and v.find(regex("^\\d{4}-\\d{2}-\\d{2}")) != none {
     let y = int(v.slice(0, 4)); let m = int(v.slice(5, 7)); let d = int(v.slice(8, 10))
     if m >= 1 and m <= 12 { return str(d) + " " + months.at(m - 1) + " " + str(y + 543) }
   }
@@ -108,9 +109,10 @@ export const FORMAT_HELPERS = `
 }
 
 #let fmt_date_en(v) = {
-  if type(v) != "string" or v == "" { return str(v) }
+  if type(v) != str or v == "" { return str(v) }
   let months = ("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
-  if v.len() >= 10 {
+  // Only parse strict ISO dates (YYYY-MM-DD); otherwise return raw value
+  if v.len() >= 10 and v.find(regex("^\\d{4}-\\d{2}-\\d{2}")) != none {
     let y = int(v.slice(0, 4)); let m = int(v.slice(5, 7)); let d = int(v.slice(8, 10))
     if m >= 1 and m <= 12 { return str(d) + " " + months.at(m - 1) + " " + str(y) }
   }
@@ -118,7 +120,7 @@ export const FORMAT_HELPERS = `
 }
 
 #let fmt_percent(v) = {
-  let n = if type(v) == "string" { let t = v.trim(); if t == "" { 0 } else { float(t) } } else { v }
+  let n = if type(v) == str { let t = v.trim(); if t == "" { 0 } else { float(t) } } else { v }
   fmt_number(n) + "%"
 }
 
