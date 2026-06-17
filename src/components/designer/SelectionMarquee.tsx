@@ -1,6 +1,5 @@
 'use client';
 
-import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
 import { memo, useEffect, useRef, useState } from 'react';
 
@@ -12,25 +11,20 @@ export const SelectionMarquee = memo(function SelectionMarquee({
   const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(null);
   const [currentPos, setCurrentPos] = useState<{ x: number; y: number } | null>(null);
   const zoom = useDesignerStore((state) => state.zoom);
-  const selectComponentsInRange = useDesignerStore((state) => state.selectComponentsInRange);
+  const selectComponentsByIds = useDesignerStore((state) => state.selectComponentsByIds);
   const clearSelection = useDesignerStore((state) => state.clearSelection);
-  const schema = useDesignerStore((state) => state.schema);
 
   // Refs for mutable values accessed inside event handlers
   const zoomRef = useRef(zoom);
-  const schemaRef = useRef(schema);
-  const selectRef = useRef(selectComponentsInRange);
+  const selectRef = useRef(selectComponentsByIds);
   const clearRef = useRef(clearSelection);
 
   useEffect(() => {
     zoomRef.current = zoom;
   }, [zoom]);
   useEffect(() => {
-    schemaRef.current = schema;
-  }, [schema]);
-  useEffect(() => {
-    selectRef.current = selectComponentsInRange;
-  }, [selectComponentsInRange]);
+    selectRef.current = selectComponentsByIds;
+  }, [selectComponentsByIds]);
   useEffect(() => {
     clearRef.current = clearSelection;
   }, [clearSelection]);
@@ -61,7 +55,14 @@ export const SelectionMarquee = memo(function SelectionMarquee({
       setStartPos({ x: startX, y: startY });
       setCurrentPos({ x: startX, y: startY });
 
-      if (!e.shiftKey) clearRef.current();
+      const additive = e.shiftKey;
+      if (!additive) clearRef.current();
+
+      // Anchor in client (screen) space — selection is hit-tested against real
+      // rendered rects, so it works for flow zones (flex-stacked, where schema
+      // x/y don't match the visual) as well as absolute zones.
+      const startClientX = e.clientX;
+      const startClientY = e.clientY;
 
       // ✅ Add handlers immediately (not in useEffect) to avoid missing events
       // between React re-render and next paint.
@@ -100,24 +101,42 @@ export const SelectionMarquee = memo(function SelectionMarquee({
           flushMove();
         }
 
-        const x = Math.min(startX, curX);
-        const y = Math.min(startY, curY);
-        const width = Math.abs(startX - curX);
-        const height = Math.abs(startY - curY);
+        // Marquee bounds in client (screen) space.
+        const mLeft = Math.min(startClientX, pendingClientX);
+        const mRight = Math.max(startClientX, pendingClientX);
+        const mTop = Math.min(startClientY, pendingClientY);
+        const mBottom = Math.max(startClientY, pendingClientY);
 
-        const rectMm = {
-          x: LayoutEngine.pxToMm(x),
-          y: LayoutEngine.pxToMm(y),
-          width: LayoutEngine.pxToMm(width),
-          height: LayoutEngine.pxToMm(height),
-        };
+        // Hit-test against every rendered component inside this paper using its
+        // actual bounding box — immune to flow vs absolute layout differences.
+        const ids: string[] = [];
+        const els = paper.querySelectorAll<HTMLElement>(
+          '[data-designer-component][data-component-id]'
+        );
+        for (const el of els) {
+          const r = el.getBoundingClientRect();
+          const intersects =
+            r.left < mRight && r.right > mLeft && r.top < mBottom && r.bottom > mTop;
+          if (intersects) {
+            const id = el.getAttribute('data-component-id');
+            if (id) ids.push(id);
+          }
+        }
 
-        // ✅ Use calculateZoneOffset so header/footer visibility per page is
-        // respected (hidden header on page 2+ has offset 0, not header minHeight).
-        const currentSchema = schemaRef.current;
-        for (const zoneKey of ['header', 'body', 'footer'] as const) {
-          const zoneOffset = LayoutEngine.calculateZoneOffset(zoneKey, currentSchema, pageId);
-          selectRef.current({ ...rectMm, y: rectMm.y - zoneOffset }, zoneKey, pageId);
+        selectRef.current([...new Set(ids)], additive);
+
+        // A real drag just happened. The browser fires a trailing `click` on the
+        // zone background, whose handler (Zone.handleZoneClick) calls clearSelection()
+        // and would instantly wipe the marquee selection. Swallow that one click
+        // in the capture phase so it never reaches the zone's React onClick.
+        const moved =
+          Math.abs(pendingClientX - startClientX) + Math.abs(pendingClientY - startClientY) > 3;
+        if (moved) {
+          const swallowClick = (ce: MouseEvent) => {
+            ce.stopPropagation();
+            window.removeEventListener('click', swallowClick, true);
+          };
+          window.addEventListener('click', swallowClick, true);
         }
 
         setStartPos(null);

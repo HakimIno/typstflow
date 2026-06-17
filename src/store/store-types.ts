@@ -190,6 +190,7 @@ export interface DesignerState extends FontSlice {
     zoneKey: ZoneKey,
     pageId?: string
   ) => void;
+  selectComponentsByIds: (ids: string[], additive?: boolean) => void;
   setSelectedCell: (cell: DesignerState['selectedCell']) => void;
   setSelectedCells: (cells: DesignerState['selectedCells']) => void;
   setTableSheetEditId: (id: string | null) => void;

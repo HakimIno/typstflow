@@ -21,6 +21,7 @@ export type SelectionSlice = Pick<
   | 'toggleComponentSelection'
   | 'clearSelection'
   | 'selectComponentsInRange'
+  | 'selectComponentsByIds'
   | 'setSelectedCell'
   | 'setSelectedCells'
   | 'tableSheetEditId'
@@ -140,6 +141,24 @@ export const createSelectionSlice: StateCreator<DesignerState, [], [], Selection
       return {
         selectedComponentIds: newIds,
         selectedZone: zoneKey,
+        selectedCell: null,
+        selectedCells: null,
+      };
+    }),
+
+  // DOM-driven selection (used by the marquee). Hit-testing is done against real
+  // rendered rects by the caller, so this works for both absolute AND flow zones —
+  // unlike selectComponentsInRange, whose schema x/y don't match flow's flex-stacked layout.
+  selectComponentsByIds: (ids, additive = false) =>
+    set((state) => {
+      const allowed = ids.filter((id) => !state.lockedComponentIds.includes(id));
+      const merged = additive ? [...new Set([...state.selectedComponentIds, ...allowed])] : allowed;
+      const firstZone = merged.length
+        ? (findComponentZone(state.schema, merged[0])?.zoneKey ?? state.selectedZone)
+        : null;
+      return {
+        selectedComponentIds: merged,
+        selectedZone: firstZone,
         selectedCell: null,
         selectedCells: null,
       };

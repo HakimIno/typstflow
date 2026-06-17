@@ -94,8 +94,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     startY: number;
     pointerId: number;
     initialXmm: number;
+    // Set when grabbing one of several selected components — the whole selection
+    // is moved together (X only; flow controls Y via stacking).
+    group: { id: string; initialXmm: number; element: HTMLElement }[] | null;
   } | null>(null);
   const [flowDragging, setFlowDragging] = useState(false);
+  // Set true on the pointerup that ends a real drag, so the trailing click event
+  // doesn't collapse a multi-selection down to the single grabbed component.
+  const suppressClickRef = useRef(false);
 
   const handleFlowPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -118,15 +124,31 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         return;
 
       e.stopPropagation();
-      selectComponent(componentId);
 
-      const comp = useDesignerStore.getState().componentRegistry[componentId];
+      const store = useDesignerStore.getState();
+      const selected = store.selectedComponentIds;
+      // Grabbing one of several selected components → move the whole group and keep
+      // the selection. Otherwise collapse to this single component (normal behavior).
+      const isGroup = selected.includes(componentId) && selected.length > 1;
+      if (!isGroup) selectComponent(componentId);
+
+      let group: { id: string; initialXmm: number; element: HTMLElement }[] | null = null;
+      if (isGroup) {
+        group = [];
+        for (const id of selected) {
+          const el = document.querySelector<HTMLElement>(`[data-component-id="${id}"]`);
+          if (el) group.push({ id, initialXmm: store.componentRegistry[id]?.x ?? 0, element: el });
+        }
+      }
+
+      const comp = store.componentRegistry[componentId];
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       flowDragRef.current = {
         startX: e.clientX,
         startY: e.clientY,
         pointerId: e.pointerId,
         initialXmm: comp?.x ?? 0,
+        group,
       };
       setFlowDragging(true);
     },
@@ -139,6 +161,17 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     const zoom = useDesignerStore.getState().zoom;
     const dx = (e.clientX - state.startX) / zoom;
     const dy = (e.clientY - state.startY) / zoom;
+
+    // Group move: shift X for every selected element (Y stays — flow controls it).
+    // Skip reorder highlight; the group keeps its stacking order.
+    if (state.group) {
+      for (const g of state.group) {
+        g.element.style.transform = `translate(${dx}px, 0px)`;
+        g.element.style.zIndex = '50';
+      }
+      return;
+    }
+
     // Apply transform directly — no React state → no re-render → no bounce
     if (ref.current) {
       ref.current.style.transform = `translate(${dx}px, ${dy}px)`;
@@ -155,16 +188,37 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       if (!state || e.pointerId !== state.pointerId) return;
       flowDragRef.current = null;
 
+      setFlowDragging(false);
+      window.dispatchEvent(new CustomEvent('flow-drag-end'));
+
+      // Pointer actually moved → swallow the trailing click so it won't reset the selection.
+      const movedPx = Math.abs(e.clientX - state.startX) + Math.abs(e.clientY - state.startY);
+      if (movedPx > 3) suppressClickRef.current = true;
+
+      const zoom = useDesignerStore.getState().zoom;
+      const dxMm = LayoutEngine.pxToMm((e.clientX - state.startX) / zoom);
+
+      // Group move: clear transforms on every element, commit X for all in one history step.
+      if (state.group) {
+        for (const g of state.group) {
+          g.element.style.transform = '';
+          g.element.style.zIndex = '';
+        }
+        if (Math.abs(dxMm) > 0.05) {
+          const updatesMap: Record<string, { x: number }> = {};
+          for (const g of state.group) {
+            updatesMap[g.id] = { x: Math.round(Math.max(0, g.initialXmm + dxMm) * 10) / 10 };
+          }
+          useDesignerStore.getState().updateComponents(updatesMap);
+        }
+        return;
+      }
+
       // Clear DOM transforms immediately — no transition, no bounce
       if (ref.current) {
         ref.current.style.transform = '';
         ref.current.style.zIndex = '';
       }
-      setFlowDragging(false);
-      window.dispatchEvent(new CustomEvent('flow-drag-end'));
-
-      const zoom = useDesignerStore.getState().zoom;
-      const dxMm = LayoutEngine.pxToMm((e.clientX - state.startX) / zoom);
       const newX = Math.max(0, state.initialXmm + dxMm);
       useDesignerStore.getState().updateComponent(componentId, { x: Math.round(newX * 10) / 10 });
     },
@@ -556,6 +610,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
 
         const { startX, startY, initialPositions, hasStartedDrag } = dragState;
 
+        // A real drag happened — swallow the trailing click so it can't collapse the selection.
+        if (hasStartedDrag) suppressClickRef.current = true;
+
         if (hasStartedDrag) {
           const store = useDesignerStore.getState();
           let targetZone = detectZoneAtPoint(event.clientX, event.clientY);
@@ -740,6 +797,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
+      // Ignore the click that fires right after a drag — keep the current selection.
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
       if (!isEditing) {
         const target = e.target as HTMLElement;
         // A selected table's cell stops click via its own onClick handler, but guard here
