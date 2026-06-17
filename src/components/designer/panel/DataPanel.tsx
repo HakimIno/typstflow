@@ -429,7 +429,7 @@ export const DataPanel = memo(function DataPanel() {
             {filteredPaths.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] p-8 text-center gap-3">
                 <Icon icon="lucide:database" className="w-8 h-8 opacity-20" />
-                <p className="text-[10px]">ยังไม่มีข้อมูล</p>
+                <p className="text-[10px]">No data</p>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -437,7 +437,7 @@ export const DataPanel = memo(function DataPanel() {
                     className="text-[9px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-white/5 text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:bg-white/10 transition-colors flex items-center gap-1.5"
                   >
                     <Icon icon="lucide:upload" className="w-3 h-3" />
-                    เลือกไฟล์ JSON
+                    Select JSON File
                   </button>
                 </div>
               </div>
