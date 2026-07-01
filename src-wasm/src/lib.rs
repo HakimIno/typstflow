@@ -54,7 +54,7 @@ impl TypstBridge {
 
         let font_book = FontBook::from_fonts(&fonts);
         let library = typst::Library::builder().build();
-        web_sys::console::log_1(&"✅ Typst WASM Engine v0.14.2 Loaded".into());
+        web_sys::console::log_1(&"✅ Typst WASM Engine v0.15.0 Loaded".into());
 
         let mut packages = HashMap::new();
 
@@ -155,7 +155,7 @@ impl TypstBridge {
 
     pub fn render_svg(&self, source_code: &str) -> Result<String, JsValue> {
         let world = WasmWorld::new(source_code, self);
-        let doc: typst::layout::PagedDocument =
+        let doc: typst_layout::PagedDocument =
             typst::compile(&world).output.map_err(|err| {
                 web_sys::console::error_1(
                     &format!("❌ Typst Compilation Failed:\n{}", source_code).into(),
@@ -163,9 +163,10 @@ impl TypstBridge {
                 JsValue::from_str(&format!("Compilation failed: {:?}", err))
             })?;
 
+        let svg_options = typst_svg::SvgOptions::default();
         let mut all_svgs = String::new();
-        for page in &doc.pages {
-            all_svgs.push_str(&typst_svg::svg(page));
+        for page in doc.pages() {
+            all_svgs.push_str(&typst_svg::svg(page, &svg_options));
             all_svgs.push_str("<!-- PAGE_BREAK -->");
         }
         Ok(all_svgs)
@@ -173,7 +174,7 @@ impl TypstBridge {
 
     pub fn render_pdf(&self, source_code: &str, pdf_standard: Option<String>) -> Result<Vec<u8>, JsValue> {
         let world = WasmWorld::new(source_code, self);
-        let doc: typst::layout::PagedDocument =
+        let doc: typst_layout::PagedDocument =
             typst::compile(&world).output.map_err(|err| {
                 web_sys::console::error_1(
                     &format!("❌ Typst Compilation Failed:\n{}", source_code).into(),

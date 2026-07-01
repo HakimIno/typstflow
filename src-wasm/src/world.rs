@@ -1,13 +1,22 @@
+use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use typst::diag::{FileError, FileResult};
-use typst::foundations::{Bytes, Datetime};
-use typst::syntax::{FileId, Source, VirtualPath};
+use typst::foundations::{Bytes, Datetime, Duration};
+use typst::syntax::{FileId, RootedPath, Source, VirtualPath, VirtualRoot};
 use typst::text::{Font, FontBook};
 use typst::utils::LazyHash;
 use typst::Library;
 use typst::World;
 
 use crate::TypstBridge;
+
+/// The interned `FileId` for the entrypoint `main.typ` in the project root.
+fn main_file_id() -> FileId {
+    FileId::new(RootedPath::new(
+        VirtualRoot::Project,
+        VirtualPath::new("main.typ").expect("main.typ is a valid virtual path"),
+    ))
+}
 
 pub(crate) struct WasmWorld<'a> {
     source: Source,
@@ -17,10 +26,7 @@ pub(crate) struct WasmWorld<'a> {
 impl<'a> WasmWorld<'a> {
     pub(crate) fn new(source_code: &str, bridge: &'a TypstBridge) -> Self {
         Self {
-            source: Source::new(
-                FileId::new(None, VirtualPath::new("main.typ")),
-                source_code.to_string(),
-            ),
+            source: Source::new(main_file_id(), source_code.to_string()),
             bridge,
         }
     }
@@ -36,7 +42,7 @@ impl World for WasmWorld<'_> {
     }
 
     fn main(&self) -> FileId {
-        FileId::new(None, VirtualPath::new("main.typ"))
+        main_file_id()
     }
 
     fn source(&self, id: FileId) -> FileResult<Source> {
@@ -49,10 +55,10 @@ impl World for WasmWorld<'_> {
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        let path_str = if let Some(pkg) = id.package() {
-            format!("{}/{}", pkg, id.vpath().as_rootless_path().to_string_lossy())
-        } else {
-            id.vpath().as_rootless_path().to_string_lossy().to_string()
+        let vpath = id.vpath().get_without_slash();
+        let path_str = match id.root() {
+            VirtualRoot::Package(pkg) => format!("{}/{}", pkg, vpath),
+            VirtualRoot::Project => vpath.to_string(),
         };
 
         if let Ok(map) = self.bridge.images.read() {
@@ -65,14 +71,14 @@ impl World for WasmWorld<'_> {
             return Ok(Bytes::new(content.as_bytes().to_vec()));
         }
 
-        Err(FileError::NotFound(id.vpath().as_rootless_path().to_path_buf()))
+        Err(FileError::NotFound(PathBuf::from(vpath)))
     }
 
     fn font(&self, id: usize) -> Option<Font> {
         self.bridge.fonts.get(id).cloned()
     }
 
-    fn today(&self, _offset: Option<i64>) -> Option<Datetime> {
+    fn today(&self, _offset: Option<Duration>) -> Option<Datetime> {
         let year = self.bridge.today_year.load(Ordering::Relaxed);
         if year > 0 {
             Datetime::from_ymd(
