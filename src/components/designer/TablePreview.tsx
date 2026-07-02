@@ -6,22 +6,36 @@ import { resolveTableColumnPercentages } from '@/lib/utils/table-widths';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import type { TableCell as TCell, TableComponent, TableRow } from '@/types/schema';
-import { clsx } from 'clsx';
+import { Columns2, Eraser, Merge, Rows3, Split, Trash2 } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { CellEditor } from './table/CellEditor';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ColumnResizeHandle, RowResizeHandle } from './table/SheetResizeChrome';
 import type { HandleSegment } from './table/SheetResizeChrome';
+import type { ContextMenuItem } from './table/TableCellContextMenu';
+import { TableCellContextMenu } from './table/TableCellContextMenu';
+import type { CellStyleCtx } from './table/TableCellView';
+import { TableCellView } from './table/TableCellView';
 import type { SectionType } from './table/useCellSelection';
 import { useCellSelection } from './table/useCellSelection';
 import { useTableActions } from './table/useTableActions';
 import { useTableResize } from './table/useTableResize';
 
 // ─── Main Component ─────────────────────────────────────────────────────────
-export function TablePreview({ component }: { component: TableComponent }) {
+export const TablePreview = memo(function TablePreview({
+  component,
+}: {
+  component: TableComponent;
+}) {
   const updateComponent = useDesignerStore((s) => s.updateComponent);
-  const selectedCell = useDesignerStore((s) => s.selectedCell);
-  const selectedCells = useDesignerStore((s) => s.selectedCells);
+  // Scope selection to THIS table: return null when the active cell/cells belong to
+  // another table. Otherwise every TablePreview subscribes to the global selection
+  // and a cell click in any table re-renders every table on the page.
+  const selectedCell = useDesignerStore((s) =>
+    s.selectedCell?.tableId === component.id ? s.selectedCell : null
+  );
+  const selectedCells = useDesignerStore((s) =>
+    s.selectedCells?.tableId === component.id ? s.selectedCells : null
+  );
   const setSelectedCell = useDesignerStore((s) => s.setSelectedCell);
   const setSelectedCells = useDesignerStore((s) => s.setSelectedCells);
   const setTableSheetEditId = useDesignerStore((s) => s.setTableSheetEditId);
@@ -38,6 +52,11 @@ export function TablePreview({ component }: { component: TableComponent }) {
   // DOM-measured column handle positions (zoom-independent %, pixel-accurate)
   const [domColPercents, setDomColPercents] = useState<number[]>([]);
   const domColKeyRef = useRef<string>('');
+
+  // Signature of everything that affects overlay geometry. Lets the layout pass
+  // skip its (forced-reflow) DOM measurement when only the selection/hover changed
+  // — which is what makes clicking cells in edit mode feel heavy.
+  const layoutSigRef = useRef<string>('');
 
   useEffect(() => {
     if (!isTableSelected) setIsTableEditing(false);
@@ -86,7 +105,10 @@ export function TablePreview({ component }: { component: TableComponent }) {
       for (const entry of entries) {
         const tableMm = LayoutEngine.pxToMm(entry.contentRect.height);
         if (Math.abs(tableMm - (component.height || 60)) > 2) {
-          updateComponent(component.id, { height: Math.ceil(tableMm) } as any);
+          // Auto-fit height is a derived value — never record it in history,
+          // otherwise it pushes a junk entry after every real edit (delete/merge/
+          // resize) which truncates the redo stack and breaks undo/redo.
+          updateComponent(component.id, { height: Math.ceil(tableMm) } as any, true);
         }
       }
     });
@@ -101,6 +123,41 @@ export function TablePreview({ component }: { component: TableComponent }) {
     const table = tableRef.current;
     const container = tableContainerRef.current;
     if (!table || !container) return;
+
+    // Everything below only drives the sheet-edit resize overlay (handles, ghost
+    // lines, merge segments). This effect has no dependency array, so it runs on
+    // every render — and since TablePreview subscribes to the global selectedCell/
+    // selectedCells, a cell click in ANY table re-renders EVERY table. Bailing out
+    // here keeps idle tables from force-reflowing the DOM (getBoundingClientRect on
+    // every row/cell) when they have nothing to draw.
+    if (!isTableSelected || !isTableEditing) {
+      // Reset so re-entering edit mode always re-measures (row-divider tops are
+      // applied imperatively and would otherwise stay stale on the next session).
+      layoutSigRef.current = '';
+      return;
+    }
+
+    // Selection/hover changes re-render the table but never move a handle. Skip the
+    // measurement below unless something that actually affects the overlay geometry
+    // changed (zoom, table size, column widths, row heights, or cell spans). This is
+    // what keeps clicking cells in edit mode snappy instead of forcing a full reflow.
+    const flatRows = [...headerRows, ...previewSections.flatMap((sec) => sec.rows)];
+    const layoutSig = [
+      zoom,
+      component.width,
+      component.height,
+      component.columns.map((c) => c.width).join(','),
+      flatRows
+        .map(
+          (r) =>
+            `${r.id}:${r.height ?? ''}:${r.cells
+              .map((c) => `${c.colspan ?? 1}x${c.rowspan ?? 1}`)
+              .join('-')}`
+        )
+        .join(';'),
+    ].join('|');
+    if (layoutSig === layoutSigRef.current) return;
+    layoutSigRef.current = layoutSig;
 
     const tableRect = table.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
@@ -171,9 +228,6 @@ export function TablePreview({ component }: { component: TableComponent }) {
       domColKeyRef.current = domColKey;
       setDomColPercents(newDomColPercents.length === totalCols - 1 ? newDomColPercents : []);
     }
-
-    // Compute segments only when the sheet-edit overlay is active
-    if (!isTableSelected || !isTableEditing) return;
 
     const allFlatRows: TableRow[] = [...headerRows, ...previewSections.flatMap((sec) => sec.rows)];
     if (totalCols < 2 || allFlatRows.length === 0) return;
@@ -278,30 +332,75 @@ export function TablePreview({ component }: { component: TableComponent }) {
     setSelectedCells as any
   );
 
-  const { handleCellSave } = useTableActions(
+  const {
+    handleCellSave,
+    handleMerge,
+    handleSplit,
+    handleInsertRow,
+    handleInsertCol,
+    handleDeleteRows,
+    handleDeleteColumns,
+    handleClearContents,
+    canMerge,
+    canSplit,
+    canDeleteRow,
+    canDeleteColumn,
+    canClear,
+  } = useTableActions(
     component,
     selectedCell as any,
     selectedCells as any,
     (id, updates) => updateComponent(id, updates as any),
-    setSelectedCell as any
+    setSelectedCell as any,
+    setSelectedCells as any
+  );
+
+  // Right-click cell context menu (viewport coordinates)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const handleCellContextMenu = useCallback(
+    (section: SectionType, rowId: string, logicalCol: number, e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Right-click also enters sheet mode so the selection is visible.
+      setIsTableEditing(true);
+      // If the clicked cell isn't part of the current selection, select just it.
+      if (!isCellSelected(section, rowId, logicalCol)) {
+        setSelectedCell({ tableId: component.id, section, rowId, cellIdx: logicalCol });
+        setSelectedCells({
+          tableId: component.id,
+          section,
+          rowIds: [rowId],
+          cellIndices: [logicalCol],
+        });
+      }
+      setContextMenu({ x: e.clientX, y: e.clientY });
+    },
+    [component.id, isCellSelected, setSelectedCell, setSelectedCells]
   );
 
   // ─── Build row sections ────────────────────────────────────────────────
-  const headerRows: TableRow[] = component.headerRows?.length
-    ? component.headerRows
-    : component.showHeader !== false
-      ? [
-          {
-            id: 'synthetic-header',
-            type: 'header',
-            cells: component.columns.map((c) => ({
-              id: c.id,
-              content: c.header || '',
-              align: c.align || 'left',
-            })),
-          },
-        ]
-      : [];
+  // Memoized so synthetic rows keep a stable identity across selection re-renders —
+  // required for the memoized cells to skip re-rendering when only selection changed.
+  const headerRows: TableRow[] = useMemo(
+    () =>
+      component.headerRows?.length
+        ? component.headerRows
+        : component.showHeader !== false
+          ? [
+              {
+                id: 'synthetic-header',
+                type: 'header',
+                cells: component.columns.map((c) => ({
+                  id: c.id,
+                  content: c.header || '',
+                  align: c.align || 'left',
+                })),
+              },
+            ]
+          : [],
+    [component.headerRows, component.showHeader, component.columns]
+  );
 
   type PreviewSection = {
     rows: TableRow[];
@@ -310,7 +409,9 @@ export function TablePreview({ component }: { component: TableComponent }) {
     isHeader: boolean;
   };
 
-  const buildPreviewSections = (): PreviewSection[] => {
+  // Memoized (stable identity) so cells inside these sections don't re-render on
+  // unrelated changes like selection. Recomputed only when the underlying data changes.
+  const previewSections: PreviewSection[] = useMemo(() => {
     const sections: PreviewSection[] = [];
 
     if (component.groupBy) {
@@ -380,9 +481,15 @@ export function TablePreview({ component }: { component: TableComponent }) {
     }
 
     return sections;
-  };
-
-  const previewSections = buildPreviewSections();
+  }, [
+    component.groupBy,
+    component.groupHeaderFormat,
+    component.detailRows,
+    component.columns,
+    component.autoGroupFooter,
+    component.autoGroupFooterLabel,
+    component.footerRows,
+  ]);
 
   // ─── Flat row list for overlay dividers ──────────────────────────────────
   const allRenderedRows: {
@@ -407,51 +514,135 @@ export function TablePreview({ component }: { component: TableComponent }) {
     ),
   ];
 
-  // ─── Style helpers ────────────────────────────────────────────────────
-  const style = component.style || {};
-  const isStaticTable = component.isStatic ?? false;
-  const sides = style.borderSides ?? {
-    top: true,
-    bottom: true,
-    left: true,
-    right: true,
-    innerH: true,
-    innerV: true,
+  // ─── Style context (memoized so its identity is stable across selection re-renders) ──
+  const cellCtx: CellStyleCtx = useMemo(() => {
+    const style = component.style || {};
+    const toCssDash = (d: string) =>
+      d === 'dashed' ? 'dashed' : d === 'dotted' ? 'dotted' : 'solid';
+    return {
+      style,
+      isStaticTable: component.isStatic ?? false,
+      sides: style.borderSides ?? {
+        top: true,
+        bottom: true,
+        left: true,
+        right: true,
+        innerH: true,
+        innerV: true,
+      },
+      cellPaddingPx: LayoutEngine.mmToPx(parseTypstUnit(style.inset || '2mm')),
+      headerBg: style.headerBackground || '#f1f5f9',
+      headerColor: style.headerColor || '#000000',
+      bodyColor: style.bodyColor || '#334155',
+      headerFontSize: style.headerFontSize || 10,
+      bodyFontSize: style.bodyFontSize || 10,
+      headerFontWeight: style.headerFontWeight || 'bold',
+      pattern: style.fillPattern || 'header-only',
+      c1: style.stripedColor1 || '#ffffff',
+      c2: style.stripedColor2 || '#f8fafc',
+      obWidth: LayoutEngine.mmToPx(parseTypstUnit(style.borderWidth || '0.5pt')),
+      obColor: style.borderColor || '#cbd5e1',
+      ihWidth: LayoutEngine.mmToPx(
+        parseTypstUnit(style.innerHBorderWidth || style.borderWidth || '0.5pt')
+      ),
+      ihColor: style.innerHBorderColor || style.borderColor || '#cbd5e1',
+      ihDash: style.horizontalDash || 'solid',
+      ivWidth: LayoutEngine.mmToPx(
+        parseTypstUnit(style.innerVBorderWidth || style.borderWidth || '0.5pt')
+      ),
+      ivColor: style.innerVBorderColor || style.borderColor || '#cbd5e1',
+      ivDash: style.verticalDash || 'solid',
+      hsBorderWidth: LayoutEngine.mmToPx(
+        parseTypstUnit(style.headerBorderWidth || style.borderWidth || '0.5pt')
+      ),
+      hsBorderColor: style.headerBorderColor || style.borderColor || '#cbd5e1',
+      makeBorder: (show: boolean, w: number, c: string, dash = 'solid') =>
+        show ? `${w}px ${toCssDash(dash)} ${c}` : 'none',
+      groupHeaderStyle: component.groupHeaderStyle,
+      groupFooterStyle: component.groupFooterStyle,
+      columnsLength: component.columns.length,
+    };
+  }, [
+    component.style,
+    component.isStatic,
+    component.groupHeaderStyle,
+    component.groupFooterStyle,
+    component.columns.length,
+  ]);
+
+  // Stable per-cell callbacks (latest-ref pattern) so memoized cells don't re-render
+  // just because these closures got a new identity on the parent's re-render.
+  const cellFnRef = useRef<{
+    mouseDown: typeof handleCellMouseDown;
+    mouseEnter: typeof handleCellMouseEnter;
+    contextMenu: typeof handleCellContextMenu;
+    save: (
+      sectionKey: string,
+      rowIdx: number,
+      cell: TCell,
+      logicalCol: number,
+      isHeader: boolean,
+      newVal: string
+    ) => void;
+  }>({
+    mouseDown: handleCellMouseDown,
+    mouseEnter: handleCellMouseEnter,
+    contextMenu: handleCellContextMenu,
+    save: () => {},
+  });
+  cellFnRef.current.mouseDown = handleCellMouseDown;
+  cellFnRef.current.mouseEnter = handleCellMouseEnter;
+  cellFnRef.current.contextMenu = handleCellContextMenu;
+  cellFnRef.current.save = (sectionKey, rowIdx, cell, logicalCol, isHeader, newVal) => {
+    if (newVal === cell.content) return;
+    const schemaRows = (component[sectionKey as keyof TableComponent] as TableRow[]) || [];
+    // Legacy: no real schema rows → update columns array
+    if (!schemaRows.length) {
+      const newCols = [...component.columns];
+      if (isHeader) {
+        if (newCols[logicalCol]) newCols[logicalCol].header = newVal;
+        updateComponent(component.id, { columns: newCols } as any);
+      } else {
+        const fieldVal = newVal.replace(/[{}]/g, '');
+        if (newCols[logicalCol]) newCols[logicalCol].field = fieldVal;
+        updateComponent(component.id, { columns: newCols } as any);
+      }
+      return;
+    }
+    handleCellSave(sectionKey, schemaRows, rowIdx, cell.id, newVal);
   };
-  const cellPaddingPx = LayoutEngine.mmToPx(parseTypstUnit(style.inset || '2mm'));
-  const headerBg = style.headerBackground || '#f1f5f9';
-  const headerColor = style.headerColor || '#000000';
-  const bodyColor = style.bodyColor || '#334155';
-  const headerFontSize = style.headerFontSize || 10;
-  const bodyFontSize = style.bodyFontSize || 10;
-  const headerFontWeight = style.headerFontWeight || 'bold';
-  const pattern = style.fillPattern || 'header-only';
-  const c1 = style.stripedColor1 || '#ffffff';
-  const c2 = style.stripedColor2 || '#f8fafc';
 
-  const obWidth = LayoutEngine.mmToPx(parseTypstUnit(style.borderWidth || '0.5pt'));
-  const obColor = style.borderColor || '#cbd5e1';
-  const ihWidth = LayoutEngine.mmToPx(
-    parseTypstUnit(style.innerHBorderWidth || style.borderWidth || '0.5pt')
+  const onCellMouseDown = useCallback(
+    (section: SectionType, rowId: string, logicalCol: number, e: React.MouseEvent) =>
+      cellFnRef.current.mouseDown(section, rowId, logicalCol, e),
+    []
   );
-  const ihColor = style.innerHBorderColor || style.borderColor || '#cbd5e1';
-  const ihDash = style.horizontalDash || 'solid';
-  const ivWidth = LayoutEngine.mmToPx(
-    parseTypstUnit(style.innerVBorderWidth || style.borderWidth || '0.5pt')
+  const onCellMouseEnter = useCallback(
+    (section: SectionType, rowId: string, logicalCol: number) =>
+      cellFnRef.current.mouseEnter(section, rowId, logicalCol),
+    []
   );
-  const ivColor = style.innerVBorderColor || style.borderColor || '#cbd5e1';
-  const ivDash = style.verticalDash || 'solid';
-  const hsBorderWidth = LayoutEngine.mmToPx(
-    parseTypstUnit(style.headerBorderWidth || style.borderWidth || '0.5pt')
+  const onCellContextMenu = useCallback(
+    (section: SectionType, rowId: string, logicalCol: number, e: React.MouseEvent) =>
+      cellFnRef.current.contextMenu(section, rowId, logicalCol, e),
+    []
   );
-  const hsBorderColor = style.headerBorderColor || style.borderColor || '#cbd5e1';
-
-  const toCssDash = (d: string) =>
-    d === 'dashed' ? 'dashed' : d === 'dotted' ? 'dotted' : 'solid';
-  const makeBorder = (show: boolean, w: number, c: string, dash = 'solid') =>
-    show ? `${w}px ${toCssDash(dash)} ${c}` : 'none';
+  const onCellSave = useCallback(
+    (
+      sectionKey: string,
+      rowIdx: number,
+      cell: TCell,
+      logicalCol: number,
+      isHeader: boolean,
+      newVal: string
+    ) => cellFnRef.current.save(sectionKey, rowIdx, cell, logicalCol, isHeader, newVal),
+    []
+  );
+  const onEnterEdit = useCallback(() => setIsTableEditing(true), []);
 
   // ─── Render single cell ────────────────────────────────────────────────
+  // Computes only the per-cell selection state (cheap) and delegates all styling to
+  // the memoized TableCellView, so a selection change re-renders just the affected cells.
   const renderCell = (
     cell: TCell,
     logicalCol: number, // LOGICAL column — used for selection highlight & resize handles
@@ -462,121 +653,22 @@ export function TablePreview({ component }: { component: TableComponent }) {
     isHeader: boolean,
     sectionRows: TableRow[] // all rows in this section (for border calc)
   ) => {
-    const isGroupHeader = row.type === 'group-header';
-    const isGroupFooter = row.type === 'group-footer' || (row.type === 'footer' && !isHeader);
     const isSelected = isCellSelected(section, row.id, logicalCol);
     const isActiveCell =
       selectedCell?.tableId === component.id &&
       selectedCell.section === section &&
       selectedCell.rowId === row.id &&
       selectedCell.cellIdx === logicalCol;
-    const cellStyle = cell.style;
 
-    // Background
-    let cellFill = cell.fill || '';
-    if (!cellFill) {
-      if (isHeader) cellFill = headerBg;
-      else if (isGroupHeader)
-        cellFill = (component.groupHeaderStyle as any)?.background || 'transparent';
-      else if (isGroupFooter)
-        cellFill = (component.groupFooterStyle as any)?.background || 'transparent';
-      else if (pattern === 'striped-rows') cellFill = rowIdx % 2 === 0 ? c1 : c2;
-      else if (pattern === 'striped-cols') cellFill = logicalCol % 2 === 0 ? c1 : c2;
-      else if (pattern === 'checkerboard') cellFill = (rowIdx + logicalCol) % 2 === 0 ? c1 : c2;
-      else cellFill = 'transparent';
-    }
-
-    // Text styling
-    const ghStyle = component.groupHeaderStyle as any;
-    const gfStyle = component.groupFooterStyle as any;
-    const textColor =
-      cellStyle?.color ||
-      (isHeader
-        ? headerColor
-        : isGroupHeader
-          ? ghStyle?.color
-          : isGroupFooter
-            ? gfStyle?.color
-            : undefined) ||
-      bodyColor;
-    const fontSize =
-      cellStyle?.fontSize ||
-      (isHeader
-        ? headerFontSize
-        : isGroupHeader
-          ? ghStyle?.fontSize
-          : isGroupFooter
-            ? gfStyle?.fontSize
-            : undefined) ||
-      bodyFontSize;
-    const fontWeightRaw =
-      cellStyle?.fontWeight ||
-      (isHeader
-        ? headerFontWeight
-        : isGroupHeader
-          ? ghStyle?.fontWeight
-          : isGroupFooter
-            ? gfStyle?.fontWeight
-            : undefined) ||
-      'normal';
-
-    const fontWeight = (() => {
-      const w = fontWeightRaw;
-      if (!w) return 'normal';
-      if (typeof w === 'number') return String(w);
-      switch (w) {
-        case 'thin':
-          return '100';
-        case 'light':
-          return '300';
-        case 'regular':
-          return 'normal';
-        case 'medium':
-          return '500';
-        case 'semibold':
-          return '600';
-        case 'bold':
-          return 'bold';
-        case 'extrabold':
-          return '800';
-        case 'black':
-          return '900';
-        default:
-          return w;
-      }
-    })();
-    const isItalic =
-      cellStyle?.italic ??
-      (isGroupFooter ? !!gfStyle?.italic : isGroupHeader ? !!ghStyle?.italic : false);
-    const isUnderline = cellStyle?.underline ?? (isGroupFooter ? !!gfStyle?.underline : false);
-    const isStrikethrough =
-      cellStyle?.strikethrough ??
-      (isGroupFooter ? !!gfStyle?.strikethrough : isGroupHeader ? !!ghStyle?.strikethrough : false);
-
-    const cellDecorations: string[] = [];
-    if (isUnderline) cellDecorations.push('underline');
-    if (isStrikethrough) cellDecorations.push('line-through');
-    const cellTextDecoration = cellDecorations.length > 0 ? cellDecorations.join(' ') : 'none';
-
-    const cellFontFamily = cellStyle?.fontFamily || style.fontFamily;
-    const resolvedAlign = cell.align || 'left';
-    const isVertical = (cell.textDirection || 'horizontal') === 'vertical';
-    const placeholder =
-      isHeader || isGroupHeader || isGroupFooter ? '' : isStaticTable ? '' : '{{binding}}';
-
-    // Border calculation
     const isFirstRow = sectionRows.indexOf(row) === 0;
     const isLastRow = sectionRows.indexOf(row) === sectionRows.length - 1;
-    const isFirstCol = logicalCol === 0;
-    const isLastCol = logicalCol + (cell.colspan || 1) === component.columns.length;
-    const isLastHeaderRow = isHeader && isLastRow;
     const colSpan = cell.colspan || 1;
 
     const isSelectedAt = (targetRowIdx: number, targetCol: number) => {
       const targetRow = sectionRows[targetRowIdx];
       return targetRow ? isCellSelected(section, targetRow.id, targetCol) : false;
     };
-
+    // Non-null only when selected, so unselected cells keep a stable `null` prop.
     const selectionEdges = isSelected
       ? {
           top: !isSelectedAt(rowIdx - 1, logicalCol),
@@ -586,122 +678,30 @@ export function TablePreview({ component }: { component: TableComponent }) {
         }
       : null;
 
-    const borderStyle: React.CSSProperties = {
-      borderTop: isFirstRow
-        ? makeBorder(sides.top, obWidth, obColor)
-        : makeBorder(sides.innerH, ihWidth, ihColor, ihDash),
-      borderBottom: isLastHeaderRow
-        ? makeBorder(true, hsBorderWidth, hsBorderColor)
-        : isLastRow
-          ? makeBorder(sides.bottom, obWidth, obColor)
-          : makeBorder(sides.innerH, ihWidth, ihColor, ihDash),
-      borderLeft: isFirstCol
-        ? makeBorder(sides.left, obWidth, obColor)
-        : makeBorder(sides.innerV, ivWidth, ivColor, ivDash),
-      borderRight: isLastCol
-        ? makeBorder(sides.right, obWidth, obColor)
-        : makeBorder(sides.innerV, ivWidth, ivColor, ivDash),
-    };
-
-    const Tag = isHeader ? 'th' : 'td';
-
-    // For saving: find which section rows array to use
-    const schemaRows = (component[sectionKey as keyof TableComponent] as TableRow[]) || [];
-
     return (
-      <Tag
+      <TableCellView
         key={`${section}-${row.id}-${logicalCol}`}
-        colSpan={cell.colspan && cell.colspan > 1 ? cell.colspan : undefined}
-        rowSpan={cell.rowspan && cell.rowspan > 1 ? cell.rowspan : undefined}
-        onMouseDown={(e) => handleCellMouseDown(section, row.id, logicalCol, e)}
-        onMouseEnter={() => handleCellMouseEnter(section, row.id, logicalCol)}
-        onClick={(e) => e.stopPropagation()}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          setIsTableEditing(true);
-        }}
-        className={clsx(
-          'relative group/cell',
-          isTableEditing ? 'cursor-text' : 'cursor-default',
-          isSelected && 'z-10',
-          isActiveCell && isTableEditing && 'z-20'
-        )}
-        style={{
-          ...borderStyle,
-          backgroundColor: cellFill,
-          padding: `${cellPaddingPx}px`,
-          textAlign: resolvedAlign as any,
-          verticalAlign: cell.verticalAlign || 'middle',
-          ...(isVertical
-            ? { writingMode: 'vertical-rl' as any, textOrientation: 'mixed' as any }
-            : {}),
-        }}
-      >
-        {/* Figma-style cell selection — 1px outline; active cell uses inset shadow only (no stacked borders) */}
-        {isSelected && isTableEditing && (
-          <div
-            aria-hidden
-            className="absolute inset-0 pointer-events-none z-[5] bg-[var(--accent)]/[0.03]"
-            style={
-              isActiveCell
-                ? { boxShadow: 'inset 0 0 0 1px var(--accent)' }
-                : {
-                    borderTop: selectionEdges?.top ? '1px solid var(--accent)' : undefined,
-                    borderBottom: selectionEdges?.bottom ? '1px solid var(--accent)' : undefined,
-                    borderLeft: selectionEdges?.left ? '1px solid var(--accent)' : undefined,
-                    borderRight: selectionEdges?.right ? '1px solid var(--accent)' : undefined,
-                  }
-            }
-          />
-        )}
-        {isSelected && !isTableEditing && (
-          <div
-            aria-hidden
-            className="absolute inset-0 pointer-events-none z-[5] bg-[var(--accent)]/[0.04]"
-          />
-        )}
-        <CellEditor
-          readOnly={!isTableEditing}
-          className="w-full bg-transparent border-none focus:ring-0 outline-none placeholder:text-slate-300/60"
-          style={{
-            textAlign: resolvedAlign as any,
-            fontFamily: cellFontFamily || 'inherit',
-            color: textColor,
-            fontSize: `${fontSize}pt`,
-            fontWeight,
-            fontStyle: isItalic ? 'italic' : 'normal',
-            textDecoration: cellTextDecoration,
-            lineHeight: 1.4,
-            ...(isVertical
-              ? {
-                  writingMode: 'vertical-rl' as any,
-                  textOrientation: 'mixed' as any,
-                  width: 'auto',
-                  height: '100%',
-                }
-              : {}),
-          }}
-          initialValue={cell.content || ''}
-          placeholder={placeholder}
-          onSave={(newVal) => {
-            if (newVal === cell.content) return;
-            // Legacy: no real schema rows → update columns array
-            if (!schemaRows.length) {
-              const newCols = [...component.columns];
-              if (isHeader) {
-                if (newCols[logicalCol]) newCols[logicalCol].header = newVal;
-                updateComponent(component.id, { columns: newCols } as any);
-              } else {
-                const fieldVal = newVal.replace(/[{}]/g, '');
-                if (newCols[logicalCol]) newCols[logicalCol].field = fieldVal;
-                updateComponent(component.id, { columns: newCols } as any);
-              }
-              return;
-            }
-            handleCellSave(sectionKey, schemaRows, rowIdx, cell.id, newVal);
-          }}
-        />
-      </Tag>
+        cell={cell}
+        logicalCol={logicalCol}
+        rowId={row.id}
+        rowIdx={rowIdx}
+        rowType={row.type}
+        section={section}
+        sectionKey={sectionKey}
+        isHeader={isHeader}
+        isFirstRow={isFirstRow}
+        isLastRow={isLastRow}
+        isTableEditing={isTableEditing}
+        isSelected={isSelected}
+        isActiveCell={!!isActiveCell}
+        selectionEdges={selectionEdges}
+        ctx={cellCtx}
+        onCellMouseDown={onCellMouseDown}
+        onCellMouseEnter={onCellMouseEnter}
+        onCellContextMenu={onCellContextMenu}
+        onEnterEdit={onEnterEdit}
+        onCellSave={onCellSave}
+      />
     );
   };
 
@@ -732,16 +732,19 @@ export function TablePreview({ component }: { component: TableComponent }) {
   };
 
   // ─── Column widths via <colgroup> ─────────────────────────────────────
-  const colWidths = resolveTableColumnPercentages(component.columns, component.width || 180);
+  const colWidths = useMemo(
+    () => resolveTableColumnPercentages(component.columns, component.width || 180),
+    [component.columns, component.width]
+  );
 
   // Cumulative column percentages — used to position column dividers in the overlay
-  const cumColWidths = (() => {
+  const cumColWidths = useMemo(() => {
     let cum = 0;
     return colWidths.map((w) => {
       cum += w ? Number.parseFloat(w) : 0;
       return cum;
     });
-  })();
+  }, [colWidths]);
 
   return (
     <div
@@ -769,7 +772,7 @@ export function TablePreview({ component }: { component: TableComponent }) {
         style={{
           borderCollapse: 'collapse',
           tableLayout: 'fixed',
-          fontFamily: style.fontFamily || 'inherit',
+          fontFamily: cellCtx.style.fontFamily || 'inherit',
         }}
       >
         <colgroup>
@@ -835,6 +838,70 @@ export function TablePreview({ component }: { component: TableComponent }) {
         ref={tooltipRef}
         className="hidden absolute z-[70] px-1.5 py-0.5 rounded text-[10px] font-medium tabular-nums text-[var(--text-primary)] bg-[var(--bg-widget)] border border-[var(--border-default)] shadow-sm pointer-events-none whitespace-nowrap -translate-x-1/2"
       />
+
+      {contextMenu && (
+        <TableCellContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          items={
+            [
+              {
+                key: 'merge',
+                label: 'Merge cells',
+                icon: Merge,
+                onClick: handleMerge,
+                disabled: !canMerge,
+              },
+              {
+                key: 'split',
+                label: 'Split cell',
+                icon: Split,
+                onClick: handleSplit,
+                disabled: !canSplit,
+              },
+              {
+                key: 'insert-row',
+                label: 'Insert row below',
+                icon: Rows3,
+                onClick: handleInsertRow,
+                separatorBefore: true,
+              },
+              {
+                key: 'insert-col',
+                label: 'Insert column right',
+                icon: Columns2,
+                onClick: handleInsertCol,
+              },
+              {
+                key: 'delete-row',
+                label: 'Delete row',
+                icon: Trash2,
+                onClick: handleDeleteRows,
+                disabled: !canDeleteRow,
+                danger: true,
+                separatorBefore: true,
+              },
+              {
+                key: 'delete-col',
+                label: 'Delete column',
+                icon: Trash2,
+                onClick: handleDeleteColumns,
+                disabled: !canDeleteColumn,
+                danger: true,
+              },
+              {
+                key: 'clear',
+                label: 'Clear contents',
+                icon: Eraser,
+                onClick: handleClearContents,
+                disabled: !canClear,
+                separatorBefore: true,
+              },
+            ] satisfies ContextMenuItem[]
+          }
+        />
+      )}
     </div>
   );
-}
+});

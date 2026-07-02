@@ -9,11 +9,14 @@ import {
   buildCanvasContext,
   buildTechnicalConstraints,
 } from '@/lib/ai/prompt-config';
-import { resolveAiModel } from '@/lib/utils/ai-models';
+import {
+  AI_PROVIDER_CONFIG,
+  getAiModel,
+  resolveAiModel,
+  resolveAiProvider,
+} from '@/lib/utils/ai-models';
 import type { ComponentNode, LayoutSchema } from '@/types/schema';
 import type { NextRequest } from 'next/server';
-
-const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 
 const TOOLS = [
   {
@@ -84,6 +87,67 @@ const TOOLS = [
           },
         },
         required: ['zone', 'x', 'y', 'width', 'height', 'dataSource', 'columns'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_static_table',
+      description:
+        'Add a static table with literal cell values and support for MERGED cells (colspan/rowspan). Use this to reproduce bordered/complex tables — e.g. from an imported PDF — where cells span multiple columns or rows. Unlike add_table, it does NOT bind to data; every cell content is literal text.',
+      parameters: {
+        type: 'object',
+        properties: {
+          zone: { type: 'string', enum: ['header', 'body', 'footer'] },
+          x: { type: 'number', description: 'X position in mm' },
+          y: { type: 'number', description: 'Y position in mm' },
+          width: { type: 'number', description: 'Total table width in mm' },
+          height: { type: 'number', description: 'Total table height in mm' },
+          columns: {
+            type: 'array',
+            description: 'Column definitions left→right. Length = number of grid columns.',
+            items: {
+              type: 'object',
+              properties: {
+                width: {
+                  type: 'string',
+                  description: 'Column width: "30mm", "1fr", "auto", "20%"',
+                },
+                align: { type: 'string', enum: ['left', 'center', 'right'] },
+              },
+            },
+          },
+          rows: {
+            type: 'array',
+            description:
+              'Rows top→bottom. In each row list ONLY the cells that START there. A cell with colspan/rowspan covers neighbouring positions which you must NOT list again.',
+            items: {
+              type: 'object',
+              properties: {
+                cells: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      content: { type: 'string', description: 'Literal cell text (may be empty)' },
+                      colspan: {
+                        type: 'number',
+                        description: 'Columns this cell spans (default 1)',
+                      },
+                      rowspan: { type: 'number', description: 'Rows this cell spans (default 1)' },
+                      bold: { type: 'boolean' },
+                      align: { type: 'string', enum: ['left', 'center', 'right'] },
+                    },
+                    required: ['content'],
+                  },
+                },
+              },
+              required: ['cells'],
+            },
+          },
+        },
+        required: ['zone', 'x', 'y', 'width', 'height', 'columns', 'rows'],
       },
     },
   },
@@ -694,11 +758,6 @@ ${INTENT_FORMAT}`;
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return Response.json({ error: 'OPENROUTER_API_KEY is not configured' }, { status: 500 });
-  }
-
   const body = (await req.json()) as {
     messages: Array<{
       role: string;
@@ -713,6 +772,16 @@ export async function POST(req: NextRequest) {
     aiMode?: 'plan' | 'act';
   };
   const model = resolveAiModel(body.model ?? process.env.OPENROUTER_MODEL_NAME);
+  const provider = resolveAiProvider(model);
+  const providerConfig = AI_PROVIDER_CONFIG[provider];
+  const apiKey = process.env[providerConfig.apiKeyEnv];
+
+  if (!apiKey) {
+    return Response.json(
+      { error: `${providerConfig.apiKeyEnv} is not configured` },
+      { status: 500 }
+    );
+  }
 
   const isChatMode = body.mode === 'chat';
   const isPlanMode = body.mode === 'plan';
@@ -731,16 +800,20 @@ export async function POST(req: NextRequest) {
 
   const hasTools = !isChatMode && !isPlanMode;
 
-  const upstream = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+  if (provider === 'openrouter') {
+    headers['HTTP-Referer'] = req.headers.get('origin') ?? 'https://typstflow.app';
+    headers['X-Title'] = 'TypstFlow';
+  }
+
+  const upstream = await fetch(`${providerConfig.baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': req.headers.get('origin') ?? 'https://typstflow.app',
-      'X-Title': 'TypstFlow',
-    },
+    headers,
     body: JSON.stringify({
-      model,
+      model: getAiModel(model)?.id ?? model,
       max_tokens: isChatMode ? 1024 : isPlanMode ? 2048 : isQuickMode ? 1024 : 4096,
       messages: [{ role: 'system', content: systemPrompt }, ...body.messages],
       ...(hasTools ? { tools: TOOLS, tool_choice: isQuickMode ? 'required' : 'auto' } : {}),

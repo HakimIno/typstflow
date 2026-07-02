@@ -3,24 +3,11 @@ import { useDesignerStore } from '@/store/designer-store';
 import { useEffect } from 'react';
 
 export function useKeyboardShortcuts() {
-  // All store actions are stable references (Zustand guarantees this), so they never
-  // need to be in the effect dep array. selectedComponentIds is read via getState()
-  // inside the handler to avoid re-registering the listener on every selection change.
-  const {
-    undo,
-    redo,
-    copySelected,
-    paste,
-    duplicateSelected,
-    nudgeSelected,
-    removeComponents,
-    clearSelection,
-    alignSelected,
-    distributeSelected,
-    alignToPage,
-  } = useDesignerStore();
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: all closured vars are stable Zustand action refs; selectedComponentIds is read via getState() inside the handler — see dep array comment
+  // IMPORTANT: do NOT subscribe to the store here. This hook is mounted on the root
+  // DesignerPage, so a reactive subscription — even one that only pulls stable action
+  // refs — re-renders the ENTIRE page tree on every store change (drag deltas,
+  // selection, cell edits, height auto-fit…). All actions and selection are read
+  // fresh from getState() inside the handler, so no subscription is needed.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore shortcuts if the user is typing in an input/textarea or a code editor
@@ -35,8 +22,21 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Read current selection fresh — avoids stale closure and dep array churn
-      const selectedComponentIds = useDesignerStore.getState().selectedComponentIds;
+      // Read actions + selection fresh from the store (no reactive subscription).
+      const {
+        undo,
+        redo,
+        copySelected,
+        paste,
+        duplicateSelected,
+        nudgeSelected,
+        removeComponents,
+        clearSelection,
+        alignSelected,
+        distributeSelected,
+        alignToPage,
+        selectedComponentIds,
+      } = useDesignerStore.getState();
 
       const isMod = e.ctrlKey || e.metaKey;
       const isShift = e.shiftKey;

@@ -1,5 +1,11 @@
 import { buildLogicalGrid } from '@/lib/utils/table-grid';
-import { insertColumn, insertStructuredRow, mergeStructuredCells } from '@/lib/utils/table-utils';
+import {
+  clearCellContents,
+  deleteColumns,
+  insertColumn,
+  insertStructuredRow,
+  mergeStructuredCells,
+} from '@/lib/utils/table-utils';
 import type { TableComponent, TableRow } from '@/types/schema';
 import type { CellCoord, CellsSelection, SectionType } from './useCellSelection';
 
@@ -8,13 +14,19 @@ export function useTableActions(
   selectedCell: CellCoord | null,
   selectedCells: CellsSelection | null,
   updateComponent: (id: string, updates: Record<string, unknown>) => void,
-  setSelectedCell: (cell: CellCoord | null) => void
+  setSelectedCell: (cell: CellCoord | null) => void,
+  setSelectedCells?: (cells: CellsSelection | null) => void
 ) {
   const sectionKey = (section: SectionType) =>
     section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
 
   const getRows = (section: SectionType): TableRow[] =>
     (component[sectionKey(section) as keyof TableComponent] as TableRow[]) || [];
+
+  const clearCellSelection = () => {
+    setSelectedCell(null);
+    setSelectedCells?.(null);
+  };
 
   const handleMerge = () => {
     if (!selectedCells) return;
@@ -91,6 +103,35 @@ export function useTableActions(
     setSelectedCell(null);
   };
 
+  /** Delete the selected rows from a structured section (no-op for synthetic tables). */
+  const handleDeleteRows = () => {
+    if (!selectedCells) return;
+    const { section, rowIds } = selectedCells;
+    const rows = getRows(section);
+    if (!rows.length) return;
+    const newRows = rows.filter((r) => !rowIds.includes(r.id));
+    if (newRows.length === rows.length) return;
+    updateComponent(component.id, { [sectionKey(section)]: newRows });
+    clearCellSelection();
+  };
+
+  /** Delete the selected columns across every section (colspan-aware). */
+  const handleDeleteColumns = () => {
+    if (!selectedCells) return;
+    const updates = deleteColumns(component, selectedCells.cellIndices);
+    if (!updates.columns) return; // guarded against deleting the last column
+    updateComponent(component.id, updates as Record<string, unknown>);
+    clearCellSelection();
+  };
+
+  /** Clear text content of the selected cells, keeping the grid shape intact. */
+  const handleClearContents = () => {
+    if (!selectedCells) return;
+    const updates = clearCellContents(component, selectedCells);
+    if (Object.keys(updates).length === 0) return;
+    updateComponent(component.id, updates as Record<string, unknown>);
+  };
+
   const handleInsertRow = () => {
     if (!selectedCells) return;
     const section = selectedCells.section;
@@ -125,12 +166,46 @@ export function useTableActions(
     updateComponent(component.id, { [key]: newRows });
   };
 
+  // ─── Availability flags (drive context-menu enabled/disabled state) ─────────
+  const distinctCols = selectedCells ? new Set(selectedCells.cellIndices).size : 0;
+
+  const canMerge =
+    !!selectedCells && (selectedCells.rowIds.length > 1 || selectedCells.cellIndices.length > 1);
+
+  const canSplit = (() => {
+    if (!selectedCell) return false;
+    const rows = getRows(selectedCell.section);
+    if (!rows.length) return false;
+    const grid = buildLogicalGrid(rows, component.columns.length);
+    const rowIdx = rows.findIndex((r) => r.id === selectedCell.rowId);
+    if (rowIdx === -1) return false;
+    const slot = grid[rowIdx]?.[selectedCell.cellIdx];
+    if (!slot) return false;
+    const cell = rows[slot.ownerRowIdx]?.cells[slot.ownerPhysIdx];
+    return !!cell && ((cell.colspan || 1) > 1 || (cell.rowspan || 1) > 1);
+  })();
+
+  const canDeleteRow = !!selectedCells && getRows(selectedCells.section).length > 0;
+
+  const canDeleteColumn =
+    !!selectedCells && distinctCols >= 1 && component.columns.length - distinctCols >= 1;
+
+  const canClear = !!selectedCells;
+
   return {
     handleMerge,
     handleSplit,
     handleDelete,
+    handleDeleteRows,
+    handleDeleteColumns,
+    handleClearContents,
     handleInsertRow,
     handleInsertCol,
     handleCellSave,
+    canMerge,
+    canSplit,
+    canDeleteRow,
+    canDeleteColumn,
+    canClear,
   };
 }

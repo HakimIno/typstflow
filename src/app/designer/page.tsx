@@ -58,6 +58,11 @@ export default function DesignerPage() {
   }, []);
 
   useEffect(() => {
+    // Dev-only diagnostics panel. Overriding console in production is pointless
+    // (the panel isn't rendered) and every captured log calls setLogs on this root
+    // component, which would re-render the whole page tree.
+    if (process.env.NODE_ENV !== 'development') return;
+
     const handleLog = (type: string, ...args: any[]) => {
       const msg = `[${type.toUpperCase()}] ${args
         .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))

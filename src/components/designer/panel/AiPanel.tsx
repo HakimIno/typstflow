@@ -4,10 +4,14 @@ import {
   DropdownMenu,
   DropdownMenuHeader,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/components/shared/DropdownMenu';
 import { type AgentMessage, useAiAgent } from '@/hooks/use-ai-agent';
-import { AI_MODELS } from '@/lib/utils/ai-models';
+import { AI_MODELS, PROVIDER_LABELS, PROVIDER_ORDER } from '@/lib/utils/ai-models';
+import { type PdfImportData, extractPdfImport } from '@/lib/utils/pdf-lattice';
 import { isPdfFile, pdfFirstPageToImage } from '@/lib/utils/pdf-to-image';
+import { serializeImportForPrompt } from '@/lib/utils/pdf-to-schema';
 import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import {
@@ -269,8 +273,11 @@ export const AiPanel = memo(function AiPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
-  // 'pdf' when the attachment came from a rasterized PDF — drives the UI hint.
-  const [attachedKind, setAttachedKind] = useState<'image' | 'pdf'>('image');
+  // 'pdf' = rasterized page (vision), 'pdf-text' = extracted text layer (precise).
+  const [attachedKind, setAttachedKind] = useState<'image' | 'pdf' | 'pdf-text'>('image');
+  // Extracted PDF (text layer + ruling lines) for the precise deterministic import.
+  const [pdfImport, setPdfImport] = useState<PdfImportData | null>(null);
+  const [pdfSummary, setPdfSummary] = useState<string | null>(null);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
 
@@ -310,13 +317,27 @@ export const AiPanel = memo(function AiPanel() {
       const file = e.target.files?.[0];
       if (!file) return;
       setFileError(null);
+      setPdfImport(null);
+      setPdfSummary(null);
       setIsProcessingFile(true);
       try {
         if (isPdfFile(file)) {
-          // Rasterize the first page at high resolution for accurate extraction.
-          const dataUrl = await pdfFirstPageToImage(file);
-          setAttachedImage(dataUrl);
-          setAttachedKind('pdf');
+          // Prefer the real text layer + ruling lines (precise — text/coords are
+          // exact). Fall back to rasterizing for scanned/image-only PDFs.
+          const result = await extractPdfImport(file);
+          if (result.extraction.hasTextLayer) {
+            setPdfImport(result);
+            const { lines, paperSize, orientation } = result.extraction;
+            setPdfSummary(
+              `${lines.length} lines · ${result.rules.length} rules · ${paperSize} ${orientation}`
+            );
+            setAttachedImage(null);
+            setAttachedKind('pdf-text');
+          } else {
+            const dataUrl = await pdfFirstPageToImage(file);
+            setAttachedImage(dataUrl);
+            setAttachedKind('pdf');
+          }
         } else {
           const src = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -347,6 +368,39 @@ export const AiPanel = memo(function AiPanel() {
   const setAiModel = useDesignerStore((s) => s.setAiModel);
   const setAiMode = useDesignerStore((s) => s.setAiMode);
   const rewindToCheckpoint = useDesignerStore((s) => s.rewindToCheckpoint);
+  const importSchema = useDesignerStore((s) => s.importSchema);
+
+  // Prepare a blank frame for an AI-driven import: page sized to the source,
+  // header/footer/margins zeroed and the body cleared in absolute mode so the
+  // agent can place components at the PDF's page-absolute coordinates 1:1.
+  const applyImportFrame = useCallback(
+    (extraction: PdfImportData['extraction']) => {
+      const base = useDesignerStore.getState().schema;
+      const firstPage = base.pages[0];
+      const newSchema = {
+        ...base,
+        page: {
+          ...base.page,
+          size: extraction.paperSize,
+          orientation: extraction.orientation,
+          margin: { top: '0mm', bottom: '0mm', left: '0mm', right: '0mm' },
+        },
+        zones: {
+          ...base.zones,
+          header: { ...base.zones.header, minHeight: '0', components: [] },
+          footer: { ...base.zones.footer, components: [] },
+        },
+        pages: [
+          {
+            ...firstPage,
+            body: { ...firstPage.body, layoutMode: 'absolute' as const, components: [] },
+          },
+        ],
+      };
+      importSchema(JSON.stringify({ schema: newSchema }));
+    },
+    [importSchema]
+  );
 
   // Elapsed timer while loading
   useEffect(() => {
@@ -368,17 +422,47 @@ export const AiPanel = memo(function AiPanel() {
 
   const handleSend = useCallback(() => {
     const text = input.trim();
-    if ((!text && !attachedImage) || isLoading || isProcessingFile) return;
+    if ((!text && !attachedImage && !pdfImport) || isLoading || isProcessingFile) return;
+
+    // Precise PDF import: set up the exact frame, then hand the pre-computed
+    // structure (text + tables incl. merged cells) to the agent to build.
+    if (pdfImport) {
+      applyImportFrame(pdfImport.extraction);
+      const importBrief = serializeImportForPrompt(pdfImport.extraction, pdfImport.rules);
+      setInput('');
+      setPdfImport(null);
+      setPdfSummary(null);
+      setFileError(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      sendMessage(
+        'Reproduce the imported PDF page exactly using the structure below.',
+        undefined,
+        importBrief
+      );
+      return;
+    }
+
     const defaultPrompt =
       attachedKind === 'pdf'
         ? 'This is the first page of an existing PDF document. Reconstruct its exact layout — page size, margins, every text block, table, line, and signature area — and recreate it 1:1 in the canvas, then fill in the real values you can read from it.'
         : 'Analyze this image and recreate its layout as closely as possible.';
+    const img = attachedImage;
     setInput('');
     setAttachedImage(null);
+    setPdfSummary(null);
     setFileError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    sendMessage(text || defaultPrompt, attachedImage ?? undefined);
-  }, [input, attachedImage, attachedKind, isLoading, isProcessingFile, sendMessage]);
+    sendMessage(text || defaultPrompt, img ?? undefined);
+  }, [
+    input,
+    attachedImage,
+    pdfImport,
+    attachedKind,
+    isLoading,
+    isProcessingFile,
+    sendMessage,
+    applyImportFrame,
+  ]);
 
   const handleRevert = useCallback(
     (msg: AgentMessage) => {
@@ -401,11 +485,7 @@ export const AiPanel = memo(function AiPanel() {
         (m.toolCalls?.length ?? 0) > 0
     );
 
-  const modelLabel =
-    AI_MODELS.find((m) => m.id === aiModel)
-      ?.label.split(' ')
-      .slice(-2)
-      .join(' ') ?? 'Model';
+  const modelLabel = AI_MODELS.find((m) => m.id === aiModel)?.label ?? 'Model';
 
   return (
     <BasePanel allowOverflow>
@@ -483,7 +563,7 @@ export const AiPanel = memo(function AiPanel() {
             {isProcessingFile && (
               <div className="px-3 pt-2.5 flex items-center gap-2 text-[9px] text-[var(--text-muted)]">
                 <Loader2 className="w-3 h-3 animate-spin text-[var(--accent)]" />
-                Rendering PDF page…
+                Reading PDF…
               </div>
             )}
             {fileError && !isProcessingFile && (
@@ -511,6 +591,27 @@ export const AiPanel = memo(function AiPanel() {
                   {attachedKind === 'pdf'
                     ? 'PDF page attached — AI will reconstruct this layout'
                     : 'Image attached'}
+                </span>
+              </div>
+            )}
+            {pdfImport && !isProcessingFile && (
+              <div className="px-3 pt-2.5 flex items-center gap-2">
+                <div className="relative w-12 h-12 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-app)] shrink-0 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-[var(--accent)]" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPdfImport(null);
+                      setPdfSummary(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                  >
+                    <XCircle className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+                <span className="text-[9px] text-[var(--text-muted)]">
+                  PDF text layer · {pdfSummary} — Send and AI will rebuild it
                 </span>
               </div>
             )}
@@ -580,19 +681,33 @@ export const AiPanel = memo(function AiPanel() {
                     }
                   >
                     <DropdownMenuHeader>AI Model</DropdownMenuHeader>
-                    {AI_MODELS.map((model) => (
-                      <DropdownMenuItem
-                        key={model.id}
-                        label={model.label}
-                        onClick={() => setAiModel(model.id)}
-                        className={aiModel === model.id ? 'bg-white/5 text-[var(--accent)]' : ''}
-                        rightElement={
-                          <span className="text-[9px] uppercase tracking-tighter opacity-40">
-                            {model.tier}
-                          </span>
-                        }
-                      />
-                    ))}
+                    {PROVIDER_ORDER.map((provider, providerIndex) => {
+                      const models = AI_MODELS.filter((m) => m.provider === provider);
+                      if (models.length === 0) return null;
+                      return (
+                        <div key={provider}>
+                          {providerIndex > 0 && <DropdownMenuSeparator />}
+                          <DropdownMenuLabel>{PROVIDER_LABELS[provider]}</DropdownMenuLabel>
+                          {models.map((model) => (
+                            <DropdownMenuItem
+                              key={model.id}
+                              label={model.label}
+                              onClick={() => setAiModel(model.id)}
+                              className={
+                                aiModel === model.id
+                                  ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
+                                  : ''
+                              }
+                              rightElement={
+                                <span className="text-[9px] uppercase tracking-tighter opacity-40">
+                                  {model.tier}
+                                </span>
+                              }
+                            />
+                          ))}
+                        </div>
+                      );
+                    })}
                   </DropdownMenu>
                 )}
 

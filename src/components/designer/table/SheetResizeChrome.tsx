@@ -24,16 +24,26 @@ export function ColumnResizeHandle({
   onMouseDown,
   segments,
 }: ColumnResizeHandleProps) {
+  // An empty (but defined) segment list means this boundary lies entirely inside a
+  // merged cell — there is no divider here, so render nothing.
+  if (segments != null && segments.length === 0) return null;
+
   const pillTop = Math.max(headerMidPx, 10);
   const useSegments = segments != null && segments.length > 0;
   const lineStart = useSegments ? Math.min(...segments.map((seg) => seg.start)) : 0;
   const lineEnd = useSegments ? Math.max(...segments.map((seg) => seg.end)) : 0;
+  // Keep the pill at header level when that spot is on a visible segment; otherwise
+  // centre it in the widest visible segment so it never sits over a merged gap.
   const pillSegment =
     useSegments && segments.find((seg) => pillTop >= seg.start && pillTop <= seg.end);
+  const widestSeg =
+    useSegments && !pillSegment
+      ? segments.reduce((a, b) => (b.end - b.start > a.end - a.start ? b : a))
+      : null;
   const visiblePillTop = pillSegment
     ? pillTop
-    : useSegments
-      ? (lineStart + Math.min(...segments.map((seg) => seg.end))) / 2
+    : widestSeg
+      ? (widestSeg.start + widestSeg.end) / 2
       : pillTop;
 
   return (
@@ -83,15 +93,28 @@ interface RowResizeHandleProps {
 }
 
 export function RowResizeHandle({ rowId, onMouseDown, segments }: RowResizeHandleProps) {
+  // An empty (but defined) segment list means this boundary lies entirely inside a
+  // merged cell — there is no divider here, so render nothing.
+  if (segments != null && segments.length === 0) return null;
+
   const useSegments = segments != null && segments.length > 0;
-  // Center of the combined visible range — where the affordance pill sits
-  const midPct = useSegments ? (segments[0].start + segments[segments.length - 1].end) / 2 : 50;
+  // Pill sits at the centre of the WIDEST visible segment so it never lands in a
+  // merged gap (which would leave a stray dot floating over a merged cell).
+  const midPct = useSegments
+    ? (() => {
+        const widest = segments.reduce((a, b) => (b.end - b.start > a.end - a.start ? b : a));
+        return (widest.start + widest.end) / 2;
+      })()
+    : 50;
 
   return (
     <div
       data-row-divider={rowId}
       className="absolute left-0 right-0 z-[25] h-[8px] pointer-events-auto cursor-row-resize group/rowresizer"
-      style={{ top: 0, transform: 'translateY(-50%)' }}
+      // `top` is set imperatively by TablePreview's layout pass. Deliberately NOT
+      // set here so React doesn't reset it to 0 on every render — that would make
+      // the divider jump whenever the layout pass is skipped (e.g. on cell clicks).
+      style={{ transform: 'translateY(-50%)' }}
       onMouseDown={onMouseDown}
     >
       {/* Segmented or full-width divider line */}

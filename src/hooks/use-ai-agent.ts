@@ -16,8 +16,10 @@ import type {
   SignatureComponent,
   SpacerComponent,
   SummaryBoxComponent,
+  TableCell,
   TableColumn,
   TableComponent,
+  TableRow,
   TextComponent,
   Zone,
   ZoneKey,
@@ -201,6 +203,64 @@ function execTool(name: string, args: Record<string, unknown>): string {
       };
       store.addComponent(zone, comp, pageId);
       return `Added ${rawCols.length}-column table to ${zone}`;
+    }
+
+    case 'add_static_table': {
+      const rawCols = (args.columns as Array<{ width?: string; align?: string }>) ?? [];
+      const columns: TableColumn[] = rawCols.map((c, i) => ({
+        id: `col-${i}-${Date.now()}`,
+        header: '',
+        field: '',
+        width: c.width ?? 'auto',
+        align: (c.align as TableColumn['align']) ?? 'left',
+      }));
+      const rawRows =
+        (args.rows as Array<{
+          cells: Array<{
+            content?: string;
+            colspan?: number;
+            rowspan?: number;
+            bold?: boolean;
+            align?: string;
+          }>;
+        }>) ?? [];
+      const detailRows: TableRow[] = rawRows.map((r, ri) => ({
+        id: `row-${ri}-${Date.now()}`,
+        type: 'data',
+        cells: (r.cells ?? []).map(
+          (cell, ci): TableCell => ({
+            id: `cell-${ri}-${ci}-${Date.now()}`,
+            content: cell.content ?? '',
+            ...(cell.colspan && cell.colspan > 1 ? { colspan: cell.colspan } : {}),
+            ...(cell.rowspan && cell.rowspan > 1 ? { rowspan: cell.rowspan } : {}),
+            ...(cell.align ? { align: cell.align as TableCell['align'] } : {}),
+            ...(cell.bold ? { style: { fontWeight: 'bold' as const } } : {}),
+          })
+        ),
+      }));
+      const comp: TableComponent = {
+        id: crypto.randomUUID(),
+        type: 'table',
+        x: args.x as number,
+        y: args.y as number,
+        width: args.width as number,
+        height: args.height as number,
+        dataSource: '',
+        isStatic: true,
+        showHeader: false,
+        repeatHeaderOnPage: false,
+        columns,
+        detailRows,
+        style: {
+          fontSize: 10,
+          headerBackground: '#f5f5f5',
+          borderColor: '#333333',
+          borderWidth: '0.5pt',
+          cellPadding: '4pt',
+        },
+      };
+      store.addComponent(zone, comp, pageId);
+      return `Added static ${columns.length}×${detailRows.length} table to ${zone}`;
     }
 
     case 'add_image': {
@@ -672,7 +732,7 @@ export function useAiAgent() {
   }, []);
 
   const sendMessage = useCallback(
-    async (content: string, image?: string) => {
+    async (content: string, image?: string, pdfContext?: string) => {
       const model = resolveAiModel(aiModel);
       const userMsg: AgentMessage = {
         id: crypto.randomUUID(),
@@ -733,7 +793,7 @@ export function useAiAgent() {
 
         // Quick client-side classify first — skip network round-trip for obvious cases
         let intent: IntentMode;
-        if (image) {
+        if (image || pdfContext) {
           intent = 'design';
         } else {
           const quickResult = quickClassify(content);
@@ -758,6 +818,11 @@ export function useAiAgent() {
         const windowedHistory: ApiMsg[] = uiHistory.slice(-HISTORY_WINDOW).map((m, idx, arr) => {
           const isLatest = idx === arr.length - 1;
           const textContent = stripIntentBlock(m.content);
+          // Precise PDF import: attach the extracted text layer to the latest turn
+          // only — kept out of the stored message so history/localStorage stay lean.
+          if (m.role === 'user' && isLatest && pdfContext) {
+            return { role: 'user', content: `${textContent}\n\n${pdfContext}` };
+          }
           if (m.role === 'user' && m.image && isLatest) {
             return {
               role: 'user',

@@ -1,5 +1,5 @@
-import type { TableComponent, TableRow } from '@/types/schema';
-import { buildLogicalGrid } from './table-grid';
+import type { TableCell, TableComponent, TableRow } from '@/types/schema';
+import { buildLogicalGrid, physToLogical } from './table-grid';
 
 /**
  * Normalizes a selection into a rectangular range of row and column indices.
@@ -29,8 +29,12 @@ export function isRectangularSelection(
 
 /**
  * Merges cells in structured rows using LOGICAL column indices.
- * Uses buildLogicalGrid internally so colspan/rowspan from prior merges are
- * handled correctly — physical array indices are derived, not assumed.
+ *
+ * The selection rectangle is first expanded (Excel-style) so it fully covers every
+ * cell it touches — you can never merge a partial slice of an already-merged cell.
+ * Expanding also guarantees the rectangle's top-left is a real cell origin, so the
+ * master cell's span lines up with the selection instead of drifting when a prior
+ * merge reaches into the selection from above/left.
  */
 export function mergeStructuredCells(
   rows: TableRow[],
@@ -42,32 +46,66 @@ export function mergeStructuredCells(
 ): TableRow[] {
   const grid = buildLogicalGrid(rows, totalCols);
 
-  // Master cell = top-left logical position of the selection
-  const masterSlot = grid[startRowIdx]?.[startColIdx];
+  let r0 = Math.min(startRowIdx, endRowIdx);
+  let r1 = Math.max(startRowIdx, endRowIdx);
+  let c0 = Math.min(startColIdx, endColIdx);
+  let c1 = Math.max(startColIdx, endColIdx);
+
+  // Grow the rectangle until it aligns with whole-cell boundaries: any cell whose
+  // span pokes into the rectangle drags the edge out to include the whole cell.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        const slot = grid[r]?.[c];
+        if (!slot) continue;
+        const owner = rows[slot.ownerRowIdx]?.cells[slot.ownerPhysIdx];
+        if (!owner) continue;
+        const oc0 = slot.logicalCol;
+        const oc1 = oc0 + Math.max(1, owner.colspan || 1) - 1;
+        const or0 = slot.ownerRowIdx;
+        const or1 = or0 + Math.max(1, owner.rowspan || 1) - 1;
+        if (or0 < r0) {
+          r0 = or0;
+          changed = true;
+        }
+        if (or1 > r1) {
+          r1 = or1;
+          changed = true;
+        }
+        if (oc0 < c0) {
+          c0 = oc0;
+          changed = true;
+        }
+        if (oc1 > c1) {
+          c1 = oc1;
+          changed = true;
+        }
+      }
+    }
+  }
+
+  // After expansion the top-left position is guaranteed to be a cell origin at (r0, c0).
+  const masterSlot = grid[r0]?.[c0];
   if (!masterSlot) return rows;
 
-  const colspan = endColIdx - startColIdx + 1;
-  const rowspan = endRowIdx - startRowIdx + 1;
+  const colspan = c1 - c0 + 1;
+  const rowspan = r1 - r0 + 1;
 
-  // Collect all non-master physical cells inside the selection range to remove
+  // Collect every non-master physical cell inside the rectangle to remove.
   const toRemove = new Map<number, Set<number>>(); // rowIdx → Set<physIdx>
-
-  for (let r = startRowIdx; r <= endRowIdx; r++) {
-    for (let c = startColIdx; c <= endColIdx; c++) {
+  for (let r = r0; r <= r1; r++) {
+    for (let c = c0; c <= c1; c++) {
       const slot = grid[r]?.[c];
       if (!slot) continue;
-      // Don't remove cells owned by rows above the selection (rowspan from outside)
-      if (slot.ownerRowIdx < startRowIdx) continue;
-      // Keep master
       if (
         slot.ownerRowIdx === masterSlot.ownerRowIdx &&
         slot.ownerPhysIdx === masterSlot.ownerPhysIdx
       )
         continue;
-
       if (!toRemove.has(slot.ownerRowIdx)) toRemove.set(slot.ownerRowIdx, new Set());
-      const removeSet = toRemove.get(slot.ownerRowIdx);
-      if (removeSet) removeSet.add(slot.ownerPhysIdx);
+      toRemove.get(slot.ownerRowIdx)?.add(slot.ownerPhysIdx);
     }
   }
 
@@ -140,6 +178,106 @@ export function insertColumn(component: TableComponent, index: number): Partial<
   if (component.footerRows?.length) updates.footerRows = component.footerRows.map(insertCell);
 
   return updates;
+}
+
+/**
+ * Deletes one or more LOGICAL columns from the table.
+ *
+ * Removes the columns from `columns` and rewrites every structured row so that:
+ *  - a cell spanning a deleted column shrinks its colspan by the number of its
+ *    spanned columns that were deleted, and
+ *  - a cell that lies entirely inside the deleted range is dropped.
+ *
+ * Never deletes the last remaining column. Returns an empty object (no-op) if
+ * the selection is empty or would remove every column. Remaining column widths
+ * are left untouched — the renderer/generator rescales fixed widths to fill the
+ * component box (see resolveTableColumnWidths).
+ */
+export function deleteColumns(
+  component: TableComponent,
+  logicalColIndices: number[]
+): Partial<TableComponent> {
+  const totalCols = component.columns.length;
+  const toDelete = new Set(logicalColIndices.filter((c) => c >= 0 && c < totalCols));
+  if (toDelete.size === 0 || toDelete.size >= totalCols) return {};
+
+  const newColumns = component.columns.filter((_, idx) => !toDelete.has(idx));
+
+  const remapRows = (rows: TableRow[]): TableRow[] => {
+    const grid = buildLogicalGrid(rows, totalCols);
+    return rows.map((row, ri) => {
+      const physMap = physToLogical(grid, ri, row.cells.length);
+      const newCells: TableCell[] = [];
+      for (let pi = 0; pi < row.cells.length; pi++) {
+        const startLog = physMap[pi];
+        if (startLog < 0) continue; // safety: cell not placed in grid
+        const cell = row.cells[pi];
+        const cs = Math.max(1, cell.colspan || 1);
+        let survivingSpan = 0;
+        for (let dc = 0; dc < cs; dc++) {
+          const lc = startLog + dc;
+          if (lc < totalCols && !toDelete.has(lc)) survivingSpan++;
+        }
+        if (survivingSpan === 0) continue; // whole cell removed
+        newCells.push(
+          survivingSpan > 1 ? { ...cell, colspan: survivingSpan } : { ...cell, colspan: undefined }
+        );
+      }
+      return { ...row, cells: newCells };
+    });
+  };
+
+  const updates: Partial<TableComponent> = { columns: newColumns };
+  if (component.headerRows?.length) updates.headerRows = remapRows(component.headerRows);
+  if (component.detailRows?.length) updates.detailRows = remapRows(component.detailRows);
+  if (component.footerRows?.length) updates.footerRows = remapRows(component.footerRows);
+  return updates;
+}
+
+/**
+ * Clears the text content of the selected cells without changing the grid shape.
+ * Falls back to clearing the `columns` header/field for legacy synthetic tables
+ * (those with no structured rows in the selected section).
+ */
+export function clearCellContents(
+  component: TableComponent,
+  selection: { section: 'header' | 'footer' | 'data'; rowIds: string[]; cellIndices: number[] }
+): Partial<TableComponent> {
+  const { section, rowIds, cellIndices } = selection;
+  const key =
+    section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
+  const rows = (component[key] as TableRow[] | undefined) || [];
+  const colSet = new Set(cellIndices);
+
+  // Legacy synthetic rows — clear the columns array directly.
+  if (!rows.length) {
+    if (section === 'footer') return {};
+    const field = section === 'header' ? 'header' : 'field';
+    const newCols = component.columns.map((col, idx) =>
+      colSet.has(idx) ? { ...col, [field]: '' } : col
+    );
+    return { columns: newCols };
+  }
+
+  const rowSet = new Set(rowIds);
+  const grid = buildLogicalGrid(rows, component.columns.length);
+  let anyChanged = false;
+  const newRows = rows.map((row, ri) => {
+    if (!rowSet.has(row.id)) return row;
+    const physMap = physToLogical(grid, ri, row.cells.length);
+    let changed = false;
+    const newCells = row.cells.map((cell, pi) => {
+      if (colSet.has(physMap[pi]) && cell.content) {
+        changed = true;
+        return { ...cell, content: '' };
+      }
+      return cell;
+    });
+    if (!changed) return row;
+    anyChanged = true;
+    return { ...row, cells: newCells };
+  });
+  return anyChanged ? { [key]: newRows } : {};
 }
 
 /**

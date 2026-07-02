@@ -167,6 +167,19 @@ export const DropdownMenuHeader = memo(function DropdownMenuHeader({
   );
 });
 
+// --- Section label (inside dropdown, below header) ---
+export const DropdownMenuLabel = memo(function DropdownMenuLabel({
+  children,
+}: { children: ReactNode }) {
+  return (
+    <div className="px-2 pt-1.5 pb-0.5">
+      <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-wider block">
+        {children}
+      </span>
+    </div>
+  );
+});
+
 // --- Separator ---
 export const DropdownMenuSeparator = memo(function DropdownMenuSeparator() {
   return <div className="h-px bg-[var(--border-default)] my-1 mx-1" />;
