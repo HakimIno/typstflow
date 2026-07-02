@@ -1,5 +1,10 @@
-import type { TableCell, TableComponent, TableRow } from '@/types/schema';
+import type { FormTableComponent, TableCell, TableComponent, TableRow } from '@/types/schema';
 import { buildLogicalGrid, physToLogical } from './table-grid';
+
+/** Form-table footer rows stored under `footerGridRows` (undefined for plain tables). */
+function footerGridRowsOf(component: TableComponent | FormTableComponent): TableRow[] | undefined {
+  return component.type === 'form-table' ? component.footerGridRows : undefined;
+}
 
 /**
  * Normalizes a selection into a rectangular range of row and column indices.
@@ -138,7 +143,10 @@ function parseColWidthMm(w: string, tableWidthMm: number, colCount: number): num
  * All existing columns are scaled down proportionally to make room for the new one
  * so the total width stays equal to component.width.
  */
-export function insertColumn(component: TableComponent, index: number): Partial<TableComponent> {
+export function insertColumn(
+  component: TableComponent | FormTableComponent,
+  index: number
+): Partial<FormTableComponent> {
   const totalMm = component.width || 180;
   const existingCount = component.columns.length;
 
@@ -172,10 +180,12 @@ export function insertColumn(component: TableComponent, index: number): Partial<
     ],
   });
 
-  const updates: Partial<TableComponent> = { columns: newCols };
+  const updates: Partial<FormTableComponent> = { columns: newCols };
   if (component.headerRows?.length) updates.headerRows = component.headerRows.map(insertCell);
   if (component.detailRows?.length) updates.detailRows = component.detailRows.map(insertCell);
   if (component.footerRows?.length) updates.footerRows = component.footerRows.map(insertCell);
+  const gridRows = footerGridRowsOf(component);
+  if (gridRows?.length) updates.footerGridRows = gridRows.map(insertCell);
 
   return updates;
 }
@@ -194,9 +204,9 @@ export function insertColumn(component: TableComponent, index: number): Partial<
  * component box (see resolveTableColumnWidths).
  */
 export function deleteColumns(
-  component: TableComponent,
+  component: TableComponent | FormTableComponent,
   logicalColIndices: number[]
-): Partial<TableComponent> {
+): Partial<FormTableComponent> {
   const totalCols = component.columns.length;
   const toDelete = new Set(logicalColIndices.filter((c) => c >= 0 && c < totalCols));
   if (toDelete.size === 0 || toDelete.size >= totalCols) return {};
@@ -227,10 +237,12 @@ export function deleteColumns(
     });
   };
 
-  const updates: Partial<TableComponent> = { columns: newColumns };
+  const updates: Partial<FormTableComponent> = { columns: newColumns };
   if (component.headerRows?.length) updates.headerRows = remapRows(component.headerRows);
   if (component.detailRows?.length) updates.detailRows = remapRows(component.detailRows);
   if (component.footerRows?.length) updates.footerRows = remapRows(component.footerRows);
+  const gridRows = footerGridRowsOf(component);
+  if (gridRows?.length) updates.footerGridRows = remapRows(gridRows);
   return updates;
 }
 
@@ -240,13 +252,22 @@ export function deleteColumns(
  * (those with no structured rows in the selected section).
  */
 export function clearCellContents(
-  component: TableComponent,
+  component: TableComponent | FormTableComponent,
   selection: { section: 'header' | 'footer' | 'data'; rowIds: string[]; cellIndices: number[] }
-): Partial<TableComponent> {
+): Partial<FormTableComponent> {
   const { section, rowIds, cellIndices } = selection;
-  const key =
-    section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
-  const rows = (component[key] as TableRow[] | undefined) || [];
+  // Form-table footers may live in footerGridRows — pick the array that actually
+  // contains the selected rows.
+  const gridRows = footerGridRowsOf(component);
+  const footerKey =
+    section === 'footer' &&
+    gridRows?.length &&
+    !component.footerRows?.some((r) => rowIds.includes(r.id))
+      ? 'footerGridRows'
+      : 'footerRows';
+  const key = section === 'header' ? 'headerRows' : section === 'footer' ? footerKey : 'detailRows';
+  const rows =
+    ((component as unknown as Record<string, unknown>)[key] as TableRow[] | undefined) || [];
   const colSet = new Set(cellIndices);
 
   // Legacy synthetic rows — clear the columns array directly.

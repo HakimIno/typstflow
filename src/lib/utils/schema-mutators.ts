@@ -75,6 +75,9 @@ export function findComponentZone(
       } else if (c.type === 'repeater' && (c as any).children) {
         const found = searchNested((c as any).children);
         if (found) return found;
+      } else if (c.type === 'form-box' && c.components) {
+        const found = searchNested(c.components);
+        if (found) return found;
       }
     }
     return null;
@@ -155,6 +158,12 @@ export function mapComponentInSchema(
         if (res.changed) {
           changed = true;
           return { ...c, children: res.components };
+        }
+      } else if (c.type === 'form-box' && c.components) {
+        const res = mapNested(c.components);
+        if (res.changed) {
+          changed = true;
+          return { ...c, components: res.components };
         }
       }
       return c;
@@ -260,6 +269,12 @@ export function removeComponentsFromSchema(schema: LayoutSchema, ids: string[]):
         if (res.changed) {
           changed = true;
           return { ...c, children: res.components };
+        }
+      } else if (c.type === 'form-box' && c.components) {
+        const res = removeNested(c.components, idSet);
+        if (res.changed) {
+          changed = true;
+          return { ...c, components: res.components };
         }
       }
       return c;

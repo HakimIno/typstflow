@@ -52,7 +52,7 @@ export const createIOSlice: StateCreator<DesignerState, [], [], IOSlice> = (set,
       const rawData = JSON.parse(json);
       // Handle bundled format: { "schema": ..., "data": ... }
       const schemaToValidate = rawData.schema || rawData;
-      const sampleData = rawData.data || null;
+      const sampleData = rawData.data ?? rawData.sampleData ?? null;
 
       const validSchema = validateAndRepairSchema(schemaToValidate, BLANK_SCHEMA);
 

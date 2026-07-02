@@ -1,0 +1,225 @@
+{
+  "schema": {
+    "id": "po-pr-form-table-demo",
+    "name": "PO/PR Form Table Demo",
+    "version": "1.0.0",
+    "page": {
+      "size": "A4",
+      "orientation": "portrait",
+      "margin": {
+        "top": "10mm",
+        "bottom": "10mm",
+        "left": "10mm",
+        "right": "10mm"
+      }
+    },
+    "fonts": [{ "family": "Sarabun", "role": "body", "size": 10, "embedded": true }],
+    "zones": {
+      "header": { "id": "header", "components": [], "minHeight": "8mm" },
+      "footer": { "id": "footer", "components": [], "minHeight": "8mm" }
+    },
+    "pages": [
+      {
+        "id": "page-1",
+        "name": "PO/PR Demo",
+        "body": {
+          "id": "body",
+          "layoutMode": "flow",
+          "flowGap": "2mm",
+          "components": [
+            {
+              "id": "po-title",
+              "type": "text",
+              "x": 0,
+              "y": 0,
+              "width": 190,
+              "height": 8,
+              "content": "ใบสั่งซื้อ/สั่งจ้าง",
+              "align": "center",
+              "style": {
+                "fontSize": 14,
+                "fontWeight": "bold",
+                "align": "center"
+              }
+            },
+            {
+              "id": "po-table",
+              "type": "form-table",
+              "x": 0,
+              "y": 12,
+              "width": 190,
+              "height": 150,
+              "dataSource": "{{items}}",
+              "showHeader": true,
+              "repeatHeaderOnPage": true,
+              "footerMode": "bottom",
+              "bodyMinHeight": "100mm",
+              "columns": [
+                { "id": "col-no", "header": "#", "field": "no", "width": "8mm", "align": "center" },
+                {
+                  "id": "col-desc",
+                  "header": "Descriptions",
+                  "field": "description",
+                  "width": "80mm",
+                  "align": "left"
+                },
+                {
+                  "id": "col-dept",
+                  "header": "Dept./Site",
+                  "field": "dept",
+                  "width": "18mm",
+                  "align": "center"
+                },
+                {
+                  "id": "col-pr",
+                  "header": "PR No.",
+                  "field": "prNo",
+                  "width": "18mm",
+                  "align": "center"
+                },
+                {
+                  "id": "col-qty",
+                  "header": "QTY",
+                  "field": "qty",
+                  "width": "20mm",
+                  "align": "right",
+                  "format": "number"
+                },
+                {
+                  "id": "col-unit",
+                  "header": "@",
+                  "field": "unitPrice",
+                  "width": "22mm",
+                  "align": "right",
+                  "format": "number"
+                },
+                {
+                  "id": "col-amount",
+                  "header": "Amount",
+                  "field": "amount",
+                  "width": "24mm",
+                  "align": "right",
+                  "format": "number"
+                }
+              ],
+              "footerGridRows": [
+                {
+                  "id": "footer-row-qty",
+                  "type": "footer",
+                  "repeat": false,
+                  "height": "7mm",
+                  "cells": [
+                    { "id": "footer-blank-left", "content": "", "colspan": 4, "rowspan": 4 },
+                    { "id": "footer-qty-label", "content": "รวม", "align": "right" },
+                    { "id": "footer-qty-value", "content": "{{SUM(qty)}}", "align": "center", "format": "number" },
+                    { "id": "footer-empty-amount", "content": "" }
+                  ]
+                },
+                {
+                  "id": "footer-row-subtotal",
+                  "type": "footer",
+                  "repeat": false,
+                  "height": "6mm",
+                  "cells": [
+                    { "id": "footer-total-qty-blank", "content": "" },
+                    { "id": "footer-total-label", "content": "Total", "align": "left" },
+                    { "id": "footer-total-value", "content": "{{totals.subtotal}}", "align": "right", "format": "number" }
+                  ]
+                },
+                {
+                  "id": "footer-row-vat",
+                  "type": "footer",
+                  "repeat": false,
+                  "height": "6mm",
+                  "cells": [
+                    { "id": "footer-vat-qty-blank", "content": "" },
+                    { "id": "footer-vat-label", "content": "VAT 7.00%", "align": "left" },
+                    { "id": "footer-vat-value", "content": "{{totals.vat}}", "align": "right", "format": "number" }
+                  ]
+                },
+                {
+                  "id": "footer-row-grand-total",
+                  "type": "footer",
+                  "repeat": false,
+                  "height": "6mm",
+                  "cells": [
+                    { "id": "footer-grand-qty-blank", "content": "" },
+                    { "id": "footer-grand-label", "content": "Grand Total", "align": "left" },
+                    { "id": "footer-grand-value", "content": "{{totals.grandTotal}}", "align": "right", "format": "number" }
+                  ]
+                }
+              ],
+              "footerSummary": [],
+              "style": {
+                "fontFamily": "Sarabun",
+                "fontSize": 10,
+                "bodyFontSize": 10,
+                "headerFontSize": 10,
+                "headerFontWeight": "bold",
+                "headerBackground": "#ffffff",
+                "headerColor": "#111111",
+                "bodyColor": "#333333",
+                "borderColor": "#333333",
+                "borderWidth": "0.5pt",
+                "headerBorderWidth": "0.5pt",
+                "innerHBorderWidth": "0.5pt",
+                "innerVBorderWidth": "0.5pt",
+                "cellPadding": "3pt",
+                "inset": "3pt",
+                "fillPattern": "none",
+                "borderSides": {
+                  "top": true,
+                  "bottom": true,
+                  "left": true,
+                  "right": true,
+                  "innerH": true,
+                  "innerV": true
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "groups": [],
+    "variables": [],
+    "dataSchema": [],
+    "metadata": {
+      "title": "PO/PR Form Table Demo",
+      "createdAt": "2026-07-02T00:00:00.000Z",
+      "updatedAt": "2026-07-02T00:00:00.000Z",
+      "author": "TypstFlow"
+    }
+  },
+  "data": {
+    "items": [
+      {
+        "no": 1,
+        "description": "ปากกาไฮไลน์",
+        "dept": "IHD",
+        "prNo": "PR69060015",
+        "qty": 10,
+        "unitPrice": 20.78,
+        "amount": 207.8
+      },
+      {
+        "no": 2,
+        "description": "ปากกากระดาษ A4",
+        "dept": "IHD",
+        "prNo": "PR69060016",
+        "qty": 20,
+        "unitPrice": 10.78,
+        "amount": 215.6
+      }
+    ],
+    "totals": {
+
+
+
+      "qty": 30,
+      "subtotal": 423.4,
+      "vat": 29.64,
+      "grandTotal": 453.04
+    }
+  }
+}

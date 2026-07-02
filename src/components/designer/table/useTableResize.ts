@@ -1,5 +1,6 @@
 import { LayoutEngine } from '@/lib/engine/layout-engine';
-import type { TableComponent, TableRow } from '@/types/schema';
+import { buildFormTableFillerRows } from '@/lib/utils/form-table';
+import type { FormTableComponent, TableComponent, TableRow } from '@/types/schema';
 import type { MutableRefObject, MouseEvent as ReactMouseEvent, RefObject } from 'react';
 
 interface ResizeRefs {
@@ -12,7 +13,7 @@ interface ResizeRefs {
 }
 
 export function useTableResize(
-  component: TableComponent,
+  component: TableComponent | FormTableComponent,
   refs: ResizeRefs,
   zoom: number,
   updateComponent: (id: string, updates: Record<string, unknown>) => void
@@ -124,7 +125,12 @@ export function useTableResize(
     const containerEl = refs.containerRef.current;
     if (!tableEl || !containerEl) return;
 
-    let rows: TableRow[] = (component[sectionKey as keyof TableComponent] as TableRow[]) || [];
+    // The generated filler row (form-table bottom mode) is backed by bodyMinHeight,
+    // not a schema row array — dragging its divider resizes the blank body area.
+    const isFillerRow = sectionKey === '__fillerRow';
+    let rows: TableRow[] = isFillerRow
+      ? buildFormTableFillerRows(component as FormTableComponent)
+      : ((component as unknown as Record<string, unknown>)[sectionKey] as TableRow[]) || [];
     if (rows.length === 0) {
       if (sectionKey === 'headerRows') {
         rows = [
@@ -204,6 +210,10 @@ export function useTableResize(
       refs.tooltipRef.current?.classList.add('hidden');
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      if (isFillerRow) {
+        updateComponent(component.id, { bodyMinHeight: `${lastHeightMm.toFixed(1)}mm` });
+        return;
+      }
       const newRows = rows.map((r, i) =>
         i === rowIdx ? { ...r, height: `${lastHeightMm.toFixed(1)}mm` } : r
       );

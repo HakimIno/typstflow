@@ -7,7 +7,7 @@ import {
   SelectValue,
 } from '@/components/ui/Select';
 import { useDesignerStore } from '@/store/designer-store';
-import type { TableCell, TableComponent, TableRow } from '@/types/schema';
+import type { AnyTableComponent, TableCell, TableRow } from '@/types/schema';
 import { clsx } from 'clsx';
 import { ChevronDown, ChevronRight, Italic, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -22,7 +22,7 @@ import {
 } from './TableShared';
 
 interface Props {
-  component: TableComponent;
+  component: AnyTableComponent;
   type: 'header' | 'detail' | 'footer';
 }
 

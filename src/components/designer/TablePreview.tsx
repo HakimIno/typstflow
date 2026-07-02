@@ -1,11 +1,18 @@
 'use client';
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { buildFormTableFillerRows, buildFormTableSummaryRows } from '@/lib/utils/form-table';
+import { buildPreviewFontStack } from '@/lib/utils/preview-fonts';
 import { buildLogicalGrid, physToLogical } from '@/lib/utils/table-grid';
 import { resolveTableColumnPercentages } from '@/lib/utils/table-widths';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
-import type { TableCell as TCell, TableComponent, TableRow } from '@/types/schema';
+import type {
+  FormTableComponent,
+  TableCell as TCell,
+  TableComponent,
+  TableRow,
+} from '@/types/schema';
 import { Columns2, Eraser, Merge, Rows3, Split, Trash2 } from 'lucide-react';
 import type React from 'react';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -24,7 +31,7 @@ import { useTableResize } from './table/useTableResize';
 export const TablePreview = memo(function TablePreview({
   component,
 }: {
-  component: TableComponent;
+  component: TableComponent | FormTableComponent;
 }) {
   const updateComponent = useDesignerStore((s) => s.updateComponent);
   // Scope selection to THIS table: return null when the active cell/cells belong to
@@ -41,6 +48,12 @@ export const TablePreview = memo(function TablePreview({
   const setTableSheetEditId = useDesignerStore((s) => s.setTableSheetEditId);
   const isTableSelected = useDesignerStore((s) => s.selectedComponentIds.includes(component.id));
   const zoom = useDesignerStore((s) => s.zoom);
+  const bodyFontFamily = useDesignerStore(
+    (s) =>
+      s.schema.fonts.find((f) => f.role === 'body')?.family ??
+      s.schema.fonts[0]?.family ??
+      'Sarabun'
+  );
 
   const [isTableEditing, setIsTableEditing] = useState(false);
 
@@ -98,6 +111,9 @@ export const TablePreview = memo(function TablePreview({
   const resizeOverlayRef = useRef<HTMLDivElement>(null);
 
   // ─── Auto-fit component height to actual table height ──────────────────
+  // Applies to form-table bottom mode too: the generated Typst table is always
+  // content-sized (filler row = bodyMinHeight), so the component frame must track
+  // the real table height for the preview to match the PDF.
   useEffect(() => {
     if (!tableRef.current) return;
     const observer = new ResizeObserver((entries) => {
@@ -402,12 +418,33 @@ export const TablePreview = memo(function TablePreview({
     [component.headerRows, component.showHeader, component.columns]
   );
 
+  const generatedFillerRows = useMemo(
+    () => (component.type === 'form-table' ? buildFormTableFillerRows(component) : []),
+    [component]
+  );
+
   type PreviewSection = {
     rows: TableRow[];
     sectionKey: string;
     section: SectionType;
     isHeader: boolean;
   };
+
+  // Footer sections, one per schema source so canvas edits write back to the right
+  // key. Order must mirror the generator (buildFormTableFooterRows): footerRows →
+  // footerGridRows → footerSummary. Only the synthesized summary rows are read-only.
+  const footerSections: PreviewSection[] = useMemo(() => {
+    const sections: PreviewSection[] = [];
+    const push = (rows: TableRow[] | undefined, sectionKey: string) => {
+      if (rows?.length) sections.push({ rows, sectionKey, section: 'footer', isHeader: false });
+    };
+    push(component.footerRows, 'footerRows');
+    if (component.type === 'form-table') {
+      push(component.footerGridRows, 'footerGridRows');
+      push(buildFormTableSummaryRows(component), '__generatedRows');
+    }
+    return sections;
+  }, [component]);
 
   // Memoized (stable identity) so cells inside these sections don't re-render on
   // unrelated changes like selection. Recomputed only when the underlying data changes.
@@ -451,6 +488,17 @@ export const TablePreview = memo(function TablePreview({
         ];
     sections.push({ rows: detailRows, sectionKey: 'detailRows', section: 'data', isHeader: false });
 
+    if (generatedFillerRows.length) {
+      // Dedicated key: content is generated (not editable) but the row IS resizable —
+      // dragging its divider updates bodyMinHeight (see useTableResize).
+      sections.push({
+        rows: generatedFillerRows,
+        sectionKey: '__fillerRow',
+        section: 'data',
+        isHeader: false,
+      });
+    }
+
     if (component.autoGroupFooter) {
       sections.push({
         rows: [
@@ -471,14 +519,7 @@ export const TablePreview = memo(function TablePreview({
       });
     }
 
-    if (component.footerRows?.length) {
-      sections.push({
-        rows: component.footerRows,
-        sectionKey: 'footerRows',
-        section: 'footer',
-        isHeader: false,
-      });
-    }
+    sections.push(...footerSections);
 
     return sections;
   }, [
@@ -488,7 +529,8 @@ export const TablePreview = memo(function TablePreview({
     component.columns,
     component.autoGroupFooter,
     component.autoGroupFooterLabel,
-    component.footerRows,
+    generatedFillerRows,
+    footerSections,
   ]);
 
   // ─── Flat row list for overlay dividers ──────────────────────────────────
@@ -509,7 +551,10 @@ export const TablePreview = memo(function TablePreview({
         rowId: row.id,
         sectionKey: sec.sectionKey,
         rowIdx: i,
-        isGroupRow: row.type === 'group-header' || row.type === 'group-footer',
+        isGroupRow:
+          sec.sectionKey === '__generatedRows' ||
+          row.type === 'group-header' ||
+          row.type === 'group-footer',
       }))
     ),
   ];
@@ -517,6 +562,7 @@ export const TablePreview = memo(function TablePreview({
   // ─── Style context (memoized so its identity is stable across selection re-renders) ──
   const cellCtx: CellStyleCtx = useMemo(() => {
     const style = component.style || {};
+    const previewFontStack = buildPreviewFontStack(style.fontFamily ?? bodyFontFamily);
     const toCssDash = (d: string) =>
       d === 'dashed' ? 'dashed' : d === 'dotted' ? 'dotted' : 'solid';
     return {
@@ -530,7 +576,8 @@ export const TablePreview = memo(function TablePreview({
         innerH: true,
         innerV: true,
       },
-      cellPaddingPx: LayoutEngine.mmToPx(parseTypstUnit(style.inset || '2mm')),
+      // Mirror the generator's inset resolution (table.ts): inset → cellPadding → '7pt'
+      cellPaddingPx: LayoutEngine.mmToPx(parseTypstUnit(style.inset || style.cellPadding || '7pt')),
       headerBg: style.headerBackground || '#f1f5f9',
       headerColor: style.headerColor || '#000000',
       bodyColor: style.bodyColor || '#334155',
@@ -561,6 +608,7 @@ export const TablePreview = memo(function TablePreview({
       groupHeaderStyle: component.groupHeaderStyle,
       groupFooterStyle: component.groupFooterStyle,
       columnsLength: component.columns.length,
+      previewFontStack,
     };
   }, [
     component.style,
@@ -568,6 +616,7 @@ export const TablePreview = memo(function TablePreview({
     component.groupHeaderStyle,
     component.groupFooterStyle,
     component.columns.length,
+    bodyFontFamily,
   ]);
 
   // Stable per-cell callbacks (latest-ref pattern) so memoized cells don't re-render
@@ -594,8 +643,12 @@ export const TablePreview = memo(function TablePreview({
   cellFnRef.current.mouseEnter = handleCellMouseEnter;
   cellFnRef.current.contextMenu = handleCellContextMenu;
   cellFnRef.current.save = (sectionKey, rowIdx, cell, logicalCol, isHeader, newVal) => {
+    if (sectionKey === '__generatedRows' || sectionKey === '__fillerRow') return;
     if (newVal === cell.content) return;
-    const schemaRows = (component[sectionKey as keyof TableComponent] as TableRow[]) || [];
+    // Record<string, unknown> access: sectionKey may be a FormTableComponent-only
+    // key (footerGridRows) that doesn't exist on the TableComponent side of the union.
+    const schemaRows =
+      ((component as unknown as Record<string, unknown>)[sectionKey] as TableRow[]) || [];
     // Legacy: no real schema rows → update columns array
     if (!schemaRows.length) {
       const newCols = [...component.columns];
@@ -651,7 +704,8 @@ export const TablePreview = memo(function TablePreview({
     sectionKey: string,
     section: SectionType,
     isHeader: boolean,
-    sectionRows: TableRow[] // all rows in this section (for border calc)
+    sectionRows: TableRow[], // all rows in this section (for border calc)
+    rowHeightPx?: number // set when the row has an explicit height (Typst treats it as fixed)
   ) => {
     const isSelected = isCellSelected(section, row.id, logicalCol);
     const isActiveCell =
@@ -678,6 +732,14 @@ export const TablePreview = memo(function TablePreview({
         }
       : null;
 
+    // HTML rows only grow (height is a minimum) while Typst fixed rows never do.
+    // Clamp the cell's content box to the exact row height so the preview matches
+    // the PDF. Skip merged cells — their height spans multiple rows.
+    const fixedContentHeightPx =
+      rowHeightPx !== undefined && (cell.rowspan ?? 1) <= 1
+        ? Math.max(0, rowHeightPx - 2 * cellCtx.cellPaddingPx)
+        : undefined;
+
     return (
       <TableCellView
         key={`${section}-${row.id}-${logicalCol}`}
@@ -695,6 +757,7 @@ export const TablePreview = memo(function TablePreview({
         isSelected={isSelected}
         isActiveCell={!!isActiveCell}
         selectionEdges={selectionEdges}
+        fixedContentHeightPx={fixedContentHeightPx}
         ctx={cellCtx}
         onCellMouseDown={onCellMouseDown}
         onCellMouseEnter={onCellMouseEnter}
@@ -716,15 +779,27 @@ export const TablePreview = memo(function TablePreview({
     const grid = buildLogicalGrid(rows, totalCols);
 
     return rows.map((row, rowIdx) => {
+      const rowHeightPx = row.height ? LayoutEngine.mmToPx(parseTypstUnit(row.height)) : undefined;
       const logicalCols = physToLogical(grid, rowIdx, row.cells.length);
-      const rowHeight = row.height
-        ? `${LayoutEngine.mmToPx(parseTypstUnit(row.height))}px`
-        : undefined;
       return (
-        <tr key={row.id} data-row-id={row.id} style={{ height: rowHeight }}>
+        <tr
+          key={row.id}
+          data-row-id={row.id}
+          style={{ height: rowHeightPx !== undefined ? `${rowHeightPx}px` : undefined }}
+        >
           {row.cells.map((cell, physIdx) => {
             const logicalCol = logicalCols[physIdx] ?? physIdx;
-            return renderCell(cell, logicalCol, row, rowIdx, sectionKey, section, isHeader, rows);
+            return renderCell(
+              cell,
+              logicalCol,
+              row,
+              rowIdx,
+              sectionKey,
+              section,
+              isHeader,
+              rows,
+              rowHeightPx
+            );
           })}
         </tr>
       );
@@ -772,7 +847,9 @@ export const TablePreview = memo(function TablePreview({
         style={{
           borderCollapse: 'collapse',
           tableLayout: 'fixed',
-          fontFamily: cellCtx.style.fontFamily || 'inherit',
+          fontFamily: cellCtx.previewFontStack,
+          // Never stretch to the component frame: the generated Typst table is always
+          // content-sized, so stretching made the preview taller than the PDF.
         }}
       >
         <colgroup>

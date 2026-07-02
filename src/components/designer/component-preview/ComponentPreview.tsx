@@ -3,10 +3,15 @@ import type {
   ChecklistComponent,
   ColumnLayoutComponent,
   ComponentNode,
+  FieldGridComponent,
+  FormBoxComponent,
+  FormTableComponent,
   ImageComponent,
+  LetterheadComponent,
   PageNumberComponent,
   QRComponent,
   RectangleComponent,
+  SignatureBlockComponent,
   SignatureComponent,
   TableComponent,
   TextComponent,
@@ -16,7 +21,11 @@ import { TablePreview } from '../TablePreview';
 import { BarcodePreview } from './previews/BarcodePreview';
 import { ChecklistPreview } from './previews/ChecklistPreview';
 import { ColumnLayoutPreview } from './previews/ColumnLayoutPreview';
+import { FieldGridPreview } from './previews/FieldGridPreview';
+import { FormBoxPreview } from './previews/FormBoxPreview';
 import { ImagePreview } from './previews/ImagePreview';
+import { LetterheadPreview } from './previews/LetterheadPreview';
+import { SignatureBlockPreview } from './previews/SignatureBlockPreview';
 import { LinePreview } from './previews/LinePreview';
 import { PageBreakPreview } from './previews/PageBreakPreview';
 import { PageNumberPreview } from './previews/PageNumberPreview';
@@ -56,6 +65,8 @@ export const ComponentPreview = memo(function ComponentPreview({
       );
     case 'table':
       return <TablePreview component={component as TableComponent} />;
+    case 'form-table':
+      return <TablePreview component={component as FormTableComponent} />;
     case 'line':
       return <LinePreview component={component} />;
     case 'spacer':
@@ -96,6 +107,35 @@ export const ComponentPreview = memo(function ComponentPreview({
       return <RectanglePreview component={component as RectangleComponent} />;
     case 'signature':
       return <SignaturePreview component={component as SignatureComponent} />;
+    case 'form-box':
+      return (
+        <FormBoxPreview
+          component={component as FormBoxComponent}
+          pageIndex={pageIndex}
+          totalPages={totalPages}
+        />
+      );
+    case 'field-grid':
+      return (
+        <FieldGridPreview
+          component={component as FieldGridComponent}
+          sampleData={sampleData}
+        />
+      );
+    case 'letterhead':
+      return (
+        <LetterheadPreview
+          component={component as LetterheadComponent}
+          sampleData={sampleData}
+        />
+      );
+    case 'signature-block':
+      return (
+        <SignatureBlockPreview
+          component={component as SignatureBlockComponent}
+          sampleData={sampleData}
+        />
+      );
     default:
       return <div>Preview for {component.type}</div>;
   }

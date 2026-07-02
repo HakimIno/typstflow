@@ -96,6 +96,11 @@ export type ComponentNode =
   | PageNumberComponent
   | ChecklistComponent
   | RectangleComponent
+  | FormBoxComponent
+  | FieldGridComponent
+  | LetterheadComponent
+  | FormTableComponent
+  | SignatureBlockComponent
   | SignatureComponent;
 
 export interface BaseComponent {
@@ -486,6 +491,134 @@ export interface RectangleComponent extends BaseComponent {
   // Spacing
   inset?: string;
   outset?: string;
+}
+
+// --- Form Kit (Phase 1) ---
+
+/** One label/value row inside a {@link FieldGridComponent}. */
+export interface FormFieldDefinition {
+  id: string;
+  label: string;
+  value: BindingExpression;
+  /** Stack column when `columns` is 2 (defaults to alternating 0, 1, …). */
+  column?: 0 | 1;
+  labelWidth?: string;
+  align?: 'left' | 'center' | 'right';
+  format?: FormatType;
+  style?: TextStyle;
+  labelStyle?: TextStyle;
+}
+
+/** Bordered container that nests other components (unlike rectangle). */
+export interface FormBoxComponent extends BaseComponent {
+  type: 'form-box';
+  components: ComponentNode[];
+  fill?: string;
+  strokeColor?: string;
+  strokeWidth?: string;
+  inset?: string;
+  radius?: string;
+  /** Vertical gap between nested components in flow mode. */
+  innerGap?: string;
+}
+
+/** Label : value grid for form metadata sections (vendor info, PO fields, etc.). */
+export interface FieldGridComponent extends BaseComponent {
+  type: 'field-grid';
+  columns: 1 | 2;
+  fields: FormFieldDefinition[];
+  labelWidth?: string;
+  columnGap?: string;
+  rowGap?: string;
+  showColon?: boolean;
+  fill?: string;
+  strokeColor?: string;
+  strokeWidth?: string;
+  inset?: string;
+  labelStyle?: TextStyle;
+  valueStyle?: TextStyle;
+}
+
+// --- Form Kit (Phase 2) ---
+
+/** Company letterhead block for Thai business forms. */
+export interface LetterheadComponent extends BaseComponent {
+  type: 'letterhead';
+  companyName: BindingExpression;
+  companyAddress?: BindingExpression;
+  taxId?: BindingExpression;
+  title: BindingExpression;
+  subtitle?: BindingExpression;
+  showPageNumber?: boolean;
+  pageNumberFormat?: string;
+  underlineTitle?: boolean;
+  showTaxIdLabel?: boolean;
+  taxIdLabel?: string;
+  companyStyle?: TextStyle;
+  titleStyle?: TextStyle;
+  addressStyle?: TextStyle;
+  subtitleStyle?: TextStyle;
+}
+
+/** Footer summary row aligned to table columns (QTY total, VAT, grand total, etc.). */
+export interface FormTableFooterSummaryRow {
+  id: string;
+  label: BindingExpression;
+  value: BindingExpression;
+  /** Column index where the label cell starts (default: 0). */
+  labelColumn?: number;
+  /** Column index where the value cell starts (default: last column). */
+  valueColumn?: number;
+  labelColspan?: number;
+  valueColspan?: number;
+  align?: 'left' | 'center' | 'right';
+  valueAlign?: 'left' | 'center' | 'right';
+  format?: FormatType;
+  height?: string;
+  repeat?: boolean;
+  style?: TextStyle;
+  labelStyle?: TextStyle;
+  blankStroke?: StrokeConfig;
+  labelStroke?: StrokeConfig;
+  valueStroke?: StrokeConfig;
+}
+
+/** Form-style table: extends table with fixed min rows and column-aligned summaries. */
+export interface FormTableComponent extends Omit<TableComponent, 'type'> {
+  type: 'form-table';
+  /** Pad with empty rows so the form keeps a fixed height. */
+  minRows?: number;
+  /** Fixed blank body area inserted before the footer (e.g. "95mm" for PO forms). */
+  bodyMinHeight?: string;
+  /** `bottom` inserts the blank body area before footer rows so totals sit at the bottom. */
+  footerMode?: 'flow' | 'bottom';
+  /** Full-width footer rows for advanced form layouts. */
+  footerGridRows?: TableRow[];
+  footerSummary?: FormTableFooterSummaryRow[];
+}
+
+/** Any table-like component the designer's table UI (preview, panels, hooks) can operate on. */
+export type AnyTableComponent = TableComponent | FormTableComponent;
+
+export interface SignatureBlockSlot {
+  id: string;
+  role: BindingExpression;
+  name?: BindingExpression;
+  date?: BindingExpression;
+  lineStyle?: 'solid' | 'dotted' | 'dashed';
+}
+
+/** Thai business-form signature layout (dotted line → name → role). */
+export interface SignatureBlockComponent extends BaseComponent {
+  type: 'signature-block';
+  variant?: 'thai-form' | 'standard';
+  slots: SignatureBlockSlot[];
+  showDate?: boolean;
+  datePosition?: 'above' | 'right';
+  lineColor?: string;
+  lineWidth?: string;
+  slotSpacing?: string;
+  labelStyle?: TextStyle;
 }
 
 // --- Signature Component ---

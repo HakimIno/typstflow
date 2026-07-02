@@ -1,5 +1,5 @@
 import { useDesignerStore } from '@/store/designer-store';
-import type { TableComponent } from '@/types/schema';
+import type { AnyTableComponent } from '@/types/schema';
 import { CollapsibleSection, ControlField, InsetSection, PROPERTY_STACK_CLASS } from '../Shared';
 import {
   AddRowButton,
@@ -12,7 +12,7 @@ import {
 } from './TableShared';
 
 interface Props {
-  component: TableComponent;
+  component: AnyTableComponent;
 }
 
 export const TableDataSection = ({ component }: Props) => {
@@ -21,8 +21,8 @@ export const TableDataSection = ({ component }: Props) => {
   const groupHeaderStyle = component.groupHeaderStyle || {};
   const id = component.id;
 
-  const patch = (updates: Partial<TableComponent>) =>
-    updateComponent(id, updates as Partial<TableComponent>);
+  const patch = (updates: Partial<AnyTableComponent>) =>
+    updateComponent(id, updates as Partial<AnyTableComponent>);
 
   const patchGroupStyle = (stylePatch: Partial<typeof groupHeaderStyle>) =>
     patch({ groupHeaderStyle: { ...groupHeaderStyle, ...stylePatch } });

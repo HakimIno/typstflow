@@ -257,7 +257,7 @@ const LayerItem = memo(
         )}
 
         <div className="relative flex items-center gap-2.5 flex-1 min-w-0">
-          {component.type === 'columns' || component.type === 'repeater' ? (
+          {component.type === 'columns' || component.type === 'form-box' || component.type === 'repeater' ? (
             <button
               type="button"
               className="w-3 h-3 flex items-center justify-center text-[var(--text-muted)] shrink-0"
@@ -315,7 +315,7 @@ const LayerItem = memo(
           >
             {isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
-          {component.type === 'columns' && (
+          {(component.type === 'columns' || component.type === 'form-box') && (
             <button
               type="button"
               title="Ungroup"
@@ -383,6 +383,9 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
         return comp.columns.some((column) =>
           (column.components || []).some((child) => hasMatchingDescendant(child))
         );
+      }
+      if (comp.type === 'form-box') {
+        return (comp.components || []).some((child) => hasMatchingDescendant(child));
       }
       if (comp.type === 'repeater') {
         return comp.children.some((child) => hasMatchingDescendant(child));
@@ -453,6 +456,25 @@ function useFlattenedLayers(collapsedGroups: Set<string>, searchQuery: string) {
             );
           }
         });
+      }
+
+      if (comp.type === 'form-box') {
+        const isOpen = !collapsedGroups.has(`component-${comp.id}`) || Boolean(query);
+        if (!isOpen) return;
+
+        const children = (comp.components || []).filter(hasMatchingDescendant);
+        const childIndexMap = indexMap(comp.components || []);
+        for (const child of [...children].reverse()) {
+          pushComponent(
+            child,
+            zoneKey,
+            childIndexMap.get(child.id) ?? 0,
+            depth + 1,
+            pageId,
+            groupId,
+            groupType
+          );
+        }
       }
 
       if (comp.type === 'repeater') {

@@ -1,19 +1,27 @@
 import { resolveTableColumnWidths } from '@/lib/utils/table-widths';
 import { escapeTypst } from '@/lib/utils/typst-utils';
-import type { TableComponent } from '@/types/schema';
+import type { FormatType, StrokeConfig, TableComponent, TableRow } from '@/types/schema';
 import { isVisible, resolveBinding, resolvePath } from '../binding';
 import {
   escapeStringLiteral,
   formatColor,
   formatFontFamily,
+  formatTypstFontStack,
   formatWeight,
   wrapPlacement,
 } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
-export const tablePlugin: ComponentPlugin<TableComponent> = {
-  type: 'table',
-  render(comp, ctx: RenderContext): string {
+export interface TableRenderOptions {
+  minRows?: number;
+  trailingRows?: TableRow[];
+}
+
+export function renderTableComponent(
+  comp: TableComponent,
+  ctx: RenderContext,
+  options: TableRenderOptions = {}
+): string {
     if (!isVisible(comp.visible, ctx.local, ctx.global)) return '';
 
     const cols = comp.columns;
@@ -27,17 +35,17 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
       .join(', ');
 
     // ── Stroke ────────────────────────────────────────────────────────────────
-    const borderWidth = style?.borderWidth ?? '0.5pt';
+    const borderWidth = normalizeLength(style?.borderWidth ?? '0.5pt');
     const borderColor = formatColor(style?.borderColor ?? '#cbd5e1');
 
     // Header specific
-    const hBorderWidth = style?.headerBorderWidth ?? borderWidth;
+    const hBorderWidth = normalizeLength(style?.headerBorderWidth ?? borderWidth);
     const hBorderColor = formatColor(style?.headerBorderColor ?? borderColor);
 
     // Inner Body specific
-    const innerHWidth = style?.innerHBorderWidth ?? borderWidth;
+    const innerHWidth = normalizeLength(style?.innerHBorderWidth ?? borderWidth);
     const innerHColor = formatColor(style?.innerHBorderColor ?? borderColor);
-    const innerVWidth = style?.innerVBorderWidth ?? borderWidth;
+    const innerVWidth = normalizeLength(style?.innerVBorderWidth ?? borderWidth);
     const innerVColor = formatColor(style?.innerVBorderColor ?? borderColor);
 
     const hDash =
@@ -94,13 +102,26 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
     const headerWeight = style?.headerFontWeight ?? 'bold';
     const bodyFontSize = style?.bodyFontSize ?? 10;
     const bodyColor = formatColor(style?.bodyColor ?? '#334155');
+    const tableFontFamily = style?.fontFamily ?? 'Sarabun';
+    const headerTextStyle = {
+      size: headerFontSize,
+      color: headerColor,
+      weight: headerWeight,
+      fontFamily: tableFontFamily,
+    };
+    const bodyTextStyle = {
+      size: bodyFontSize,
+      color: bodyColor,
+      weight: 'regular' as const,
+      fontFamily: tableFontFamily,
+    };
 
     // ── Global Table Font Setups ──────────────────────────────────────────────
     if (style?.fontFamily || style?.fontSize || style?.fontWeight || style?.lineHeight) {
       const textArgs: string[] = [];
       if (style.fontSize) textArgs.push(`size: ${style.fontSize}pt`);
       if (style.fontWeight) textArgs.push(`weight: ${formatWeight(style.fontWeight)}`);
-      if (style.fontFamily) textArgs.push(`font: "${formatFontFamily(style.fontFamily)}"`);
+      textArgs.push(`font: ${formatTypstFontStack(style?.fontFamily)}`);
       if (textArgs.length > 0) {
         parts.push(`#set text(${textArgs.join(', ')})\n`);
       }
@@ -120,6 +141,10 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         })();
     const detailRowCount =
       comp.detailRows && comp.detailRows.length > 0 ? comp.detailRows.length : 1;
+    const padCount =
+      !comp.groupBy && !isStatic && options.minRows
+        ? Math.max(0, options.minRows - dataItems.length)
+        : 0;
 
     // ── Compute rows: parameter (maps each physical row to its height) ────────
     // Without this, Typst ignores row.height set in the designer entirely.
@@ -172,6 +197,14 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           pushRowHeight(undefined);
         }
       }
+      for (let i = 0; i < padCount; i++) {
+        if (comp.detailRows?.length) {
+          for (const dr of comp.detailRows) pushRowHeight(dr.height);
+        } else {
+          pushRowHeight(undefined);
+        }
+      }
+      for (const row of options.trailingRows ?? []) pushRowHeight(row.height);
       if (comp.summaryRows?.length && !comp.repeatSummaryOnGroup) {
         for (const _sr of comp.summaryRows) rowsArr.push('auto');
       }
@@ -200,20 +233,13 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           const cell = row.cells[x];
           const val = resolveBinding(cell.content, ctx.local, ctx.global);
           const fmt = cell.format ?? 'text';
-          const formattedVal =
-            fmt !== 'text'
-              ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(val)}")`
-              : escapeTypst(val);
+          const formattedVal = formatCellValue(val, fmt);
           const cellKey = `header:${x}`;
           const specificKey = `header:${y}:${x}`;
           parts.push(
             renderStructuredCell(
               cell,
-              {
-                size: headerFontSize,
-                color: headerColor,
-                weight: headerWeight,
-              },
+              headerTextStyle,
               formattedVal,
               cellKey,
               specificKey,
@@ -246,11 +272,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
         parts.push(
           renderStructuredCell(
             virtualCell,
-            {
-              size: headerFontSize,
-              color: headerColor,
-              weight: headerWeight,
-            },
+            headerTextStyle,
             headerText,
             cellKey,
             undefined,
@@ -279,6 +301,8 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
       }
     } else {
       totalRows += dataItems.length * detailRowCount;
+      totalRows += padCount * detailRowCount;
+      totalRows += options.trailingRows?.length ?? 0;
       if (comp.summaryRows && comp.summaryRows.length > 0 && !comp.repeatSummaryOnGroup) {
         totalRows += comp.summaryRows.length; // + table end summaries
       }
@@ -292,16 +316,13 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
             const cell = row.cells[x];
             const val = resolveBinding(cell.content, item as Record<string, unknown>, ctx.global);
             const fmt = cell.format ?? 'text';
-            const formattedVal =
-              fmt !== 'text'
-                ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(val)}")`
-                : escapeTypst(val);
+            const formattedVal = formatCellValue(val, fmt);
             const cellKey = `data:${x}`;
             const specificKey = `data:${y}:${x}`;
             parts.push(
               renderStructuredCell(
                 cell,
-                { size: bodyFontSize, color: bodyColor, weight: 'regular' },
+                bodyTextStyle,
                 formattedVal,
                 cellKey,
                 specificKey,
@@ -320,10 +341,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           const rawVal = resolvePath(col.field, item);
           const valStr = rawVal != null ? String(rawVal) : '';
           const fmt = col.format ?? 'text';
-          const content =
-            fmt !== 'text'
-              ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(valStr)}")`
-              : escapeTypst(valStr);
+          const content = formatCellValue(valStr, fmt);
 
           // Build a virtual cell from TableColumn
           const virtualCell = {
@@ -338,7 +356,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           parts.push(
             renderStructuredCell(
               virtualCell,
-              { size: bodyFontSize, color: bodyColor, weight: 'regular' },
+              bodyTextStyle,
               content,
               cellKey,
               undefined,
@@ -347,6 +365,25 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           );
           for (let i = 1; i < cs; i++) covered.add(x + i);
         }
+      }
+    };
+
+    const renderStandaloneRow = (row: TableRow) => {
+      for (let x = 0; x < row.cells.length; x++) {
+        const cell = row.cells[x];
+        const val = resolveBinding(cell.content, ctx.local, ctx.global, dataItems);
+        const fmt = cell.format ?? 'text';
+        const formattedVal = formatCellValue(val, fmt);
+        parts.push(
+          renderStructuredCell(
+            cell,
+            bodyTextStyle,
+            formattedVal,
+            `data:${x}`,
+            undefined,
+            style?.cellStyles
+          )
+        );
       }
     };
 
@@ -403,9 +440,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
             const fmt = col.format || 'text';
             const isSum = cellContent.includes('SUM');
             const displayVal =
-              fmt !== 'text' && isSum
-                ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(val)}")`
-                : escapeTypst(val);
+              fmt !== 'text' && isSum ? formatCellValue(val, fmt) : escapeTypst(val);
 
             // Styling overrides for footer
             const gf = comp.groupFooterStyle;
@@ -414,6 +449,7 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
               size: gf?.fontSize || bodyFontSize,
               color: gf?.color || '#000000',
               weight: gf?.fontWeight || 'bold',
+              fontFamily: tableFontFamily,
             };
 
             const virtualCell = {
@@ -443,6 +479,8 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
       }
     } else {
       for (const item of dataItems) renderRow(item);
+      for (let i = 0; i < padCount; i++) renderRow({});
+      for (const row of options.trailingRows ?? []) renderStandaloneRow(row);
     }
 
     // ── Summary rows (Legacy / Table End) ────
@@ -479,16 +517,13 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
           const cell = row.cells[x];
           const val = resolveBinding(cell.content, ctx.local, ctx.global, dataItems);
           const fmt = cell.format ?? 'text';
-          const formattedVal =
-            fmt !== 'text'
-              ? `#fmt_${fmt.replace(/-/g, '_')}("${escapeStringLiteral(val)}")`
-              : escapeTypst(val);
+          const formattedVal = formatCellValue(val, fmt);
           const cellKey = `footer:${x}`;
           const specificKey = `footer:${y}:${x}`;
           parts.push(
             renderStructuredCell(
               cell,
-              { size: bodyFontSize, color: bodyColor, weight: 'bold' },
+              { ...bodyTextStyle, weight: 'bold' },
               formattedVal,
               cellKey,
               specificKey,
@@ -553,6 +588,12 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
       ctx.fillWidth,
       ctx.pretty
     );
+}
+
+export const tablePlugin: ComponentPlugin<TableComponent> = {
+  type: 'table',
+  render(comp, ctx) {
+    return renderTableComponent(comp, ctx);
   },
 };
 
@@ -560,6 +601,19 @@ export const tablePlugin: ComponentPlugin<TableComponent> = {
 
 function formatMm(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(3).replace(/\.?0+$/, '');
+}
+
+function formatCellValue(value: string, format: FormatType): string {
+  if (format === 'text' || /\{\{.+?\}\}/.test(value)) return escapeTypst(value);
+  return `#fmt_${format.replace(/-/g, '_')}("${escapeStringLiteral(value)}")`;
+}
+
+/** Typst requires lengths to include a unit — bare "0" or "1" is invalid. */
+function normalizeLength(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed === '0') return '0pt';
+  if (/^\d+$/.test(trimmed)) return `${trimmed}pt`;
+  return trimmed;
 }
 
 function buildFillFn(
@@ -589,6 +643,7 @@ function renderStructuredCell(
     size: number;
     color: string;
     weight: string | number;
+    fontFamily?: string;
     align?: 'left' | 'center' | 'right' | 'justify';
   },
   contentOverride?: string,
@@ -632,6 +687,8 @@ function renderStructuredCell(
   if (cs > 1) args.push(`colspan: ${cs}`);
   if (rs > 1) args.push(`rowspan: ${rs}`);
   if (cellFill) args.push(`fill: ${formatColor(cellFill)}`);
+  const stroke = formatCellStroke(cell.stroke);
+  if (stroke) args.push(`stroke: ${stroke}`);
 
   // Combine horizontal and vertical alignment
   const rawHAlign = cellAlign || textStyle.align || 'left';
@@ -646,6 +703,7 @@ function renderStructuredCell(
   const color = formatColor(cellStyle?.color || textStyle.color);
   const size = cellStyle?.fontSize || textStyle.size;
   const weight = formatWeight(cellStyle?.fontWeight ?? textStyle.weight);
+  const fontFamily = cellStyle?.fontFamily ?? textStyle.fontFamily ?? 'Sarabun';
   const leading = cellStyle?.lineHeight ? cellStyle.lineHeight - 0.65 : 0.75;
 
   let inner = contentOverride !== undefined ? contentOverride : escapeTypst(cell.content);
@@ -677,8 +735,24 @@ function renderStructuredCell(
   }
 
   const justify = isJustify || (cellStyle?.justify ?? false);
-  const wrapped = `[\n    #set par(leading: ${leading}em, justify: ${justify})\n    #set text(size: ${size}pt, fill: ${color}, weight: ${weight})\n    ${inner}\n  ]`;
+  const wrapped = `[\n    #set par(leading: ${leading}em, justify: ${justify})\n    #set text(size: ${size}pt, fill: ${color}, weight: ${weight}, font: ${formatTypstFontStack(fontFamily)})\n    ${inner}\n  ]`;
 
   if (args.length === 0) return `    ${wrapped},\n`;
   return `    table.cell(${args.join(', ')})${wrapped},\n`;
+}
+
+function formatCellStroke(stroke?: StrokeConfig): string | null {
+  if (!stroke) return null;
+  const entries: string[] = [];
+  for (const side of ['top', 'bottom', 'left', 'right'] as const) {
+    const value = stroke[side];
+    if (value !== undefined) entries.push(`${side}: ${formatStrokeSide(value)}`);
+  }
+  if (entries.length === 0) return null;
+  return `(${entries.join(', ')})`;
+}
+
+function formatStrokeSide(value: string): string {
+  const trimmed = value.trim();
+  return trimmed === 'none' ? 'none' : trimmed;
 }

@@ -727,3 +727,354 @@ describe('TypstGenerator — pretty export', () => {
     expect(output).not.toContain('Exported from TypstFlow');
   });
 });
+
+describe('TypstGenerator — form-box component', () => {
+  const schema: LayoutSchema = {
+    ...MINIMAL_SCHEMA,
+    pages: [
+      {
+        id: 'page-1',
+        name: 'Page 1',
+        body: {
+          id: 'body',
+          layoutMode: 'flow',
+          components: [
+            {
+              id: 'box-1',
+              type: 'form-box',
+              x: 0,
+              y: 0,
+              width: 180,
+              height: 40,
+              strokeWidth: '0.1mm',
+              strokeColor: '#64748b',
+              inset: '2mm',
+              innerGap: '2mm',
+              components: [
+                {
+                  id: 'txt-1',
+                  type: 'text',
+                  x: 0,
+                  y: 0,
+                  width: 160,
+                  height: 10,
+                  content: 'Inside box',
+                  style: { fontSize: 10 },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  it('renders bordered rect wrapper with nested flow content', () => {
+    const output = generate(schema);
+    expect(output).toContain('#rect(width: 100%');
+    expect(output).toContain('stroke: 0.1mm');
+    expect(output).toContain('Inside box');
+  });
+});
+
+describe('TypstGenerator — field-grid component', () => {
+  const schema: LayoutSchema = {
+    ...MINIMAL_SCHEMA,
+    pages: [
+      {
+        id: 'page-1',
+        name: 'Page 1',
+        body: {
+          id: 'body',
+          components: [
+            {
+              id: 'grid-1',
+              type: 'field-grid',
+              x: 0,
+              y: 0,
+              width: 180,
+              height: 30,
+              columns: 2,
+              labelWidth: '20mm',
+              fields: [
+                { id: 'f1', label: 'PR.No.', value: '{{pr.number}}', column: 0 },
+                { id: 'f2', label: 'Date', value: '{{pr.date}}', column: 1 },
+              ],
+              labelStyle: { fontSize: 9 },
+              valueStyle: { fontSize: 9 },
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  it('renders two-column label/value grid with bindings', () => {
+    const output = generate(schema, { pr: { number: 'PR-001', date: '01/07/2026' } });
+    expect(output).toContain('PR.No. :');
+    expect(output).toContain('PR-001');
+    expect(output).toContain('Date :');
+    expect(output).toContain('01/07/2026');
+    expect(output).toContain('columns: (1fr, 1fr)');
+  });
+});
+
+describe('TypstGenerator — letterhead component', () => {
+  const schema: LayoutSchema = {
+    ...MINIMAL_SCHEMA,
+    zones: {
+      ...MINIMAL_SCHEMA.zones,
+      header: {
+        ...MINIMAL_SCHEMA.zones.header,
+        components: [
+          {
+            id: 'lh-1',
+            type: 'letterhead',
+            x: 0,
+            y: 0,
+            width: 190,
+            height: 22,
+            companyName: '{{company.name}}',
+            title: 'ใบสั่งซื้อ/สั่งจ้าง',
+            showPageNumber: true,
+            companyStyle: { fontSize: 13, fontWeight: 'bold' },
+            titleStyle: { fontSize: 15, fontWeight: 'bold' },
+          },
+        ],
+      },
+    },
+    pages: [{ id: 'page-1', name: 'Page 1', body: { id: 'body', components: [] } }],
+  };
+
+  it('renders company name and document title', () => {
+    const output = generate(schema, { company: { name: 'สยามราชธานี' } });
+    expect(output).toContain('สยามราชธานี');
+    expect(output).toContain('ใบสั่งซื้อ/สั่งจ้าง');
+    expect(output).toContain('counter(page)');
+  });
+});
+
+describe('TypstGenerator — form-table component', () => {
+  const schema: LayoutSchema = {
+    ...MINIMAL_SCHEMA,
+    pages: [
+      {
+        id: 'page-1',
+        name: 'Page 1',
+        body: {
+          id: 'body',
+          layoutMode: 'flow',
+          components: [
+            {
+              id: 'ft-1',
+              type: 'form-table',
+              x: 0,
+              y: 0,
+              width: 180,
+              height: 50,
+              minRows: 3,
+              dataSource: '{{items}}',
+              showHeader: true,
+              repeatHeaderOnPage: true,
+              columns: [
+                { id: 'c1', header: 'Item', field: 'name', width: '1fr' },
+                { id: 'c2', header: 'Amt', field: 'amount', width: '30mm', align: 'right' },
+              ],
+              footerSummary: [
+                {
+                  id: 'sum1',
+                  label: 'Total',
+                  value: '{{sum(items, "amount")}}',
+                  labelColspan: 1,
+                  valueColumn: 1,
+                  format: 'number',
+                },
+              ],
+              style: {},
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  it('pads rows to minRows and renders footer summary', () => {
+    const output = generate(schema, {
+      items: [{ name: 'Pen', amount: '100.00' }],
+    });
+    expect(output).toContain('#table(');
+    expect(output).toContain('Total');
+    expect(output).toContain('table.footer');
+  });
+
+  it('renders PO-style bottom footer with a fixed blank body and column-aligned totals', () => {
+    const poSchema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            layoutMode: 'flow',
+            components: [
+              {
+                id: 'po-table',
+                type: 'form-table',
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 130,
+                bodyMinHeight: '95mm',
+                footerMode: 'bottom',
+                dataSource: '{{items}}',
+                showHeader: true,
+                repeatHeaderOnPage: true,
+                columns: [
+                  { id: 'c-no', header: '#', field: 'no', width: '8mm', align: 'center' },
+                  { id: 'c-desc', header: 'Descriptions', field: 'description', width: '85mm' },
+                  { id: 'c-dept', header: 'Dept./Site', field: 'dept', width: '18mm' },
+                  { id: 'c-pr', header: 'PR No.', field: 'prNo', width: '22mm' },
+                  { id: 'c-qty', header: 'QTY', field: 'qty', width: '20mm', align: 'right' },
+                  { id: 'c-amount', header: 'Amount', field: 'amount', width: '27mm', align: 'right' },
+                ],
+                footerSummary: [
+                  {
+                    id: 'qty-total',
+                    label: 'รวม',
+                    value: '{{sum(items, "qty")}}',
+                    labelColumn: 3,
+                    valueColumn: 4,
+                    labelColspan: 1,
+                    valueColspan: 1,
+                    format: 'number',
+                  },
+                  {
+                    id: 'subtotal',
+                    label: 'Total',
+                    value: '{{totals.subtotal}}',
+                    labelColumn: 4,
+                    valueColumn: 5,
+                    format: 'number',
+                  },
+                  {
+                    id: 'vat',
+                    label: 'VAT 7.00%',
+                    value: '{{totals.vat}}',
+                    labelColumn: 4,
+                    valueColumn: 5,
+                    format: 'number',
+                  },
+                  {
+                    id: 'grand-total',
+                    label: 'Grand Total',
+                    value: '{{totals.grandTotal}}',
+                    labelColumn: 4,
+                    valueColumn: 5,
+                    format: 'number',
+                  },
+                ],
+                style: {
+                  borderColor: '#333333',
+                  borderWidth: '0.5pt',
+                  cellPadding: '3pt',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const output = generate(poSchema, {
+      items: [{ no: 1, description: 'ปากกาไฮไลน์', dept: 'IHD', prNo: 'PR69060015', qty: 10, amount: 207.8 }],
+      totals: { subtotal: 207.8, vat: 14.55, grandTotal: 222.35 },
+    });
+
+    expect(output).toContain('rows: (auto, auto, 95mm');
+    expect(output).toContain('table.cell(stroke: (top: none)');
+    expect(output).toContain('table.footer(repeat: false');
+    expect(output).toContain('table.cell(colspan: 3');
+    expect(output).toContain('Total');
+    expect(output).toContain('Grand Total');
+  });
+
+  it('keeps unresolved formatted footer bindings as text placeholders', () => {
+    const unresolvedSchema: LayoutSchema = {
+      ...schema,
+      pages: [
+        {
+          ...schema.pages[0],
+          body: {
+            ...schema.pages[0].body,
+            components: [
+              {
+                ...(schema.pages[0].body.components[0] as any),
+                footerSummary: [
+                  {
+                    id: 'sum1',
+                    label: 'Total',
+                    value: '{{totals.subtotal}}',
+                    labelColspan: 1,
+                    valueColumn: 1,
+                    format: 'number',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const output = generate(unresolvedSchema, {
+      items: [{ name: 'Pen', amount: '100.00' }],
+    });
+
+    expect(output).toContain('{{totals.subtotal}}');
+    expect(output).not.toContain('#fmt_number("{{');
+  });
+});
+
+describe('TypstGenerator — signature-block component', () => {
+  const schema: LayoutSchema = {
+    ...MINIMAL_SCHEMA,
+    pages: [
+      {
+        id: 'page-1',
+        name: 'Page 1',
+        body: {
+          id: 'body',
+          components: [
+            {
+              id: 'sb-1',
+              type: 'signature-block',
+              x: 0,
+              y: 0,
+              width: 180,
+              height: 25,
+              variant: 'thai-form',
+              slots: [
+                {
+                  id: 's1',
+                  role: 'ผู้อนุมัติ',
+                  name: '{{signatures.approver}}',
+                  date: 'วันที่',
+                  lineStyle: 'dotted',
+                },
+              ],
+              labelStyle: { fontSize: 8 },
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  it('renders thai-form dotted line and role', () => {
+    const output = generate(schema, { signatures: { approver: 'นาย A' } });
+    expect(output).toContain('dash: "dotted"');
+    expect(output).toContain('ผู้อนุมัติ');
+    expect(output).toContain('นาย A');
+  });
+});

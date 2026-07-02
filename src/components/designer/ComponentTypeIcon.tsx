@@ -4,10 +4,14 @@ import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
 import {
   Barcode,
+  Building2,
+  Box,
   CheckSquare,
   Columns,
   Database,
   FileDigit,
+  FileSpreadsheet,
+  LayoutGrid,
   Layers,
   ListOrdered,
   type LucideIcon,
@@ -20,6 +24,7 @@ import {
   Repeat,
   SeparatorHorizontal,
   Settings,
+  Stamp,
   Type,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -41,6 +46,11 @@ export const COMPONENT_TYPE_ICONS: Record<ComponentNode['type'], LucideIcon> = {
   checklist: CheckSquare,
   rectangle: RectangleHorizontal,
   signature: PenLine,
+  'form-box': Box,
+  'field-grid': LayoutGrid,
+  letterhead: Building2,
+  'form-table': FileSpreadsheet,
+  'signature-block': Stamp,
 };
 
 const FALLBACK_ICON = Settings;

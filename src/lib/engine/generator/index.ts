@@ -17,6 +17,11 @@ import type { ComponentPlugin, RenderContext } from './types';
 import { barcodePlugin } from './plugins/barcode';
 import { checklistPlugin } from './plugins/checklist';
 import { columnsPlugin } from './plugins/columns';
+import { fieldGridPlugin } from './plugins/field-grid';
+import { formBoxPlugin } from './plugins/form-box';
+import { formTablePlugin } from './plugins/form-table';
+import { letterheadPlugin } from './plugins/letterhead';
+import { signatureBlockPlugin } from './plugins/signature-block';
 import { imagePlugin } from './plugins/image';
 import { linePlugin } from './plugins/line';
 import { pageBreakIndicatorPlugin } from './plugins/page-break-indicator';
@@ -47,6 +52,11 @@ const BUILT_IN_PLUGINS: ComponentPlugin[] = [
   tablePlugin,
   checklistPlugin,
   rectanglePlugin,
+  formBoxPlugin,
+  fieldGridPlugin,
+  letterheadPlugin,
+  formTablePlugin,
+  signatureBlockPlugin,
   signaturePlugin,
 ];
 

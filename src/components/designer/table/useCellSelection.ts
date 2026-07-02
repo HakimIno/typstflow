@@ -1,4 +1,4 @@
-import type { TableComponent, TableRow } from '@/types/schema';
+import type { AnyTableComponent, TableRow } from '@/types/schema';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -25,7 +25,7 @@ interface SelectionAnchor {
 }
 
 export function useCellSelection(
-  component: TableComponent,
+  component: AnyTableComponent,
   selectedCells: CellsSelection | null,
   setSelectedCell: (cell: CellCoord | null) => void,
   setSelectedCells: (cells: CellsSelection | null) => void
@@ -34,9 +34,14 @@ export function useCellSelection(
   const [selectionAnchor, setSelectionAnchor] = useState<SelectionAnchor | null>(null);
 
   const getSchemaRows = (section: SectionType): TableRow[] => {
-    const key =
-      section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
-    return (component[key as keyof TableComponent] as TableRow[]) || [];
+    if (section === 'footer') {
+      // Form-table footers span two schema keys; concat in render order so
+      // drag/shift range selection works across the whole footer.
+      const gridRows = component.type === 'form-table' ? (component.footerGridRows ?? []) : [];
+      return [...(component.footerRows ?? []), ...gridRows];
+    }
+    const key = section === 'header' ? 'headerRows' : 'detailRows';
+    return component[key] || [];
   };
 
   const isCellSelected = (section: SectionType, rowId: string, logicalCol: number): boolean => {

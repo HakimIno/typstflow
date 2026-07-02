@@ -9,6 +9,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useResizable } from '@/hooks/use-resizable';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { isTableLikeType } from '@/lib/utils/component-type-utils';
 import {
   SNAP_PAGE_RADIUS,
   calculateComponentSnap,
@@ -57,7 +58,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const isHidden = useDesignerStore((s) => s.hiddenComponentIds.includes(componentId));
   const isLocked = useDesignerStore((s) => s.lockedComponentIds.includes(componentId));
   const tableSheetEditId = useDesignerStore((s) => s.tableSheetEditId);
-  const isTableSheetMode = component?.type === 'table' && tableSheetEditId === componentId;
+  const isTableSheetMode = isTableLikeType(component?.type ?? 'text') && tableSheetEditId === componentId;
   const totalPages = useDesignerStore((s) => s.schema.pages.length);
   const sampleData = useDesignerStore((s) => s.sampleData);
 
@@ -115,7 +116,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         target.closest('[data-toolbar="true"]') ||
         isEditing ||
         (isSelected &&
-          component.type === 'table' &&
+          isTableLikeType(component.type) &&
           (target.closest('td') ||
             target.closest('th') ||
             target.closest('.cursor-col-resize') ||
@@ -270,7 +271,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         target.closest('[data-toolbar="true"]') ||
         isEditing ||
         (isSelected &&
-          component.type === 'table' &&
+          isTableLikeType(component.type) &&
           (target.closest('td') ||
             target.closest('th') ||
             target.closest('.cursor-col-resize') ||
@@ -808,7 +809,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         // too so selectComponent (which clears selectedCell) never fires from a cell click.
         if (
           isSelected &&
-          component.type === 'table' &&
+          isTableLikeType(component.type) &&
           (target.closest('td') || target.closest('th'))
         )
           return;
@@ -969,7 +970,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         'transition-none cursor-default select-none group focus:outline-none high-perf-gpu',
         isSelected
           ? clsx(
-              component.type === 'table'
+              isTableLikeType(component.type)
                 ? isTableSheetMode
                   ? 'z-50 ring-0'
                   : 'z-50 ring-1 ring-[var(--accent)]/40 ring-inset'
@@ -999,9 +1000,11 @@ export const ComponentWrapper = memo(function ComponentWrapper({
     // Dynamic components in flow mode: auto-height so content expands naturally
     const autoHeight =
       component.type === 'text' ||
-      component.type === 'table' ||
+      isTableLikeType(component.type) ||
       component.type === 'repeater' ||
       component.type === 'columns' ||
+      component.type === 'form-box' ||
+      component.type === 'field-grid' ||
       component.type === 'summary-box' ||
       component.type === 'checklist';
 
@@ -1018,13 +1021,14 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         onPointerCancel={handleFlowPointerUp}
         data-designer-component
         data-columns-layout={component.type === 'columns' ? 'true' : undefined}
+        data-form-box-layout={component.type === 'form-box' ? 'true' : undefined}
         className={clsx(
           'relative select-none group focus:outline-none touch-none transition-shadow',
           flowDragging
             ? 'cursor-grabbing opacity-80 ring-2 ring-[var(--accent)] shadow-xl'
             : 'cursor-grab',
           isSelected && !flowDragging
-            ? component.type === 'table'
+            ? isTableLikeType(component.type)
               ? 'ring-1 ring-[var(--accent)]/50 ring-inset bg-white/5'
               : 'ring-2 ring-[var(--accent)] ring-inset shadow-md bg-white/10'
             : !flowDragging &&
@@ -1074,7 +1078,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
             className={clsx(
               'w-full relative',
               component.type !== 'columns' &&
-                !(isSelected && component.type === 'table') &&
+                component.type !== 'form-box' &&
+                !(isSelected && isTableLikeType(component.type)) &&
                 'pointer-events-none',
               !autoHeight && 'h-full'
             )}
@@ -1136,7 +1141,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           className={clsx(
             'w-full h-full relative',
             component.type !== 'columns' &&
-              !(isSelected && component.type === 'table') &&
+              component.type !== 'form-box' &&
+              !(isSelected && isTableLikeType(component.type)) &&
               'pointer-events-none'
           )}
         >

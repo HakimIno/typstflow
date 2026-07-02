@@ -6,22 +6,40 @@ import {
   insertStructuredRow,
   mergeStructuredCells,
 } from '@/lib/utils/table-utils';
-import type { TableComponent, TableRow } from '@/types/schema';
+import type { FormTableComponent, TableComponent, TableRow } from '@/types/schema';
 import type { CellCoord, CellsSelection, SectionType } from './useCellSelection';
 
 export function useTableActions(
-  component: TableComponent,
+  component: TableComponent | FormTableComponent,
   selectedCell: CellCoord | null,
   selectedCells: CellsSelection | null,
   updateComponent: (id: string, updates: Record<string, unknown>) => void,
   setSelectedCell: (cell: CellCoord | null) => void,
   setSelectedCells?: (cells: CellsSelection | null) => void
 ) {
-  const sectionKey = (section: SectionType) =>
-    section === 'header' ? 'headerRows' : section === 'footer' ? 'footerRows' : 'detailRows';
+  // Form-tables keep footer rows in TWO schema keys (footerRows + footerGridRows).
+  // Resolve which one the selected rows actually live in so edits write back to
+  // the right array instead of silently no-oping against an empty footerRows.
+  const footerKey = (rowIds?: string[]): 'footerRows' | 'footerGridRows' => {
+    if (component.type !== 'form-table') return 'footerRows';
+    const gridRows = component.footerGridRows;
+    if (!gridRows?.length) return 'footerRows';
+    if (rowIds?.length && component.footerRows?.some((r) => rowIds.includes(r.id))) {
+      return 'footerRows';
+    }
+    return 'footerGridRows';
+  };
 
-  const getRows = (section: SectionType): TableRow[] =>
-    (component[sectionKey(section) as keyof TableComponent] as TableRow[]) || [];
+  const sectionKey = (section: SectionType, rowIds?: string[]) =>
+    section === 'header' ? 'headerRows' : section === 'footer' ? footerKey(rowIds) : 'detailRows';
+
+  const selectedRowIds = (): string[] | undefined =>
+    selectedCells?.rowIds ?? (selectedCell ? [selectedCell.rowId] : undefined);
+
+  const getRows = (section: SectionType, rowIds?: string[]): TableRow[] =>
+    ((component as unknown as Record<string, unknown>)[
+      sectionKey(section, rowIds ?? selectedRowIds())
+    ] as TableRow[]) || [];
 
   const clearCellSelection = () => {
     setSelectedCell(null);
@@ -30,8 +48,8 @@ export function useTableActions(
 
   const handleMerge = () => {
     if (!selectedCells) return;
-    const key = sectionKey(selectedCells.section);
-    const rows = getRows(selectedCells.section);
+    const key = sectionKey(selectedCells.section, selectedCells.rowIds);
+    const rows = getRows(selectedCells.section, selectedCells.rowIds);
     if (rows.length === 0) return;
 
     const rowIndices = selectedCells.rowIds
@@ -57,8 +75,8 @@ export function useTableActions(
   const handleSplit = () => {
     if (!selectedCell) return;
     const { section, rowId, cellIdx: logicalCol } = selectedCell;
-    const key = sectionKey(section);
-    const rows = [...getRows(section)];
+    const key = sectionKey(section, [rowId]);
+    const rows = [...getRows(section, [rowId])];
     const rowIdx = rows.findIndex((r) => r.id === rowId);
     if (rowIdx === -1) return;
 
@@ -95,8 +113,8 @@ export function useTableActions(
       const newCols = component.columns.filter((_, idx) => !cellIndices.includes(idx));
       updateComponent(component.id, { columns: newCols });
     } else {
-      const key = sectionKey(section);
-      const rows = getRows(section);
+      const key = sectionKey(section, rowIds);
+      const rows = getRows(section, rowIds);
       const newRows = rows.filter((r) => !rowIds.includes(r.id));
       updateComponent(component.id, { [key]: newRows });
     }
@@ -107,11 +125,11 @@ export function useTableActions(
   const handleDeleteRows = () => {
     if (!selectedCells) return;
     const { section, rowIds } = selectedCells;
-    const rows = getRows(section);
+    const rows = getRows(section, rowIds);
     if (!rows.length) return;
     const newRows = rows.filter((r) => !rowIds.includes(r.id));
     if (newRows.length === rows.length) return;
-    updateComponent(component.id, { [sectionKey(section)]: newRows });
+    updateComponent(component.id, { [sectionKey(section, rowIds)]: newRows });
     clearCellSelection();
   };
 
@@ -135,8 +153,8 @@ export function useTableActions(
   const handleInsertRow = () => {
     if (!selectedCells) return;
     const section = selectedCells.section;
-    const key = sectionKey(section);
-    const rows = getRows(section);
+    const key = sectionKey(section, selectedCells.rowIds);
+    const rows = getRows(section, selectedCells.rowIds);
     const lastRowId = selectedCells.rowIds[selectedCells.rowIds.length - 1];
     const index = rows.findIndex((r) => r.id === lastRowId);
     const newRows = insertStructuredRow(rows, index, component.columns.length, section as any);

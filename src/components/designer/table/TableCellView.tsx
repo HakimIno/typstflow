@@ -1,6 +1,7 @@
 'use client';
 
-import type { TableCell as TCell, TableRow, TableStyle } from '@/types/schema';
+import { buildPreviewFontStack } from '@/lib/utils/preview-fonts';
+import type { StrokeConfig, TableCell as TCell, TableRow, TableStyle } from '@/types/schema';
 import { clsx } from 'clsx';
 import type React from 'react';
 import { memo } from 'react';
@@ -49,6 +50,7 @@ export interface CellStyleCtx {
   groupHeaderStyle: any;
   groupFooterStyle: any;
   columnsLength: number;
+  previewFontStack: string;
 }
 
 export interface SelectionEdges {
@@ -74,6 +76,12 @@ interface TableCellViewProps {
   isActiveCell: boolean;
   /** Non-null only for selected cells (so unselected cells keep a stable `null` prop). */
   selectionEdges: SelectionEdges | null;
+  /**
+   * Exact content-box height when the row has an explicit height. Typst fixed rows
+   * never grow, but HTML `<tr height>` is only a minimum — clamping the content box
+   * keeps the preview row geometry identical to the generated PDF.
+   */
+  fixedContentHeightPx?: number;
   ctx: CellStyleCtx;
   onCellMouseDown: (
     section: SectionType,
@@ -119,6 +127,7 @@ export const TableCellView = memo(function TableCellView({
   isSelected,
   isActiveCell,
   selectionEdges,
+  fixedContentHeightPx,
   ctx,
   onCellMouseDown,
   onCellMouseEnter,
@@ -216,6 +225,9 @@ export const TableCellView = memo(function TableCellView({
   const cellTextDecoration = cellDecorations.length > 0 ? cellDecorations.join(' ') : 'none';
 
   const cellFontFamily = cellStyle?.fontFamily || ctx.style.fontFamily;
+  const cellFontStack = cellFontFamily
+    ? buildPreviewFontStack(cellFontFamily)
+    : ctx.previewFontStack;
   const resolvedAlign = cell.align || 'left';
   const isVertical = (cell.textDirection || 'horizontal') === 'vertical';
   const placeholder =
@@ -243,6 +255,7 @@ export const TableCellView = memo(function TableCellView({
       ? makeBorder(sides.right, ctx.obWidth, ctx.obColor)
       : makeBorder(sides.innerV, ctx.ivWidth, ctx.ivColor, ctx.ivDash),
   };
+  applyCellStroke(borderStyle, cell.stroke, ctx);
 
   const Tag = isHeader ? 'th' : 'td';
 
@@ -298,31 +311,82 @@ export const TableCellView = memo(function TableCellView({
           className="absolute inset-0 pointer-events-none z-[5] bg-[var(--accent)]/[0.04]"
         />
       )}
-      <CellEditor
-        readOnly={!isTableEditing}
-        className="w-full bg-transparent border-none focus:ring-0 outline-none placeholder:text-slate-300/60"
-        style={{
-          textAlign: resolvedAlign as any,
-          fontFamily: cellFontFamily || 'inherit',
-          color: textColor,
-          fontSize: `${fontSize}pt`,
-          fontWeight,
-          fontStyle: isItalic ? 'italic' : 'normal',
-          textDecoration: cellTextDecoration,
-          lineHeight: 1.4,
-          ...(isVertical
-            ? {
-                writingMode: 'vertical-rl' as any,
-                textOrientation: 'mixed' as any,
-                width: 'auto',
-                height: '100%',
-              }
-            : {}),
-        }}
-        initialValue={cell.content || ''}
-        placeholder={placeholder}
-        onSave={(newVal) => onCellSave(sectionKey, rowIdx, cell, logicalCol, isHeader, newVal)}
-      />
+      {(() => {
+        const editor = (
+          <CellEditor
+            readOnly={!isTableEditing}
+            className="w-full bg-transparent border-none focus:ring-0 outline-none placeholder:text-slate-300/60"
+            style={{
+              textAlign: resolvedAlign as any,
+              fontFamily: cellFontStack,
+              color: textColor,
+              fontSize: `${fontSize}pt`,
+              fontWeight,
+              fontStyle: isItalic ? 'italic' : 'normal',
+              textDecoration: cellTextDecoration,
+              lineHeight: 1.4,
+              ...(isVertical
+                ? {
+                    writingMode: 'vertical-rl' as any,
+                    textOrientation: 'mixed' as any,
+                    width: 'auto',
+                    height: '100%',
+                  }
+                : {}),
+            }}
+            initialValue={cell.content || ''}
+            placeholder={placeholder}
+            onSave={(newVal) => onCellSave(sectionKey, rowIdx, cell, logicalCol, isHeader, newVal)}
+          />
+        );
+        // Fixed-height rows: clamp + clip the content box so the row renders at the
+        // exact height Typst will output (HTML rows otherwise grow to fit content).
+        if (fixedContentHeightPx === undefined || isVertical) return editor;
+        const justify =
+          cell.verticalAlign === 'top'
+            ? 'flex-start'
+            : cell.verticalAlign === 'bottom'
+              ? 'flex-end'
+              : 'center';
+        return (
+          <div
+            style={{
+              height: `${fixedContentHeightPx}px`,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: justify,
+            }}
+          >
+            {editor}
+          </div>
+        );
+      })()}
     </Tag>
   );
 });
+
+function applyCellStroke(
+  style: React.CSSProperties,
+  stroke: StrokeConfig | undefined,
+  ctx: CellStyleCtx
+) {
+  if (!stroke) return;
+  if (stroke.top !== undefined) style.borderTop = strokeToCssBorder(stroke.top, ctx);
+  if (stroke.bottom !== undefined) style.borderBottom = strokeToCssBorder(stroke.bottom, ctx);
+  if (stroke.left !== undefined) style.borderLeft = strokeToCssBorder(stroke.left, ctx);
+  if (stroke.right !== undefined) style.borderRight = strokeToCssBorder(stroke.right, ctx);
+}
+
+function strokeToCssBorder(value: string, ctx: CellStyleCtx): string {
+  const trimmed = value.trim();
+  if (trimmed === 'none') return 'none';
+
+  const width = trimmed.match(/\d*\.?\d+(?:pt|px|mm|cm)?/)?.[0] ?? ctx.style.borderWidth ?? '0.5pt';
+  const color =
+    trimmed.match(/#[0-9a-fA-F]{3,8}/)?.[0] ??
+    trimmed.match(/\b(?:black|white|red|blue|green|gray|grey)\b/)?.[0] ??
+    ctx.obColor;
+
+  return `${width} solid ${color}`;
+}

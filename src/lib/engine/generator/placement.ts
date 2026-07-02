@@ -22,7 +22,7 @@ export function wrapPlacement(
   if (flowMode) {
     if (base.pageBreakBefore) parts.push('#pagebreak(weak: true)\n');
 
-    if (base.type === 'table') {
+    if (base.type === 'table' || base.type === 'form-table') {
       // --- Special Native Flow-Pagination Wrapper for Tables ---
       // - Keeps the table in document flow so rows can paginate naturally.
       // - Ignores y: flow layout order determines vertical position.
@@ -53,8 +53,13 @@ export function wrapPlacement(
     const autoHeight =
       type === 'text' ||
       type === 'table' ||
+      type === 'form-table' ||
       type === 'columns' ||
       type === 'checklist' ||
+      type === 'form-box' ||
+      type === 'field-grid' ||
+      type === 'letterhead' ||
+      type === 'signature-block' ||
       type === 'summary-box' ||
       type === 'repeater';
 
@@ -152,4 +157,10 @@ export function formatFontFamily(font: string | undefined): string {
   // Legacy map: "LINE Seed Sans TH" -> "LINE Seed Sans"
   if (f === 'LINE Seed Sans TH') return 'LINE Seed Sans';
   return f;
+}
+
+/** Typst font tuple with Sarabun/sans-serif fallbacks (matches document preamble). */
+export function formatTypstFontStack(font: string | undefined): string {
+  const primary = formatFontFamily(font);
+  return `("${primary}", "Sarabun", "sans-serif")`;
 }

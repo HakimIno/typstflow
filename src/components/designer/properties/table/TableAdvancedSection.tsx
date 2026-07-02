@@ -1,6 +1,6 @@
 'use client';
 
-import type { TableComponent } from '@/types/schema';
+import type { AnyTableComponent } from '@/types/schema';
 import { useState } from 'react';
 import { CollapsibleSection, SegmentedControl } from '../Shared';
 import { TableGuideLinesPanel } from './TableLinesSection';
@@ -8,7 +8,7 @@ import { TableRowsSection } from './TableRowsSection';
 import { TABLE_FIELD_STACK } from './TableShared';
 
 interface Props {
-  component: TableComponent;
+  component: AnyTableComponent;
 }
 
 const ROW_KIND_OPTIONS = [

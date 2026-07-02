@@ -74,6 +74,9 @@ function deepCleanComponent(comp: any): any {
   if (result.children && Array.isArray(result.children)) {
     result.children = result.children.map(deepCleanComponent);
   }
+  if (result.components && Array.isArray(result.components) && result.type === 'form-box') {
+    result.components = result.components.map(deepCleanComponent);
+  }
   if (result.columns && Array.isArray(result.columns) && result.type === 'columns') {
     result.columns = result.columns.map((col: any) => ({
       ...col,

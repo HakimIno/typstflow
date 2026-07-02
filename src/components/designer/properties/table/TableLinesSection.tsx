@@ -6,13 +6,13 @@ import {
   SelectValue,
 } from '@/components/ui/Select';
 import { useDesignerStore } from '@/store/designer-store';
-import type { TableComponent } from '@/types/schema';
+import type { AnyTableComponent } from '@/types/schema';
 import { Minus } from 'lucide-react';
 import { InsetSection, PANEL_SELECT_TRIGGER } from '../Shared';
 import { AddRowButton, MiniInput, TABLE_FIELD_STACK } from './TableShared';
 
 interface Props {
-  component: TableComponent;
+  component: AnyTableComponent;
 }
 
 const LineRowEditor = ({
@@ -86,22 +86,22 @@ export const TableGuideLinesPanel = ({ component }: Props) => {
             onPositionChange={(y) => {
               const lines = [...(component.hlines || [])];
               lines[idx] = { ...lines[idx], y };
-              updateComponent(component.id, { hlines: lines } as Partial<TableComponent>);
+              updateComponent(component.id, { hlines: lines } as Partial<AnyTableComponent>);
             }}
             onStrokeChange={(stroke) => {
               const lines = [...(component.hlines || [])];
               lines[idx] = { ...lines[idx], stroke };
-              updateComponent(component.id, { hlines: lines } as Partial<TableComponent>);
+              updateComponent(component.id, { hlines: lines } as Partial<AnyTableComponent>);
             }}
             onDashChange={(dash) => {
               const lines = [...(component.hlines || [])];
               (lines[idx] as { dash?: string }).dash = dash;
-              updateComponent(component.id, { hlines: lines } as Partial<TableComponent>);
+              updateComponent(component.id, { hlines: lines } as Partial<AnyTableComponent>);
             }}
             onRemove={() => {
               updateComponent(component.id, {
                 hlines: (component.hlines || []).filter((_, i) => i !== idx),
-              } as Partial<TableComponent>);
+              } as Partial<AnyTableComponent>);
             }}
           />
         ))}
@@ -113,7 +113,7 @@ export const TableGuideLinesPanel = ({ component }: Props) => {
                 ...(component.hlines || []),
                 { id: crypto.randomUUID(), y: 0, stroke: '0.2pt' },
               ],
-            } as Partial<TableComponent>)
+            } as Partial<AnyTableComponent>)
           }
         />
       </InsetSection>
@@ -129,22 +129,22 @@ export const TableGuideLinesPanel = ({ component }: Props) => {
             onPositionChange={(x) => {
               const lines = [...(component.vlines || [])];
               lines[idx] = { ...lines[idx], x };
-              updateComponent(component.id, { vlines: lines } as Partial<TableComponent>);
+              updateComponent(component.id, { vlines: lines } as Partial<AnyTableComponent>);
             }}
             onStrokeChange={(stroke) => {
               const lines = [...(component.vlines || [])];
               lines[idx] = { ...lines[idx], stroke };
-              updateComponent(component.id, { vlines: lines } as Partial<TableComponent>);
+              updateComponent(component.id, { vlines: lines } as Partial<AnyTableComponent>);
             }}
             onDashChange={(dash) => {
               const lines = [...(component.vlines || [])];
               (lines[idx] as { dash?: string }).dash = dash;
-              updateComponent(component.id, { vlines: lines } as Partial<TableComponent>);
+              updateComponent(component.id, { vlines: lines } as Partial<AnyTableComponent>);
             }}
             onRemove={() => {
               updateComponent(component.id, {
                 vlines: (component.vlines || []).filter((_, i) => i !== idx),
-              } as Partial<TableComponent>);
+              } as Partial<AnyTableComponent>);
             }}
           />
         ))}
@@ -156,7 +156,7 @@ export const TableGuideLinesPanel = ({ component }: Props) => {
                 ...(component.vlines || []),
                 { id: crypto.randomUUID(), x: 0, stroke: '0.2pt' },
               ],
-            } as Partial<TableComponent>)
+            } as Partial<AnyTableComponent>)
           }
         />
       </InsetSection>

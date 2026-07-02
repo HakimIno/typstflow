@@ -12,7 +12,7 @@ export const summaryBoxPlugin: ComponentPlugin<SummaryBoxComponent> = {
     const rowsParts: string[] = [];
     for (const row of comp.rows) {
       if (row.separator) {
-        rowsParts.push('    table.hline(stroke: 0.5pt + gray.lighten(50%)),');
+        rowsParts.push('    grid.hline(stroke: 0.5pt + gray.lighten(50%)),');
       }
       const val = resolveBinding(row.value, ctx.local, ctx.global, ctx.groupItems);
       const isTotal = row.style === 'total';

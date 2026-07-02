@@ -25,7 +25,7 @@ export function calculateAggregate(func: string, path: string, items: unknown[])
   if (!items.length) return '0';
   const values = items.map((item) => {
     const v = resolvePath(cleanPath, item);
-    return typeof v === 'number' ? v : Number.parseFloat(String(v)) || 0;
+    return typeof v === 'number' ? v : Number.parseFloat(String(v).replace(/,/g, '')) || 0;
   });
   const sum = values.reduce((a, b) => a + b, 0);
   switch (func.toUpperCase()) {

@@ -22,7 +22,9 @@ export type SchemaSlice = Pick<
   | 'componentRegistry'
   | 'addComponent'
   | 'addComponentToColumn'
+  | 'addComponentToFormBox'
   | 'moveComponentToColumn'
+  | 'moveComponentToFormBox'
   | 'updateComponent'
   | 'removeComponent'
   | 'removeComponents'
@@ -126,6 +128,63 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
             return { ...col, components: comps };
           });
           return { ...parent, columns: newCols };
+        }
+      );
+
+      if (!changed) return state;
+      return { ...pushHistory(state, newSchema), selectedComponentIds: [id] };
+    }),
+
+  addComponentToFormBox: (formBoxId, component, insertIndex) =>
+    set((state) => {
+      const id = `${component.type}-${Math.random().toString(36).substring(2, 9)}`;
+      const newComponent = {
+        ...component,
+        id,
+        x: 0,
+        y: 0,
+        width: component.width ?? 100,
+        height: component.height ?? 20,
+      } as ComponentNode;
+
+      const { schema: newSchema, changed } = mapComponentInSchema(
+        state.schema,
+        formBoxId,
+        (parent) => {
+          if (parent.type !== 'form-box') return parent;
+          const comps = [...(parent.components || [])];
+          const at = insertIndex !== undefined ? insertIndex : comps.length;
+          comps.splice(at, 0, newComponent);
+          return { ...parent, components: comps };
+        }
+      );
+
+      if (!changed) return state;
+      return { ...pushHistory(state, newSchema), selectedComponentIds: [id] };
+    }),
+
+  moveComponentToFormBox: (id, toFormBoxId, newIndex) =>
+    set((state) => {
+      const comp = findComponentInSchema(state.schema, id);
+      if (!comp) return state;
+
+      const { schema: removedSchema } = removeComponentFromSchema(state.schema, id);
+
+      const updatedComp: ComponentNode = {
+        ...comp,
+        x: 0,
+        y: 0,
+      };
+
+      const { schema: newSchema, changed } = mapComponentInSchema(
+        removedSchema,
+        toFormBoxId,
+        (parent) => {
+          if (parent.type !== 'form-box') return parent;
+          const comps = [...(parent.components || [])];
+          const at = newIndex !== -1 ? newIndex : comps.length;
+          comps.splice(at, 0, updatedComp);
+          return { ...parent, components: comps };
         }
       );
 
@@ -794,9 +853,17 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
   ungroupContainer: (id: string) =>
     set((state) => {
       const info = findComponentZone(state.schema, id);
-      if (!info || info.component.type !== 'columns') return state;
+      if (!info) return state;
 
-      const children = info.component.columns.flatMap((column) => column.components || []);
+      let children: ComponentNode[] = [];
+      if (info.component.type === 'columns') {
+        children = info.component.columns.flatMap((column) => column.components || []);
+      } else if (info.component.type === 'form-box') {
+        children = info.component.components || [];
+      } else {
+        return state;
+      }
+
       if (children.length === 0) return state;
 
       const parentX = info.component.x ?? 0;

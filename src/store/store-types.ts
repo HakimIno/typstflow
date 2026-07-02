@@ -123,6 +123,12 @@ export interface DesignerState extends FontSlice {
     component: Partial<ComponentNode>,
     insertIndex?: number
   ) => void;
+  addComponentToFormBox: (
+    formBoxId: string,
+    component: Partial<ComponentNode>,
+    insertIndex?: number
+  ) => void;
+  moveComponentToFormBox: (id: string, toFormBoxId: string, newIndex: number) => void;
   moveComponentToColumn: (
     id: string,
     toColumnLayoutId: string,

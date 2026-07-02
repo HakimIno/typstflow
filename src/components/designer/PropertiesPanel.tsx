@@ -1,15 +1,21 @@
 import { getValueType } from '@/lib/utils/json-path';
+import { isTableLikeType } from '@/lib/utils/component-type-utils';
 import { useDesignerStore } from '@/store/designer-store';
 import type {
   BarcodeComponent,
   ChecklistComponent,
   ColumnLayoutComponent,
   ComponentNode,
+  FieldGridComponent,
+  FormBoxComponent,
+  FormTableComponent,
   ImageComponent,
+  LetterheadComponent,
   LineComponent,
   PageNumberComponent,
   QRComponent,
   RectangleComponent,
+  SignatureBlockComponent,
   SignatureComponent,
   SummaryBoxComponent,
   TableComponent,
@@ -28,6 +34,11 @@ import { AlignmentProperties } from './properties/AlignmentProperties';
 import { BulkEditPanel } from './properties/BulkEditPanel';
 import { ChecklistProperties } from './properties/ChecklistProperties';
 import { ColumnProperties } from './properties/ColumnProperties';
+import { FieldGridProperties } from './properties/FieldGridProperties';
+import { FormBoxProperties } from './properties/FormBoxProperties';
+import { FormTableProperties } from './properties/FormTableProperties';
+import { LetterheadProperties } from './properties/LetterheadProperties';
+import { SignatureBlockProperties } from './properties/SignatureBlockProperties';
 import { FormatPicker } from './properties/FormatPicker';
 import { GeometryProperties } from './properties/GeometryProperties';
 import { GroupProperties } from './properties/GroupProperties';
@@ -53,7 +64,9 @@ import { TableVisualSection } from './properties/table/TableVisualSection';
 
 // Type guards for safe component access
 const isText = (c: ComponentNode): c is TextComponent => c.type === 'text';
-const isTable = (c: ComponentNode): c is TableComponent => c.type === 'table';
+const isTable = (c: ComponentNode): c is TableComponent | FormTableComponent =>
+  isTableLikeType(c.type);
+const isFormTable = (c: ComponentNode): c is FormTableComponent => c.type === 'form-table';
 const isImage = (c: ComponentNode): c is ImageComponent => c.type === 'image';
 const isLine = (c: ComponentNode): c is LineComponent => c.type === 'line';
 const isSummaryBox = (c: ComponentNode): c is SummaryBoxComponent => c.type === 'summary-box';
@@ -64,6 +77,11 @@ const isColumns = (c: ComponentNode): c is ColumnLayoutComponent => c.type === '
 const isChecklist = (c: ComponentNode): c is ChecklistComponent => c.type === 'checklist';
 const isRectangle = (c: ComponentNode): c is RectangleComponent => c.type === 'rectangle';
 const isSignature = (c: ComponentNode): c is SignatureComponent => c.type === 'signature';
+const isLetterhead = (c: ComponentNode): c is LetterheadComponent => c.type === 'letterhead';
+const isSignatureBlock = (c: ComponentNode): c is SignatureBlockComponent =>
+  c.type === 'signature-block';
+const isFormBox = (c: ComponentNode): c is FormBoxComponent => c.type === 'form-box';
+const isFieldGrid = (c: ComponentNode): c is FieldGridComponent => c.type === 'field-grid';
 
 type TabType = 'design' | 'layout' | 'data' | 'settings';
 
@@ -263,10 +281,18 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
             {isTable(selectedComponent) && (
               <>
+                {isFormTable(selectedComponent) && (
+                  <div className={PROPERTY_SECTION_CLASS}>
+                    <FormTableProperties
+                      component={selectedComponent}
+                      onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
+                    />
+                  </div>
+                )}
                 <CollapsibleSection label="Table Columns">
-                  <TableColumnsSection component={selectedComponent} />
+                  <TableColumnsSection component={selectedComponent as TableComponent} />
                 </CollapsibleSection>
-                <TableVisualSection component={selectedComponent} />
+                <TableVisualSection component={selectedComponent as TableComponent} />
               </>
             )}
 
@@ -299,6 +325,42 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
                 <SignatureProperties
                   component={selectedComponent}
                   onUpdate={(updates) => updateComponent(selectedComponent.id, updates as any)}
+                />
+              </div>
+            )}
+
+            {isFormBox(selectedComponent) && (
+              <div className={PROPERTY_SECTION_CLASS}>
+                <FormBoxProperties
+                  component={selectedComponent}
+                  onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
+                />
+              </div>
+            )}
+
+            {isFieldGrid(selectedComponent) && (
+              <div className={PROPERTY_SECTION_CLASS}>
+                <FieldGridProperties
+                  component={selectedComponent}
+                  onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
+                />
+              </div>
+            )}
+
+            {isLetterhead(selectedComponent) && (
+              <div className={PROPERTY_SECTION_CLASS}>
+                <LetterheadProperties
+                  component={selectedComponent}
+                  onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
+                />
+              </div>
+            )}
+
+            {isSignatureBlock(selectedComponent) && (
+              <div className={PROPERTY_SECTION_CLASS}>
+                <SignatureBlockProperties
+                  component={selectedComponent}
+                  onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
                 />
               </div>
             )}

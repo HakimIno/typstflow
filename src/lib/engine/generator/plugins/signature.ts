@@ -1,5 +1,6 @@
 import type { SignatureComponent } from '@/types/schema';
-import { isVisible } from '../binding';
+import { escapeTypst } from '@/lib/utils/typst-utils';
+import { isVisible, resolveBinding } from '../binding';
 import { formatColor, formatWeight, wrapPlacement } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
 
@@ -28,28 +29,36 @@ export const signaturePlugin: ComponentPlugin<SignatureComponent> = {
     const labelFont = comp.labelStyle?.fontFamily ? `font: "${comp.labelStyle.fontFamily}", ` : '';
 
     const slotBlocks = slots.map((slot) => {
-      // Per-slot visibility falls back to component-level defaults
       const showName = slot.showNameLine ?? comp.showNameLine ?? true;
       const showDate = slot.showDateLine ?? comp.showDateLine ?? true;
 
+      const roleLabel = escapeTypst(
+        resolveBinding(slot.label, ctx.local, ctx.global, ctx.groupItems)
+      );
+      const nameLabel = escapeTypst(
+        resolveBinding(slot.nameLabel ?? '', ctx.local, ctx.global, ctx.groupItems)
+      );
+      const dateLabel = escapeTypst(
+        resolveBinding(slot.dateLabel ?? 'วันที่', ctx.local, ctx.global, ctx.groupItems)
+      );
+
       const lines: string[] = [];
-      lines.push(`#v(12mm)`);
+      if (showDate) {
+        lines.push(
+          `#text(size: ${labelSize}pt, weight: ${labelWeight}, fill: ${labelColor}, ${labelFont})[${dateLabel}]`
+        );
+        lines.push(`#v(8mm)`);
+      } else {
+        lines.push(`#v(4mm)`);
+      }
       lines.push(`#line(length: 100%, stroke: ${lineStroke})`);
       lines.push(`#v(1mm)`);
       lines.push(
-        `#text(size: ${labelSize}pt, weight: ${labelWeight}, fill: ${labelColor}, ${labelFont})[${slot.label}]`
+        `#text(size: ${labelSize}pt, weight: ${labelWeight}, fill: ${labelColor}, ${labelFont})[${roleLabel}]`
       );
-      if (showName) {
-        const nameLbl = slot.nameLabel ?? '(......................)';
+      if (showName && nameLabel) {
         lines.push(
-          `#text(size: ${labelSize}pt, weight: ${labelWeight}, fill: ${labelColor}, ${labelFont})[${nameLbl}]`
-        );
-      }
-      if (showDate) {
-        const dateLbl = slot.dateLabel ?? 'Date: ___/___/______';
-        lines.push(`#v(1mm)`);
-        lines.push(
-          `#text(size: ${labelSize}pt, weight: ${labelWeight}, fill: ${labelColor}, ${labelFont})[${dateLbl}]`
+          `#text(size: ${labelSize}pt, weight: ${labelWeight}, fill: ${labelColor}, ${labelFont})[${nameLabel}]`
         );
       }
       return `[${lines.join('\n')}]`;

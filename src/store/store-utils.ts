@@ -43,6 +43,12 @@ export const stripSrcDataForHistory = (schema: LayoutSchema): LayoutSchema => {
         })),
       } as ComponentNode;
     }
+    if (comp.type === 'form-box' && comp.components) {
+      return {
+        ...comp,
+        components: comp.components.map(stripComp),
+      } as ComponentNode;
+    }
     return comp;
   };
 
@@ -84,6 +90,10 @@ export const buildComponentRegistry = (schema: LayoutSchema): Record<string, Com
       }
     } else if (comp.type === 'repeater' && (comp as any).children) {
       for (const child of (comp as any).children) {
+        processComponent(child);
+      }
+    } else if (comp.type === 'form-box' && comp.components) {
+      for (const child of comp.components) {
         processComponent(child);
       }
     }
