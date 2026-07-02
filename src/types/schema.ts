@@ -101,6 +101,7 @@ export type ComponentNode =
   | LetterheadComponent
   | FormTableComponent
   | SignatureBlockComponent
+  | FillInComponent
   | SignatureComponent;
 
 export interface BaseComponent {
@@ -599,6 +600,38 @@ export interface FormTableComponent extends Omit<TableComponent, 'type'> {
 
 /** Any table-like component the designer's table UI (preview, panels, hooks) can operate on. */
 export type AnyTableComponent = TableComponent | FormTableComponent;
+
+/** One piece of a {@link FillInComponent} line: static text or a fill-in blank. */
+export interface FillInSegment {
+  id: string;
+  kind: 'text' | 'blank';
+  /** Static text (kind 'text') or the value rendered on the blank line (kind 'blank'). */
+  text?: BindingExpression;
+  /** Blank width, e.g. '25mm'. '1fr' stretches to fill remaining space. */
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+}
+
+/**
+ * Inline fill-in-the-blank line for Thai business forms, e.g.
+ * "ลงชื่อ.................ผู้ตรวจสอบ" or "(จำนวน......หน่วย / จำนวนเงิน......บาท)".
+ * Optionally prefixed with a checkbox/circle marker for checklist-style rows.
+ */
+export interface FillInComponent extends BaseComponent {
+  type: 'fill-in';
+  segments: FillInSegment[];
+  /** Leading marker rendered before the first segment. */
+  marker?: 'none' | 'checkbox' | 'circle';
+  checked?: boolean;
+  /** Marker size in pt (default 8). */
+  markerSize?: number;
+  /** Gap between segments (default '1mm'). */
+  gap?: string;
+  lineStyle?: 'dotted' | 'dashed' | 'solid';
+  lineColor?: string;
+  lineWidth?: string;
+  style?: TextStyle;
+}
 
 export interface SignatureBlockSlot {
   id: string;

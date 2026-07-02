@@ -4,6 +4,7 @@ import type {
   ColumnLayoutComponent,
   ComponentNode,
   FieldGridComponent,
+  FillInComponent,
   FormBoxComponent,
   FormTableComponent,
   ImageComponent,
@@ -22,6 +23,7 @@ import { BarcodePreview } from './previews/BarcodePreview';
 import { ChecklistPreview } from './previews/ChecklistPreview';
 import { ColumnLayoutPreview } from './previews/ColumnLayoutPreview';
 import { FieldGridPreview } from './previews/FieldGridPreview';
+import { FillInPreview } from './previews/FillInPreview';
 import { FormBoxPreview } from './previews/FormBoxPreview';
 import { ImagePreview } from './previews/ImagePreview';
 import { LetterheadPreview } from './previews/LetterheadPreview';
@@ -136,6 +138,8 @@ export const ComponentPreview = memo(function ComponentPreview({
           sampleData={sampleData}
         />
       );
+    case 'fill-in':
+      return <FillInPreview component={component as FillInComponent} sampleData={sampleData} />;
     default:
       return <div>Preview for {component.type}</div>;
   }

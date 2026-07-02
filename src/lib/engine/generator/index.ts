@@ -18,6 +18,7 @@ import { barcodePlugin } from './plugins/barcode';
 import { checklistPlugin } from './plugins/checklist';
 import { columnsPlugin } from './plugins/columns';
 import { fieldGridPlugin } from './plugins/field-grid';
+import { fillInPlugin } from './plugins/fill-in';
 import { formBoxPlugin } from './plugins/form-box';
 import { formTablePlugin } from './plugins/form-table';
 import { letterheadPlugin } from './plugins/letterhead';
@@ -57,6 +58,7 @@ const BUILT_IN_PLUGINS: ComponentPlugin[] = [
   letterheadPlugin,
   formTablePlugin,
   signatureBlockPlugin,
+  fillInPlugin,
   signaturePlugin,
 ];
 

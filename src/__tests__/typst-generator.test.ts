@@ -992,7 +992,7 @@ describe('TypstGenerator — form-table component', () => {
     });
 
     expect(output).toContain('rows: (auto, auto, 95mm');
-    expect(output).toContain('table.cell(stroke: (top: none)');
+    expect(output).toContain('table.cell(stroke: (top: none, bottom: none)');
     expect(output).toContain('table.footer(repeat: false');
     expect(output).toContain('table.cell(colspan: 3');
     expect(output).toContain('Total');

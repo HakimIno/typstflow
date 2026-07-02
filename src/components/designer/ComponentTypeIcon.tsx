@@ -4,6 +4,7 @@ import type { ComponentNode } from '@/types/schema';
 import { clsx } from 'clsx';
 import {
   Barcode,
+  Baseline,
   Building2,
   Box,
   CheckSquare,
@@ -51,6 +52,7 @@ export const COMPONENT_TYPE_ICONS: Record<ComponentNode['type'], LucideIcon> = {
   letterhead: Building2,
   'form-table': FileSpreadsheet,
   'signature-block': Stamp,
+  'fill-in': Baseline,
 };
 
 const FALLBACK_ICON = Settings;
