@@ -200,7 +200,7 @@ export const INTENT_FORMAT = `End every response with:
 
 export const MODE_BLOCKS: Record<'plan' | 'act', string> = {
   plan: '## MODE: PLAN\nBefore any tool calls, describe your design intent: document type, visual language, layout structure, color rationale. Then execute.',
-  act: '## MODE: ACT\nBuild efficiently. Think first (1–2 sentences of design intent), then execute with 4–6 tool calls per round.',
+  act: '## MODE: ACT\nYou MUST build on the canvas using tool calls — never output a markdown/text mockup instead. Brief intent (1–2 sentences), then call add_text, add_table, add_summary_box, etc. Aim for 4–6 tool calls per round until the layout is complete.',
 };
 
 // ─── Canvas context ───────────────────────────────────────────────────────────

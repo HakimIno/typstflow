@@ -587,10 +587,8 @@ function quickClassify(text: string): IntentMode | null {
 
   // Full layout / complex build → design (multi-round loop)
   if (
-    /^(create |build |make |สร้าง |ออกแบบ |design |load |โหลด |ทำ )(invoice|layout|report|template|รายงาน|ใบแจ้ง|ใบเสร็จ|เอกสาร)/.test(
-      t
-    ) ||
-    /invoice|layout|template|report|ใบแจ้ง|ใบเสร็จ|รายงาน/.test(t)
+    /^(create |build |make |สร้าง |ออกแบบ |design |load |โหลด |ทำ )/.test(t) ||
+    /invoice|quotation|receipt|layout|template|report|ใบแจ้ง|ใบเสร็จ|ใบเสนอ|รายงาน|เอกสาร/.test(t)
   ) {
     return 'design';
   }
@@ -805,6 +803,21 @@ export function useAiAgent() {
           }
         }
         if (controller.signal.aborted) return;
+
+        // Don't let the classifier downgrade a clear "build this document" request
+        // into plan-only text (no tool calls).
+        if (
+          intent === 'plan' &&
+          !/ช่วยวางแผน|help me plan|what should (i|we) include|best (way|structure|approach)|advise( me)? on|let'?s plan|วางแผน/i.test(
+            content
+          ) &&
+          (/^(create|build|make|สร้าง|ออกแบบ|design|ทำ|add|เพิ่ม)\b/i.test(content.trim()) ||
+            /(invoice|quotation|receipt|report|template|ใบเสนอ|ใบเสร็จ|ใบแจ้ง|รายงาน|เอกสาร)/i.test(
+              content
+            ))
+        ) {
+          intent = 'design';
+        }
 
         const STEP_LABELS: Record<IntentMode, string> = {
           chat: 'Thinking...',

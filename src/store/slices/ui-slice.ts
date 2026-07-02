@@ -46,7 +46,7 @@ export const createUISlice: StateCreator<DesignerState, [], [], UISlice> = (set,
   primaryColor: '#8B5CF6',
   canvasLayout: 'vertical' as DesignerState['canvasLayout'],
   aiModel: DEFAULT_AI_MODEL,
-  aiMode: 'plan' as DesignerState['aiMode'],
+  aiMode: 'act' as DesignerState['aiMode'],
   _hasHydrated: false,
   scrollToPageId: null,
 
