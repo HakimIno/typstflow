@@ -1,7 +1,9 @@
-import { TypstGenerator } from './src/lib/engine/generator';
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { TypstGenerator } from '../../src/lib/engine/generator';
 
-const schema = JSON.parse(readFileSync('./unliquidated-cash-advances.json', 'utf8'));
+const schema = JSON.parse(
+  readFileSync('./examples/json/unliquidated-cash-advances.json', 'utf8')
+);
 const data = {
   items: [
     {
@@ -23,5 +25,5 @@ const data = {
 
 const generator = new TypstGenerator();
 const output = generator.generate(schema, data);
-writeFileSync('./scratch-output.typ', output, 'utf8');
-console.log('Typst markup generated successfully at scratch-output.typ');
+writeFileSync('./examples/output/scratch-output.typ', output, 'utf8');
+console.log('Typst markup generated successfully at examples/output/scratch-output.typ');

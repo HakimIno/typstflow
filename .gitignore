@@ -53,3 +53,13 @@ next-env.d.ts
 
 /imageexm/*
 /examples/*
+!/examples/json/
+!/examples/json/**
+!/examples/pdf/
+!/examples/pdf/**
+!/examples/typst/
+!/examples/typst/**
+!/examples/scripts/
+!/examples/scripts/**
+!/examples/output/
+!/examples/output/test_output.txt

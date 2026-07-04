@@ -41,7 +41,7 @@ function isBorrowError(e: unknown): boolean {
  * WASM Layout Engine wrapper.
  *
  * Used exclusively by DragMonitor for spatial snapping during drag operations.
- * Virtual scrolling is handled in pure TypeScript (see use-virtual-elements.ts).
+ * Virtual scrolling is handled directly with @tanstack/react-virtual.
  */
 export class WasmLayoutEngine {
   private static instance: WasmLayoutEngine;

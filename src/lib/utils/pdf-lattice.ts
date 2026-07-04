@@ -344,7 +344,7 @@ async function collectRuleSegments(
 
 let pdfjsPromise: Promise<typeof import('pdfjs-dist')> | null = null;
 
-// Mirrors the loader in ./pdf-to-image so this module stays self-contained.
+// Keep this loader local so this module stays self-contained.
 async function loadPdfjs() {
   if (!pdfjsPromise) {
     pdfjsPromise = import('pdfjs-dist').then((pdfjs) => {

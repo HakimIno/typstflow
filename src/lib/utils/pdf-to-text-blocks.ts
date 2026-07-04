@@ -3,8 +3,8 @@
 /**
  * PDF text-layer extractor ("Case 1" — precise structured import).
  *
- * Where {@link ./pdf-to-image} rasterizes a page for a *vision* model to guess
- * the layout, this module reads the PDF's real text layer via pdf.js and returns
+ * Unlike raster/vision-based import, this module reads the PDF's real text layer
+ * via pdf.js and returns
  * every text run with its exact position/size in millimetres. That structured
  * data is fed to the design agent as a *semantic* task ("group these into
  * headings / tables / paragraphs") instead of asking a model to OCR pixels —
@@ -420,7 +420,7 @@ export function serializeForPrompt(extraction: PdfTextExtraction): string {
 
 let pdfjsPromise: Promise<typeof import('pdfjs-dist')> | null = null;
 
-// Mirrors the loader in ./pdf-to-image so this module stays self-contained.
+// Keep this loader local so this module stays self-contained.
 async function loadPdfjs() {
   if (!pdfjsPromise) {
     pdfjsPromise = import('pdfjs-dist').then((pdfjs) => {

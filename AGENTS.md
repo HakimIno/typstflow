@@ -42,7 +42,7 @@ src/
 │       └── toolbar/        # Toolbar sub-components
 ├── hooks/                  # Custom React hooks (use-*.ts)
 ├── lib/
-│   ├── engine/             # Core logic: layout-engine.ts, typst-generator.ts, snap-engine.ts
+│   ├── engine/             # Core logic: layout-engine.ts, wasm-snap.ts, drag-snap-state.ts
 │   ├── templates/          # Built-in report templates
 │   ├── utils/              # Pure utility functions (units, paper-sizes, etc.)
 │   ├── wasm-bridge/        # Auto-generated WASM bindings — DO NOT EDIT
