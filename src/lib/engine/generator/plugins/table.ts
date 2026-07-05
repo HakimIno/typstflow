@@ -3,7 +3,7 @@ import { buildTableBodyModel } from '@/lib/engine/table-model';
 import { resolveTableColumnWidths } from '@/lib/utils/table-widths';
 import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { FormatType, StrokeConfig, TableComponent, TableRow } from '@/types/schema';
-import { isVisible, resolveBinding, resolvePath } from '../binding';
+import { arrayPathFromBinding, isVisible, resolveBinding, resolvePath } from '../binding';
 import {
   escapeStringLiteral,
   formatColor,
@@ -12,6 +12,8 @@ import {
   wrapPlacement,
 } from '../placement';
 import type { ComponentPlugin, RenderContext } from '../types';
+
+const DEFAULT_TABLE_ROW_HEIGHT = '10mm';
 
 export interface TableRenderOptions {
   minRows?: number;
@@ -134,7 +136,7 @@ export function renderTableComponent(
   const dataItems = isStatic
     ? [ctx.local]
     : (() => {
-        const path = comp.dataSource.replace(/\{\{|\}\}/g, '').trim();
+        const path = arrayPathFromBinding(comp.dataSource);
         const raw = resolvePath(path, ctx.local) ?? resolvePath(path, ctx.global);
         return Array.isArray(raw) ? raw : [];
       })();
@@ -160,12 +162,8 @@ export function renderTableComponent(
   let hasCustomRowHeight = false;
 
   const pushRowHeight = (h: string | undefined) => {
-    if (h) {
-      rowsArr.push(h); // e.g. "12.5mm" — Typst understands directly
-      hasCustomRowHeight = true;
-    } else {
-      rowsArr.push('auto');
-    }
+    rowsArr.push(h ?? DEFAULT_TABLE_ROW_HEIGHT); // e.g. "12.5mm" — Typst understands directly
+    hasCustomRowHeight = true;
   };
 
   // 1. Header rows

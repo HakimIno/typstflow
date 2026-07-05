@@ -30,6 +30,8 @@ export const BindingField = ({
   placeholder,
   mono,
   appendBinding,
+  pathFilter,
+  formatSelectedBinding,
 }: {
   label: string;
   value: string;
@@ -40,6 +42,8 @@ export const BindingField = ({
   mono?: boolean;
   /** Append binding to current value instead of replacing */
   appendBinding?: boolean;
+  pathFilter?: (path: string) => boolean;
+  formatSelectedBinding?: (path: string, func?: string) => string;
 }) => (
   <ControlField label={label}>
     <div className="flex items-center gap-1 min-w-0 w-full">
@@ -53,6 +57,8 @@ export const BindingField = ({
       <VariablePicker
         compact
         sampleData={sampleData}
+        pathFilter={pathFilter}
+        formatSelectedBinding={formatSelectedBinding}
         onSelect={(_path, binding) =>
           onBindingSelect(_path, appendBinding ? `${value}${binding}` : binding)
         }

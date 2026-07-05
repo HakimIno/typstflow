@@ -761,6 +761,94 @@ describe('TypstGenerator — table component', () => {
     expect(output).toContain('{{value}}');
   });
 
+  it('resolves explicit array wildcard bindings relative to each table item', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              {
+                id: 'table-1',
+                type: 'table',
+                x: 10,
+                y: 20,
+                width: 100,
+                height: 20,
+                dataSource: '{{items[*]}}',
+                showHeader: true,
+                repeatHeaderOnPage: true,
+                columns: [{ id: 'c1', header: 'No', field: 'no', width: '1fr' }],
+                headerRows: [{ id: 'h1', type: 'header', cells: [{ id: 'h1c1', content: 'No' }] }],
+                detailRows: [
+                  {
+                    id: 'd1',
+                    type: 'data',
+                    cells: [{ id: 'd1c1', content: '{{items[*].no}}' }],
+                  },
+                ],
+                style: {},
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const output = generate(schema, { items: [{ no: 1 }, { no: 2 }] });
+
+    expect(output).toContain('\n    1\n');
+    expect(output).toContain('\n    2\n');
+    expect(output).not.toContain('{{items[*].no}}');
+  });
+
+  it('resolves array object bindings like items.no relative to each table item', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              {
+                id: 'table-1',
+                type: 'table',
+                x: 10,
+                y: 20,
+                width: 100,
+                height: 20,
+                dataSource: '{{items}}',
+                showHeader: true,
+                repeatHeaderOnPage: true,
+                columns: [{ id: 'c1', header: 'No', field: 'no', width: '1fr' }],
+                headerRows: [{ id: 'h1', type: 'header', cells: [{ id: 'h1c1', content: 'No' }] }],
+                detailRows: [
+                  {
+                    id: 'd1',
+                    type: 'data',
+                    cells: [{ id: 'd1c1', content: '{{items.no}}' }],
+                  },
+                ],
+                style: {},
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const output = generate(schema, { items: [{ no: 1 }, { no: 2 }] });
+
+    expect(output).toContain('\n    1\n');
+    expect(output).toContain('\n    2\n');
+    expect(output).not.toContain('{{items.no}}');
+  });
+
   it('can disable design placeholder rows for strict empty-data output', () => {
     const schema: LayoutSchema = {
       ...MINIMAL_SCHEMA,
@@ -1133,7 +1221,7 @@ describe('TypstGenerator — form-table component', () => {
       totals: { subtotal: 207.8, vat: 14.55, grandTotal: 222.35 },
     });
 
-    expect(output).toContain('rows: (auto, auto, 95mm');
+    expect(output).toContain('rows: (10mm, 10mm, 95mm');
     expect(output).toContain('table.cell(stroke: (top: none, bottom: none)');
     expect(output).toContain('table.footer(repeat: false');
     expect(output).toContain('table.cell(colspan: 3');
@@ -1235,10 +1323,8 @@ describe('TypstGenerator — table baseline (pre-unified-rows)', () => {
     pages: [{ id: 'page-1', name: 'Page 1', body: { id: 'body', components } }],
   });
 
-  it('repeats the WHOLE detail band per data item (static-looking rows repeat too)', () => {
-    // Screenshot scenario 2026-07-05: "Snow" is a plain-text detail row, "{{no}}" is
-    // a bound row. Current model loops both rows per item — after migration, a row
-    // typed as 'static' must stop repeating, but 'data' rows must keep this behavior.
+  it('renders plain-text detail rows once while bound rows repeat per item', () => {
+    // Plain text is static content. Only rows with data bindings repeat.
     const schema = bodyWith([
       {
         id: 'table-band',
@@ -1262,9 +1348,9 @@ describe('TypstGenerator — table baseline (pre-unified-rows)', () => {
 
     const output = generate(schema, { items: [{ no: 1 }, { no: 2 }, { no: 3 }] });
 
-    expect(count(output, 'Snow')).toBe(3);
-    // Band row heights are replayed per item: header auto, then (auto, 40mm) × 3
-    expect(output).toContain('rows: (auto, auto, 40mm, auto, 40mm, auto, 40mm)');
+    expect(count(output, 'Snow')).toBe(1);
+    // Header default, plain text row once, then the 40mm bound row × 3.
+    expect(output).toContain('rows: (10mm, 10mm, 40mm, 40mm, 40mm)');
   });
 
   it('renders structured footerRows inside table.footer', () => {
@@ -1415,8 +1501,8 @@ describe('TypstGenerator — unified rows: static rows do not repeat', () => {
     const output = generate(schema, { items: [{ no: 1 }, { no: 2 }, { no: 3 }] });
 
     expect(count(output, 'Snow')).toBe(1);
-    // header auto, Snow auto (once), then 40mm × 3 band instances
-    expect(output).toContain('rows: (auto, auto, 40mm, 40mm, 40mm)');
+    // header default, Snow default (once), then 40mm × 3 band instances
+    expect(output).toContain('rows: (10mm, 10mm, 40mm, 40mm, 40mm)');
   });
 
   it('static rows resolve bindings against the outer data context with aggregates', () => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useDesignerStore } from '@/store/designer-store';
-import type { ComponentNode, TextComponent, ZoneKey } from '@/types/schema';
+import type { AnyTableComponent, ComponentNode, TextComponent, ZoneKey } from '@/types/schema';
 import { clsx } from 'clsx';
 import { Lock } from 'lucide-react';
 import type React from 'react';
@@ -20,6 +20,8 @@ import {
 } from '@/lib/engine/wasm-snap';
 import { isTableLikeType } from '@/lib/utils/component-type-utils';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
+import { splitUnifiedRows, unifyTableRows } from '@/lib/utils/table-migrate';
+import { parseTypstUnit } from '@/lib/utils/units';
 import { detectZoneAtPoint, isDifferentZone } from '@/lib/utils/zone-detector';
 import { type ZoneLayoutCache, getZoneLayoutCache } from '@/lib/utils/zone-layout';
 import type { WasmLayoutEngine } from '@/lib/wasm-layout-engine';
@@ -36,6 +38,42 @@ interface Props {
   pageIndex?: number;
   flowMode?: boolean;
   isNested?: boolean;
+}
+
+const DEFAULT_TABLE_ROW_HEIGHT_MM = 10;
+
+type Bounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+function fitTableRowsToBounds(component: ComponentNode, bounds: Bounds): Partial<ComponentNode> {
+  if (!isTableLikeType(component.type)) return bounds as Partial<ComponentNode>;
+
+  const table = component as AnyTableComponent;
+  const rows = unifyTableRows(table);
+  if (!rows.length) return bounds as Partial<ComponentNode>;
+
+  const currentHeights = rows.map((row) =>
+    row.height ? Math.max(1, parseTypstUnit(row.height)) : DEFAULT_TABLE_ROW_HEIGHT_MM
+  );
+  const currentTotal = currentHeights.reduce((sum, height) => sum + height, 0);
+  if (currentTotal <= 0 || bounds.height <= 0) return bounds as Partial<ComponentNode>;
+
+  const scale = bounds.height / currentTotal;
+  const nextHeights = currentHeights.map((height) =>
+    Math.max(1, Math.round(height * scale * 10) / 10)
+  );
+  const fittedHeight = Math.round(nextHeights.reduce((sum, height) => sum + height, 0) * 10) / 10;
+  const nextRows = rows.map((row, index) => ({ ...row, height: `${nextHeights[index]}mm` }));
+
+  return {
+    ...bounds,
+    height: fittedHeight,
+    ...splitUnifiedRows(table, nextRows),
+  } as Partial<ComponentNode>;
 }
 
 export const ComponentWrapper = memo(function ComponentWrapper({
@@ -875,7 +913,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       height: component.height || 20,
     },
     (finalBounds) => {
-      updateComponent(componentId, finalBounds);
+      updateComponent(componentId, fitTableRowsToBounds(component, finalBounds));
     },
     zoom
   );

@@ -26,6 +26,15 @@ export function buildTsvFromSelection(
   cellIndices: number[],
   totalCols: number
 ): string {
+  return tsvLines(rows, rowIds, cellIndices, totalCols).join('\n');
+}
+
+function tsvLines(
+  rows: TableRow[],
+  rowIds: string[],
+  cellIndices: number[],
+  totalCols: number
+): string[] {
   const grid = buildLogicalGrid(rows, totalCols);
   const rowSet = new Set(rowIds);
   const cols = [...cellIndices].sort((a, b) => a - b);
@@ -42,7 +51,21 @@ export function buildTsvFromSelection(
     });
     lines.push(values.join('\t'));
   });
-  return lines.join('\n');
+  return lines;
+}
+
+/**
+ * Serializes a flat (possibly cross-band) selection as TSV: each section's
+ * selected rows are emitted with that section's own merge grid, concatenated
+ * in render order.
+ */
+export function buildTsvFromSheet(
+  sections: { rows: TableRow[] }[],
+  rowIds: string[],
+  cellIndices: number[],
+  totalCols: number
+): string {
+  return sections.flatMap((sec) => tsvLines(sec.rows, rowIds, cellIndices, totalCols)).join('\n');
 }
 
 /**

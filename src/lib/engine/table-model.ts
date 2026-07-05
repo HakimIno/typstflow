@@ -45,7 +45,16 @@ export interface TableBodyModelOptions {
 
 /** Body source rows (data + static) of the unified row list, in order. */
 export function tableBodyRows(comp: AnyTableComponent): TableRow[] {
-  return unifyTableRows(comp).filter((r) => r.type === 'data' || r.type === 'static');
+  return unifyTableRows(comp).filter(
+    (r) => (r.type === 'data' && hasRenderableDataRowContent(r)) || r.type === 'static'
+  );
+}
+
+function hasRenderableDataRowContent(row: TableRow): boolean {
+  return row.cells.some((cell) => {
+    if (cell.content.trim() !== '') return true;
+    return !!(cell.fill || cell.stroke || cell.style);
+  });
 }
 
 /**
@@ -71,6 +80,7 @@ export function buildTableBodyModel(
 
   const source = tableBodyRows(comp);
   const instances: BodyRowInstance[] = [];
+  const dataSourcePath = cleanDataSourcePath(comp.dataSource);
 
   const pushBand = (band: { row: TableRow; sourceIndex: number }[]) => {
     const emit = (item: unknown, bandIndex: number, origin: BodyRowOrigin) => {
@@ -85,7 +95,7 @@ export function buildTableBodyModel(
 
   let band: { row: TableRow; sourceIndex: number }[] = [];
   source.forEach((row, sourceIndex) => {
-    if (row.type === 'static') {
+    if (row.type === 'static' || (!isStatic && !rowRepeatsWithDataSource(row, dataSourcePath))) {
       if (band.length) {
         pushBand(band);
         band = [];
@@ -102,4 +112,26 @@ export function buildTableBodyModel(
   }
 
   return instances;
+}
+
+function cleanDataSourcePath(expr: string): string {
+  return expr
+    .replace(/\{\{|\}\}/g, '')
+    .replace(/\[\*\]/g, '')
+    .trim();
+}
+
+function rowRepeatsWithDataSource(row: TableRow, dataSourcePath: string): boolean {
+  if (!dataSourcePath) return false;
+  return row.cells.some((cell) =>
+    cell.content.match(/\{\{(.+?)\}\}/g)?.some((binding) => {
+      const path = binding.replace(/\{\{|\}\}/g, '').trim();
+      if (!path || /^(SUM|COUNT|AVG|MIN|MAX)\(/i.test(path)) return false;
+      if (path.includes('[*]')) {
+        return path.replace(/\[\*\].*$/, '') === dataSourcePath;
+      }
+      if (path.startsWith(`${dataSourcePath}.`)) return true;
+      return !path.includes('.');
+    })
+  );
 }

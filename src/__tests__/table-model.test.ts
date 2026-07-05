@@ -46,7 +46,7 @@ describe('buildTableBodyModel', () => {
 
   it('repeats a multi-row band together, keeping sourceIndex per source row', () => {
     const comp = table({
-      detailRows: [row('d1', 'data', 'a'), row('d2', 'data', 'b')],
+      detailRows: [row('d1', 'data', '{{items.a}}'), row('d2', 'data', '{{items.b}}')],
     });
 
     const model = buildTableBodyModel(comp, { dataItems: [{}, {}] });
@@ -58,7 +58,11 @@ describe('buildTableBodyModel', () => {
 
   it('splits bands around static rows — each band repeats per item', () => {
     const comp = table({
-      detailRows: [row('d1', 'data', 'a'), row('s1', 'static', 'x'), row('d2', 'data', 'b')],
+      detailRows: [
+        row('d1', 'data', '{{items.a}}'),
+        row('s1', 'static', 'x'),
+        row('d2', 'data', '{{items.b}}'),
+      ],
     });
 
     const model = buildTableBodyModel(comp, { dataItems: [{}, {}] });
@@ -115,6 +119,29 @@ describe('buildTableBodyModel', () => {
 
     expect(model).toHaveLength(2);
     expect(model[0].row.cells[0].content).toBe('{{a}}');
+  });
+
+  it('drops empty data rows instead of rendering blank compiled rows', () => {
+    const comp = table({ detailRows: [row('empty', 'data', ''), row('value', 'data', '{{a}}')] });
+    const model = buildTableBodyModel(comp, { dataItems: [{ a: 1 }] });
+
+    expect(ids(model)).toEqual(['value']);
+  });
+
+  it('renders plain text data rows once instead of repeating them', () => {
+    const comp = table({ detailRows: [row('label', 'data', 'xxxx')] });
+    const model = buildTableBodyModel(comp, { dataItems: [{}, {}, {}] });
+
+    expect(ids(model)).toEqual(['label']);
+    expect(model[0].origin).toBe('static');
+  });
+
+  it('repeats rows with explicit array source bindings', () => {
+    const comp = table({ detailRows: [row('value', 'data', '{{items.no}}')] });
+    const model = buildTableBodyModel(comp, { dataItems: [{ no: 1 }, { no: 2 }] });
+
+    expect(ids(model)).toEqual(['value', 'value']);
+    expect(model.map((i) => i.origin)).toEqual(['band', 'band']);
   });
 });
 

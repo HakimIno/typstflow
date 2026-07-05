@@ -197,7 +197,6 @@ export const createSelectionSlice: StateCreator<DesignerState, [], [], Selection
       selectedCells: cell
         ? {
             tableId: cell.tableId,
-            section: cell.section,
             rowIds: [cell.rowId],
             cellIndices: [cell.cellIdx],
           }

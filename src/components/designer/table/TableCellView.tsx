@@ -89,7 +89,7 @@ interface TableCellViewProps {
     logicalCol: number,
     e: React.MouseEvent
   ) => void;
-  onCellMouseEnter: (section: SectionType, rowId: string, logicalCol: number) => void;
+  onCellMouseEnter: (rowId: string, logicalCol: number) => void;
   onCellContextMenu: (
     section: SectionType,
     rowId: string,
@@ -266,7 +266,7 @@ export const TableCellView = memo(function TableCellView({
       data-cell-row={rowId}
       data-cell-col={logicalCol}
       onMouseDown={(e) => onCellMouseDown(section, rowId, logicalCol, e)}
-      onMouseEnter={() => onCellMouseEnter(section, rowId, logicalCol)}
+      onMouseEnter={() => onCellMouseEnter(rowId, logicalCol)}
       onContextMenu={(e) => onCellContextMenu(section, rowId, logicalCol, e)}
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={(e) => {

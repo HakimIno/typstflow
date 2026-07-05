@@ -19,6 +19,8 @@ interface VariablePickerProps {
   showAggregates?: boolean;
   /** Icon-only trigger for tight property rows */
   compact?: boolean;
+  pathFilter?: (path: string) => boolean;
+  formatSelectedBinding?: (path: string, func?: string) => string;
 }
 
 // Type icons mapping
@@ -42,9 +44,10 @@ const TypeIcon = ({ type, size = 12 }: { type: string; size?: number }) => {
 export function VariablePicker({
   sampleData,
   onSelect,
-  placeholder = 'Select variable...',
   showAggregates = true,
   compact = false,
+  pathFilter,
+  formatSelectedBinding,
 }: VariablePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -70,8 +73,9 @@ export function VariablePicker({
     if (!sampleData || Object.keys(sampleData).length === 0) {
       return [];
     }
-    return extractJsonPaths(sampleData);
-  }, [sampleData]);
+    const paths = extractJsonPaths(sampleData);
+    return pathFilter ? paths.filter(pathFilter) : paths;
+  }, [sampleData, pathFilter]);
 
   // Group paths by parent
   const groupedPaths = useMemo(() => {
@@ -90,7 +94,8 @@ export function VariablePicker({
 
   // Handle path selection
   const handleSelect = (path: string, func?: string) => {
-    const binding = func ? `{{${func}(${path})}}` : formatBinding(path);
+    const binding =
+      formatSelectedBinding?.(path, func) ?? (func ? `{{${func}(${path})}}` : formatBinding(path));
     onSelect(path, binding);
     setIsOpen(false);
     setSearchQuery('');
@@ -141,9 +146,11 @@ export function VariablePicker({
         createPortal(
           <div className="fixed inset-0 z-[9999] pointer-events-none">
             {/* Backdrop (Invisible but clickable to close) */}
-            <div
+            <button
+              type="button"
               className="absolute inset-0 pointer-events-auto"
               onClick={() => setIsOpen(false)}
+              aria-label="Close variable picker"
             />
 
             {/* Popover */}

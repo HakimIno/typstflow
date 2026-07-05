@@ -41,7 +41,12 @@ export function extractJsonPaths(obj: any, prefix = ''): string[] {
  * Example: "customer.name" → "{{customer.name}}"
  */
 export function formatBinding(path: string): string {
-  return `{{${path}}}`;
+  return `{{${formatBindingPath(path)}}}`;
+}
+
+/** Normalize designer-facing binding paths. `items[*].name` renders as `items.name`. */
+export function formatBindingPath(path: string): string {
+  return path.replace(/\[\*\]/g, '');
 }
 
 /**

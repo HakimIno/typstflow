@@ -67,9 +67,9 @@ export interface DesignerState extends FontSlice {
     rowId: string;
     cellIdx: number;
   } | null;
+  /** Flat cross-band cell selection — rows may span header/data/footer. */
   selectedCells: {
     tableId: string;
-    section: 'header' | 'footer' | 'data';
     rowIds: string[];
     cellIndices: number[];
   } | null;

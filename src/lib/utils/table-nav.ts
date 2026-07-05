@@ -1,12 +1,12 @@
-import type { TableRow } from '@/types/schema';
+import type { AnyTableComponent, TableRow } from '@/types/schema';
 
 /**
  * Sheet keyboard navigation model (plan/table-system-redesign.md — Phase 4).
  *
  * The designer renders a table as ordered sections (header → body → footers).
- * For arrow/Tab navigation we flatten them into one row list so the active cell
- * can walk the whole sheet; range selection stays inside one section because
- * the selection model (and the split storage) is still section-scoped.
+ * Navigation AND range selection both operate on the flattened row list, so the
+ * active cell and rectangular selections walk the whole sheet Excel-style; only
+ * write-back resolves each row to its own schema array (see groupSelectedRows).
  */
 
 export type SheetSectionType = 'header' | 'data' | 'footer';
@@ -29,6 +29,67 @@ export interface SheetNavRow {
 export interface SheetCellPos {
   flatRow: number;
   col: number; // logical column
+}
+
+/**
+ * Synthetic rows shown for legacy column-only tables (no structured rows).
+ * IDs are stable constants — selection, navigation and write-back fallbacks all
+ * key off them, so the designer and the nav model must build identical rows.
+ */
+export function syntheticHeaderRow(component: AnyTableComponent): TableRow {
+  return {
+    id: 'synthetic-header',
+    type: 'header',
+    cells: component.columns.map((c) => ({
+      id: c.id,
+      content: c.header || '',
+      align: c.align || 'left',
+    })),
+  };
+}
+
+export function syntheticDetailRow(component: AnyTableComponent): TableRow {
+  return {
+    id: 'synthetic-detail',
+    type: 'data',
+    cells: component.columns.map((c) => ({
+      id: `detail-${c.id}`,
+      content: c.field ? `{{${c.field}}}` : '',
+      align: c.align || 'left',
+    })),
+  };
+}
+
+/**
+ * The editable sheet sections of a table in render order, including the
+ * synthetic header/detail rows legacy column tables display. Generated rows
+ * (form-table summary/filler) are excluded — they are read-only.
+ */
+export function navSectionsOf(component: AnyTableComponent): SheetNavSection[] {
+  const sections: SheetNavSection[] = [];
+  const headerRows = component.headerRows?.length
+    ? component.headerRows
+    : component.showHeader !== false
+      ? [syntheticHeaderRow(component)]
+      : [];
+  if (headerRows.length) {
+    sections.push({ section: 'header', sectionKey: 'headerRows', rows: headerRows });
+  }
+  const bodyRows = component.detailRows?.length
+    ? component.detailRows
+    : [syntheticDetailRow(component)];
+  sections.push({ section: 'data', sectionKey: 'detailRows', rows: bodyRows });
+  if (component.footerRows?.length) {
+    sections.push({ section: 'footer', sectionKey: 'footerRows', rows: component.footerRows });
+  }
+  if (component.type === 'form-table' && component.footerGridRows?.length) {
+    sections.push({
+      section: 'footer',
+      sectionKey: 'footerGridRows',
+      rows: component.footerGridRows,
+    });
+  }
+  return sections;
 }
 
 export function flattenNavRows(sections: SheetNavSection[]): SheetNavRow[] {
@@ -89,39 +150,30 @@ export function tabStep(
   return { flatRow, col };
 }
 
-export interface SectionRange {
-  section: SheetSectionType;
+export interface FlatRange {
   rowIds: string[];
   cellIndices: number[];
-  /** Focus row clamped into the anchor's section. */
+  /** Focus corner clamped into the sheet bounds. */
   focus: SheetCellPos;
 }
 
 /**
- * Rectangular range between the anchor cell and a focus position, clamped to
- * the anchor's section (cross-section ranges can't be stored in the split
- * schema arrays). Returns null when the anchor row is gone.
+ * Rectangular range between the anchor cell and a focus position over the whole
+ * flat sheet — cross-band selection is allowed (plan Phase 4 §13); write-back
+ * resolves each row to its own schema array via groupSelectedRows.
+ * Returns null when the anchor row is gone.
  */
-export function sectionRange(
+export function flatRange(
   flat: SheetNavRow[],
   colCount: number,
   anchorRowId: string,
   anchorCol: number,
   focus: SheetCellPos
-): SectionRange | null {
+): FlatRange | null {
   const anchorFlat = findFlatRow(flat, anchorRowId);
   if (anchorFlat === -1) return null;
-  const section = flat[anchorFlat].section;
-  const sectionKey = flat[anchorFlat].sectionKey;
 
-  // Section bounds in flat space — footer may span two sectionKeys but range
-  // selection stays within ONE write-back key (mirrors mouse drag behavior).
-  let first = anchorFlat;
-  while (first > 0 && flat[first - 1].sectionKey === sectionKey) first--;
-  let last = anchorFlat;
-  while (last < flat.length - 1 && flat[last + 1].sectionKey === sectionKey) last++;
-
-  const focusRow = clamp(focus.flatRow, first, last);
+  const focusRow = clamp(focus.flatRow, 0, Math.max(0, flat.length - 1));
   const focusCol = clamp(focus.col, 0, Math.max(0, colCount - 1));
 
   const rowIds = flat
@@ -131,5 +183,39 @@ export function sectionRange(
   const maxCol = Math.max(anchorCol, focusCol);
   const cellIndices = Array.from({ length: maxCol - minCol + 1 }, (_, i) => minCol + i);
 
-  return { section, rowIds, cellIndices, focus: { flatRow: focusRow, col: focusCol } };
+  return { rowIds, cellIndices, focus: { flatRow: focusRow, col: focusCol } };
+}
+
+export interface SelectedSectionGroup {
+  section: SheetSectionType;
+  sectionKey: string;
+  /** Rows of the whole section (synthetic rows included for legacy tables). */
+  rows: TableRow[];
+  /** Selected row ids within this section, in render order. */
+  rowIds: string[];
+}
+
+/**
+ * Splits a flat (cross-band) selection into per-sectionKey groups so actions
+ * can write each slice back to its own schema array. Sections with no selected
+ * rows are omitted; groups preserve render order.
+ */
+export function groupSelectedRows(
+  sections: SheetNavSection[],
+  rowIds: string[]
+): SelectedSectionGroup[] {
+  const idSet = new Set(rowIds);
+  const groups: SelectedSectionGroup[] = [];
+  for (const sec of sections) {
+    const selected = sec.rows.filter((r) => idSet.has(r.id)).map((r) => r.id);
+    if (selected.length) {
+      groups.push({
+        section: sec.section,
+        sectionKey: sec.sectionKey,
+        rows: sec.rows,
+        rowIds: selected,
+      });
+    }
+  }
+  return groups;
 }

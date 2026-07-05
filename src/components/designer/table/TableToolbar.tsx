@@ -81,6 +81,20 @@ export const TableToolbar = memo(function TableToolbar({ component }: TableToolb
     [selectedCell, selectedCells]
   );
 
+  // Plan §2.2: a static row holding a {{binding}} is usually meant to repeat —
+  // offer a one-click convert instead of silently auto-switching the row type.
+  const showBindingHint = useMemo(() => {
+    if (!selectedCells) return false;
+    const rows = component.detailRows ?? [];
+    const selected = new Set(selectedCells.rowIds);
+    return rows.some(
+      (row) =>
+        row.type === 'static' &&
+        selected.has(row.id) &&
+        row.cells.some((cell) => cell.content?.includes('{{'))
+    );
+  }, [selectedCells, component.detailRows]);
+
   const isNearTop = (component.y || 0) < 20;
 
   return (
@@ -153,6 +167,17 @@ export const TableToolbar = memo(function TableToolbar({ component }: TableToolb
         disabled={rowTypeState === null}
         active={rowTypeState === 'static'}
       />
+      {showBindingHint && (
+        <button
+          type="button"
+          onClick={() => handleSetRowType('data')}
+          title="This static row contains {{bindings}} — convert it to repeat per data item"
+          className="flex h-6 items-center gap-1 whitespace-nowrap rounded-md bg-amber-500/20 px-2 text-[10px] font-medium text-amber-300 transition-colors hover:bg-amber-500/30"
+        >
+          <Repeat2 className="h-3 w-3" />
+          Repeat?
+        </button>
+      )}
 
       <ToolbarSeparator tone="dark" />
 

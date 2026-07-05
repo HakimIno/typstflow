@@ -1,3 +1,4 @@
+import { getValueType } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import type { AnyTableComponent } from '@/types/schema';
 import { CollapsibleSection, ControlField, InsetSection, PROPERTY_STACK_CLASS } from '../Shared';
@@ -41,6 +42,7 @@ export const TableDataSection = ({ component }: Props) => {
             sampleData={sampleData}
             onBindingSelect={(_path, binding) => patch({ dataSource: binding })}
             placeholder="{{items}}"
+            pathFilter={(path) => getValueType(sampleData, path) === 'array'}
             mono
           />
           <SettingToggle

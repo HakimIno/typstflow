@@ -3,9 +3,10 @@
 import { useSheetKeyboard } from '@/hooks/use-sheet-keyboard';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { buildFormTableFillerRows, buildFormTableSummaryRows } from '@/lib/utils/form-table';
-import type { SheetNavSection } from '@/lib/utils/table-nav';
 import { buildPreviewFontStack } from '@/lib/utils/preview-fonts';
 import { buildLogicalGrid, physToLogical } from '@/lib/utils/table-grid';
+import type { SheetNavSection } from '@/lib/utils/table-nav';
+import { navSectionsOf, syntheticDetailRow, syntheticHeaderRow } from '@/lib/utils/table-nav';
 import { resolveTableColumnPercentages } from '@/lib/utils/table-widths';
 import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
@@ -63,7 +64,6 @@ export const TablePreview = memo(function TablePreview({
   const setTableSheetEditId = useDesignerStore((s) => s.setTableSheetEditId);
   const isTableSelected = useDesignerStore((s) => s.selectedComponentIds.includes(component.id));
   const zoom = useDesignerStore((s) => s.zoom);
-  const sampleData = useDesignerStore((s) => s.sampleData);
   const bodyFontFamily = useDesignerStore(
     (s) =>
       s.schema.fonts.find((f) => f.role === 'body')?.family ??
@@ -77,16 +77,6 @@ export const TablePreview = memo(function TablePreview({
   const [colSegments, setColSegments] = useState<HandleSegment[][]>([]);
   const [rowSegments, setRowSegments] = useState<Map<string, HandleSegment[]>>(new Map());
   const segKeyRef = useRef<string>('');
-
-  // Sheet-gutter section marks (H / ↻ band / pin static / F) — measured row rects
-  type GutterMark = {
-    key: string;
-    kind: 'header' | 'band' | 'static' | 'footer';
-    top: number;
-    height: number;
-  };
-  const [gutterMarks, setGutterMarks] = useState<GutterMark[]>([]);
-  const gutterKeyRef = useRef<string>('');
 
   // DOM-measured column handle positions (zoom-independent %, pixel-accurate)
   const [domColPercents, setDomColPercents] = useState<number[]>([]);
@@ -154,11 +144,12 @@ export const TablePreview = memo(function TablePreview({
       if (isResizingRef.current) return;
       for (const entry of entries) {
         const tableMm = LayoutEngine.pxToMm(entry.contentRect.height);
-        if (Math.abs(tableMm - (component.height || 60)) > 2) {
+        const fittedHeight = Math.round(tableMm * 10) / 10;
+        if (Math.abs(fittedHeight - (component.height || 60)) > 0.05) {
           // Auto-fit height is a derived value — never record it in history,
           // otherwise it pushes a junk entry after every real edit (delete/merge/
           // resize) which truncates the redo stack and breaks undo/redo.
-          updateComponent(component.id, { height: Math.ceil(tableMm) } as any, true);
+          updateComponent(component.id, { height: fittedHeight } as any, true);
         }
       }
     });
@@ -249,55 +240,6 @@ export const TablePreview = memo(function TablePreview({
         const divider = overlay.querySelector<HTMLElement>(`[data-row-divider="${rowId}"]`);
         if (!divider) continue;
         divider.style.top = `${rowBottomPx.get(rowId) ?? 0}px`;
-      }
-    }
-
-    // ── Sheet-gutter section marks from measured row rects ────────────────────
-    {
-      const marks: GutterMark[] = [];
-      const pushMark = (kind: GutterMark['kind'], key: string, rows: TableRow[]) => {
-        const tops = rows
-          .map((r) => rowTopPx.get(r.id))
-          .filter((v): v is number => v !== undefined);
-        const bottoms = rows
-          .map((r) => rowBottomPx.get(r.id))
-          .filter((v): v is number => v !== undefined);
-        if (!tops.length || !bottoms.length) return;
-        const top = Math.min(...tops);
-        marks.push({ key, kind, top, height: Math.max(...bottoms) - top });
-      };
-
-      if (headerRows.length) pushMark('header', 'header', headerRows);
-
-      // Body: contiguous data rows form a repeat band; static rows mark alone.
-      // Static tables (isStatic) never loop, so their body gets no marks at all.
-      if (!component.isStatic) {
-        let run: TableRow[] = [];
-        let runIdx = 0;
-        const flushRun = () => {
-          if (run.length) pushMark('band', `band-${runIdx++}`, run);
-          run = [];
-        };
-        for (const row of bodyRows) {
-          if (row.type === 'static') {
-            flushRun();
-            pushMark('static', `static-${row.id}`, [row]);
-          } else {
-            run.push(row);
-          }
-        }
-        flushRun();
-      }
-
-      const footerRowsAll = previewSections
-        .filter((sec) => sec.section === 'footer')
-        .flatMap((sec) => sec.rows);
-      if (footerRowsAll.length) pushMark('footer', 'footer', footerRowsAll);
-
-      const marksKey = marks.map((m) => `${m.key}:${m.kind}:${m.top}:${m.height}`).join('|');
-      if (marksKey !== gutterKeyRef.current) {
-        gutterKeyRef.current = marksKey;
-        setGutterMarks(marks);
       }
     }
 
@@ -467,11 +409,10 @@ export const TablePreview = memo(function TablePreview({
       // Right-click also enters sheet mode so the selection is visible.
       setIsTableEditing(true);
       // If the clicked cell isn't part of the current selection, select just it.
-      if (!isCellSelected(section, rowId, logicalCol)) {
+      if (!isCellSelected(rowId, logicalCol)) {
         setSelectedCell({ tableId: component.id, section, rowId, cellIdx: logicalCol });
         setSelectedCells({
           tableId: component.id,
-          section,
           rowIds: [rowId],
           cellIndices: [logicalCol],
         });
@@ -484,22 +425,13 @@ export const TablePreview = memo(function TablePreview({
   // ─── Build row sections ────────────────────────────────────────────────
   // Memoized so synthetic rows keep a stable identity across selection re-renders —
   // required for the memoized cells to skip re-rendering when only selection changed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: builder reads only the listed fields
   const headerRows: TableRow[] = useMemo(
     () =>
       component.headerRows?.length
         ? component.headerRows
         : component.showHeader !== false
-          ? [
-              {
-                id: 'synthetic-header',
-                type: 'header',
-                cells: component.columns.map((c) => ({
-                  id: c.id,
-                  content: c.header || '',
-                  align: c.align || 'left',
-                })),
-              },
-            ]
+          ? [syntheticHeaderRow(component)]
           : [],
     [component.headerRows, component.showHeader, component.columns]
   );
@@ -510,46 +442,12 @@ export const TablePreview = memo(function TablePreview({
   );
 
   // Body source rows (schema detailRows, or one synthetic {{field}} row for legacy
-  // column tables). Shared by the detail section render and the repeat-band ghosts.
+  // column tables).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: builder reads only the listed fields
   const bodyRows: TableRow[] = useMemo(
-    () =>
-      component.detailRows?.length
-        ? component.detailRows
-        : [
-            {
-              id: 'synthetic-detail',
-              type: 'data',
-              cells: component.columns.map((c) => ({
-                id: `detail-${c.id}`,
-                content: c.field ? `{{${c.field}}}` : '',
-                align: c.align || 'left',
-              })),
-            },
-          ],
+    () => (component.detailRows?.length ? component.detailRows : [syntheticDetailRow(component)]),
     [component.detailRows, component.columns]
   );
-
-  // Repeat-band info shown in the sheet gutter: dataSource path + how many times
-  // the band will repeat with the current sample data.
-  const bandInfo = useMemo(() => {
-    if (component.isStatic) return null;
-    const path = (component.dataSource || '').replace(/\{\{|\}\}/g, '').trim();
-    if (!path) return null;
-    const value = path
-      .split('.')
-      .reduce<unknown>(
-        (acc, key) =>
-          acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[key] : undefined,
-        sampleData
-      );
-    return { name: path, count: Array.isArray(value) ? value.length : null };
-  }, [component.isStatic, component.dataSource, sampleData]);
-
-  // Rows the repeat-band ghosts duplicate (static rows render once — excluded).
-  const ghostBandRows: TableRow[] = useMemo(() => {
-    if (component.isStatic || component.groupBy || !bandInfo) return [];
-    return bodyRows.filter((r) => r.type !== 'static');
-  }, [component.isStatic, component.groupBy, bandInfo, bodyRows]);
 
   type PreviewSection = {
     rows: TableRow[];
@@ -574,20 +472,9 @@ export const TablePreview = memo(function TablePreview({
     return sections;
   }, [component]);
 
-  // Keyboard-navigable rows in render order (generated summary rows excluded —
-  // they're read-only and edited via the properties panel).
-  const navSections: SheetNavSection[] = useMemo(() => {
-    const secs: SheetNavSection[] = [];
-    if (headerRows.length) {
-      secs.push({ section: 'header', sectionKey: 'headerRows', rows: headerRows });
-    }
-    if (bodyRows.length) secs.push({ section: 'data', sectionKey: 'detailRows', rows: bodyRows });
-    for (const fs of footerSections) {
-      if (fs.sectionKey === '__generatedRows') continue;
-      secs.push({ section: 'footer', sectionKey: fs.sectionKey, rows: fs.rows });
-    }
-    return secs;
-  }, [headerRows, bodyRows, footerSections]);
+  // Keyboard/selection-navigable rows in render order — the shared nav model
+  // (generated summary rows excluded: they're read-only, edited via the panel).
+  const navSections: SheetNavSection[] = useMemo(() => navSectionsOf(component), [component]);
 
   useSheetKeyboard({
     component,
@@ -814,8 +701,7 @@ export const TablePreview = memo(function TablePreview({
     []
   );
   const onCellMouseEnter = useCallback(
-    (section: SectionType, rowId: string, logicalCol: number) =>
-      cellFnRef.current.mouseEnter(section, rowId, logicalCol),
+    (rowId: string, logicalCol: number) => cellFnRef.current.mouseEnter(rowId, logicalCol),
     []
   );
   const onCellContextMenu = useCallback(
@@ -850,7 +736,7 @@ export const TablePreview = memo(function TablePreview({
     sectionRows: TableRow[], // all rows in this section (for border calc)
     rowHeightPx?: number // set when the row has an explicit height (Typst treats it as fixed)
   ) => {
-    const isSelected = isCellSelected(section, row.id, logicalCol);
+    const isSelected = isCellSelected(row.id, logicalCol);
     const isActiveCell =
       selectedCell?.tableId === component.id &&
       selectedCell.section === section &&
@@ -863,7 +749,7 @@ export const TablePreview = memo(function TablePreview({
 
     const isSelectedAt = (targetRowIdx: number, targetCol: number) => {
       const targetRow = sectionRows[targetRowIdx];
-      return targetRow ? isCellSelected(section, targetRow.id, targetCol) : false;
+      return targetRow ? isCellSelected(targetRow.id, targetCol) : false;
     };
     // Non-null only when selected, so unselected cells keep a stable `null` prop.
     const selectionEdges = isSelected
@@ -973,13 +859,6 @@ export const TablePreview = memo(function TablePreview({
     >
       {isTableEditing && isTableSelected && <TableToolbar component={component} />}
 
-      {isTableEditing && (
-        <div
-          aria-hidden
-          className="absolute inset-0 z-[12] pointer-events-none outline outline-1 outline-[var(--accent)]"
-        />
-      )}
-
       <table
         ref={tableRef}
         className="w-full"
@@ -1039,111 +918,6 @@ export const TablePreview = memo(function TablePreview({
             )
           )}
       </div>
-
-      {/* Sheet gutter — section marks: H header / ↻ repeat band / pin static / F footer */}
-      {isTableEditing && isTableSelected && gutterMarks.length > 0 && (
-        <div aria-hidden className="absolute -left-4 top-0 z-[15] w-3.5 pointer-events-none">
-          {gutterMarks.map((m) => {
-            const isBand = m.kind === 'band';
-            const barClass = isBand ? 'bg-[var(--accent)] opacity-60' : 'bg-zinc-400/40';
-            const badgeClass = isBand
-              ? 'bg-[var(--accent)] text-white'
-              : m.kind === 'static'
-                ? 'bg-zinc-600 text-white'
-                : 'bg-zinc-500 text-white';
-            return (
-              <div
-                key={m.key}
-                className="absolute left-0 flex w-full items-center justify-center"
-                style={{ top: m.top, height: m.height }}
-              >
-                <div
-                  className={`absolute inset-y-0.5 left-1/2 w-[2px] -translate-x-1/2 rounded-full ${barClass}`}
-                />
-                <span
-                  className={`relative flex h-3.5 w-3.5 items-center justify-center rounded-[4px] text-[8px] font-semibold leading-none shadow-sm ${badgeClass}`}
-                >
-                  {isBand ? (
-                    <Repeat2 className="h-2.5 w-2.5" />
-                  ) : m.kind === 'static' ? (
-                    <Pin className="h-2 w-2" />
-                  ) : m.kind === 'header' ? (
-                    'H'
-                  ) : (
-                    'F'
-                  )}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Repeat-band ghosts — show how the data band repeats (design hint only) */}
-      {isTableEditing && ghostBandRows.length > 0 && tableHeightPx > 0 && (
-        <div
-          aria-hidden
-          className="absolute left-0 right-0 z-[5] pointer-events-none"
-          style={{ top: tableHeightPx }}
-        >
-          {[0.35, 0.18].map((opacity, gi) => (
-            <table
-              key={gi}
-              className="w-full"
-              style={{
-                borderCollapse: 'collapse',
-                tableLayout: 'fixed',
-                fontFamily: cellCtx.previewFontStack,
-                opacity,
-              }}
-            >
-              <colgroup>
-                {component.columns.map((col, i) => (
-                  <col key={col.id} style={colWidths[i] ? { width: colWidths[i] } : undefined} />
-                ))}
-              </colgroup>
-              <tbody>
-                {ghostBandRows.map((row) => (
-                  <tr
-                    key={`ghost-${gi}-${row.id}`}
-                    style={{
-                      height: row.height
-                        ? `${LayoutEngine.mmToPx(parseTypstUnit(row.height))}px`
-                        : undefined,
-                    }}
-                  >
-                    {row.cells.map((cell) => (
-                      <td
-                        key={cell.id}
-                        colSpan={cell.colspan || 1}
-                        rowSpan={cell.rowspan || 1}
-                        style={{
-                          border: '1px dashed var(--border-default)',
-                          padding: `${cellCtx.cellPaddingPx}px`,
-                          fontSize: `${cellCtx.bodyFontSize}pt`,
-                          color: cellCtx.bodyColor,
-                          textAlign: cell.align || 'left',
-                          overflow: 'hidden',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {cell.content}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ))}
-          <div className="mt-0.5 flex items-center gap-1 text-[9px] text-[var(--text-secondary)]">
-            <Repeat2 className="h-2.5 w-2.5 text-[var(--accent)]" />
-            <span>
-              repeats per item of {bandInfo?.name}
-              {bandInfo?.count != null ? ` — ×${bandInfo.count} with sample data` : ''}
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Ghost guide lines — always mounted, shown/hidden via direct DOM */}
       <div

@@ -1,4 +1,5 @@
 import { buildLogicalGrid } from '@/lib/utils/table-grid';
+import { groupSelectedRows, navSectionsOf } from '@/lib/utils/table-nav';
 import {
   alignSelectedTableCells,
   clearCellContents,
@@ -21,7 +22,7 @@ export function useTableActions(
   setSelectedCells?: (cells: CellsSelection | null) => void
 ) {
   // Form-tables keep footer rows in TWO schema keys (footerRows + footerGridRows).
-  // Resolve which one the selected rows actually live in so edits write back to
+  // Resolve which one the given rows actually live in so edits write back to
   // the right array instead of silently no-oping against an empty footerRows.
   const footerKey = (rowIds?: string[]): 'footerRows' | 'footerGridRows' => {
     if (component.type !== 'form-table') return 'footerRows';
@@ -36,26 +37,57 @@ export function useTableActions(
   const sectionKey = (section: SectionType, rowIds?: string[]) =>
     section === 'header' ? 'headerRows' : section === 'footer' ? footerKey(rowIds) : 'detailRows';
 
-  const selectedRowIds = (): string[] | undefined =>
-    selectedCells?.rowIds ?? (selectedCell ? [selectedCell.rowId] : undefined);
+  const schemaRowsOf = (key: string): TableRow[] =>
+    ((component as unknown as Record<string, unknown>)[key] as TableRow[] | undefined) || [];
 
-  const getRows = (section: SectionType, rowIds?: string[]): TableRow[] =>
-    ((component as unknown as Record<string, unknown>)[
-      sectionKey(section, rowIds ?? selectedRowIds())
-    ] as TableRow[]) || [];
+  // Flat selection (plan Phase 4 §13) may span header/data/footer — resolve each
+  // selected row back to its own schema array before writing.
+  const selectionGroups = () =>
+    selectedCells ? groupSelectedRows(navSectionsOf(component), selectedCells.rowIds) : [];
 
   const clearCellSelection = () => {
     setSelectedCell(null);
     setSelectedCells?.(null);
   };
 
+  /**
+   * Runs a per-section util over every selected group and merges the resulting
+   * schema updates. Each call sees the previous updates applied, so two groups
+   * touching the same key (e.g. legacy `columns` fallbacks) compose correctly.
+   */
+  const applyPerGroup = (
+    fn: (
+      comp: TableComponent | FormTableComponent,
+      selection: { section: SectionType; rowIds: string[]; cellIndices: number[] }
+    ) => Partial<FormTableComponent>
+  ) => {
+    if (!selectedCells) return;
+    let working = component;
+    let updates: Record<string, unknown> = {};
+    for (const group of selectionGroups()) {
+      const partial = fn(working, {
+        section: group.section,
+        rowIds: group.rowIds,
+        cellIndices: selectedCells.cellIndices,
+      });
+      if (Object.keys(partial).length) {
+        updates = { ...updates, ...partial };
+        working = { ...working, ...partial } as typeof component;
+      }
+    }
+    if (Object.keys(updates).length) updateComponent(component.id, updates);
+  };
+
   const handleMerge = () => {
     if (!selectedCells) return;
-    const key = sectionKey(selectedCells.section, selectedCells.rowIds);
-    const rows = getRows(selectedCells.section, selectedCells.rowIds);
+    // A merged cell can't span schema arrays — merge only within one section.
+    const groups = selectionGroups();
+    if (groups.length !== 1) return;
+    const key = groups[0].sectionKey;
+    const rows = schemaRowsOf(key);
     if (rows.length === 0) return;
 
-    const rowIndices = selectedCells.rowIds
+    const rowIndices = groups[0].rowIds
       .map((id) => rows.findIndex((r) => r.id === id))
       .filter((i) => i !== -1)
       .sort((a, b) => a - b);
@@ -79,7 +111,7 @@ export function useTableActions(
     if (!selectedCell) return;
     const { section, rowId, cellIdx: logicalCol } = selectedCell;
     const key = sectionKey(section, [rowId]);
-    const rows = [...getRows(section, [rowId])];
+    const rows = [...schemaRowsOf(key)];
     const rowIdx = rows.findIndex((r) => r.id === rowId);
     if (rowIdx === -1) return;
 
@@ -109,30 +141,33 @@ export function useTableActions(
 
   const handleDelete = () => {
     if (!selectedCells) return;
-    const { section, rowIds, cellIndices } = selectedCells;
-
-    if (section === 'data' && !component.detailRows?.length) {
-      // Legacy mode: delete columns
-      const newCols = component.columns.filter((_, idx) => !cellIndices.includes(idx));
-      updateComponent(component.id, { columns: newCols });
-    } else {
-      const key = sectionKey(section, rowIds);
-      const rows = getRows(section, rowIds);
-      const newRows = rows.filter((r) => !rowIds.includes(r.id));
-      updateComponent(component.id, { [key]: newRows });
+    const updates: Record<string, unknown> = {};
+    for (const group of selectionGroups()) {
+      const rows = schemaRowsOf(group.sectionKey);
+      if (group.sectionKey === 'detailRows' && !rows.length) {
+        // Legacy mode: delete columns
+        const cols = (updates.columns as typeof component.columns) ?? component.columns;
+        updates.columns = cols.filter((_, idx) => !selectedCells.cellIndices.includes(idx));
+      } else if (rows.length) {
+        updates[group.sectionKey] = rows.filter((r) => !group.rowIds.includes(r.id));
+      }
     }
+    if (Object.keys(updates).length) updateComponent(component.id, updates);
     setSelectedCell(null);
   };
 
-  /** Delete the selected rows from a structured section (no-op for synthetic tables). */
+  /** Delete the selected rows from every structured section they live in. */
   const handleDeleteRows = () => {
     if (!selectedCells) return;
-    const { section, rowIds } = selectedCells;
-    const rows = getRows(section, rowIds);
-    if (!rows.length) return;
-    const newRows = rows.filter((r) => !rowIds.includes(r.id));
-    if (newRows.length === rows.length) return;
-    updateComponent(component.id, { [sectionKey(section, rowIds)]: newRows });
+    const updates: Record<string, unknown> = {};
+    for (const group of selectionGroups()) {
+      const rows = schemaRowsOf(group.sectionKey);
+      if (!rows.length) continue; // synthetic rows have no schema backing
+      const newRows = rows.filter((r) => !group.rowIds.includes(r.id));
+      if (newRows.length !== rows.length) updates[group.sectionKey] = newRows;
+    }
+    if (!Object.keys(updates).length) return;
+    updateComponent(component.id, updates);
     clearCellSelection();
   };
 
@@ -147,26 +182,21 @@ export function useTableActions(
 
   /** Clear text content of the selected cells, keeping the grid shape intact. */
   const handleClearContents = () => {
-    if (!selectedCells) return;
-    const updates = clearCellContents(component, selectedCells);
-    if (Object.keys(updates).length === 0) return;
-    updateComponent(component.id, updates as Record<string, unknown>);
+    applyPerGroup((comp, selection) => clearCellContents(comp, selection));
   };
 
   const handleAlign = (align: TableTextAlign) => {
-    if (!selectedCells) return;
-    const updates = alignSelectedTableCells(component, selectedCells, align);
-    if (Object.keys(updates).length === 0) return;
-    updateComponent(component.id, updates as Record<string, unknown>);
+    applyPerGroup((comp, selection) => alignSelectedTableCells(comp, selection, align));
   };
 
   /**
    * Toggles selected body rows between the repeat band ('data' — looped per
    * dataSource item) and 'static' (rendered exactly once). Structured rows only;
-   * synthetic column tables have no per-row identity to write back to.
+   * synthetic column tables have no per-row identity to write back to. Header
+   * and footer rows in a cross-band selection are ignored.
    */
   const handleSetRowType = (type: 'static' | 'data') => {
-    if (!selectedCells || selectedCells.section !== 'data') return;
+    if (!selectedCells) return;
     const rows = component.detailRows ?? [];
     if (!rows.length) return;
     const rowSet = new Set(selectedCells.rowIds);
@@ -182,13 +212,15 @@ export function useTableActions(
 
   const handleInsertRow = () => {
     if (!selectedCells) return;
-    const section = selectedCells.section;
-    const key = sectionKey(section, selectedCells.rowIds);
-    const rows = getRows(section, selectedCells.rowIds);
-    const lastRowId = selectedCells.rowIds[selectedCells.rowIds.length - 1];
+    // Insert after the bottom-most selected row, into that row's own section.
+    const groups = selectionGroups();
+    const last = groups[groups.length - 1];
+    if (!last) return;
+    const rows = schemaRowsOf(last.sectionKey);
+    const lastRowId = last.rowIds[last.rowIds.length - 1];
     const index = rows.findIndex((r) => r.id === lastRowId);
-    const newRows = insertStructuredRow(rows, index, component.columns.length, section as any);
-    updateComponent(component.id, { [key]: newRows });
+    const newRows = insertStructuredRow(rows, index, component.columns.length, last.section);
+    updateComponent(component.id, { [last.sectionKey]: newRows });
   };
 
   const handleInsertCol = () => {
@@ -216,13 +248,17 @@ export function useTableActions(
 
   // ─── Availability flags (drive context-menu enabled/disabled state) ─────────
   const distinctCols = selectedCells ? new Set(selectedCells.cellIndices).size : 0;
+  const flags = selectedCells ? selectionGroups() : [];
 
   const canMerge =
-    !!selectedCells && (selectedCells.rowIds.length > 1 || selectedCells.cellIndices.length > 1);
+    !!selectedCells &&
+    (selectedCells.rowIds.length > 1 || selectedCells.cellIndices.length > 1) &&
+    flags.length === 1 &&
+    schemaRowsOf(flags[0].sectionKey).length > 0;
 
   const canSplit = (() => {
     if (!selectedCell) return false;
-    const rows = getRows(selectedCell.section);
+    const rows = schemaRowsOf(sectionKey(selectedCell.section, [selectedCell.rowId]));
     if (!rows.length) return false;
     const grid = buildLogicalGrid(rows, component.columns.length);
     const rowIdx = rows.findIndex((r) => r.id === selectedCell.rowId);
@@ -233,12 +269,14 @@ export function useTableActions(
     return !!cell && ((cell.colspan || 1) > 1 || (cell.rowspan || 1) > 1);
   })();
 
-  const canDeleteRow = !!selectedCells && getRows(selectedCells.section).length > 0;
+  const canDeleteRow = flags.some((g) =>
+    schemaRowsOf(g.sectionKey).some((r) => g.rowIds.includes(r.id))
+  );
 
   /** 'static' | 'data' when every selected body row agrees, 'mixed' otherwise;
-   * null when the selection can't change row type (not body / synthetic table). */
+   * null when the selection can't change row type (no body rows / synthetic table). */
   const rowTypeState = ((): 'static' | 'data' | 'mixed' | null => {
-    if (!selectedCells || selectedCells.section !== 'data') return null;
+    if (!selectedCells) return null;
     const rows = component.detailRows ?? [];
     if (!rows.length) return null;
     const rowSet = new Set(selectedCells.rowIds);

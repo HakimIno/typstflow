@@ -242,8 +242,22 @@ export function TextEditor({
   const highlightedContent = useMemo(() => {
     // Process text for display: escape HTML-like characters and wrap bindings
     const parts = value.split(/(\{\{[^}]*\}\})/g);
-    return parts.map((part, i) => <span key={i}>{part || ''}</span>);
-  }, [value, textStyle]);
+    return parts.map((part, i) => {
+      const isBinding = /^\{\{[^}]*\}\}$/.test(part);
+      if (!isBinding) return <span key={i}>{part || ''}</span>;
+      const path = part.slice(2, -2).trim();
+      return (
+        <span
+          key={i}
+          className="rounded-[3px] border border-sky-400/20 bg-sky-400/10 px-1 font-mono shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]"
+        >
+          <span className="text-fuchsia-500">{'{{'}</span>
+          <span className="text-sky-600">{path}</span>
+          <span className="text-fuchsia-500">{'}}'}</span>
+        </span>
+      );
+    });
+  }, [value]);
 
   const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
   useEffect(() => {

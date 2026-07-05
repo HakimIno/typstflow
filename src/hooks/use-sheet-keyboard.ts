@@ -3,11 +3,12 @@
 import type { CellCoord, CellsSelection } from '@/components/designer/table/useCellSelection';
 import {
   applyPasteToRows,
-  buildTsvFromSelection,
+  buildTsvFromSheet,
   parseClipboardTable,
 } from '@/lib/utils/table-clipboard';
 import type { SheetNavRow, SheetNavSection } from '@/lib/utils/table-nav';
-import { findFlatRow, flattenNavRows, sectionRange, stepCell, tabStep } from '@/lib/utils/table-nav';
+import { findFlatRow, flatRange, flattenNavRows, stepCell, tabStep } from '@/lib/utils/table-nav';
+import { useDesignerStore } from '@/store/designer-store';
 import type { AnyTableComponent, TableRow } from '@/types/schema';
 import type { RefObject } from 'react';
 import { useEffect, useRef } from 'react';
@@ -42,9 +43,10 @@ function isTextInput(el: EventTarget | null): el is HTMLElement {
 
 /**
  * Excel-style keyboard flow for the table sheet (plan Phase 4):
- * arrows move the active cell (Shift extends within the section), Tab/Enter
- * commit-and-move, F2/typing starts editing, Delete clears, Ctrl+A selects the
- * section, and copy/cut/paste speak TSV so Excel/Sheets round-trips work.
+ * arrows move the active cell (Shift extends the flat selection — crossing
+ * header/data/footer bands), Tab/Enter commit-and-move, F2/typing starts
+ * editing, Delete clears, Ctrl+A selects the whole sheet, and copy/cut/paste
+ * speak TSV so Excel/Sheets round-trips work.
  */
 export function useSheetKeyboard(options: SheetKeyboardOptions) {
   // Latest-ref so the window listeners are registered once per `enabled` flip
@@ -89,7 +91,6 @@ export function useSheetKeyboard(options: SheetKeyboardOptions) {
       });
       setSelectedCells({
         tableId: component.id,
-        section: nav.section,
         rowIds: [nav.row.id],
         cellIndices: [pos.col],
       });
@@ -125,7 +126,7 @@ export function useSheetKeyboard(options: SheetKeyboardOptions) {
           return flatRow === -1 ? null : { flatRow, col: selectedCell.cellIdx };
         })();
       if (!from) return;
-      const range = sectionRange(flat, colCount(), selectedCell.rowId, selectedCell.cellIdx, {
+      const range = flatRange(flat, colCount(), selectedCell.rowId, selectedCell.cellIdx, {
         flatRow: from.flatRow + dRow,
         col: from.col + dCol,
       });
@@ -133,7 +134,6 @@ export function useSheetKeyboard(options: SheetKeyboardOptions) {
       shiftFocusRef.current = range.focus;
       setSelectedCells({
         tableId: component.id,
-        section: range.section,
         rowIds: range.rowIds,
         cellIndices: range.cellIndices,
       });
@@ -222,32 +222,34 @@ export function useSheetKeyboard(options: SheetKeyboardOptions) {
         return;
       }
 
+      // Undo/redo must keep working inside sheet mode — the canvas-level
+      // shortcut hook early-returns while tableSheetEditId is set. While the
+      // cell editor has focus this never runs (editingCell returns above), so
+      // native text-undo inside the textarea is untouched.
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && ['z', 'Z', 'y', 'Y'].includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        const { undo, redo } = useDesignerStore.getState();
+        if (e.key === 'y' || e.key === 'Y' || e.shiftKey) redo();
+        else undo();
+        return;
+      }
+
       if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
         if (!selectedCell) return;
         e.preventDefault();
         e.stopPropagation();
-        const sec = opts.current.sections.find(
-          (s) =>
-            s.section === selectedCell.section && s.rows.some((r) => r.id === selectedCell.rowId)
-        );
-        if (!sec) return;
+        // Whole sheet — the flat selection model spans every band (plan §2.4).
         opts.current.setSelectedCells({
           tableId: component.id,
-          section: sec.section,
-          rowIds: sec.rows.map((r) => r.id),
+          rowIds: flat.map((r) => r.row.id),
           cellIndices: Array.from({ length: colCount() }, (_, i) => i),
         });
         return;
       }
 
       // Printable character → replace the active cell's content (Excel-style).
-      if (
-        selectedCell &&
-        e.key.length === 1 &&
-        !e.ctrlKey &&
-        !e.metaKey &&
-        !e.altKey
-      ) {
+      if (selectedCell && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         e.stopPropagation();
         startEditing('replace', e.key);
@@ -259,13 +261,11 @@ export function useSheetKeyboard(options: SheetKeyboardOptions) {
       opts.current.sections.find((s) => s.sectionKey === sectionKey)?.rows ?? [];
 
     const copySelection = (e: ClipboardEvent): boolean => {
-      const { selectedCell, selectedCells } = opts.current;
-      if (isTextInput(e.target) || !selectedCells || !selectedCell) return false;
-      const flat = flatRows();
-      const nav = flat[findFlatRow(flat, selectedCell.rowId)];
-      if (!nav) return false;
-      const tsv = buildTsvFromSelection(
-        sectionRowsOf(nav.sectionKey),
+      const { selectedCells } = opts.current;
+      if (isTextInput(e.target) || !selectedCells) return false;
+      // Cross-band selection: each section contributes its own rows in render order.
+      const tsv = buildTsvFromSheet(
+        opts.current.sections,
         selectedCells.rowIds,
         selectedCells.cellIndices,
         colCount()

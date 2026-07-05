@@ -330,15 +330,47 @@ const PaletteItem = memo(function PaletteItem({ type, label, icon: Icon }: Palet
             width: 60,
             height: 6,
           };
-        case 'table':
+        case 'table': {
+          const headerRow = {
+            id: 'header-row-1',
+            type: 'header',
+            height: '10mm',
+            cells: [{ id: 'header-cell-1', content: 'Header', align: 'left' }],
+          };
+          const detailRow = {
+            id: 'detail-row-1',
+            type: 'data',
+            height: '10mm',
+            cells: [{ id: 'detail-cell-1', content: '{{items.field}}', align: 'left' }],
+          };
+
           return {
             ...base,
             type: 'table',
             dataSource: '{{items}}',
-            columns: [{ id: '1', header: 'Header', field: 'field', width: '1fr' }],
+            columns: [{ id: '1', header: 'Header', field: 'field', width: '180mm', align: 'left' }],
+            style: {
+              inset: '7pt',
+              borderWidth: '0.5pt',
+              borderColor: '#cbd5e1',
+              headerBackground: '#f1f5f9',
+              headerColor: '#000000',
+              headerFontSize: 10,
+              headerFontWeight: 'bold',
+              bodyFontSize: 10,
+              bodyColor: '#334155',
+              fillPattern: 'header-only',
+              fontFamily: 'Sarabun',
+            },
+            showHeader: true,
+            repeatHeaderOnPage: true,
+            headerRows: [headerRow],
+            detailRows: [detailRow],
+            rows: [headerRow, detailRow],
             width: 180,
-            height: 40,
+            height: 20,
           };
+        }
         case 'image':
           return { ...base, type: 'image', src: '/logo13.png', width: 40, height: 40 };
         case 'line':
