@@ -26,6 +26,12 @@ import {
   Trash2,
 } from 'lucide-react';
 import { memo, useMemo, useRef, useState } from 'react';
+import {
+  FloatingToolbar,
+  FloatingToolbarButton,
+  FloatingToolbarFlyout,
+} from './toolbar/FloatingToolbar';
+import { ToolbarSeparator } from './toolbar/ToolbarSeparator';
 
 export const SelectionToolbar = memo(function SelectionToolbar({
   pageId,
@@ -132,63 +138,61 @@ export const SelectionToolbar = memo(function SelectionToolbar({
   const isMulti = selectedComponents.length > 1;
 
   return (
-    <div
+    <FloatingToolbar
       ref={toolbarRef}
       data-toolbar="true"
-      className="absolute z-[1000] flex items-center gap-0.5 bg-black backdrop-blur-md p-1 border border-white/10 shadow-2xl transition-transform duration-200"
+      className="absolute z-[1000] transition-transform duration-200"
       style={{
         top: `${baseTop}px`,
         left: `${baseLeft}px`,
         transform: `translateX(calc(-50% + var(--toolbar-drag-dx, 0px))) translateY(var(--toolbar-drag-dy, 0px)) scale(${Math.min(1.2, 1 / zoom)})`,
         transformOrigin: isNearTop ? 'top center' : 'bottom center',
-        borderRadius: '12px',
       }}
     >
       {/* Alignment Group */}
-      <ToolbarGroup
+      <FloatingToolbarFlyout
         icon={AlignEndVertical}
-        title="Alignment"
         isActive={hoveredGroup === 'align'}
         onHover={(v) => setHoveredGroup(v ? 'align' : null)}
       >
         <div className="flex items-center gap-0.5 p-0.5">
-          <ActionButton
+          <FloatingToolbarButton
             icon={AlignLeft}
             title={isMulti ? 'Align Left' : 'Align Left to Page'}
             onClick={() =>
               isMulti ? alignSelected('left', pageId) : alignToPage('page-left', pageId)
             }
           />
-          <ActionButton
+          <FloatingToolbarButton
             icon={AlignCenter}
             title={isMulti ? 'Center Horizontally' : 'Center H on Page'}
             onClick={() =>
               isMulti ? alignSelected('center', pageId) : alignToPage('page-center-h', pageId)
             }
           />
-          <ActionButton
+          <FloatingToolbarButton
             icon={AlignRight}
             title={isMulti ? 'Align Right' : 'Align Right to Page'}
             onClick={() =>
               isMulti ? alignSelected('right', pageId) : alignToPage('page-right', pageId)
             }
           />
-          <div className="w-[1px] h-3 bg-white/10 mx-1" />
-          <ActionButton
+          <ToolbarSeparator tone="dark" className="mx-1" />
+          <FloatingToolbarButton
             icon={AlignStartVertical}
             title={isMulti ? 'Align Top' : 'Align Top to Page'}
             onClick={() =>
               isMulti ? alignSelected('top', pageId) : alignToPage('page-top', pageId)
             }
           />
-          <ActionButton
+          <FloatingToolbarButton
             icon={AlignCenterVertical}
             title={isMulti ? 'Center Vertically' : 'Center V on Page'}
             onClick={() =>
               isMulti ? alignSelected('middle', pageId) : alignToPage('page-center-v', pageId)
             }
           />
-          <ActionButton
+          <FloatingToolbarButton
             icon={AlignEndVertical}
             title={isMulti ? 'Align Bottom' : 'Align Bottom to Page'}
             onClick={() =>
@@ -196,16 +200,15 @@ export const SelectionToolbar = memo(function SelectionToolbar({
             }
           />
         </div>
-      </ToolbarGroup>
+      </FloatingToolbarFlyout>
 
-      <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
+      <ToolbarSeparator tone="dark" />
 
       {/* Spacing & Distribution Group */}
       {isMulti && (
         <>
-          <ToolbarGroup
+          <FloatingToolbarFlyout
             icon={ArrowUpDown}
-            title="Spacing"
             isActive={hoveredGroup === 'spacing'}
             onHover={(v) => setHoveredGroup(v ? 'spacing' : null)}
           >
@@ -220,6 +223,7 @@ export const SelectionToolbar = memo(function SelectionToolbar({
                 <div className="flex gap-0.5">
                   {[0, 5, 10].map((v) => (
                     <button
+                      type="button"
                       key={v}
                       onClick={() => setStackGap(v)}
                       className={clsx(
@@ -246,150 +250,78 @@ export const SelectionToolbar = memo(function SelectionToolbar({
               />
 
               <div className="flex items-center justify-center gap-1 mt-1">
-                <ActionButton
+                <FloatingToolbarButton
                   icon={Rows2}
                   title="Stack V"
                   onClick={() => stackSelected('stack-v', stackGap, pageId)}
                 />
-                <ActionButton
+                <FloatingToolbarButton
                   icon={Columns2}
                   title="Stack H"
                   onClick={() => stackSelected('stack-h', stackGap, pageId)}
                 />
-                <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
-                <ActionButton
+                <ToolbarSeparator tone="dark" />
+                <FloatingToolbarButton
                   icon={AlignVerticalDistributeCenter}
                   title="Dist V"
                   onClick={() => distributeSelected('dist-v', pageId)}
                 />
-                <ActionButton
+                <FloatingToolbarButton
                   icon={AlignHorizontalDistributeCenter}
                   title="Dist H"
                   onClick={() => distributeSelected('dist-h', pageId)}
                 />
               </div>
             </div>
-          </ToolbarGroup>
-          <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
+          </FloatingToolbarFlyout>
+          <ToolbarSeparator tone="dark" />
         </>
       )}
 
       {/* Layering Group */}
-      <ToolbarGroup
+      <FloatingToolbarFlyout
         icon={Layers}
-        title="Layers"
         isActive={hoveredGroup === 'layer'}
         onHover={(v) => setHoveredGroup(v ? 'layer' : null)}
       >
         <div className="flex items-center gap-0.5 p-0.5">
-          <ActionButton
+          <FloatingToolbarButton
             icon={ChevronsUp}
             title="Front"
             onClick={() => bringToFrontMany(selectedComponentIds)}
           />
-          <ActionButton
+          <FloatingToolbarButton
             icon={ChevronUp}
             title="Forward"
             onClick={() => moveUpMany(selectedComponentIds)}
           />
-          <ActionButton
+          <FloatingToolbarButton
             icon={ChevronDown}
             title="Backward"
             onClick={() => moveDownMany(selectedComponentIds)}
           />
-          <ActionButton
+          <FloatingToolbarButton
             icon={ChevronsDown}
             title="Back"
             onClick={() => sendToBackMany(selectedComponentIds)}
           />
         </div>
-      </ToolbarGroup>
+      </FloatingToolbarFlyout>
 
-      <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
+      <ToolbarSeparator tone="dark" />
 
       {/* Duplicate Section */}
-      <ActionButton icon={Copy} title="Duplicate" onClick={() => duplicateSelected()} />
+      <FloatingToolbarButton icon={Copy} title="Duplicate" onClick={() => duplicateSelected()} />
 
       {/* Destruction Section */}
       <div className="flex items-center gap-0.5 border-l border-white/10 ml-0.5 pl-0.5">
-        <ActionButton
+        <FloatingToolbarButton
           icon={Trash2}
           title="Delete"
           onClick={() => removeComponents(selectedComponentIds)}
           className="hover:bg-red-500/20 text-red-500/70 hover:text-red-400"
         />
       </div>
-    </div>
+    </FloatingToolbar>
   );
 });
-
-function ToolbarGroup({
-  icon: Icon,
-  title,
-  children,
-  isActive,
-  onHover,
-}: {
-  icon: any;
-  title: string;
-  children: React.ReactNode;
-  isActive: boolean;
-  onHover: (v: boolean) => void;
-}) {
-  return (
-    <div
-      className="relative flex items-center group/group"
-      onMouseEnter={() => onHover(true)}
-      onMouseLeave={() => onHover(false)}
-    >
-      <div
-        className={clsx(
-          'p-1 rounded-md transition-all duration-200 cursor-default',
-          isActive ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'
-        )}
-      >
-        <Icon className="w-3.5 h-3.5" />
-      </div>
-
-      {/* Floating Panel */}
-      <div
-        className={clsx(
-          'absolute bottom-full left-1/2 -translate-x-1/2 pb-2 transition-all duration-300 origin-bottom z-[1100]',
-          isActive
-            ? 'opacity-100 scale-100 translate-y-0'
-            : 'opacity-0 scale-95 translate-y-2 pointer-events-none'
-        )}
-      >
-        <div className="pro-panel p-0.5 backdrop-blur-xl border-white/10 shadow-2xl relative bg-[var(--bg-surface-solid)]/95">
-          {children}
-          {/* Arrow */}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-px w-2 h-1.5 bg-[var(--bg-surface-solid)]/95 [clip-path:polygon(0_0,100%_0,50%_100%)]" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ActionButton({
-  icon: Icon,
-  title,
-  onClick,
-  className,
-}: { icon: any; title: string; onClick: () => void; className?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className={clsx(
-        'p-1 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white transition-all duration-150 group relative',
-        className
-      )}
-      title={title}
-    >
-      <Icon className="w-3.5 h-3.5" />
-    </button>
-  );
-}

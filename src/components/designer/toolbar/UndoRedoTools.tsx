@@ -19,7 +19,7 @@ export const UndoRedoTools = memo(function UndoRedoTools() {
         disabled={historyIndex <= 0}
         variant="toolbar-item"
         title="Undo (Cmd+Z)"
-        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+        size="icon"
       />
       <ToolbarButton
         icon={Redo}
@@ -27,7 +27,7 @@ export const UndoRedoTools = memo(function UndoRedoTools() {
         disabled={historyIndex >= historyLength - 1}
         variant="toolbar-item"
         title="Redo (Cmd+Shift+Z)"
-        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+        size="icon"
       />
     </div>
   );

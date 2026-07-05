@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { memo } from 'react';
 import { ToolbarButton } from './ToolbarButton';
+import { ToolbarSeparator } from './ToolbarSeparator';
 
 export const AlignmentTools = memo(function AlignmentTools() {
   const selectedComponentIds = useDesignerStore((state) => state.selectedComponentIds);
@@ -127,7 +128,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={!isSingleSelect}
           variant="toolbar-item"
           title="Bring to Front"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
         <ToolbarButton
           icon={ChevronUp}
@@ -135,7 +136,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={!isSingleSelect}
           variant="toolbar-item"
           title="Bring Forward"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
         <ToolbarButton
           icon={ChevronDown}
@@ -143,7 +144,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={!isSingleSelect}
           variant="toolbar-item"
           title="Send Backward"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
         <ToolbarButton
           icon={ChevronFirst}
@@ -151,11 +152,11 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={!isSingleSelect}
           variant="toolbar-item"
           title="Send to Back"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
       </div>
 
-      <div className="w-px h-4 bg-[var(--border-default)] mx-1" />
+      <ToolbarSeparator />
 
       {/* Group: Horizontal */}
       <div className="flex items-center gap-0.5 px-0.5">
@@ -165,7 +166,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={!hasSelection}
           variant="toolbar-item"
           title="Align Left"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
         <ToolbarButton
           icon={AlignCenterHorizontal}
@@ -173,7 +174,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={!hasSelection}
           variant="toolbar-item"
           title="Align Center"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
         <ToolbarButton
           icon={AlignEndHorizontal}
@@ -181,11 +182,11 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={!hasSelection}
           variant="toolbar-item"
           title="Align Right"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
       </div>
 
-      <div className="w-px h-4 bg-[var(--border-default)] mx-1" />
+      <ToolbarSeparator />
 
       {/* Group: Vertical */}
       <div className="flex items-center gap-0.5 px-0.5">
@@ -195,7 +196,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={!hasSelection}
           variant="toolbar-item"
           title="Align Top"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
         <ToolbarButton
           icon={AlignCenterVertical}
@@ -203,7 +204,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={!hasSelection}
           variant="toolbar-item"
           title="Align Middle"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
         <ToolbarButton
           icon={AlignEndVertical}
@@ -211,11 +212,11 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={!hasSelection}
           variant="toolbar-item"
           title="Align Bottom"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
       </div>
 
-      <div className="w-px h-4 bg-[var(--border-default)] mx-1" />
+      <ToolbarSeparator />
 
       {/* Group: Distribute */}
       <div className="flex items-center gap-0.5 px-0.5">
@@ -225,7 +226,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={selectedComponentIds.length < 3}
           variant="toolbar-item"
           title="Distribute Horizontally"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
         <ToolbarButton
           icon={AlignVerticalDistributeCenter}
@@ -233,7 +234,7 @@ export const AlignmentTools = memo(function AlignmentTools() {
           disabled={selectedComponentIds.length < 3}
           variant="toolbar-item"
           title="Distribute Vertically"
-          className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+          size="icon"
         />
       </div>
     </div>

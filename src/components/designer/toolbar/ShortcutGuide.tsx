@@ -54,6 +54,8 @@ export const ShortcutGuide = memo(function ShortcutGuide({ forcedOpen, onClose, 
 
       {isOpen && (
         <>
+          {/* Intentionally a full-screen click-catcher (not useClickOutside):
+              it must swallow the first outside click instead of letting it through */}
           {!forcedOpen && (
             <div
               className="fixed inset-0 z-[100] bg-transparent"

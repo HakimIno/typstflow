@@ -1,5 +1,6 @@
 'use client';
 
+import { cn } from '@/lib/utils/cn';
 import { clsx } from 'clsx';
 import type { LucideIcon } from 'lucide-react';
 import { type ReactNode, memo } from 'react';
@@ -11,6 +12,7 @@ interface ToolbarButtonProps {
   disabled?: boolean;
   active?: boolean;
   variant?: 'default' | 'primary' | 'danger' | 'ghost' | 'toolbar-item';
+  size?: 'md' | 'icon';
   className?: string;
   children?: ReactNode;
   title?: string;
@@ -24,6 +26,7 @@ export const ToolbarButton = memo(function ToolbarButton({
   disabled,
   active,
   variant = 'default',
+  size = 'md',
   className,
   children,
   title,
@@ -31,6 +34,9 @@ export const ToolbarButton = memo(function ToolbarButton({
 }: ToolbarButtonProps) {
   const baseStyles =
     'flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold border rounded-md disabled:opacity-20 disabled:cursor-not-allowed select-none transition-all duration-200 active:scale-95';
+
+  const sizeStyles =
+    size === 'icon' ? 'h-7 w-7 p-1.5 justify-center opacity-80 hover:opacity-100' : '';
 
   const variants = {
     default:
@@ -56,7 +62,7 @@ export const ToolbarButton = memo(function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={clsx(baseStyles, variants[variant], activeStyles, className)}
+      className={cn(baseStyles, variants[variant], activeStyles, sizeStyles, className)}
     >
       {Icon && <Icon className={clsx('w-3.5 h-3.5 pointer-events-none', !label && 'w-4 h-4')} />}
       {label && <span className="truncate pointer-events-none">{label}</span>}

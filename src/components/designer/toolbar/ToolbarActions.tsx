@@ -5,6 +5,7 @@ import { type ExportProgress, exportReportPdf } from '@/lib/pdf-export';
 import { useDesignerStore } from '@/store/designer-store';
 import { Download, FileSpreadsheet, FileStack, Link2, PanelRight, Play } from 'lucide-react';
 import { memo, useState } from 'react';
+import Spinner from '../../shared/Spinner';
 import { BatchExportModal } from './BatchExportModal';
 import { ShareModal } from './ShareModal';
 import { ToolbarButton } from './ToolbarButton';
@@ -120,7 +121,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
         active={isRightSidebarOpen}
         variant="toolbar-item"
         title="Toggle Properties Panel"
-        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+        size="icon"
       />
 
       <ToolbarButton
@@ -128,7 +129,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
         onClick={handleDownloadSource}
         variant="toolbar-item"
         title="Download Typst Source (.typ)"
-        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+        size="icon"
       />
 
       <ToolbarButton
@@ -138,11 +139,9 @@ export const ToolbarActions = memo(function ToolbarActions() {
         disabled={isExcelExporting || isExporting}
         variant="toolbar-item"
         title="Export tables data to Excel (.xlsx)"
-        className="!h-7 !px-3 opacity-80 hover:opacity-100"
+        className="h-7 px-3 opacity-80 hover:opacity-100"
       >
-        {isExcelExporting && (
-          <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin mr-1.5" />
-        )}
+        {isExcelExporting && <Spinner className="w-3 h-3 mr-1.5" />}
       </ToolbarButton>
 
       <ToolbarButton
@@ -151,7 +150,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
         onClick={() => setIsShareModalOpen(true)}
         variant="toolbar-item"
         title="Create a read-only share link"
-        className="!h-7 !px-3 opacity-80 hover:opacity-100"
+        className="h-7 px-3 opacity-80 hover:opacity-100"
       />
 
       <ToolbarButton
@@ -161,7 +160,7 @@ export const ToolbarActions = memo(function ToolbarActions() {
         disabled={isExporting || isExcelExporting}
         variant="toolbar-item"
         title="Generate batch PDFs from CSV/Excel data"
-        className="!h-7 !px-3 opacity-80 hover:opacity-100"
+        className="h-7 px-3 opacity-80 hover:opacity-100"
       />
 
       <ToolbarButton
@@ -171,11 +170,9 @@ export const ToolbarActions = memo(function ToolbarActions() {
         disabled={isExporting || isExcelExporting}
         variant="primary"
         title="Generate PDF (browser for small docs, server Typst CLI for 200+ pages)"
-        className="!h-7 !px-3 shadow-sm shadow-[var(--accent-glow)]"
+        className="h-7 px-3 shadow-sm shadow-[var(--accent-glow)]"
       >
-        {isExporting && (
-          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1.5" />
-        )}
+        {isExporting && <Spinner className="w-3 h-3 mr-1.5" />}
       </ToolbarButton>
 
       <BatchExportModal isOpen={isBatchModalOpen} onClose={() => setIsBatchModalOpen(false)} />

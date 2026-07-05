@@ -16,7 +16,7 @@ export const ZoomControls = memo(function ZoomControls() {
         onClick={() => setZoom(Math.max(0.2, zoom / 1.15))}
         variant="toolbar-item"
         title="Zoom Out (Cmd+-)"
-        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+        size="icon"
       />
       <button
         type="button"
@@ -31,7 +31,7 @@ export const ZoomControls = memo(function ZoomControls() {
         onClick={() => setZoom(Math.min(3.0, zoom * 1.15))}
         variant="toolbar-item"
         title="Zoom In (Cmd+=)"
-        className="!h-7 !w-7 !p-1.5 opacity-80 hover:opacity-100"
+        size="icon"
       />
     </div>
   );

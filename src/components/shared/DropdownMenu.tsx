@@ -1,16 +1,9 @@
 'use client';
 
+import { useClickOutside } from '@/hooks/use-click-outside';
 import { clsx } from 'clsx';
 import type { LucideIcon } from 'lucide-react';
-import {
-  type ReactNode,
-  createContext,
-  memo,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, createContext, memo, useContext, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 // --- Context ---
@@ -62,22 +55,7 @@ export const DropdownMenu = memo(function DropdownMenu({
     setIsOpen(!isOpen);
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node) &&
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  useClickOutside([menuRef, containerRef], () => setIsOpen(false), isOpen);
 
   return (
     <DropdownContext.Provider value={{ isOpen, setIsOpen }}>

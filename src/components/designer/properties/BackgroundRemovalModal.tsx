@@ -1,7 +1,7 @@
 'use client';
 
-import { removeBackground as imglyRemoveBackground } from '@imgly/background-removal';
 import { removeBackground } from '@/lib/typst-wasm';
+import { removeBackground as imglyRemoveBackground } from '@imgly/background-removal';
 import {
   Check,
   Circle,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Modal } from '../../shared/Modal';
 import { SegmentedControl, ToggleChip, ToggleChipGroup } from './Shared';
 
 type BrushShape = 'circle' | 'square';
@@ -263,12 +264,7 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
       const r = viewportRectRef.current;
       if (!r) return;
       // Hide when outside viewport (cursor is position:fixed at viewport coords)
-      if (
-        clientX < r.left ||
-        clientX > r.left + r.w ||
-        clientY < r.top ||
-        clientY > r.top + r.h
-      ) {
+      if (clientX < r.left || clientX > r.left + r.w || clientY < r.top || clientY > r.top + r.h) {
         hideCursor();
         return;
       }
@@ -532,7 +528,7 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
     try {
       // 1. Snapshot canvas → Blob
       const sourceBlob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, 'image/png'),
+        canvas.toBlob(resolve, 'image/png')
       );
       if (!sourceBlob) throw new Error('canvas blob failed');
 
@@ -611,12 +607,13 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
   ];
 
   const modal = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-
-      <div
-        className="relative w-full max-w-4xl bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl shadow-2xl overflow-hidden flex"
-        style={{ height: '85vh' }}
+    <>
+      <Modal
+        open
+        onClose={onClose}
+        maxWidthClassName="max-w-4xl"
+        backdropClassName="backdrop-blur-none"
+        className="flex h-[85vh]"
       >
         {/* ── Sidebar ── */}
         <div className="w-56 shrink-0 flex flex-col border-r border-[var(--border-default)]">
@@ -773,8 +770,8 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
             {mode === 'ai' && (
               <>
                 <p className="text-[8px] text-[var(--text-muted)] leading-relaxed">
-                  ISNet salient-object segmentation. Detects subjects automatically — works
-                  on people, products, animals. Uses WebGPU when available.
+                  ISNet salient-object segmentation. Detects subjects automatically — works on
+                  people, products, animals. Uses WebGPU when available.
                 </p>
 
                 {aiPhase === 'downloading' && aiProgress && (
@@ -832,8 +829,8 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
                 </button>
 
                 <p className="text-[8px] text-[var(--text-muted)] leading-relaxed">
-                  First use downloads the model (~80MB, cached after). WebGPU accelerated.
-                  Use Manual mode to clean up edges if needed.
+                  First use downloads the model (~80MB, cached after). WebGPU accelerated. Use
+                  Manual mode to clean up edges if needed.
                 </p>
               </>
             )}
@@ -895,7 +892,7 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
             {removing && mode === 'ai' && <div className="ai-scan-overlay" />}
           </div>
         </div>
-      </div>
+      </Modal>
 
       {/* Cursor overlay — root-level fixed, isolated from modal stacking context for GPU promotion */}
       <div
@@ -915,7 +912,7 @@ export function BackgroundRemovalModal({ srcData, onApply, onClose }: Background
           contain: 'layout style paint',
         }}
       />
-    </div>
+    </>
   );
 
   return createPortal(modal, document.body);

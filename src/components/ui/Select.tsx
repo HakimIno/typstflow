@@ -1,12 +1,7 @@
+import { cn } from '@/lib/utils/cn';
 import * as SelectPrimitive from '@radix-ui/react-select';
-import { clsx } from 'clsx';
 import { Check, ChevronDown } from 'lucide-react';
 import * as React from 'react';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
-}
 
 const Select = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;

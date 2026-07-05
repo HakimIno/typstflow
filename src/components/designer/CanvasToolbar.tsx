@@ -1,13 +1,20 @@
 'use client';
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';
+import { cn } from '@/lib/utils/cn';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { useDesignerStore } from '@/store/designer-store';
 import clsx from 'clsx';
-import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus } from 'lucide-react';
-import { memo, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { usePathname } from 'next/navigation';
+import { memo, useEffect, useMemo, useState } from 'react';
+import { FloatingToolbarButton } from './toolbar/FloatingToolbar';
+import { ToolbarSeparator } from './toolbar/ToolbarSeparator';
+
+// Preserve this toolbar's original gray palette over the primitive's zinc/white defaults
+const grayButton =
+  'text-gray-600 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-400 hover:bg-gray-950 cursor-pointer';
 
 interface CanvasToolbarProps {
   mode?: 'design' | 'preview';
@@ -60,14 +67,18 @@ export const CanvasToolbar = memo(function CanvasToolbar({
     // Use a small delay to find containers after they are mounted
     const timeout = setTimeout(() => {
       const containers = document.querySelectorAll('[data-canvas-scroll-container]');
-      containers.forEach((c) => c.addEventListener('scroll', handleScroll));
+      for (const c of containers) {
+        c.addEventListener('scroll', handleScroll);
+      }
     }, 500);
 
     return () => {
       clearTimeout(timeout);
       clearTimeout(timer);
       const containers = document.querySelectorAll('[data-canvas-scroll-container]');
-      containers.forEach((c) => c.removeEventListener('scroll', handleScroll));
+      for (const c of containers) {
+        c.removeEventListener('scroll', handleScroll);
+      }
     };
   }, []);
 
@@ -107,37 +118,12 @@ export const CanvasToolbar = memo(function CanvasToolbar({
     }
   };
 
-  const ButtonToolbar = ({
-    children,
-    onClick,
-    disabled,
-    className,
-  }: {
-    children: React.ReactNode;
-    onClick: () => void;
-    disabled?: boolean;
-    className?: string;
-  }) => {
-    return (
-      <button
-        onClick={onClick}
-        disabled={disabled}
-        className={clsx(
-          'p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-950 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer',
-          className
-        )}
-      >
-        {children}
-      </button>
-    );
-  };
-
   return (
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={clsx(
-        'absolute bottom-4 -translate-x-1/2 z-50 flex flex-col items-center p-4',
+        'absolute bottom-0 -translate-x-1/2 z-50 flex flex-col items-center',
         isViewPage ? 'left-1/2' : 'left-[30rem]'
       )}
     >
@@ -171,31 +157,43 @@ export const CanvasToolbar = memo(function CanvasToolbar({
               className="flex items-center gap-1 p-1 whitespace-nowrap"
             >
               {/* View Controls   */}
-              <ButtonToolbar onClick={handleFitToWidth}>
+              <FloatingToolbarButton
+                shape="circle"
+                className={grayButton}
+                onClick={handleFitToWidth}
+              >
                 <Maximize2 className="w-4 h-4" />
-              </ButtonToolbar>
+              </FloatingToolbarButton>
 
-              <div className="w-px h-4 bg-white/10 mx-1" />
+              <ToolbarSeparator tone="dark" className="h-4 mx-1" />
 
               {/* Zoom Controls */}
               <div className="flex items-center gap-0.5">
-                <ButtonToolbar onClick={handleZoomOut}>
+                <FloatingToolbarButton
+                  shape="circle"
+                  className={grayButton}
+                  onClick={handleZoomOut}
+                >
                   <Minus className="w-4 h-4" />
-                </ButtonToolbar>
+                </FloatingToolbarButton>
 
-                <ButtonToolbar
+                <FloatingToolbarButton
+                  shape="circle"
                   onClick={handleResetZoom}
-                  className="font-bold text-[11px] min-w-[50px] text-white"
+                  className={cn(
+                    grayButton,
+                    'font-bold text-[11px] min-w-[50px] text-white hover:text-white dark:hover:text-white'
+                  )}
                 >
                   {Math.round(zoom * 100)}%
-                </ButtonToolbar>
+                </FloatingToolbarButton>
 
-                <ButtonToolbar onClick={handleZoomIn}>
+                <FloatingToolbarButton shape="circle" className={grayButton} onClick={handleZoomIn}>
                   <Plus className="w-4 h-4" />
-                </ButtonToolbar>
+                </FloatingToolbarButton>
               </div>
 
-              <div className="w-px h-4 bg-white/10 mx-1" />
+              <ToolbarSeparator tone="dark" className="h-4 mx-1" />
 
               {/* Page Navigation */}
               <form onSubmit={handlePageSubmit} className="flex items-center gap-1.5 px-2">
@@ -213,7 +211,9 @@ export const CanvasToolbar = memo(function CanvasToolbar({
               </form>
 
               <div className="flex items-center">
-                <ButtonToolbar
+                <FloatingToolbarButton
+                  shape="circle"
+                  className={grayButton}
                   onClick={() => {
                     const idx = displayActivePage - 2;
                     if (idx >= 0) {
@@ -224,8 +224,10 @@ export const CanvasToolbar = memo(function CanvasToolbar({
                   disabled={displayActivePage <= 1}
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
-                </ButtonToolbar>
-                <ButtonToolbar
+                </FloatingToolbarButton>
+                <FloatingToolbarButton
+                  shape="circle"
+                  className={grayButton}
                   onClick={() => {
                     const idx = displayActivePage;
                     if (idx < displayTotalPages) {
@@ -236,7 +238,7 @@ export const CanvasToolbar = memo(function CanvasToolbar({
                   disabled={displayActivePage >= displayTotalPages}
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
-                </ButtonToolbar>
+                </FloatingToolbarButton>
               </div>
             </motion.div>
           ) : null}

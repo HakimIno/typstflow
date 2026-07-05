@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { memo, useRef } from 'react';
+import { FloatingToolbar, FloatingToolbarButton } from '../toolbar/FloatingToolbar';
+import { ToolbarSeparator } from '../toolbar/ToolbarSeparator';
 
 interface ActionBarProps {
   component: ComponentNode;
@@ -268,15 +270,14 @@ export const ActionBar = memo(function ActionBar({
   const isNearTop = (component.y || 0) < 20;
 
   return (
-    <div
+    <FloatingToolbar
       className={clsx(
-        'absolute -right-2 flex items-center gap-0.5 bg-black backdrop-blur-md p-1 z-[1000] border border-white/10 shadow-2xl transition-all duration-200',
+        'absolute -right-2 z-[1000] transition-all duration-200',
         isNearTop ? 'top-full mt-2' : '-top-14'
       )}
       style={{
         transform: `scale(${Math.min(1.2, 1 / zoom)})`,
         transformOrigin: isNearTop ? 'top right' : 'bottom right',
-        borderRadius: '12px',
       }}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
@@ -292,7 +293,7 @@ export const ActionBar = memo(function ActionBar({
       <div className="flex items-center gap-0.5 px-0.5 border-r border-white/10">
         {flowMode ? (
           <>
-            <ActionButton
+            <FloatingToolbarButton
               icon={ChevronLeft}
               title="Indent Left 5mm"
               onClick={(e) => handleFlowIndentLeft?.(e)}
@@ -306,14 +307,18 @@ export const ActionBar = memo(function ActionBar({
                 ←{Math.round(component.x || 0)}mm
               </span>
             </div>
-            <ActionButton
+            <FloatingToolbarButton
               icon={ChevronRight}
               title="Indent Right 5mm"
               onClick={(e) => handleFlowIndentRight?.(e)}
             />
-            <div className="w-[1px] h-3 bg-white/10 mx-0.5" />
-            <ActionButton icon={ChevronUp} title="Move Up" onClick={() => moveDown(component.id)} />
-            <ActionButton
+            <ToolbarSeparator tone="dark" />
+            <FloatingToolbarButton
+              icon={ChevronUp}
+              title="Move Up"
+              onClick={() => moveDown(component.id)}
+            />
+            <FloatingToolbarButton
               icon={ChevronDown}
               title="Move Down"
               onClick={() => moveUp(component.id)}
@@ -321,22 +326,22 @@ export const ActionBar = memo(function ActionBar({
           </>
         ) : (
           <>
-            <ActionButton
+            <FloatingToolbarButton
               icon={ChevronsUp}
               title="Bring to Front"
               onClick={() => bringToFront(component.id)}
             />
-            <ActionButton
+            <FloatingToolbarButton
               icon={ChevronUp}
               title="Bring Forward"
               onClick={() => moveUp(component.id)}
             />
-            <ActionButton
+            <FloatingToolbarButton
               icon={ChevronDown}
               title="Send Backward"
               onClick={() => moveDown(component.id)}
             />
-            <ActionButton
+            <FloatingToolbarButton
               icon={ChevronsDown}
               title="Send to Back"
               onClick={() => sendToBack(component.id)}
@@ -347,14 +352,14 @@ export const ActionBar = memo(function ActionBar({
 
       {/* Duplicate */}
       <div className="flex items-center gap-0.5 px-0.5 border-r border-white/10">
-        <ActionButton icon={Copy} title="Duplicate" onClick={handleDuplicate} />
+        <FloatingToolbarButton icon={Copy} title="Duplicate" onClick={handleDuplicate} />
       </div>
 
       {/* Delete component */}
       <div
         className={clsx('flex items-center px-0.5', isTableWithCells && 'border-r border-white/10')}
       >
-        <ActionButton
+        <FloatingToolbarButton
           icon={Trash2}
           title="Delete Component"
           onClick={() => {
@@ -371,14 +376,14 @@ export const ActionBar = memo(function ActionBar({
         <>
           {/* Merge / Split */}
           <div className="flex items-center gap-0.5 px-0.5 border-r border-white/10">
-            <ActionButton
+            <FloatingToolbarButton
               icon={Merge}
               title="Merge Cells"
               onClick={handleTableMerge}
               disabled={!isMultiCellSelected}
               className="text-violet-400 hover:text-violet-300 disabled:opacity-30"
             />
-            <ActionButton
+            <FloatingToolbarButton
               icon={Split}
               title="Split Cell"
               onClick={handleTableSplit}
@@ -389,17 +394,17 @@ export const ActionBar = memo(function ActionBar({
 
           {/* Align */}
           <div className="flex items-center gap-0.5 px-0.5 border-r border-white/10">
-            <ActionButton
+            <FloatingToolbarButton
               icon={AlignLeft}
               title="Align Left"
               onClick={() => handleTableAlign('left')}
             />
-            <ActionButton
+            <FloatingToolbarButton
               icon={AlignCenter}
               title="Align Center"
               onClick={() => handleTableAlign('center')}
             />
-            <ActionButton
+            <FloatingToolbarButton
               icon={AlignRight}
               title="Align Right"
               onClick={() => handleTableAlign('right')}
@@ -408,14 +413,14 @@ export const ActionBar = memo(function ActionBar({
 
           {/* Insert Row / Col */}
           <div className="flex items-center gap-0.5 px-0.5 border-r border-white/10">
-            <ActionButton
+            <FloatingToolbarButton
               icon={Rows3}
               title="Insert Row Below"
               onClick={handleTableInsertRow}
               className="text-emerald-400 hover:text-emerald-300"
               badge={<Plus className="w-2 h-2 absolute -top-0.5 -right-0.5 text-emerald-400" />}
             />
-            <ActionButton
+            <FloatingToolbarButton
               icon={Columns2}
               title="Insert Column Right"
               onClick={handleTableInsertCol}
@@ -426,7 +431,7 @@ export const ActionBar = memo(function ActionBar({
 
           {/* Delete cells/rows */}
           <div className="flex items-center px-0.5">
-            <ActionButton
+            <FloatingToolbarButton
               icon={Trash2}
               title="Delete Selection"
               onClick={handleTableDeleteSelection}
@@ -435,41 +440,6 @@ export const ActionBar = memo(function ActionBar({
           </div>
         </>
       )}
-    </div>
+    </FloatingToolbar>
   );
 });
-
-function ActionButton({
-  icon: Icon,
-  title,
-  onClick,
-  className,
-  disabled,
-  badge,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  onClick: (e: React.MouseEvent) => void;
-  className?: string;
-  disabled?: boolean;
-  badge?: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (!disabled) onClick(e);
-      }}
-      className={clsx(
-        'relative p-1 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed',
-        className
-      )}
-      title={title}
-    >
-      <Icon className="w-3.5 h-3.5" />
-      {badge}
-    </button>
-  );
-}

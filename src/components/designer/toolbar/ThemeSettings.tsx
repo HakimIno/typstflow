@@ -4,6 +4,7 @@ import { useDesignerStore } from '@/store/designer-store';
 import { clsx } from 'clsx';
 import { Moon, Sun } from 'lucide-react';
 import { memo } from 'react';
+import { SegmentedControl } from './SegmentedControl';
 
 const ACCENT_COLORS = [
   { name: 'Purple', color: '#8B5CF6' },
@@ -23,34 +24,29 @@ export const ThemeSettings = memo(function ThemeSettings() {
   return (
     <div className="flex items-center gap-4 px-2">
       {/* Theme Toggle */}
-      <div className="flex items-center bg-[var(--bg-widget)] rounded-full p-1 border border-[var(--border-default)] shadow-inner">
-        <button
-          type="button"
-          onClick={() => setTheme('light')}
-          className={clsx(
-            'p-1.5 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center',
-            theme === 'light'
-              ? 'bg-white shadow-md text-amber-500 scale-110'
-              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-          )}
-          title="Light Mode"
-        >
-          <Sun className="w-3.5 h-3.5 pointer-events-none" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setTheme('dark')}
-          className={clsx(
-            'p-1.5 rounded-full transition-all duration-200 cursor-pointer flex items-center justify-center',
-            theme === 'dark'
-              ? 'bg-[var(--bg-surface)] shadow-md text-[var(--accent)] scale-110 border border-[var(--border-default)]'
-              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-          )}
-          title="Dark Mode"
-        >
-          <Moon className="w-3.5 h-3.5 pointer-events-none" />
-        </button>
-      </div>
+      <SegmentedControl
+        shape="pill"
+        options={[
+          {
+            value: 'light',
+            icon: Sun,
+            title: 'Light Mode',
+            activeClassName: 'bg-white shadow-md text-amber-500 scale-110',
+          },
+          {
+            value: 'dark',
+            icon: Moon,
+            title: 'Dark Mode',
+            activeClassName:
+              'bg-[var(--bg-surface)] shadow-md text-[var(--accent)] scale-110 border border-[var(--border-default)]',
+          },
+        ]}
+        value={theme}
+        onChange={setTheme}
+        className="bg-[var(--bg-widget)] p-1 shadow-inner"
+        itemClassName="duration-200"
+        inactiveItemClassName="text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+      />
 
       {/* Primary Color Picker */}
       <div className="flex items-center gap-1.5 p-1 bg-[var(--bg-widget)] rounded-full border border-[var(--border-default)]">
