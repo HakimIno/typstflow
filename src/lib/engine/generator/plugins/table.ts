@@ -1,3 +1,5 @@
+import type { BodyRowInstance } from '@/lib/engine/table-model';
+import { buildTableBodyModel } from '@/lib/engine/table-model';
 import { resolveTableColumnWidths } from '@/lib/utils/table-widths';
 import { escapeTypst } from '@/lib/utils/typst-utils';
 import type { FormatType, StrokeConfig, TableComponent, TableRow } from '@/types/schema';
@@ -137,17 +139,20 @@ export function renderTableComponent(
         return Array.isArray(raw) ? raw : [];
       })();
   const detailRowCount = comp.detailRows && comp.detailRows.length > 0 ? comp.detailRows.length : 1;
-  const padCount =
-    !comp.groupBy && !isStatic && options.minRows
-      ? Math.max(0, options.minRows - dataItems.length)
-      : 0;
-  const renderPlaceholderRows =
-    ctx.renderDesignPlaceholders !== false &&
-    !comp.groupBy &&
-    !isStatic &&
-    dataItems.length === 0 &&
-    padCount === 0;
-  const dataRowsForRender = renderPlaceholderRows ? [{}] : dataItems;
+  const isGrouped = !!comp.groupBy && !isStatic;
+  // Ordered body row instances (static rows once, data bands per item, pads,
+  // placeholders, trailing rows) — shared with the designer preview via
+  // table-model.ts so row sequencing can't drift. The groupBy path below keeps
+  // its own legacy expansion and ignores this model.
+  const bodyModel: BodyRowInstance[] = isGrouped
+    ? []
+    : buildTableBodyModel(comp, {
+        dataItems,
+        isStatic,
+        minRows: options.minRows,
+        trailingRows: options.trailingRows,
+        renderDesignPlaceholders: ctx.renderDesignPlaceholders !== false,
+      });
 
   // ── Compute rows: parameter (maps each physical row to its height) ────────
   // Without this, Typst ignores row.height set in the designer entirely.
@@ -193,21 +198,7 @@ export function renderTableComponent(
       }
     }
   } else {
-    for (let i = 0; i < dataRowsForRender.length; i++) {
-      if (comp.detailRows?.length) {
-        for (const dr of comp.detailRows) pushRowHeight(dr.height);
-      } else {
-        pushRowHeight(undefined);
-      }
-    }
-    for (let i = 0; i < padCount; i++) {
-      if (comp.detailRows?.length) {
-        for (const dr of comp.detailRows) pushRowHeight(dr.height);
-      } else {
-        pushRowHeight(undefined);
-      }
-    }
-    for (const row of options.trailingRows ?? []) pushRowHeight(row.height);
+    for (const inst of bodyModel) pushRowHeight(inst.row.height);
     if (comp.summaryRows?.length && !comp.repeatSummaryOnGroup) {
       for (const _sr of comp.summaryRows) rowsArr.push('auto');
     }
@@ -303,15 +294,15 @@ export function renderTableComponent(
       totalRows += Object.keys(groups).length * comp.summaryRows.length; // + repeated group summaries
     }
   } else {
-    totalRows += dataRowsForRender.length * detailRowCount;
-    totalRows += padCount * detailRowCount;
-    totalRows += options.trailingRows?.length ?? 0;
+    totalRows += bodyModel.length;
     if (comp.summaryRows && comp.summaryRows.length > 0 && !comp.repeatSummaryOnGroup) {
       totalRows += comp.summaryRows.length; // + table end summaries
     }
   }
 
-  const renderRow = (item: any, placeholders = false) => {
+  // Legacy row renderer — used only by the groupBy path below; the non-grouped
+  // path renders from bodyModel via renderBodyInstance.
+  const renderRow = (item: any) => {
     if (comp.detailRows && comp.detailRows.length > 0) {
       for (let y = 0; y < comp.detailRows.length; y++) {
         const row = comp.detailRows[y];
@@ -342,8 +333,7 @@ export function renderTableComponent(
         const cs = col.colspan ?? 1;
         const rs = col.rowspan ?? 1;
         const rawVal = resolvePath(col.field, item);
-        const valStr =
-          rawVal != null ? String(rawVal) : placeholders && col.field ? `{{${col.field}}}` : '';
+        const valStr = rawVal != null ? String(rawVal) : '';
         const fmt = col.format ?? 'text';
         const content = formatCellValue(valStr, fmt);
 
@@ -372,19 +362,26 @@ export function renderTableComponent(
     }
   };
 
-  const renderStandaloneRow = (row: TableRow) => {
+  const renderBodyInstance = (inst: BodyRowInstance) => {
+    // Static/trailing rows resolve against the outer context (aggregates over
+    // dataItems keep working there); band instances resolve against their item.
+    const standalone = inst.origin === 'static' || inst.origin === 'trailing';
+    const row = inst.row;
     for (let x = 0; x < row.cells.length; x++) {
       const cell = row.cells[x];
-      const val = resolveBinding(cell.content, ctx.local, ctx.global, dataItems);
+      const val = standalone
+        ? resolveBinding(cell.content, ctx.local, ctx.global, dataItems)
+        : resolveBinding(cell.content, inst.item as Record<string, unknown>, ctx.global);
       const fmt = cell.format ?? 'text';
       const formattedVal = formatCellValue(val, fmt);
+      const specificKey = inst.sourceIndex >= 0 ? `data:${inst.sourceIndex}:${x}` : undefined;
       parts.push(
         renderStructuredCell(
           cell,
           bodyTextStyle,
           formattedVal,
           `data:${x}`,
-          undefined,
+          specificKey,
           style?.cellStyles
         )
       );
@@ -481,9 +478,7 @@ export function renderTableComponent(
       }
     }
   } else {
-    for (const item of dataRowsForRender) renderRow(item, renderPlaceholderRows);
-    for (let i = 0; i < padCount; i++) renderRow({});
-    for (const row of options.trailingRows ?? []) renderStandaloneRow(row);
+    for (const inst of bodyModel) renderBodyInstance(inst);
   }
 
   // ── Summary rows (Legacy / Table End) ────

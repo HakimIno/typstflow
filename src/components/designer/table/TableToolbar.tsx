@@ -9,6 +9,8 @@ import {
   Columns2,
   Eraser,
   Merge,
+  Pin,
+  Repeat2,
   Rows3,
   Split,
   Trash2,
@@ -52,8 +54,10 @@ export const TableToolbar = memo(function TableToolbar({ component }: TableToolb
     handleDeleteColumns,
     handleClearContents,
     handleAlign,
+    handleSetRowType,
     handleInsertRow,
     handleInsertCol,
+    rowTypeState,
     canMerge,
     canSplit,
     canDeleteRow,
@@ -131,6 +135,23 @@ export const TableToolbar = memo(function TableToolbar({ component }: TableToolb
         title="Align right"
         onClick={() => handleAlign('right')}
         disabled={!canClear}
+      />
+
+      <ToolbarSeparator tone="dark" />
+
+      <FloatingToolbarButton
+        icon={Repeat2}
+        title="Repeat with data — row loops per data item"
+        onClick={() => handleSetRowType('data')}
+        disabled={rowTypeState === null}
+        active={rowTypeState === 'data'}
+      />
+      <FloatingToolbarButton
+        icon={Pin}
+        title="Static row — renders once, never repeats"
+        onClick={() => handleSetRowType('static')}
+        disabled={rowTypeState === null}
+        active={rowTypeState === 'static'}
       />
 
       <ToolbarSeparator tone="dark" />

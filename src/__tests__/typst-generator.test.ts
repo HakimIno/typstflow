@@ -1220,3 +1220,241 @@ describe('TypstGenerator — signature-block component', () => {
     expect(output).toContain('นาย A');
   });
 });
+
+/**
+ * Baseline behavior lock for the unified-rows migration (plan/table-system-redesign.md
+ * Phase 0). These tests pin down how the CURRENT generator treats structured rows,
+ * legacy column tables, and form-table footerGridRows, so Phase 1+ refactors must
+ * either keep them green or change them deliberately (with a comment explaining why).
+ */
+describe('TypstGenerator — table baseline (pre-unified-rows)', () => {
+  const count = (haystack: string, needle: string) => haystack.split(needle).length - 1;
+
+  const bodyWith = (components: any[]): LayoutSchema => ({
+    ...MINIMAL_SCHEMA,
+    pages: [{ id: 'page-1', name: 'Page 1', body: { id: 'body', components } }],
+  });
+
+  it('repeats the WHOLE detail band per data item (static-looking rows repeat too)', () => {
+    // Screenshot scenario 2026-07-05: "Snow" is a plain-text detail row, "{{no}}" is
+    // a bound row. Current model loops both rows per item — after migration, a row
+    // typed as 'static' must stop repeating, but 'data' rows must keep this behavior.
+    const schema = bodyWith([
+      {
+        id: 'table-band',
+        type: 'table',
+        x: 10,
+        y: 10,
+        width: 100,
+        height: 40,
+        dataSource: '{{items}}',
+        showHeader: true,
+        repeatHeaderOnPage: true,
+        columns: [{ id: 'c1', header: 'Header', field: 'no', width: '1fr' }],
+        headerRows: [{ id: 'hr1', type: 'header', cells: [{ id: 'h1', content: 'Header' }] }],
+        detailRows: [
+          { id: 'dr1', type: 'data', cells: [{ id: 'd1', content: 'Snow' }] },
+          { id: 'dr2', type: 'data', cells: [{ id: 'd2', content: '{{no}}' }], height: '40mm' },
+        ],
+        style: {},
+      },
+    ]);
+
+    const output = generate(schema, { items: [{ no: 1 }, { no: 2 }, { no: 3 }] });
+
+    expect(count(output, 'Snow')).toBe(3);
+    // Band row heights are replayed per item: header auto, then (auto, 40mm) × 3
+    expect(output).toContain('rows: (auto, auto, 40mm, auto, 40mm, auto, 40mm)');
+  });
+
+  it('renders structured footerRows inside table.footer', () => {
+    const schema = bodyWith([
+      {
+        id: 'table-footer',
+        type: 'table',
+        x: 10,
+        y: 10,
+        width: 100,
+        height: 40,
+        dataSource: '{{items}}',
+        showHeader: true,
+        repeatHeaderOnPage: true,
+        columns: [{ id: 'c1', header: 'A', field: 'a', width: '1fr' }],
+        detailRows: [{ id: 'dr1', type: 'data', cells: [{ id: 'd1', content: '{{a}}' }] }],
+        footerRows: [
+          { id: 'fr1', type: 'footer', repeat: false, cells: [{ id: 'f1', content: 'Total' }] },
+        ],
+        style: {},
+      },
+    ]);
+
+    const output = generate(schema, { items: [{ a: 'x' }] });
+
+    expect(output).toContain('table.footer(repeat: false');
+    expect(output).toContain('Total');
+  });
+
+  it('legacy column table (no structured rows) renders one row per data item', () => {
+    const schema = bodyWith([
+      {
+        id: 'table-legacy',
+        type: 'table',
+        x: 10,
+        y: 10,
+        width: 100,
+        height: 30,
+        dataSource: '{{items}}',
+        showHeader: true,
+        repeatHeaderOnPage: true,
+        columns: [
+          { id: 'c1', header: 'Name', field: 'name', width: '1fr' },
+          { id: 'c2', header: 'Qty', field: 'qty', width: '1fr' },
+        ],
+        style: {},
+      },
+    ]);
+
+    const output = generate(schema, {
+      items: [
+        { name: 'Alpha', qty: 10 },
+        { name: 'Beta', qty: 20 },
+      ],
+    });
+
+    expect(count(output, 'Alpha')).toBe(1);
+    expect(count(output, 'Beta')).toBe(1);
+    expect(output).toContain('table.header(repeat: true');
+    expect(output).toContain('Name');
+  });
+
+  it('form-table renders footerGridRows after footerRows inside the footer', () => {
+    const schema = bodyWith([
+      {
+        id: 'ft-grid',
+        type: 'form-table',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 60,
+        dataSource: '{{items}}',
+        showHeader: true,
+        repeatHeaderOnPage: true,
+        columns: [
+          { id: 'c1', header: 'Item', field: 'name', width: '1fr' },
+          { id: 'c2', header: 'Amt', field: 'amount', width: '30mm' },
+        ],
+        footerRows: [
+          { id: 'fr1', type: 'footer', repeat: false, cells: [{ id: 'f1', content: 'Sub' }] },
+        ],
+        footerGridRows: [
+          {
+            id: 'fg1',
+            type: 'footer',
+            cells: [{ id: 'g1', content: 'Received by', colspan: 2 }],
+          },
+        ],
+        style: {},
+      },
+    ]);
+
+    const output = generate(schema, { items: [{ name: 'Pen', amount: 1 }] });
+
+    expect(output).toContain('table.footer(repeat: false');
+    expect(output).toContain('Received by');
+    // footerRows content must come before footerGridRows content
+    expect(output.indexOf('Sub')).toBeLessThan(output.indexOf('Received by'));
+  });
+});
+
+describe('TypstGenerator — unified rows: static rows do not repeat', () => {
+  const count = (haystack: string, needle: string) => haystack.split(needle).length - 1;
+
+  it('renders a static row once while the data band repeats (screenshot fix)', () => {
+    // Same fixture as the baseline band test, but "Snow" is now type 'static' —
+    // the deliberate behavior change this redesign exists for.
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              {
+                id: 'table-static',
+                type: 'table',
+                x: 10,
+                y: 10,
+                width: 100,
+                height: 40,
+                dataSource: '{{items}}',
+                showHeader: true,
+                repeatHeaderOnPage: true,
+                columns: [{ id: 'c1', header: 'Header', field: 'no', width: '1fr' }],
+                headerRows: [
+                  { id: 'hr1', type: 'header', cells: [{ id: 'h1', content: 'Header' }] },
+                ],
+                detailRows: [
+                  { id: 'dr1', type: 'static', cells: [{ id: 'd1', content: 'Snow' }] },
+                  {
+                    id: 'dr2',
+                    type: 'data',
+                    cells: [{ id: 'd2', content: '{{no}}' }],
+                    height: '40mm',
+                  },
+                ],
+                style: {},
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const output = generate(schema, { items: [{ no: 1 }, { no: 2 }, { no: 3 }] });
+
+    expect(count(output, 'Snow')).toBe(1);
+    // header auto, Snow auto (once), then 40mm × 3 band instances
+    expect(output).toContain('rows: (auto, auto, 40mm, 40mm, 40mm)');
+  });
+
+  it('static rows resolve bindings against the outer data context with aggregates', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              {
+                id: 'table-agg',
+                type: 'table',
+                x: 10,
+                y: 10,
+                width: 100,
+                height: 40,
+                dataSource: '{{items}}',
+                showHeader: false,
+                repeatHeaderOnPage: false,
+                columns: [{ id: 'c1', header: '', field: 'qty', width: '1fr' }],
+                detailRows: [
+                  { id: 'dr1', type: 'data', cells: [{ id: 'd1', content: '{{qty}}' }] },
+                  { id: 'dr2', type: 'static', cells: [{ id: 'd2', content: '{{title}}' }] },
+                ],
+                style: {},
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const output = generate(schema, { title: 'Grand Total', items: [{ qty: 1 }, { qty: 2 }] });
+
+    // The static row reads {{title}} from the global context, not from items
+    expect(output).toContain('Grand Total');
+  });
+});

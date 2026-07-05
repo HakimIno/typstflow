@@ -40,33 +40,34 @@ export function useKeyboardShortcuts() {
 
       const isMod = e.ctrlKey || e.metaKey;
       const isShift = e.shiftKey;
+      const key = e.key.toLowerCase();
 
       // Undo: Cmd+Z
-      if (isMod && !isShift && e.key === 'z') {
+      if (isMod && !isShift && key === 'z') {
         e.preventDefault();
         undo();
       }
 
       // Redo: Cmd+Shift+Z or Cmd+Y
-      if ((isMod && isShift && e.key === 'z') || (isMod && e.key === 'y')) {
+      if ((isMod && isShift && key === 'z') || (isMod && key === 'y')) {
         e.preventDefault();
         redo();
       }
 
       // Copy: Cmd+C
-      if (isMod && e.key === 'c') {
+      if (isMod && key === 'c') {
         e.preventDefault();
         copySelected();
       }
 
       // Paste: Cmd+V
-      if (isMod && e.key === 'v') {
+      if (isMod && key === 'v') {
         e.preventDefault();
         paste();
       }
 
       // Duplicate: Cmd+D
-      if (isMod && e.key === 'd') {
+      if (isMod && key === 'd') {
         e.preventDefault();
         duplicateSelected();
       }
@@ -123,7 +124,7 @@ export function useKeyboardShortcuts() {
       }
 
       // Smart Alignment: Cmd+Shift+H → Center H on Page, Cmd+Shift+V → Center V on Page
-      if (isMod && isShift && (e.key === 'H' || e.key === 'h') && selectedComponentIds.length > 0) {
+      if (isMod && isShift && key === 'h' && selectedComponentIds.length > 0) {
         e.preventDefault();
         const store = useDesignerStore.getState();
         const { width: pageW } = getPaperDimensions(
@@ -137,7 +138,7 @@ export function useKeyboardShortcuts() {
           }
         }
       }
-      if (isMod && isShift && (e.key === 'V' || e.key === 'v') && selectedComponentIds.length > 0) {
+      if (isMod && isShift && key === 'v' && selectedComponentIds.length > 0) {
         // Skip if it conflicts with Paste (Cmd+V without shift)
         e.preventDefault();
         alignToPage('page-center-v');

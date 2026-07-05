@@ -28,6 +28,7 @@ export const createTemplateSlice: StateCreator<DesignerState, [], [], TemplateSl
     set({
       schema: BLANK_SCHEMA,
       sampleData: {},
+      componentRegistry: buildComponentRegistry(BLANK_SCHEMA),
       history: [BLANK_SCHEMA],
       historyIndex: 0,
     });

@@ -191,7 +191,9 @@ export interface TableCell {
 // --- Table Row (maps to table.header / table.footer / data rows) ---
 export interface TableRow {
   id: string;
-  type: 'header' | 'data' | 'footer' | 'group-header' | 'group-footer';
+  // 'data' rows form the repeat band (looped per dataSource item);
+  // 'static' rows render exactly once at their position in the unified row list.
+  type: 'header' | 'data' | 'static' | 'footer' | 'group-header' | 'group-footer';
   cells: TableCell[];
   height?: string; // row height (e.g. "30pt", "auto")
   repeat?: boolean; // for header/footer: repeat across pages
@@ -244,7 +246,14 @@ export interface TableComponent extends BaseComponent {
   repeatSummaryOnGroup?: boolean; // If true, summary rows render after each group
   autoGroupFooter?: boolean; // New: Automatically render a subtotal row matching columns
   autoGroupFooterLabel?: string; // New: Label for the subtotal row (defaults to "Subtotal")
-  // --- New: Structured rows for multi-row header/footer ---
+  // --- Unified row model (plan/table-system-redesign.md) ---
+  /**
+   * Canonical ordered row list (header → body → footer). While absent, derive it
+   * with unifyTableRows() from the legacy section arrays below; splitUnifiedRows()
+   * writes edits back to both representations until the section arrays are removed.
+   */
+  rows?: TableRow[];
+  // --- Structured rows for multi-row header/footer (legacy split; superseded by `rows`) ---
   headerRows?: TableRow[]; // structured header rows
   detailRows?: TableRow[]; // structured data rows for loops (replaces strict column looping)
   footerRows?: TableRow[]; // structured footer rows

@@ -20,6 +20,8 @@ import {
   Columns2,
   Eraser,
   Merge,
+  Pin,
+  Repeat2,
   Rows3,
   Split,
   Trash2,
@@ -59,6 +61,7 @@ export const TablePreview = memo(function TablePreview({
   const setTableSheetEditId = useDesignerStore((s) => s.setTableSheetEditId);
   const isTableSelected = useDesignerStore((s) => s.selectedComponentIds.includes(component.id));
   const zoom = useDesignerStore((s) => s.zoom);
+  const sampleData = useDesignerStore((s) => s.sampleData);
   const bodyFontFamily = useDesignerStore(
     (s) =>
       s.schema.fonts.find((f) => f.role === 'body')?.family ??
@@ -72,6 +75,16 @@ export const TablePreview = memo(function TablePreview({
   const [colSegments, setColSegments] = useState<HandleSegment[][]>([]);
   const [rowSegments, setRowSegments] = useState<Map<string, HandleSegment[]>>(new Map());
   const segKeyRef = useRef<string>('');
+
+  // Sheet-gutter section marks (H / ↻ band / pin static / F) — measured row rects
+  type GutterMark = {
+    key: string;
+    kind: 'header' | 'band' | 'static' | 'footer';
+    top: number;
+    height: number;
+  };
+  const [gutterMarks, setGutterMarks] = useState<GutterMark[]>([]);
+  const gutterKeyRef = useRef<string>('');
 
   // DOM-measured column handle positions (zoom-independent %, pixel-accurate)
   const [domColPercents, setDomColPercents] = useState<number[]>([]);
@@ -237,6 +250,55 @@ export const TablePreview = memo(function TablePreview({
       }
     }
 
+    // ── Sheet-gutter section marks from measured row rects ────────────────────
+    {
+      const marks: GutterMark[] = [];
+      const pushMark = (kind: GutterMark['kind'], key: string, rows: TableRow[]) => {
+        const tops = rows
+          .map((r) => rowTopPx.get(r.id))
+          .filter((v): v is number => v !== undefined);
+        const bottoms = rows
+          .map((r) => rowBottomPx.get(r.id))
+          .filter((v): v is number => v !== undefined);
+        if (!tops.length || !bottoms.length) return;
+        const top = Math.min(...tops);
+        marks.push({ key, kind, top, height: Math.max(...bottoms) - top });
+      };
+
+      if (headerRows.length) pushMark('header', 'header', headerRows);
+
+      // Body: contiguous data rows form a repeat band; static rows mark alone.
+      // Static tables (isStatic) never loop, so their body gets no marks at all.
+      if (!component.isStatic) {
+        let run: TableRow[] = [];
+        let runIdx = 0;
+        const flushRun = () => {
+          if (run.length) pushMark('band', `band-${runIdx++}`, run);
+          run = [];
+        };
+        for (const row of bodyRows) {
+          if (row.type === 'static') {
+            flushRun();
+            pushMark('static', `static-${row.id}`, [row]);
+          } else {
+            run.push(row);
+          }
+        }
+        flushRun();
+      }
+
+      const footerRowsAll = previewSections
+        .filter((sec) => sec.section === 'footer')
+        .flatMap((sec) => sec.rows);
+      if (footerRowsAll.length) pushMark('footer', 'footer', footerRowsAll);
+
+      const marksKey = marks.map((m) => `${m.key}:${m.kind}:${m.top}:${m.height}`).join('|');
+      if (marksKey !== gutterKeyRef.current) {
+        gutterKeyRef.current = marksKey;
+        setGutterMarks(marks);
+      }
+    }
+
     // ── Column boundary positions from DOM (pixel-accurate, zoom-independent %) ──
     // Using (screen_right - container_screen_left) / container_screen_width gives
     // the same % in both screen and logical space, so no zoom division needed.
@@ -377,6 +439,8 @@ export const TablePreview = memo(function TablePreview({
     handleDeleteColumns,
     handleClearContents,
     handleAlign,
+    handleSetRowType,
+    rowTypeState,
     canMerge,
     canSplit,
     canDeleteRow,
@@ -443,6 +507,48 @@ export const TablePreview = memo(function TablePreview({
     [component]
   );
 
+  // Body source rows (schema detailRows, or one synthetic {{field}} row for legacy
+  // column tables). Shared by the detail section render and the repeat-band ghosts.
+  const bodyRows: TableRow[] = useMemo(
+    () =>
+      component.detailRows?.length
+        ? component.detailRows
+        : [
+            {
+              id: 'synthetic-detail',
+              type: 'data',
+              cells: component.columns.map((c) => ({
+                id: `detail-${c.id}`,
+                content: c.field ? `{{${c.field}}}` : '',
+                align: c.align || 'left',
+              })),
+            },
+          ],
+    [component.detailRows, component.columns]
+  );
+
+  // Repeat-band info shown in the sheet gutter: dataSource path + how many times
+  // the band will repeat with the current sample data.
+  const bandInfo = useMemo(() => {
+    if (component.isStatic) return null;
+    const path = (component.dataSource || '').replace(/\{\{|\}\}/g, '').trim();
+    if (!path) return null;
+    const value = path
+      .split('.')
+      .reduce<unknown>(
+        (acc, key) =>
+          acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[key] : undefined,
+        sampleData
+      );
+    return { name: path, count: Array.isArray(value) ? value.length : null };
+  }, [component.isStatic, component.dataSource, sampleData]);
+
+  // Rows the repeat-band ghosts duplicate (static rows render once — excluded).
+  const ghostBandRows: TableRow[] = useMemo(() => {
+    if (component.isStatic || component.groupBy || !bandInfo) return [];
+    return bodyRows.filter((r) => r.type !== 'static');
+  }, [component.isStatic, component.groupBy, bandInfo, bodyRows]);
+
   type PreviewSection = {
     rows: TableRow[];
     sectionKey: string;
@@ -493,20 +599,7 @@ export const TablePreview = memo(function TablePreview({
       });
     }
 
-    const detailRows: TableRow[] = component.detailRows?.length
-      ? component.detailRows
-      : [
-          {
-            id: 'synthetic-detail',
-            type: 'data',
-            cells: component.columns.map((c) => ({
-              id: `detail-${c.id}`,
-              content: c.field ? `{{${c.field}}}` : '',
-              align: c.align || 'left',
-            })),
-          },
-        ];
-    sections.push({ rows: detailRows, sectionKey: 'detailRows', section: 'data', isHeader: false });
+    sections.push({ rows: bodyRows, sectionKey: 'detailRows', section: 'data', isHeader: false });
 
     if (generatedFillerRows.length) {
       // Dedicated key: content is generated (not editable) but the row IS resizable —
@@ -545,7 +638,7 @@ export const TablePreview = memo(function TablePreview({
   }, [
     component.groupBy,
     component.groupHeaderFormat,
-    component.detailRows,
+    bodyRows,
     component.columns,
     component.autoGroupFooter,
     component.autoGroupFooterLabel,
@@ -917,6 +1010,111 @@ export const TablePreview = memo(function TablePreview({
           )}
       </div>
 
+      {/* Sheet gutter — section marks: H header / ↻ repeat band / pin static / F footer */}
+      {isTableEditing && isTableSelected && gutterMarks.length > 0 && (
+        <div aria-hidden className="absolute -left-4 top-0 z-[15] w-3.5 pointer-events-none">
+          {gutterMarks.map((m) => {
+            const isBand = m.kind === 'band';
+            const barClass = isBand ? 'bg-[var(--accent)] opacity-60' : 'bg-zinc-400/40';
+            const badgeClass = isBand
+              ? 'bg-[var(--accent)] text-white'
+              : m.kind === 'static'
+                ? 'bg-zinc-600 text-white'
+                : 'bg-zinc-500 text-white';
+            return (
+              <div
+                key={m.key}
+                className="absolute left-0 flex w-full items-center justify-center"
+                style={{ top: m.top, height: m.height }}
+              >
+                <div
+                  className={`absolute inset-y-0.5 left-1/2 w-[2px] -translate-x-1/2 rounded-full ${barClass}`}
+                />
+                <span
+                  className={`relative flex h-3.5 w-3.5 items-center justify-center rounded-[4px] text-[8px] font-semibold leading-none shadow-sm ${badgeClass}`}
+                >
+                  {isBand ? (
+                    <Repeat2 className="h-2.5 w-2.5" />
+                  ) : m.kind === 'static' ? (
+                    <Pin className="h-2 w-2" />
+                  ) : m.kind === 'header' ? (
+                    'H'
+                  ) : (
+                    'F'
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Repeat-band ghosts — show how the data band repeats (design hint only) */}
+      {isTableEditing && ghostBandRows.length > 0 && tableHeightPx > 0 && (
+        <div
+          aria-hidden
+          className="absolute left-0 right-0 z-[5] pointer-events-none"
+          style={{ top: tableHeightPx }}
+        >
+          {[0.35, 0.18].map((opacity, gi) => (
+            <table
+              key={gi}
+              className="w-full"
+              style={{
+                borderCollapse: 'collapse',
+                tableLayout: 'fixed',
+                fontFamily: cellCtx.previewFontStack,
+                opacity,
+              }}
+            >
+              <colgroup>
+                {component.columns.map((col, i) => (
+                  <col key={col.id} style={colWidths[i] ? { width: colWidths[i] } : undefined} />
+                ))}
+              </colgroup>
+              <tbody>
+                {ghostBandRows.map((row) => (
+                  <tr
+                    key={`ghost-${gi}-${row.id}`}
+                    style={{
+                      height: row.height
+                        ? `${LayoutEngine.mmToPx(parseTypstUnit(row.height))}px`
+                        : undefined,
+                    }}
+                  >
+                    {row.cells.map((cell) => (
+                      <td
+                        key={cell.id}
+                        colSpan={cell.colspan || 1}
+                        rowSpan={cell.rowspan || 1}
+                        style={{
+                          border: '1px dashed var(--border-default)',
+                          padding: `${cellCtx.cellPaddingPx}px`,
+                          fontSize: `${cellCtx.bodyFontSize}pt`,
+                          color: cellCtx.bodyColor,
+                          textAlign: cell.align || 'left',
+                          overflow: 'hidden',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {cell.content}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ))}
+          <div className="mt-0.5 flex items-center gap-1 text-[9px] text-[var(--text-secondary)]">
+            <Repeat2 className="h-2.5 w-2.5 text-[var(--accent)]" />
+            <span>
+              repeats per item of {bandInfo?.name}
+              {bandInfo?.count != null ? ` — ×${bandInfo.count} with sample data` : ''}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Ghost guide lines — always mounted, shown/hidden via direct DOM */}
       <div
         ref={colGhostRef}
@@ -987,6 +1185,21 @@ export const TablePreview = memo(function TablePreview({
                 icon: AlignRight,
                 onClick: () => handleAlign('right'),
                 disabled: !canClear,
+              },
+              {
+                key: 'row-repeat',
+                label: 'Repeat with data',
+                icon: Repeat2,
+                onClick: () => handleSetRowType('data'),
+                disabled: rowTypeState === null,
+                separatorBefore: true,
+              },
+              {
+                key: 'row-static',
+                label: 'Static row (no repeat)',
+                icon: Pin,
+                onClick: () => handleSetRowType('static'),
+                disabled: rowTypeState === null,
               },
               {
                 key: 'delete-row',

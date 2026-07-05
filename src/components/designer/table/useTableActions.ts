@@ -160,6 +160,26 @@ export function useTableActions(
     updateComponent(component.id, updates as Record<string, unknown>);
   };
 
+  /**
+   * Toggles selected body rows between the repeat band ('data' — looped per
+   * dataSource item) and 'static' (rendered exactly once). Structured rows only;
+   * synthetic column tables have no per-row identity to write back to.
+   */
+  const handleSetRowType = (type: 'static' | 'data') => {
+    if (!selectedCells || selectedCells.section !== 'data') return;
+    const rows = component.detailRows ?? [];
+    if (!rows.length) return;
+    const rowSet = new Set(selectedCells.rowIds);
+    let changed = false;
+    const newRows = rows.map((row) => {
+      if (!rowSet.has(row.id) || row.type === type) return row;
+      if (row.type !== 'data' && row.type !== 'static') return row;
+      changed = true;
+      return { ...row, type };
+    });
+    if (changed) updateComponent(component.id, { detailRows: newRows });
+  };
+
   const handleInsertRow = () => {
     if (!selectedCells) return;
     const section = selectedCells.section;
@@ -215,6 +235,22 @@ export function useTableActions(
 
   const canDeleteRow = !!selectedCells && getRows(selectedCells.section).length > 0;
 
+  /** 'static' | 'data' when every selected body row agrees, 'mixed' otherwise;
+   * null when the selection can't change row type (not body / synthetic table). */
+  const rowTypeState = ((): 'static' | 'data' | 'mixed' | null => {
+    if (!selectedCells || selectedCells.section !== 'data') return null;
+    const rows = component.detailRows ?? [];
+    if (!rows.length) return null;
+    const rowSet = new Set(selectedCells.rowIds);
+    const types = rows
+      .filter((row) => rowSet.has(row.id))
+      .map((row) => (row.type === 'static' ? 'static' : 'data'));
+    if (!types.length) return null;
+    if (types.every((t) => t === 'static')) return 'static';
+    if (types.every((t) => t === 'data')) return 'data';
+    return 'mixed';
+  })();
+
   const canDeleteColumn =
     !!selectedCells && distinctCols >= 1 && component.columns.length - distinctCols >= 1;
 
@@ -228,9 +264,11 @@ export function useTableActions(
     handleDeleteColumns,
     handleClearContents,
     handleAlign,
+    handleSetRowType,
     handleInsertRow,
     handleInsertCol,
     handleCellSave,
+    rowTypeState,
     canMerge,
     canSplit,
     canDeleteRow,

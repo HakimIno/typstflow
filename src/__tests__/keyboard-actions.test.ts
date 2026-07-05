@@ -110,4 +110,19 @@ describe('Keyboard Actions (Store)', () => {
     useDesignerStore.getState().redo();
     expect(useDesignerStore.getState().schema.pages[0].body.components[0].x).toBe(20);
   });
+
+  it('should clear component registry when loading the blank template', () => {
+    const store = useDesignerStore.getState();
+
+    store.addComponent('body', { type: 'text', content: 'Remove from registry' } as any);
+    expect(Object.keys(useDesignerStore.getState().componentRegistry)).toHaveLength(1);
+
+    useDesignerStore.getState().loadTemplate('blank');
+
+    const state = useDesignerStore.getState();
+    expect(state.schema.pages[0].body.components).toHaveLength(0);
+    expect(Object.keys(state.componentRegistry)).toHaveLength(0);
+    expect(state.history).toHaveLength(1);
+    expect(state.historyIndex).toBe(0);
+  });
 });
