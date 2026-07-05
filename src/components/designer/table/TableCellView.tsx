@@ -230,8 +230,7 @@ export const TableCellView = memo(function TableCellView({
     : ctx.previewFontStack;
   const resolvedAlign = cell.align || 'left';
   const isVertical = (cell.textDirection || 'horizontal') === 'vertical';
-  const placeholder =
-    isHeader || isGroupHeader || isGroupFooter ? '' : ctx.isStaticTable ? '' : '{{binding}}';
+  const placeholder = '';
 
   // Border calculation
   const { sides, makeBorder } = ctx;

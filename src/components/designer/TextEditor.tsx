@@ -12,6 +12,7 @@ import { Box, FileText, Hash, List } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { BindingHighlighter } from './ui/BindingHighlighter';
 
 interface TextEditorProps {
   value: string;
@@ -238,27 +239,6 @@ export function TextEditor({
     [isOpen, suggestions, selectedIndex, getCurrentBinding, onExit, insertPath]
   );
 
-  // Highlight variables in the text with colorful parts
-  const highlightedContent = useMemo(() => {
-    // Process text for display: escape HTML-like characters and wrap bindings
-    const parts = value.split(/(\{\{[^}]*\}\})/g);
-    return parts.map((part, i) => {
-      const isBinding = /^\{\{[^}]*\}\}$/.test(part);
-      if (!isBinding) return <span key={i}>{part || ''}</span>;
-      const path = part.slice(2, -2).trim();
-      return (
-        <span
-          key={i}
-          className="rounded-[3px] border border-sky-400/20 bg-sky-400/10 px-1 font-mono shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]"
-        >
-          <span className="text-fuchsia-500">{'{{'}</span>
-          <span className="text-sky-600">{path}</span>
-          <span className="text-fuchsia-500">{'}}'}</span>
-        </span>
-      );
-    });
-  }, [value]);
-
   const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     const container = document.createElement('div');
@@ -321,20 +301,17 @@ export function TextEditor({
       */}
 
       {/* Highlighting Overlay (Display Layer - Visible) */}
-      <div
-        ref={highlightRef}
+      <BindingHighlighter
+        value={value}
+        placeholder={placeholder}
+        highlighterRef={highlightRef}
+        trailingBreak
         className={clsx(
           'select-none border-none z-[1]',
           autoHeight ? 'relative min-h-[1em]' : 'absolute inset-0'
         )}
         style={sharedStyles}
-      >
-        {highlightedContent}
-        {/* Fix for textarea trailing newline cursor positioning */}
-        {value.endsWith('\n') && <br />}
-        {/* Placeholder replication */}
-        {!value && <span className="text-slate-300 pointer-events-none italic">{placeholder}</span>}
-      </div>
+      />
 
       {/* Input Layer (Logic Layer - Transparent Text) */}
       <textarea
@@ -353,7 +330,9 @@ export function TextEditor({
           ...sharedStyles,
           color: 'transparent', // IMPORTANT: Hide native text to show mirror text only
           caretColor: '#2563eb',
+          WebkitTextFillColor: 'transparent',
         }}
+        placeholder=""
         spellCheck={false}
       />
 

@@ -6,6 +6,7 @@ import { clsx } from 'clsx';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { BindingHighlighter } from '../ui/BindingHighlighter';
 
 interface Props {
   initialValue: string;
@@ -37,25 +38,6 @@ export function CellEditor({
     const q = query.toLowerCase();
     return (q ? allPaths.filter((path) => path.toLowerCase().includes(q)) : allPaths).slice(0, 40);
   }, [allPaths, query]);
-
-  const highlightedValue = useMemo(() => {
-    const parts = val.split(/(\{\{[^}]*\}\})/g);
-    return parts.map((part, index) => {
-      const isBinding = /^\{\{[^}]*\}\}$/.test(part);
-      if (!isBinding) return <span key={index}>{part || ''}</span>;
-      const path = part.slice(2, -2).trim();
-      return (
-        <span
-          key={index}
-          className="rounded-[3px] border border-sky-400/20 bg-sky-400/10 px-1 font-mono shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]"
-        >
-          <span className="text-fuchsia-500">{'{{'}</span>
-          <span className="text-sky-600">{path}</span>
-          <span className="text-fuchsia-500">{'}}'}</span>
-        </span>
-      );
-    });
-  }, [val]);
 
   useEffect(() => {
     setVal(initialValue);
@@ -130,19 +112,16 @@ export function CellEditor({
   );
 
   return (
-    <div className="relative">
-      {!readOnly && (
-        <div
-          aria-hidden
-          className={clsx(
-            className,
-            'pointer-events-none absolute inset-0 min-h-[1.4em] whitespace-pre-wrap break-words p-0'
-          )}
-          style={style}
-        >
-          {highlightedValue}
-        </div>
-      )}
+    <div className="relative w-full">
+      <BindingHighlighter
+        value={val}
+        placeholder={readOnly ? undefined : placeholder}
+        className={clsx(
+          className,
+          'pointer-events-none absolute inset-0 min-h-[1.4em] whitespace-pre-wrap break-words p-0'
+        )}
+        style={style}
+      />
       <textarea
         ref={ref}
         readOnly={readOnly}
@@ -156,12 +135,13 @@ export function CellEditor({
         style={{
           ...style,
           height: 'auto',
-          color: readOnly ? style?.color : 'transparent',
+          color: 'transparent',
           caretColor: (style?.color as string | undefined) ?? '#2563eb',
+          WebkitTextFillColor: 'transparent',
         }}
         rows={1}
         value={val}
-        placeholder={placeholder}
+        placeholder=""
         onChange={(e) => {
           if (readOnly) return;
           setVal(e.target.value);
