@@ -690,6 +690,9 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
         schema: restoredSchema,
         componentRegistry: buildComponentRegistry(restoredSchema),
         historyIndex: newIndex,
+        selectedCell: null,
+        selectedCells: null,
+        tableSheetEditId: null,
       };
     }),
 
@@ -702,6 +705,9 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
         schema: restoredSchema,
         componentRegistry: buildComponentRegistry(restoredSchema),
         historyIndex: newIndex,
+        selectedCell: null,
+        selectedCells: null,
+        tableSheetEditId: null,
       };
     }),
 
@@ -714,6 +720,9 @@ export const createSchemaSlice: StateCreator<DesignerState, [], [], SchemaSlice>
         componentRegistry: buildComponentRegistry(restoredSchema),
         historyIndex: target,
         selectedComponentIds: [],
+        selectedCell: null,
+        selectedCells: null,
+        tableSheetEditId: null,
       };
     }),
 

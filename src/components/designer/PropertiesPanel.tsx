@@ -1,5 +1,6 @@
-import { getValueType } from '@/lib/utils/json-path';
 import { isTableLikeType } from '@/lib/utils/component-type-utils';
+import { dataTableConversionUpdates, formTableConversionUpdates } from '@/lib/utils/form-table';
+import { getValueType } from '@/lib/utils/json-path';
 import { useDesignerStore } from '@/store/designer-store';
 import type {
   BarcodeComponent,
@@ -23,7 +24,17 @@ import type {
   TextStyle,
 } from '@/types/schema';
 import { clsx } from 'clsx';
-import { Blocks, Database, Layout, Lock, Palette, Settings, Trash2 } from 'lucide-react';
+import {
+  Blocks,
+  Database,
+  Layout,
+  LayoutTemplate,
+  Lock,
+  Palette,
+  Settings,
+  Trash2,
+  Undo2,
+} from 'lucide-react';
 import { memo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { DesignerInput } from '../shared/DesignerInput';
@@ -37,12 +48,11 @@ import { ColumnProperties } from './properties/ColumnProperties';
 import { FieldGridProperties } from './properties/FieldGridProperties';
 import { FormBoxProperties } from './properties/FormBoxProperties';
 import { FormTableProperties } from './properties/FormTableProperties';
-import { LetterheadProperties } from './properties/LetterheadProperties';
-import { SignatureBlockProperties } from './properties/SignatureBlockProperties';
 import { FormatPicker } from './properties/FormatPicker';
 import { GeometryProperties } from './properties/GeometryProperties';
 import { GroupProperties } from './properties/GroupProperties';
 import { ImageProperties } from './properties/ImageProperties';
+import { LetterheadProperties } from './properties/LetterheadProperties';
 import { LineProperties } from './properties/LineProperties';
 import { RectangleProperties } from './properties/RectangleProperties';
 import { ReportConfigPanel } from './properties/ReportConfigPanel';
@@ -54,6 +64,7 @@ import {
   PropertyRow,
   SectionHeader,
 } from './properties/Shared';
+import { SignatureBlockProperties } from './properties/SignatureBlockProperties';
 import { SignatureProperties } from './properties/SignatureProperties';
 import { SummaryBoxProperties } from './properties/SummaryBoxProperties';
 import { TypographyProperties } from './properties/TypographyProperties';
@@ -281,6 +292,39 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 
             {isTable(selectedComponent) && (
               <>
+                <div className={PROPERTY_SECTION_CLASS}>
+                  {isFormTable(selectedComponent) ? (
+                    <button
+                      type="button"
+                      title="Revert to a plain data table (removes fixed body height & summaries)"
+                      onClick={() =>
+                        updateComponent(
+                          selectedComponent.id,
+                          dataTableConversionUpdates() as Partial<ComponentNode>
+                        )
+                      }
+                      className="flex h-7 w-full items-center justify-center gap-1.5 rounded border border-(--border-default) bg-(--bg-surface) px-2 text-[9px] font-bold uppercase tracking-wider text-(--text-secondary) transition-colors hover:border-(--accent)/40"
+                    >
+                      <Undo2 className="h-3 w-3" />
+                      Revert to Data Table
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      title="Turn this into a fixed-height form table — data loops into a body of fixed height with totals at the bottom (PO/PR forms)"
+                      onClick={() =>
+                        updateComponent(
+                          selectedComponent.id,
+                          formTableConversionUpdates(selectedComponent) as Partial<ComponentNode>
+                        )
+                      }
+                      className="flex h-8 w-full items-center justify-center gap-1.5 rounded border border-(--accent)/40 bg-(--accent)/10 px-2 text-[10px] font-bold uppercase tracking-wider text-(--accent) transition-colors hover:bg-(--accent)/20"
+                    >
+                      <LayoutTemplate className="h-3.5 w-3.5" />
+                      Convert to Form Table
+                    </button>
+                  )}
+                </div>
                 {isFormTable(selectedComponent) && (
                   <div className={PROPERTY_SECTION_CLASS}>
                     <FormTableProperties

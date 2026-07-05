@@ -10,6 +10,27 @@ export function useKeyboardShortcuts() {
   // fresh from getState() inside the handler, so no subscription is needed.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.ctrlKey || e.metaKey;
+      const isShift = e.shiftKey;
+      const key = e.key.toLowerCase();
+      const isUndoKey = key === 'z' || e.code === 'KeyZ';
+      const isRedoKey = key === 'y' || e.code === 'KeyY';
+
+      // History shortcuts are app-level commands, same as the toolbar buttons.
+      // Handle them before the text-field/table guards so focus inside a cell or
+      // panel input doesn't make Cmd/Ctrl+Z look broken.
+      if (isMod && !e.altKey && !isShift && isUndoKey) {
+        e.preventDefault();
+        useDesignerStore.getState().undo();
+        return;
+      }
+
+      if (isMod && !e.altKey && ((isShift && isUndoKey) || isRedoKey)) {
+        e.preventDefault();
+        useDesignerStore.getState().redo();
+        return;
+      }
+
       // Ignore shortcuts if the user is typing in an input/textarea or a code editor
       const target = e.target as HTMLElement;
       if (
@@ -29,8 +50,6 @@ export function useKeyboardShortcuts() {
 
       // Read actions + selection fresh from the store (no reactive subscription).
       const {
-        undo,
-        redo,
         copySelected,
         paste,
         duplicateSelected,
@@ -42,22 +61,6 @@ export function useKeyboardShortcuts() {
         alignToPage,
         selectedComponentIds,
       } = useDesignerStore.getState();
-
-      const isMod = e.ctrlKey || e.metaKey;
-      const isShift = e.shiftKey;
-      const key = e.key.toLowerCase();
-
-      // Undo: Cmd+Z
-      if (isMod && !isShift && key === 'z') {
-        e.preventDefault();
-        undo();
-      }
-
-      // Redo: Cmd+Shift+Z or Cmd+Y
-      if ((isMod && isShift && key === 'z') || (isMod && key === 'y')) {
-        e.preventDefault();
-        redo();
-      }
 
       // Copy: Cmd+C
       if (isMod && key === 'c') {

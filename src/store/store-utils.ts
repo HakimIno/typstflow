@@ -28,51 +28,20 @@ export const getMaxHistory = (schema: LayoutSchema): number => {
  * undo/redo stack and in IndexedDB persistence.
  */
 export const stripSrcDataForHistory = (schema: LayoutSchema): LayoutSchema => {
-  const stripComp = (comp: ComponentNode): ComponentNode => {
-    if (comp.type === 'image' && (comp as any).srcData) {
-      const { srcData: _dropped, ...rest } = comp as any;
-      return rest as ComponentNode;
+  const cloneForHistory = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(cloneForHistory);
+    if (!value || typeof value !== 'object') return value;
+
+    const record = value as Record<string, unknown>;
+    const clone: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(record)) {
+      if (record.type === 'image' && key === 'srcData') continue;
+      clone[key] = cloneForHistory(child);
     }
-    // Recurse into column layouts
-    if (comp.type === 'columns' && (comp as any).columns) {
-      return {
-        ...comp,
-        columns: (comp as any).columns.map((col: any) => ({
-          ...col,
-          components: (col.components ?? []).map(stripComp),
-        })),
-      } as ComponentNode;
-    }
-    if (comp.type === 'form-box' && comp.components) {
-      return {
-        ...comp,
-        components: comp.components.map(stripComp),
-      } as ComponentNode;
-    }
-    return comp;
+    return clone;
   };
 
-  const stripZone = (zone: Zone): Zone => ({
-    ...zone,
-    components: zone.components.map(stripComp),
-  });
-
-  return {
-    ...schema,
-    zones: {
-      header: stripZone(schema.zones.header),
-      footer: stripZone(schema.zones.footer),
-    },
-    pages: schema.pages.map((page) => ({
-      ...page,
-      body: stripZone(page.body),
-    })),
-    groups: (schema.groups ?? []).map((g) => ({
-      ...g,
-      header: stripZone(g.header),
-      footer: stripZone(g.footer),
-    })),
-  };
+  return cloneForHistory(schema) as LayoutSchema;
 };
 
 export const buildComponentRegistry = (schema: LayoutSchema): Record<string, ComponentNode> => {

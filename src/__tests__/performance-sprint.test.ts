@@ -8,7 +8,7 @@
 
 import { createFontSlice } from '@/store/slices/font-slice';
 import { buildComponentRegistry, getMaxHistory, pushHistory } from '@/store/store-utils';
-import type { LayoutSchema, TextComponent } from '@/types/schema';
+import type { LayoutSchema, TableComponent, TextComponent } from '@/types/schema';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { create } from 'zustand';
 
@@ -24,6 +24,25 @@ function makeText(id: string): TextComponent {
     height: 10,
     content: id,
     style: { fontSize: 10 },
+  };
+}
+
+function makeTable(id: string): TableComponent {
+  return {
+    id,
+    type: 'table',
+    x: 0,
+    y: 0,
+    width: 120,
+    height: 40,
+    dataSource: '{{items}}',
+    columns: [
+      { id: 'col-1', header: 'Original', field: 'original', width: '60mm' },
+      { id: 'col-2', header: 'Amount', field: 'amount', width: '60mm' },
+    ],
+    style: {},
+    showHeader: true,
+    repeatHeaderOnPage: true,
   };
 }
 
@@ -131,6 +150,19 @@ describe('pushHistory — constant MAX_HISTORY = 50 for reliable undo/redo', () 
 
     expect(state.historyIndex).toBe(state.history.length - 1);
     expect(state.history[state.historyIndex].id).toBe('step-14');
+  });
+
+  it('does not share nested table column objects with live schema', () => {
+    const schema = makeSchema(0, 1);
+    const table = makeTable('table-1');
+    schema.pages[0].body.components = [table];
+
+    const result = pushHistory({ history: [], historyIndex: -1, schema }, schema);
+
+    table.columns[0].header = 'Mutated after history push';
+
+    const historyTable = result.history[0].pages[0].body.components[0] as TableComponent;
+    expect(historyTable.columns[0].header).toBe('Original');
   });
 });
 

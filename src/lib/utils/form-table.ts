@@ -1,10 +1,63 @@
 import type {
+  AnyTableComponent,
   FormTableComponent,
   FormTableFooterSummaryRow,
   TableCell,
   TableComponent,
   TableRow,
 } from '@/types/schema';
+import { nanoid } from 'nanoid';
+
+/** Updates that turn a plain data table into a fixed-height form table (PO/PR forms). */
+export function formTableConversionUpdates(
+  comp: AnyTableComponent
+): Partial<FormTableComponent> & { type: 'form-table' } {
+  const existing = comp as Partial<FormTableComponent>;
+  const updates: Partial<FormTableComponent> & { type: 'form-table' } = {
+    type: 'form-table',
+    // Default to bottom mode so summaries sit at the foot of a fixed-height body.
+    footerMode: existing.footerMode ?? 'bottom',
+    bodyMinHeight: existing.bodyMinHeight ?? '95mm',
+  };
+  // Seed one grand-total row so the fixed-height loop is immediately useful; leave
+  // any existing summary untouched (re-converting must not clobber the user's rows).
+  // Requires ≥2 columns: a label + value cell can't coexist in a single-column grid
+  // (they'd overflow into a phantom column and break both the preview and Typst).
+  const cols = comp.columns.length;
+  if (!existing.footerSummary?.length && cols >= 2) {
+    // Total the last column by its field, e.g. {{SUM(amount)}} — valid aggregate
+    // syntax that resolves in the PDF and stays short in the canvas preview.
+    const lastField = comp.columns[cols - 1]?.field?.trim();
+    updates.footerSummary = [
+      {
+        id: nanoid(),
+        label: 'รวมทั้งสิ้น',
+        value: lastField ? `{{SUM(${lastField})}}` : '',
+        // Label spans the leading columns and hugs the value cell on the right.
+        align: 'right',
+        valueAlign: 'right',
+        format: 'number',
+        labelColumn: 0,
+        valueColumn: cols - 1,
+      },
+    ];
+  }
+  return updates;
+}
+
+/** Updates that revert a form table back to a plain data table, clearing form-only fields. */
+export function dataTableConversionUpdates(): Partial<Omit<FormTableComponent, 'type'>> & {
+  type: 'table';
+} {
+  return {
+    type: 'table',
+    minRows: undefined,
+    bodyMinHeight: undefined,
+    footerMode: undefined,
+    footerGridRows: undefined,
+    footerSummary: undefined,
+  };
+}
 
 export function buildFormTableFooterRows(comp: FormTableComponent): TableRow[] {
   return [

@@ -142,6 +142,16 @@ export function useSheetKeyboard(options: SheetKeyboardOptions) {
     const handleKeyDown = (e: KeyboardEvent) => {
       const { component, selectedCell, selectedCells, clearContents } = opts.current;
       const editingCell = isOwnCellEditor(e.target);
+      const key = e.key.toLowerCase();
+      const isUndoKey = key === 'z' || e.code === 'KeyZ';
+      const isRedoKey = key === 'y' || e.code === 'KeyY';
+      const isHistoryShortcut = (e.ctrlKey || e.metaKey) && !e.altKey && (isUndoKey || isRedoKey);
+
+      const runHistoryShortcut = () => {
+        const { undo, redo } = useDesignerStore.getState();
+        if (isRedoKey || e.shiftKey) redo();
+        else undo();
+      };
 
       // Typing anywhere else (properties panel inputs, dialogs) is not ours.
       if (!editingCell && isTextInput(e.target)) return;
@@ -149,6 +159,16 @@ export function useSheetKeyboard(options: SheetKeyboardOptions) {
       const flat = flatRows();
 
       if (editingCell) {
+        // App-level undo/redo should behave like the toolbar while a cell editor
+        // has focus: commit the pending cell edit first, then move history.
+        if (isHistoryShortcut) {
+          e.preventDefault();
+          e.stopPropagation();
+          (e.target as HTMLTextAreaElement).blur();
+          window.setTimeout(runHistoryShortcut, 0);
+          return;
+        }
+
         // Committing keys while the cell editor has focus.
         if (e.key === 'Escape') {
           // Exit the editor but stay in sheet mode (TablePreview's own Escape
@@ -223,15 +243,12 @@ export function useSheetKeyboard(options: SheetKeyboardOptions) {
       }
 
       // Undo/redo must keep working inside sheet mode — the canvas-level
-      // shortcut hook early-returns while tableSheetEditId is set. While the
-      // cell editor has focus this never runs (editingCell returns above), so
-      // native text-undo inside the textarea is untouched.
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && ['z', 'Z', 'y', 'Y'].includes(e.key)) {
+      // shortcut hook early-returns while tableSheetEditId is set, so the table
+      // sheet owns these history shortcuts while active.
+      if (isHistoryShortcut) {
         e.preventDefault();
         e.stopPropagation();
-        const { undo, redo } = useDesignerStore.getState();
-        if (e.key === 'y' || e.key === 'Y' || e.shiftKey) redo();
-        else undo();
+        runHistoryShortcut();
         return;
       }
 

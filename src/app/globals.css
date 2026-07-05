@@ -233,6 +233,20 @@
     opacity: 1;
   }
 
+  /* Table-specific drag optimization (mirrors the image rule above):
+   * Tables are the heaviest previews to rasterise — border-collapse plus a border on
+   * every cell, an absolutely-positioned resize overlay, and (for form tables) a tall
+   * fixed-height body. The wrapper's `will-change: transform` promotes the component,
+   * but the browser still re-paints the large table bitmap on every drag frame. Give
+   * the table its own cached GPU layer so frames just re-composite the existing texture
+   * instead of repainting every cell. `contain` walls off layout/paint from siblings. */
+  .is-dragging-components [data-designer-component] table {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: layout paint style;
+  }
+
   /* Extreme Performance: Only active during zone resize */
   .is-resizing-zone {
     cursor: ns-resize !important;

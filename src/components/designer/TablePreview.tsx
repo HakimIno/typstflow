@@ -681,7 +681,7 @@ export const TablePreview = memo(function TablePreview({
       ((component as unknown as Record<string, unknown>)[sectionKey] as TableRow[]) || [];
     // Legacy: no real schema rows → update columns array
     if (!schemaRows.length) {
-      const newCols = [...component.columns];
+      const newCols = component.columns.map((col) => ({ ...col }));
       if (isHeader) {
         if (newCols[logicalCol]) newCols[logicalCol].header = newVal;
         updateComponent(component.id, { columns: newCols } as any);
