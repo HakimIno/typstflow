@@ -1,11 +1,13 @@
 'use client';
 
-import { findComponentZone } from '@/lib/utils/schema-mutators';
+import { useAutoFitHeight } from '@/hooks/use-auto-fit-height';
+import { useFormBoxDropTarget } from '@/hooks/use-form-box-drop-target';
 import { cn } from '@/lib/utils/cn';
+import { findComponentZone } from '@/lib/utils/schema-mutators';
 import { useDesignerStore } from '@/store/designer-store';
 import type { FormBoxComponent } from '@/types/schema';
+import { useRef } from 'react';
 import { ComponentWrapper } from '../../component-wrapper/ComponentWrapper';
-import { useFormBoxDropTarget } from '@/hooks/use-form-box-drop-target';
 
 interface Props {
   component: FormBoxComponent;
@@ -15,7 +17,13 @@ interface Props {
 
 export function FormBoxPreview({ component, pageIndex }: Props) {
   const schema = useDesignerStore((s) => s.schema);
-  const { isDraggedOver, ref } = useFormBoxDropTarget(component.id);
+  const { isDraggedOver, ref: dropRef } = useFormBoxDropTarget(component.id);
+  const boxRef = useRef<HTMLDivElement>(null);
+  useAutoFitHeight(boxRef, component.id);
+  const setRefs = (el: HTMLDivElement | null) => {
+    boxRef.current = el;
+    dropRef(el);
+  };
 
   const zoneInfo = findComponentZone(schema, component.id);
   const zoneKey = zoneInfo?.zoneKey || 'body';
@@ -32,9 +40,9 @@ export function FormBoxPreview({ component, pageIndex }: Props) {
 
   return (
     <div
-      ref={ref}
+      ref={setRefs}
       className={cn(
-        'w-full h-full min-h-[60px] box-border transition-all',
+        'w-full min-h-[60px] box-border transition-all',
         isDraggedOver && 'ring-2 ring-[var(--accent)] ring-inset'
       )}
       style={{

@@ -8,6 +8,7 @@ import type {
   ColumnLayoutComponent,
   ComponentNode,
   FieldGridComponent,
+  FillInComponent,
   FormBoxComponent,
   FormTableComponent,
   ImageComponent,
@@ -46,6 +47,7 @@ import { BulkEditPanel } from './properties/BulkEditPanel';
 import { ChecklistProperties } from './properties/ChecklistProperties';
 import { ColumnProperties } from './properties/ColumnProperties';
 import { FieldGridProperties } from './properties/FieldGridProperties';
+import { FillInProperties } from './properties/FillInProperties';
 import { FormBoxProperties } from './properties/FormBoxProperties';
 import { FormTableProperties } from './properties/FormTableProperties';
 import { FormatPicker } from './properties/FormatPicker';
@@ -93,6 +95,7 @@ const isSignatureBlock = (c: ComponentNode): c is SignatureBlockComponent =>
   c.type === 'signature-block';
 const isFormBox = (c: ComponentNode): c is FormBoxComponent => c.type === 'form-box';
 const isFieldGrid = (c: ComponentNode): c is FieldGridComponent => c.type === 'field-grid';
+const isFillIn = (c: ComponentNode): c is FillInComponent => c.type === 'fill-in';
 
 type TabType = 'design' | 'layout' | 'data' | 'settings';
 
@@ -403,6 +406,15 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
             {isSignatureBlock(selectedComponent) && (
               <div className={PROPERTY_SECTION_CLASS}>
                 <SignatureBlockProperties
+                  component={selectedComponent}
+                  onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
+                />
+              </div>
+            )}
+
+            {isFillIn(selectedComponent) && (
+              <div className={PROPERTY_SECTION_CLASS}>
+                <FillInProperties
                   component={selectedComponent}
                   onUpdate={(updates) => updateComponent(selectedComponent.id, updates)}
                 />

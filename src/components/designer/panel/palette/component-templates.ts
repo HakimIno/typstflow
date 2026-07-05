@@ -55,6 +55,49 @@ export function createDefaultComponent(type: string) {
         height: 20,
       };
     }
+    case 'form-table': {
+      const headerRow = {
+        id: 'header-row-1',
+        type: 'header',
+        height: '10mm',
+        cells: [{ id: 'header-cell-1', content: 'Header', align: 'left' }],
+      };
+      const detailRow = {
+        id: 'detail-row-1',
+        type: 'data',
+        height: '10mm',
+        cells: [{ id: 'detail-cell-1', content: '{{items.field}}', align: 'left' }],
+      };
+
+      return {
+        ...base,
+        type: 'form-table',
+        dataSource: '{{items}}',
+        columns: [{ id: '1', header: 'Header', field: 'field', width: '180mm', align: 'left' }],
+        style: {
+          inset: '7pt',
+          borderWidth: '0.5pt',
+          borderColor: '#cbd5e1',
+          headerBackground: '#f1f5f9',
+          headerColor: '#000000',
+          headerFontSize: 10,
+          headerFontWeight: 'bold',
+          bodyFontSize: 10,
+          bodyColor: '#334155',
+          fillPattern: 'header-only',
+          fontFamily: 'Sarabun',
+        },
+        showHeader: true,
+        repeatHeaderOnPage: true,
+        headerRows: [headerRow],
+        detailRows: [detailRow],
+        rows: [headerRow, detailRow],
+        minRows: 5,
+        footerMode: 'flow',
+        width: 180,
+        height: 60,
+      };
+    }
     case 'image':
       return { ...base, type: 'image', src: '/logo13.png', width: 40, height: 40 };
     case 'line':
@@ -160,6 +203,83 @@ export function createDefaultComponent(type: string) {
         labelStyle: { fontSize: 8 },
         width: 180,
         height: 16,
+      };
+    case 'letterhead':
+      return {
+        ...base,
+        type: 'letterhead',
+        companyName: 'ชื่อบริษัท จำกัด',
+        companyAddress: '123 ถนนสุขุมวิท กรุงเทพฯ 10110',
+        taxId: '0000000000000',
+        title: 'ใบสั่งซื้อ',
+        showPageNumber: true,
+        underlineTitle: true,
+        showTaxIdLabel: true,
+        width: 180,
+        height: 32,
+      };
+    case 'field-grid':
+      return {
+        ...base,
+        type: 'field-grid',
+        columns: 1,
+        fields: [
+          { id: 'field-1', label: 'เลขที่', value: '{{doc.number}}' },
+          { id: 'field-2', label: 'วันที่', value: '{{doc.date}}' },
+          { id: 'field-3', label: 'ผู้ติดต่อ', value: '{{doc.contact}}' },
+        ],
+        labelWidth: '28mm',
+        rowGap: '1.5mm',
+        showColon: true,
+        strokeColor: '#64748b',
+        strokeWidth: '0.1mm',
+        inset: '2mm',
+        width: 90,
+        height: 24,
+      };
+    case 'form-box':
+      return {
+        ...base,
+        type: 'form-box',
+        components: [],
+        fill: '#ffffff',
+        strokeColor: '#64748b',
+        strokeWidth: '0.1mm',
+        inset: '2mm',
+        radius: '1mm',
+        innerGap: '2mm',
+        width: 180,
+        height: 30,
+      };
+    case 'signature-block':
+      return {
+        ...base,
+        type: 'signature-block',
+        variant: 'thai-form',
+        slots: [
+          { id: 'slot-1', role: 'ผู้อนุมัติ', lineStyle: 'dotted' },
+          { id: 'slot-2', role: 'ผู้ตรวจสอบ', lineStyle: 'dotted' },
+        ],
+        showDate: true,
+        datePosition: 'above',
+        slotSpacing: '5mm',
+        width: 180,
+        height: 16,
+      };
+    case 'fill-in':
+      return {
+        ...base,
+        type: 'fill-in',
+        segments: [
+          { id: 'seg-1', kind: 'text', text: 'ลงชื่อ' },
+          { id: 'seg-2', kind: 'blank', width: '30mm' },
+          { id: 'seg-3', kind: 'text', text: 'ผู้ตรวจสอบ' },
+        ],
+        marker: 'none',
+        gap: '1mm',
+        lineStyle: 'dotted',
+        width: 100,
+        height: 8,
       };
     default:
       return { ...base, type: 'text', content: '', height: 10 };

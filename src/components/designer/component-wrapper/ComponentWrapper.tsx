@@ -1045,7 +1045,9 @@ export const ComponentWrapper = memo(function ComponentWrapper({
       component.type === 'form-box' ||
       component.type === 'field-grid' ||
       component.type === 'summary-box' ||
-      component.type === 'checklist';
+      component.type === 'checklist' ||
+      component.type === 'letterhead' ||
+      component.type === 'signature-block';
 
     return (
       <div

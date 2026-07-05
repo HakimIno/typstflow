@@ -1,6 +1,8 @@
 import {
+  Building2,
   Columns,
   FileDown,
+  Frame,
   Hash,
   Image,
   LayoutDashboard,
@@ -9,8 +11,12 @@ import {
   PenLine,
   QrCode,
   RectangleHorizontal,
+  Rows3,
+  Signature,
   Space,
   Table,
+  Table2,
+  TextCursorInput,
   Type,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
@@ -31,6 +37,18 @@ export const CATEGORIES = [
       { type: 'table', label: 'Data Table', icon: Table },
       { type: 'summary-box', label: 'Summary Box', icon: LayoutDashboard },
       { type: 'checklist', label: 'Checklist', icon: ListChecks },
+    ],
+  },
+  {
+    id: 'thai-form',
+    label: 'Thai Form Kit',
+    items: [
+      { type: 'letterhead', label: 'Letterhead', icon: Building2 },
+      { type: 'field-grid', label: 'Field Grid', icon: Rows3 },
+      { type: 'form-table', label: 'Form Table', icon: Table2 },
+      { type: 'form-box', label: 'Form Box', icon: Frame },
+      { type: 'signature-block', label: 'Signature Block', icon: Signature },
+      { type: 'fill-in', label: 'Fill-in Line', icon: TextCursorInput },
     ],
   },
   {

@@ -18,6 +18,12 @@ const PREVIEW_LABELS: Record<string, string> = {
   'page-number': 'Page counter',
   rectangle: 'Shape',
   signature: 'Signature block',
+  'form-table': 'Table with footer totals',
+  letterhead: 'Company header',
+  'field-grid': 'Label : value grid',
+  'form-box': 'Nested container',
+  'signature-block': 'Thai-form signature',
+  'fill-in': 'Fill-in-the-blank line',
 };
 
 /**
@@ -52,6 +58,7 @@ function DragThumb({
         </div>
       );
     case 'table':
+    case 'form-table':
       return (
         <div
           className={clsx('flex h-full w-full flex-col overflow-hidden rounded-md border', cell)}
@@ -169,6 +176,7 @@ function DragThumb({
         </div>
       );
     case 'signature':
+    case 'signature-block':
       return (
         <div className="flex h-full w-full items-end justify-center gap-3 pb-1">
           {[0, 1].map((s) => (
@@ -177,6 +185,49 @@ function DragThumb({
               <div className={clsx(bar, 'h-0.5 w-8')} />
             </div>
           ))}
+        </div>
+      );
+    case 'letterhead':
+      return (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 px-1">
+          <div className={clsx(barStrong, 'h-1.5 w-3/5')} />
+          <div className={clsx(bar, 'h-1 w-4/5')} />
+          <div className={clsx(bar, 'h-1 w-2/3')} />
+        </div>
+      );
+    case 'field-grid':
+      return (
+        <div
+          className={clsx(
+            'flex h-full w-full flex-col justify-center gap-1 rounded-md border bg-[var(--bg-widget)] px-1.5 py-1',
+            cell
+          )}
+        >
+          {[0, 1, 2].map((r) => (
+            <div key={r} className="flex items-center justify-between gap-2">
+              <div className={clsx(bar, 'h-1 w-1/3')} />
+              <div className={clsx(barStrong, 'h-1 flex-1')} />
+            </div>
+          ))}
+        </div>
+      );
+    case 'form-box':
+      return (
+        <div
+          className={clsx(
+            'flex h-full w-full items-center justify-center rounded-md border border-dashed bg-[var(--bg-widget)]',
+            cell
+          )}
+        >
+          <span className="text-[8px] font-medium text-[var(--text-muted)]">box</span>
+        </div>
+      );
+    case 'fill-in':
+      return (
+        <div className="flex h-full w-full items-center gap-1.5 px-1">
+          <div className={clsx(bar, 'h-1 w-1/4')} />
+          <div className="h-px flex-1 border-t border-dotted border-[var(--text-muted)] opacity-70" />
+          <div className={clsx(bar, 'h-1 w-1/4')} />
         </div>
       );
     case 'page-break-indicator':

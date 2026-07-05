@@ -1,8 +1,9 @@
 'use client';
 
+import { useAutoFitHeight } from '@/hooks/use-auto-fit-height';
 import { resolveBindings } from '@/lib/utils/json-path';
 import type { SignatureBlockComponent } from '@/types/schema';
-import { memo } from 'react';
+import { memo, useRef } from 'react';
 
 interface Props {
   component: SignatureBlockComponent;
@@ -24,8 +25,11 @@ export const SignatureBlockPreview = memo(function SignatureBlockPreview({
         ? 'solid'
         : 'dotted';
 
+  const ref = useRef<HTMLDivElement>(null);
+  useAutoFitHeight(ref, component.id);
+
   return (
-    <div className="w-full h-full flex gap-2">
+    <div ref={ref} className="w-full flex gap-2">
       {slots.map((slot) => {
         const role = resolveBindings(slot.role, sampleData) || slot.role;
         const name = slot.name

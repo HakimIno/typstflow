@@ -1,8 +1,9 @@
 'use client';
 
+import { useAutoFitHeight } from '@/hooks/use-auto-fit-height';
 import { resolveBindings } from '@/lib/utils/json-path';
 import type { FieldGridComponent, FormFieldDefinition } from '@/types/schema';
-import { memo, type ReactNode } from 'react';
+import { type ReactNode, memo, useRef } from 'react';
 
 interface Props {
   component: FieldGridComponent;
@@ -95,6 +96,9 @@ function FieldStack({
 }
 
 export const FieldGridPreview = memo(function FieldGridPreview({ component, sampleData }: Props) {
+  const ref = useRef<HTMLDivElement>(null);
+  useAutoFitHeight(ref, component.id);
+
   const fields = component.fields ?? [];
   const labelWidth = component.labelWidth ?? '28mm';
   const rowGap = component.rowGap ?? '1.5mm';
@@ -163,20 +167,21 @@ export const FieldGridPreview = memo(function FieldGridPreview({ component, samp
     );
   }
 
-  if (hasBorder) {
-    return (
-      <div
-        className="w-full h-full box-border"
-        style={{
-          backgroundColor: fill,
-          border: `1px solid ${strokeColor}`,
-          padding: `calc(${inset} * 3.78)`,
-        }}
-      >
-        {content}
-      </div>
-    );
-  }
-
-  return <div className="w-full h-full overflow-hidden">{content}</div>;
+  return (
+    <div
+      ref={ref}
+      className="w-full box-border"
+      style={
+        hasBorder
+          ? {
+              backgroundColor: fill,
+              border: `1px solid ${strokeColor}`,
+              padding: `calc(${inset} * 3.78)`,
+            }
+          : undefined
+      }
+    >
+      {content}
+    </div>
+  );
 });

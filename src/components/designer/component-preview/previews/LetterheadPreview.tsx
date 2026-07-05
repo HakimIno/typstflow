@@ -1,8 +1,9 @@
 'use client';
 
+import { useAutoFitHeight } from '@/hooks/use-auto-fit-height';
 import { resolveBindings } from '@/lib/utils/json-path';
 import type { LetterheadComponent } from '@/types/schema';
-import { memo } from 'react';
+import { memo, useRef } from 'react';
 
 interface Props {
   component: LetterheadComponent;
@@ -25,8 +26,11 @@ export const LetterheadPreview = memo(function LetterheadPreview({
   const titleSize = component.titleStyle?.fontSize ?? 15;
   const addressSize = component.addressStyle?.fontSize ?? 9;
 
+  const ref = useRef<HTMLDivElement>(null);
+  useAutoFitHeight(ref, component.id);
+
   return (
-    <div className="w-full h-full relative" style={{ fontFamily: 'Sarabun, sans-serif' }}>
+    <div ref={ref} className="w-full relative" style={{ fontFamily: 'Sarabun, sans-serif' }}>
       {component.showPageNumber !== false && (
         <div
           className="absolute top-0 right-0"
