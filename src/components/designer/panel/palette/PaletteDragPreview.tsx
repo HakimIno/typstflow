@@ -9,11 +9,9 @@ const PREVIEW_LABELS: Record<string, string> = {
   table: 'Repeating rows',
   image: 'Image box',
   line: 'Divider',
-  barcode: 'Code 128',
   qr: 'QR block',
   spacer: 'Vertical space',
   columns: '2-column layout',
-  repeater: 'Data group',
   'summary-box': 'Totals block',
   checklist: 'Checklist items',
   'page-break-indicator': 'Flow break',
@@ -100,19 +98,6 @@ function DragThumb({
           <div className={clsx('h-3/4 w-full rounded-md border bg-[var(--bg-widget)]', cell)} />
         </div>
       );
-    case 'barcode':
-      return (
-        <div className="flex h-full w-full items-end justify-center gap-[2px] px-1 pb-1">
-          {[3, 1, 2, 1, 3, 2, 1, 3, 1, 2, 2, 1, 3, 1].map((w, i) => (
-            <div
-              // biome-ignore lint/suspicious/noArrayIndexKey: static decorative bars
-              key={i}
-              className="h-full bg-[var(--text-primary)]"
-              style={{ width: w }}
-            />
-          ))}
-        </div>
-      );
     case 'qr':
       return (
         <div className="flex h-full w-full items-center justify-center">
@@ -154,23 +139,6 @@ function DragThumb({
           >
             space
           </div>
-        </div>
-      );
-    case 'repeater':
-      return (
-        <div className="flex h-full w-full flex-col justify-center gap-1">
-          {[0, 1, 2].map((r) => (
-            <div
-              key={r}
-              className={clsx(
-                'flex items-center gap-1 rounded border bg-[var(--bg-widget)] px-1 py-0.5',
-                cell
-              )}
-            >
-              <div className="size-1.5 rounded-full bg-[var(--text-muted)] opacity-60" />
-              <div className={clsx(bar, 'h-0.5 w-3/4')} />
-            </div>
-          ))}
         </div>
       );
     case 'summary-box':

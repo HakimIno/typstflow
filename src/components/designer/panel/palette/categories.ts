@@ -5,12 +5,10 @@ import {
   Image,
   LayoutDashboard,
   ListChecks,
-  ListTree,
   Minus,
   PenLine,
   QrCode,
   RectangleHorizontal,
-  ScanLine,
   Space,
   Table,
   Type,
@@ -49,10 +47,7 @@ export const CATEGORIES = [
   {
     id: 'advanced',
     label: 'Data Rendering',
-    items: [
-      { type: 'barcode', label: 'Barcode', icon: ScanLine },
-      { type: 'qr', label: 'QR Code', icon: QrCode },
-    ],
+    items: [{ type: 'qr', label: 'QR Code', icon: QrCode }],
   },
   {
     id: 'layout',
@@ -60,7 +55,6 @@ export const CATEGORIES = [
     items: [
       { type: 'columns', label: 'Columns', icon: Columns },
       { type: 'spacer', label: 'Space', icon: Space },
-      { type: 'repeater', label: 'Repeater', icon: ListTree },
       { type: 'page-number', label: 'Page Number', icon: Hash },
       { type: 'page-break-indicator', label: 'Page Break', icon: FileDown },
     ],

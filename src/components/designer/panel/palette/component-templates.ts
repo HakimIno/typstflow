@@ -18,13 +18,13 @@ export function createDefaultComponent(type: string) {
       const headerRow = {
         id: 'header-row-1',
         type: 'header',
-        height: '5mm',
+        height: '10mm',
         cells: [{ id: 'header-cell-1', content: 'Header', align: 'left' }],
       };
       const detailRow = {
         id: 'detail-row-1',
         type: 'data',
-        height: '5mm',
+        height: '10mm',
         cells: [{ id: 'detail-cell-1', content: '{{items.field}}', align: 'left' }],
       };
 
@@ -67,15 +67,6 @@ export function createDefaultComponent(type: string) {
         width: 180,
         height: 2,
       };
-    case 'barcode':
-      return {
-        ...base,
-        type: 'barcode',
-        value: '12345678',
-        format: 'code128',
-        width: 40,
-        height: 15,
-      };
     case 'qr':
       return { ...base, type: 'qr', value: 'https://example.com', width: 30, height: 30 };
     case 'spacer':
@@ -90,16 +81,7 @@ export function createDefaultComponent(type: string) {
           { width: '1fr', components: [] },
         ],
         width: 180,
-        height: 40,
-      };
-    case 'repeater':
-      return {
-        ...base,
-        type: 'repeater',
-        dataSource: '{{items}}',
-        children: [],
-        width: 180,
-        height: 40,
+        height: 28,
       };
     case 'summary-box':
       return {
@@ -107,7 +89,7 @@ export function createDefaultComponent(type: string) {
         type: 'summary-box',
         rows: [{ label: 'Subtotal', value: '$0.00' }],
         width: 80,
-        height: 30,
+        height: 14,
       };
     case 'checklist':
       return {
@@ -123,7 +105,7 @@ export function createDefaultComponent(type: string) {
         indent: 5,
         style: { fontSize: 10, fontFamily: 'Sarabun', color: '#000000' },
         width: 120,
-        height: 35,
+        height: 18,
       };
     case 'page-break-indicator':
       return {
@@ -177,7 +159,7 @@ export function createDefaultComponent(type: string) {
         lineColor: '#000000',
         labelStyle: { fontSize: 8 },
         width: 180,
-        height: 30,
+        height: 16,
       };
     default:
       return { ...base, type: 'text', content: '', height: 10 };
