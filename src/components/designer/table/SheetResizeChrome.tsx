@@ -64,21 +64,21 @@ export function ColumnResizeHandle({
           <div
             key={i}
             data-col-divider={index}
-            className="absolute left-1/2 -translate-x-1/2 w-px bg-[var(--accent)] opacity-40 group-hover/colresizer:opacity-90 transition-opacity"
+            className="absolute left-1/2 -translate-x-1/2 w-px bg-[var(--accent)] opacity-0 group-hover/colresizer:opacity-90 transition-opacity"
             style={{ top: seg.start - lineStart, height: seg.end - seg.start }}
           />
         ))
       ) : (
         <div
           data-col-divider={index}
-          className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-[var(--accent)] opacity-40 group-hover/colresizer:opacity-90 transition-opacity"
+          className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-[var(--accent)] opacity-0 group-hover/colresizer:opacity-90 transition-opacity"
         />
       )}
 
       {/* Single vertical pill at header level — matches the column's vertical line */}
       <div
         aria-hidden
-        className="absolute left-1/2 w-[5px] h-3 rounded-full border border-[var(--accent)] bg-white shadow-sm pointer-events-none opacity-80 group-hover/colresizer:opacity-100 group-hover/colresizer:scale-110 transition-all"
+        className="absolute left-1/2 w-[5px] h-3 rounded-full border border-[var(--accent)] bg-white shadow-sm pointer-events-none opacity-55 group-hover/colresizer:opacity-100 group-hover/colresizer:scale-110 transition-all"
         style={{ top: visiblePillTop - lineStart, transform: 'translate(-50%, -50%)' }}
       />
     </div>
@@ -122,18 +122,18 @@ export function RowResizeHandle({ rowId, onMouseDown, segments }: RowResizeHandl
         segments.map((seg, i) => (
           <div
             key={i}
-            className="absolute top-1/2 h-px -translate-y-1/2 bg-[var(--accent)] opacity-40 group-hover/rowresizer:opacity-90 transition-opacity"
+            className="absolute top-1/2 h-px -translate-y-1/2 bg-[var(--accent)] opacity-0 group-hover/rowresizer:opacity-90 transition-opacity"
             style={{ left: `${seg.start}%`, width: `${seg.end - seg.start}%` }}
           />
         ))
       ) : (
-        <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[var(--accent)] opacity-40 group-hover/rowresizer:opacity-90 transition-opacity" />
+        <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-[var(--accent)] opacity-0 group-hover/rowresizer:opacity-90 transition-opacity" />
       )}
 
       {/* Single horizontal pill at center — matches the row's horizontal line */}
       <div
         aria-hidden
-        className="absolute top-1/2 h-[5px] w-3 rounded-full border border-[var(--accent)] bg-white shadow-sm pointer-events-none opacity-80 group-hover/rowresizer:opacity-100 group-hover/rowresizer:scale-110 transition-all"
+        className="absolute top-1/2 h-[5px] w-3 rounded-full border border-[var(--accent)] bg-white shadow-sm pointer-events-none opacity-55 group-hover/rowresizer:opacity-100 group-hover/rowresizer:scale-110 transition-all"
         style={{ left: `${midPct}%`, transform: 'translate(-50%, -50%)' }}
       />
     </div>

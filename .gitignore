@@ -63,3 +63,6 @@ next-env.d.ts
 !/examples/scripts/**
 !/examples/output/
 !/examples/output/test_output.txt
+
+
+/plan

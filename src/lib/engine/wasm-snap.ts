@@ -9,6 +9,8 @@ import type { LayoutSchema } from '@/types/schema';
 
 export const SNAP_THRESHOLD_MM = 2;
 export const SNAP_PAGE_RADIUS = 2;
+const MAX_ACTIVE_GUIDES_PER_AXIS = 2;
+const GUIDE_EPSILON_MM = 0.01;
 
 let wasmEngineCache: WasmLayoutEngine | null = null;
 
@@ -25,6 +27,21 @@ export interface ComponentSnapResult {
   activeGuidesX: number[];
   activeGuidesY: number[];
   spacingIndicators: WasmSpacingIndicator[];
+}
+
+function getClosestGuides(guides: number[], focus: number): number[] {
+  const deduped: number[] = [];
+
+  for (const guide of guides) {
+    if (!deduped.some((existing) => Math.abs(existing - guide) < GUIDE_EPSILON_MM)) {
+      deduped.push(guide);
+    }
+  }
+
+  return deduped
+    .sort((a, b) => Math.abs(a - focus) - Math.abs(b - focus))
+    .slice(0, MAX_ACTIVE_GUIDES_PER_AXIS)
+    .sort((a, b) => a - b);
 }
 
 export function calculateComponentSnap(
@@ -70,8 +87,8 @@ export function calculateComponentSnap(
   return {
     snappedX: fullSnap.snapped_x,
     snappedY: fullSnap.snapped_y,
-    activeGuidesX: fullSnap.guides_x,
-    activeGuidesY: fullSnap.guides_y,
+    activeGuidesX: getClosestGuides(fullSnap.guides_x, fullSnap.snapped_x),
+    activeGuidesY: getClosestGuides(fullSnap.guides_y, fullSnap.snapped_y),
     spacingIndicators: fullSnap.spacing_indicators,
   };
 }

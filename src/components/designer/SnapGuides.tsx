@@ -2,16 +2,45 @@
 
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { useDesignerStore } from '@/store/designer-store';
-import { memo } from 'react';
+import type { SpacingIndicator } from '@/store/store-types';
+import { memo, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 interface Props {
   pageId: string;
 }
 
-import { useShallow } from 'zustand/react/shallow';
+const MAX_GUIDES_PER_AXIS = 2;
+const MAX_SPACING_INDICATORS = 2;
+const GUIDE_PRECISION_MM = 0.1;
+const MIN_SPACING_LENGTH_MM = 0.5;
+
+function dedupeGuides(guides: number[]): number[] {
+  const deduped: number[] = [];
+
+  for (const guide of guides) {
+    const rounded = Math.round(guide / GUIDE_PRECISION_MM) * GUIDE_PRECISION_MM;
+    if (!deduped.some((existing) => Math.abs(existing - rounded) < GUIDE_PRECISION_MM)) {
+      deduped.push(rounded);
+    }
+  }
+
+  return deduped.slice(0, MAX_GUIDES_PER_AXIS).sort((a, b) => a - b);
+}
+
+function getSmartSpacingIndicators(indicators: SpacingIndicator[]): SpacingIndicator[] {
+  return indicators
+    .filter((ind) => Math.abs(ind.lineEnd - ind.lineStart) >= MIN_SPACING_LENGTH_MM)
+    .sort((a, b) => {
+      const aLength = Math.abs(a.lineEnd - a.lineStart);
+      const bLength = Math.abs(b.lineEnd - b.lineStart);
+      return a.distance - b.distance || bLength - aLength;
+    })
+    .slice(0, MAX_SPACING_INDICATORS);
+}
 
 /**
- * Renders vertical and horizontal guide lines when snapping is active during drag.
+ * Renders only the strongest active snap hints for the page being dragged.
  */
 export const SnapGuides = memo(function SnapGuides({ pageId }: Props) {
   const { activeGuides, spacingIndicators, isDragging, dragActivePageId } = useDesignerStore(
@@ -22,25 +51,37 @@ export const SnapGuides = memo(function SnapGuides({ pageId }: Props) {
       dragActivePageId: state.dragState.activePageId,
     }))
   );
-  const _zoom = useDesignerStore((state) => state.zoom);
+
+  const smartGuides = useMemo(
+    () => ({
+      vertical: dedupeGuides(activeGuides.vertical),
+      horizontal: dedupeGuides(activeGuides.horizontal),
+    }),
+    [activeGuides.horizontal, activeGuides.vertical]
+  );
+
+  const smartSpacingIndicators = useMemo(
+    () => getSmartSpacingIndicators(spacingIndicators),
+    [spacingIndicators]
+  );
 
   if (!isDragging) return null;
   if (dragActivePageId && dragActivePageId !== pageId) return null;
 
   if (
-    !activeGuides.vertical.length &&
-    !activeGuides.horizontal.length &&
-    !spacingIndicators.length
+    !smartGuides.vertical.length &&
+    !smartGuides.horizontal.length &&
+    !smartSpacingIndicators.length
   ) {
     return null;
   }
 
   return (
     <div className="absolute inset-0 pointer-events-none z-[45]">
-      {activeGuides.vertical.map((x, i) => (
+      {smartGuides.vertical.map((x) => (
         <div
-          key={`v-${i}`}
-          className="absolute top-0 bottom-0 border-l border-blue-500/60 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+          key={`v-${x.toFixed(1)}`}
+          className="absolute top-0 bottom-0 border-l border-blue-500/70 shadow-[0_0_6px_rgba(59,130,246,0.45)]"
           style={{
             left: `${LayoutEngine.mmToPx(x)}px`,
             width: '1px',
@@ -51,10 +92,10 @@ export const SnapGuides = memo(function SnapGuides({ pageId }: Props) {
           </div>
         </div>
       ))}
-      {activeGuides.horizontal.map((y, i) => (
+      {smartGuides.horizontal.map((y) => (
         <div
-          key={`h-${i}`}
-          className="absolute left-0 right-0 border-t border-blue-500/60 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+          key={`h-${y.toFixed(1)}`}
+          className="absolute left-0 right-0 border-t border-blue-500/70 shadow-[0_0_6px_rgba(59,130,246,0.45)]"
           style={{
             top: `${LayoutEngine.mmToPx(y)}px`,
             height: '1px',
@@ -67,13 +108,13 @@ export const SnapGuides = memo(function SnapGuides({ pageId }: Props) {
       ))}
 
       {/* --- Spacing Indicators --- */}
-      {spacingIndicators.map((ind, i) => {
+      {smartSpacingIndicators.map((ind) => {
         const isHorizontal = ind.side === 'left' || ind.side === 'right';
         const length = Math.abs(ind.lineEnd - ind.lineStart);
 
         return (
           <div
-            key={`spacing-${i}`}
+            key={`spacing-${ind.side}`}
             className="absolute flex items-center justify-center"
             style={{
               left: `${LayoutEngine.mmToPx(isHorizontal ? Math.min(ind.lineStart, ind.lineEnd) : ind.crossPos)}px`,

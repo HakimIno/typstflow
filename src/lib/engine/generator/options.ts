@@ -6,4 +6,10 @@ export interface GenerateOptions {
    * @default false
    */
   pretty?: boolean;
+  /**
+   * When true, tables without resolved data still render one placeholder detail
+   * row so design preview/PDF mirrors the canvas structure.
+   * @default true
+   */
+  renderDesignPlaceholders?: boolean;
 }

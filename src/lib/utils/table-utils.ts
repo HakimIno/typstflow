@@ -1,6 +1,8 @@
 import type { FormTableComponent, TableCell, TableComponent, TableRow } from '@/types/schema';
 import { buildLogicalGrid, physToLogical } from './table-grid';
 
+type TableTextAlign = NonNullable<TableCell['align']>;
+
 /** Form-table footer rows stored under `footerGridRows` (undefined for plain tables). */
 function footerGridRowsOf(component: TableComponent | FormTableComponent): TableRow[] | undefined {
   return component.type === 'form-table' ? component.footerGridRows : undefined;
@@ -298,6 +300,57 @@ export function clearCellContents(
     anyChanged = true;
     return { ...row, cells: newCells };
   });
+  return anyChanged ? { [key]: newRows } : {};
+}
+
+/**
+ * Applies horizontal alignment to selected logical cells.
+ * Falls back to column alignment for legacy synthetic tables with no structured
+ * rows in the selected section.
+ */
+export function alignSelectedTableCells(
+  component: TableComponent | FormTableComponent,
+  selection: { section: 'header' | 'footer' | 'data'; rowIds: string[]; cellIndices: number[] },
+  align: TableTextAlign
+): Partial<FormTableComponent> {
+  const { section, rowIds, cellIndices } = selection;
+  const gridRows = footerGridRowsOf(component);
+  const footerKey =
+    section === 'footer' &&
+    gridRows?.length &&
+    !component.footerRows?.some((r) => rowIds.includes(r.id))
+      ? 'footerGridRows'
+      : 'footerRows';
+  const key = section === 'header' ? 'headerRows' : section === 'footer' ? footerKey : 'detailRows';
+  const rows =
+    ((component as unknown as Record<string, unknown>)[key] as TableRow[] | undefined) || [];
+  const colSet = new Set(cellIndices);
+
+  if (!rows.length) {
+    if (section === 'footer') return {};
+    const newCols = component.columns.map((col, idx) =>
+      colSet.has(idx) ? { ...col, align } : col
+    );
+    return { columns: newCols };
+  }
+
+  const rowSet = new Set(rowIds);
+  const grid = buildLogicalGrid(rows, component.columns.length);
+  let anyChanged = false;
+  const newRows = rows.map((row, ri) => {
+    if (!rowSet.has(row.id)) return row;
+    const physMap = physToLogical(grid, ri, row.cells.length);
+    let changed = false;
+    const newCells = row.cells.map((cell, pi) => {
+      if (!colSet.has(physMap[pi])) return cell;
+      changed = true;
+      return { ...cell, align };
+    });
+    if (!changed) return row;
+    anyChanged = true;
+    return { ...row, cells: newCells };
+  });
+
   return anyChanged ? { [key]: newRows } : {};
 }
 

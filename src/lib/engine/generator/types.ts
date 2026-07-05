@@ -25,6 +25,8 @@ export interface RenderContext {
   readonly schema: LayoutSchema;
   /** When true, emit indented multi-line Typst (export / download). */
   readonly pretty?: boolean;
+  /** Render designer placeholder rows for empty dynamic tables. */
+  readonly renderDesignPlaceholders?: boolean;
   /**
    * Render any component node, optionally overriding parts of the context.
    * Plugins call this for children (repeater children, column components, etc.)

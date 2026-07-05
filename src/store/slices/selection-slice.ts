@@ -8,6 +8,33 @@ import type { StateCreator } from 'zustand';
 import type { DesignerState } from '../store-types';
 import { pushHistory } from '../store-utils';
 
+const DRAG_VISUAL_EPSILON_MM = 0.01;
+
+function areNumberArraysEqual(a: number[], b: number[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  return a.every((value, index) => Math.abs(value - b[index]) < DRAG_VISUAL_EPSILON_MM);
+}
+
+function areSpacingIndicatorsEqual(
+  a: DesignerState['dragState']['spacingIndicators'],
+  b: DesignerState['dragState']['spacingIndicators']
+): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+
+  return a.every((value, index) => {
+    const other = b[index];
+    return (
+      value.side === other.side &&
+      Math.abs(value.distance - other.distance) < DRAG_VISUAL_EPSILON_MM &&
+      Math.abs(value.lineStart - other.lineStart) < DRAG_VISUAL_EPSILON_MM &&
+      Math.abs(value.lineEnd - other.lineEnd) < DRAG_VISUAL_EPSILON_MM &&
+      Math.abs(value.crossPos - other.crossPos) < DRAG_VISUAL_EPSILON_MM
+    );
+  });
+}
+
 export type SelectionSlice = Pick<
   DesignerState,
   | 'selectedComponentIds'
@@ -187,9 +214,32 @@ export const createSelectionSlice: StateCreator<DesignerState, [], [], Selection
     })),
 
   setDragState: (updates: Partial<DesignerState['dragState']>) =>
-    set((state) => ({
-      dragState: { ...state.dragState, ...updates },
-    })),
+    set((state) => {
+      const dragState = { ...state.dragState, ...updates };
+
+      if (
+        updates.activeGuides &&
+        areNumberArraysEqual(
+          updates.activeGuides.vertical,
+          state.dragState.activeGuides.vertical
+        ) &&
+        areNumberArraysEqual(
+          updates.activeGuides.horizontal,
+          state.dragState.activeGuides.horizontal
+        )
+      ) {
+        dragState.activeGuides = state.dragState.activeGuides;
+      }
+
+      if (
+        updates.spacingIndicators &&
+        areSpacingIndicatorsEqual(updates.spacingIndicators, state.dragState.spacingIndicators)
+      ) {
+        dragState.spacingIndicators = state.dragState.spacingIndicators;
+      }
+
+      return { dragState };
+    }),
 
   copySelected: () =>
     set((state) => {

@@ -13,7 +13,17 @@ import type {
   TableComponent,
   TableRow,
 } from '@/types/schema';
-import { Columns2, Eraser, Merge, Rows3, Split, Trash2 } from 'lucide-react';
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Columns2,
+  Eraser,
+  Merge,
+  Rows3,
+  Split,
+  Trash2,
+} from 'lucide-react';
 import type React from 'react';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ColumnResizeHandle, RowResizeHandle } from './table/SheetResizeChrome';
@@ -22,6 +32,7 @@ import type { ContextMenuItem } from './table/TableCellContextMenu';
 import { TableCellContextMenu } from './table/TableCellContextMenu';
 import type { CellStyleCtx } from './table/TableCellView';
 import { TableCellView } from './table/TableCellView';
+import { TableToolbar } from './table/TableToolbar';
 import type { SectionType } from './table/useCellSelection';
 import { useCellSelection } from './table/useCellSelection';
 import { useTableActions } from './table/useTableActions';
@@ -75,10 +86,14 @@ export const TablePreview = memo(function TablePreview({
     if (!isTableSelected) setIsTableEditing(false);
   }, [isTableSelected]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isTableEditing) {
       setTableSheetEditId(component.id);
-      return () => setTableSheetEditId(null);
+      return () => {
+        if (useDesignerStore.getState().tableSheetEditId === component.id) {
+          setTableSheetEditId(null);
+        }
+      };
     }
     if (useDesignerStore.getState().tableSheetEditId === component.id) {
       setTableSheetEditId(null);
@@ -88,10 +103,14 @@ export const TablePreview = memo(function TablePreview({
   const [headerMidPx, setHeaderMidPx] = useState(20);
   const [tableHeightPx, setTableHeightPx] = useState(0);
 
-  const handleTableDoubleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsTableEditing(true);
-  }, []);
+  const handleTableDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setTableSheetEditId(component.id);
+      setIsTableEditing(true);
+    },
+    [component.id, setTableSheetEditId]
+  );
 
   useEffect(() => {
     if (!isTableEditing) return;
@@ -357,6 +376,7 @@ export const TablePreview = memo(function TablePreview({
     handleDeleteRows,
     handleDeleteColumns,
     handleClearContents,
+    handleAlign,
     canMerge,
     canSplit,
     canDeleteRow,
@@ -828,11 +848,7 @@ export const TablePreview = memo(function TablePreview({
       data-table-editing={isTableEditing || undefined}
       onDoubleClick={handleTableDoubleClick}
     >
-      {isTableEditing && (
-        <span className="absolute -top-5 right-0 z-30 text-[10px] font-medium text-[var(--accent)] pointer-events-none select-none">
-          Sheet
-        </span>
-      )}
+      {isTableEditing && isTableSelected && <TableToolbar component={component} />}
 
       {isTableEditing && (
         <div
@@ -949,6 +965,28 @@ export const TablePreview = memo(function TablePreview({
                 label: 'Insert column right',
                 icon: Columns2,
                 onClick: handleInsertCol,
+              },
+              {
+                key: 'align-left',
+                label: 'Align left',
+                icon: AlignLeft,
+                onClick: () => handleAlign('left'),
+                disabled: !canClear,
+                separatorBefore: true,
+              },
+              {
+                key: 'align-center',
+                label: 'Align center',
+                icon: AlignCenter,
+                onClick: () => handleAlign('center'),
+                disabled: !canClear,
+              },
+              {
+                key: 'align-right',
+                label: 'Align right',
+                icon: AlignRight,
+                onClick: () => handleAlign('right'),
+                disabled: !canClear,
               },
               {
                 key: 'delete-row',

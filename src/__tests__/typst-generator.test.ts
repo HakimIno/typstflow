@@ -674,6 +674,133 @@ describe('TypstGenerator — table component', () => {
     expect(output).toContain('columns: (30mm, 50mm, 20mm)');
     expect(output).not.toContain('1fr');
   });
+
+  it('renders structured detail placeholders when a dynamic table has no data', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              {
+                id: 'table-1',
+                type: 'table',
+                x: 10,
+                y: 20,
+                width: 100,
+                height: 30,
+                dataSource: '{{items}}',
+                showHeader: true,
+                repeatHeaderOnPage: true,
+                columns: [
+                  { id: 'c1', header: 'Header', field: 'name', width: '1fr' },
+                  { id: 'c2', header: 'New Column', field: 'value', width: '1fr' },
+                ],
+                detailRows: [
+                  {
+                    id: 'detail-1',
+                    type: 'data',
+                    cells: [
+                      { id: 'd1', content: 'ปปปป' },
+                      { id: 'd2', content: '{{binding}}' },
+                    ],
+                  },
+                ],
+                style: {},
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const output = generate(schema, {});
+
+    expect(output).toContain('ปปปป');
+    expect(output).toContain('{{binding}}');
+  });
+
+  it('renders legacy column placeholders when a dynamic table has no data', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              {
+                id: 'table-1',
+                type: 'table',
+                x: 10,
+                y: 20,
+                width: 100,
+                height: 30,
+                dataSource: '{{items}}',
+                showHeader: true,
+                repeatHeaderOnPage: true,
+                columns: [
+                  { id: 'c1', header: 'Header', field: 'name', width: '1fr' },
+                  { id: 'c2', header: 'New Column', field: 'value', width: '1fr' },
+                ],
+                style: {},
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const output = generate(schema, {});
+
+    expect(output).toContain('{{name}}');
+    expect(output).toContain('{{value}}');
+  });
+
+  it('can disable design placeholder rows for strict empty-data output', () => {
+    const schema: LayoutSchema = {
+      ...MINIMAL_SCHEMA,
+      pages: [
+        {
+          id: 'page-1',
+          name: 'Page 1',
+          body: {
+            id: 'body',
+            components: [
+              {
+                id: 'table-1',
+                type: 'table',
+                x: 10,
+                y: 20,
+                width: 100,
+                height: 30,
+                dataSource: '{{items}}',
+                showHeader: true,
+                repeatHeaderOnPage: true,
+                columns: [{ id: 'c1', header: 'Header', field: 'name', width: '1fr' }],
+                detailRows: [
+                  {
+                    id: 'detail-1',
+                    type: 'data',
+                    cells: [{ id: 'd1', content: '{{name}}' }],
+                  },
+                ],
+                style: {},
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const output = gen.generate(schema, {}, { renderDesignPlaceholders: false });
+
+    expect(output).not.toContain('{{name}}');
+  });
 });
 
 describe('TypstGenerator — pretty export', () => {
@@ -936,7 +1063,13 @@ describe('TypstGenerator — form-table component', () => {
                   { id: 'c-dept', header: 'Dept./Site', field: 'dept', width: '18mm' },
                   { id: 'c-pr', header: 'PR No.', field: 'prNo', width: '22mm' },
                   { id: 'c-qty', header: 'QTY', field: 'qty', width: '20mm', align: 'right' },
-                  { id: 'c-amount', header: 'Amount', field: 'amount', width: '27mm', align: 'right' },
+                  {
+                    id: 'c-amount',
+                    header: 'Amount',
+                    field: 'amount',
+                    width: '27mm',
+                    align: 'right',
+                  },
                 ],
                 footerSummary: [
                   {
@@ -987,7 +1120,16 @@ describe('TypstGenerator — form-table component', () => {
     };
 
     const output = generate(poSchema, {
-      items: [{ no: 1, description: 'ปากกาไฮไลน์', dept: 'IHD', prNo: 'PR69060015', qty: 10, amount: 207.8 }],
+      items: [
+        {
+          no: 1,
+          description: 'ปากกาไฮไลน์',
+          dept: 'IHD',
+          prNo: 'PR69060015',
+          qty: 10,
+          amount: 207.8,
+        },
+      ],
       totals: { subtotal: 207.8, vat: 14.55, grandTotal: 222.35 },
     });
 

@@ -1,5 +1,6 @@
 import { buildLogicalGrid } from '@/lib/utils/table-grid';
 import {
+  alignSelectedTableCells,
   clearCellContents,
   deleteColumns,
   insertColumn,
@@ -8,6 +9,8 @@ import {
 } from '@/lib/utils/table-utils';
 import type { FormTableComponent, TableComponent, TableRow } from '@/types/schema';
 import type { CellCoord, CellsSelection, SectionType } from './useCellSelection';
+
+type TableTextAlign = 'left' | 'center' | 'right';
 
 export function useTableActions(
   component: TableComponent | FormTableComponent,
@@ -150,6 +153,13 @@ export function useTableActions(
     updateComponent(component.id, updates as Record<string, unknown>);
   };
 
+  const handleAlign = (align: TableTextAlign) => {
+    if (!selectedCells) return;
+    const updates = alignSelectedTableCells(component, selectedCells, align);
+    if (Object.keys(updates).length === 0) return;
+    updateComponent(component.id, updates as Record<string, unknown>);
+  };
+
   const handleInsertRow = () => {
     if (!selectedCells) return;
     const section = selectedCells.section;
@@ -217,6 +227,7 @@ export function useTableActions(
     handleDeleteRows,
     handleDeleteColumns,
     handleClearContents,
+    handleAlign,
     handleInsertRow,
     handleInsertCol,
     handleCellSave,

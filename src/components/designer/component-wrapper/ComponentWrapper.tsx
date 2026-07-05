@@ -9,7 +9,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useResizable } from '@/hooks/use-resizable';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
-import { isTableLikeType } from '@/lib/utils/component-type-utils';
 import {
   SNAP_PAGE_RADIUS,
   calculateComponentSnap,
@@ -19,6 +18,7 @@ import {
   toPageLocalGuides,
   toPageLocalSpacingIndicators,
 } from '@/lib/engine/wasm-snap';
+import { isTableLikeType } from '@/lib/utils/component-type-utils';
 import { getPaperDimensions } from '@/lib/utils/paper-sizes';
 import { detectZoneAtPoint, isDifferentZone } from '@/lib/utils/zone-detector';
 import { type ZoneLayoutCache, getZoneLayoutCache } from '@/lib/utils/zone-layout';
@@ -58,7 +58,8 @@ export const ComponentWrapper = memo(function ComponentWrapper({
   const isHidden = useDesignerStore((s) => s.hiddenComponentIds.includes(componentId));
   const isLocked = useDesignerStore((s) => s.lockedComponentIds.includes(componentId));
   const tableSheetEditId = useDesignerStore((s) => s.tableSheetEditId);
-  const isTableSheetMode = isTableLikeType(component?.type ?? 'text') && tableSheetEditId === componentId;
+  const isTableSheetMode =
+    isTableLikeType(component?.type ?? 'text') && tableSheetEditId === componentId;
   const totalPages = useDesignerStore((s) => s.schema.pages.length);
   const sampleData = useDesignerStore((s) => s.sampleData);
 
@@ -1046,7 +1047,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
           zIndex: flowDragging ? 100 : isSelected ? 50 : 10,
         }}
       >
-        {!isLocked && (
+        {!isLocked && !isTableSheetMode && (
           <ActionBar
             component={component}
             isSelected={isSelected}
@@ -1125,7 +1126,7 @@ export const ComponentWrapper = memo(function ComponentWrapper({
         />
       )}
 
-      {!isLocked && (
+      {!isLocked && !isTableSheetMode && (
         <ActionBar
           component={component}
           isSelected={isSelected}

@@ -5,7 +5,6 @@ import { isVisible, resolveBinding, resolvePath } from '../binding';
 import {
   escapeStringLiteral,
   formatColor,
-  formatFontFamily,
   formatTypstFontStack,
   formatWeight,
   wrapPlacement,
@@ -22,61 +21,59 @@ export function renderTableComponent(
   ctx: RenderContext,
   options: TableRenderOptions = {}
 ): string {
-    if (!isVisible(comp.visible, ctx.local, ctx.global)) return '';
+  if (!isVisible(comp.visible, ctx.local, ctx.global)) return '';
 
-    const cols = comp.columns;
-    const style = comp.style;
-    const parts: string[] = [];
-    const headerRowCount = comp.headerRows?.length ?? (comp.showHeader !== false ? 1 : 0);
+  const cols = comp.columns;
+  const style = comp.style;
+  const parts: string[] = [];
+  const headerRowCount = comp.headerRows?.length ?? (comp.showHeader !== false ? 1 : 0);
 
-    // ── Column widths ─────────────────────────────────────────────────────────
-    const colWidths = resolveTableColumnWidths(cols, comp.width ?? 180)
-      .map((width) => `${formatMm(width)}mm`)
-      .join(', ');
+  // ── Column widths ─────────────────────────────────────────────────────────
+  const colWidths = resolveTableColumnWidths(cols, comp.width ?? 180)
+    .map((width) => `${formatMm(width)}mm`)
+    .join(', ');
 
-    // ── Stroke ────────────────────────────────────────────────────────────────
-    const borderWidth = normalizeLength(style?.borderWidth ?? '0.5pt');
-    const borderColor = formatColor(style?.borderColor ?? '#cbd5e1');
+  // ── Stroke ────────────────────────────────────────────────────────────────
+  const borderWidth = normalizeLength(style?.borderWidth ?? '0.5pt');
+  const borderColor = formatColor(style?.borderColor ?? '#cbd5e1');
 
-    // Header specific
-    const hBorderWidth = normalizeLength(style?.headerBorderWidth ?? borderWidth);
-    const hBorderColor = formatColor(style?.headerBorderColor ?? borderColor);
+  // Header specific
+  const hBorderWidth = normalizeLength(style?.headerBorderWidth ?? borderWidth);
+  const hBorderColor = formatColor(style?.headerBorderColor ?? borderColor);
 
-    // Inner Body specific
-    const innerHWidth = normalizeLength(style?.innerHBorderWidth ?? borderWidth);
-    const innerHColor = formatColor(style?.innerHBorderColor ?? borderColor);
-    const innerVWidth = normalizeLength(style?.innerVBorderWidth ?? borderWidth);
-    const innerVColor = formatColor(style?.innerVBorderColor ?? borderColor);
+  // Inner Body specific
+  const innerHWidth = normalizeLength(style?.innerHBorderWidth ?? borderWidth);
+  const innerHColor = formatColor(style?.innerHBorderColor ?? borderColor);
+  const innerVWidth = normalizeLength(style?.innerVBorderWidth ?? borderWidth);
+  const innerVColor = formatColor(style?.innerVBorderColor ?? borderColor);
 
-    const hDash =
-      style?.horizontalDash && style.horizontalDash !== 'solid'
-        ? `, dash: "${style.horizontalDash}"`
-        : '';
-    const vDash =
-      style?.verticalDash && style.verticalDash !== 'solid'
-        ? `, dash: "${style.verticalDash}"`
-        : '';
+  const hDash =
+    style?.horizontalDash && style.horizontalDash !== 'solid'
+      ? `, dash: "${style.horizontalDash}"`
+      : '';
+  const vDash =
+    style?.verticalDash && style.verticalDash !== 'solid' ? `, dash: "${style.verticalDash}"` : '';
 
-    const hHeaderDash =
-      style?.headerHorizontalDash && style.headerHorizontalDash !== 'solid'
-        ? `, dash: "${style.headerHorizontalDash}"`
-        : '';
-    const vHeaderDash =
-      style?.headerVerticalDash && style.headerVerticalDash !== 'solid'
-        ? `, dash: "${style.headerVerticalDash}"`
-        : '';
+  const hHeaderDash =
+    style?.headerHorizontalDash && style.headerHorizontalDash !== 'solid'
+      ? `, dash: "${style.headerHorizontalDash}"`
+      : '';
+  const vHeaderDash =
+    style?.headerVerticalDash && style.headerVerticalDash !== 'solid'
+      ? `, dash: "${style.headerVerticalDash}"`
+      : '';
 
-    const sides = style?.borderSides ?? {
-      top: true,
-      bottom: true,
-      left: true,
-      right: true,
-      innerH: true,
-      innerV: true,
-    };
+  const sides = style?.borderSides ?? {
+    top: true,
+    bottom: true,
+    left: true,
+    right: true,
+    innerH: true,
+    innerV: true,
+  };
 
-    // We'll use a stroke function to handle granular control
-    const strokeStr = `(x, y) => (
+  // We'll use a stroke function to handle granular control
+  const strokeStr = `(x, y) => (
     top: if y == 0 { if ${sides.top} { (paint: ${borderColor}, thickness: ${borderWidth}) } else { none } } 
          else if y == ${headerRowCount} { (paint: ${hBorderColor}, thickness: ${hBorderWidth}) }
          else if y < ${headerRowCount} { (paint: ${borderColor}, thickness: ${borderWidth}${hHeaderDash}) }
@@ -88,158 +85,247 @@ export function renderTableComponent(
     right: none,  // handled by vline for better reliability
   )`;
 
-    // ── Fill pattern ─────────────────────────────────────────────────────────
-    const fillPattern = style?.fillPattern ?? 'header-only';
-    const headerBg = formatColor(style?.headerBackground ?? '#f1f5f9');
-    const color1 = formatColor(style?.stripedColor1 ?? style?.alternateRowBackground ?? '#ffffff');
-    const color2 = formatColor(style?.stripedColor2 ?? '#f8fafc');
+  // ── Fill pattern ─────────────────────────────────────────────────────────
+  const fillPattern = style?.fillPattern ?? 'header-only';
+  const headerBg = formatColor(style?.headerBackground ?? '#f1f5f9');
+  const color1 = formatColor(style?.stripedColor1 ?? style?.alternateRowBackground ?? '#ffffff');
+  const color2 = formatColor(style?.stripedColor2 ?? '#f8fafc');
 
-    const fillFn = buildFillFn(fillPattern, headerRowCount, headerBg, color1, color2);
+  const fillFn = buildFillFn(fillPattern, headerRowCount, headerBg, color1, color2);
 
-    // ── Text Defaults ──────────────────────────────────────────────────────────
-    const headerFontSize = style?.headerFontSize ?? 10;
-    const headerColor = formatColor(style?.headerColor ?? '#000000');
-    const headerWeight = style?.headerFontWeight ?? 'bold';
-    const bodyFontSize = style?.bodyFontSize ?? 10;
-    const bodyColor = formatColor(style?.bodyColor ?? '#334155');
-    const tableFontFamily = style?.fontFamily ?? 'Sarabun';
-    const headerTextStyle = {
-      size: headerFontSize,
-      color: headerColor,
-      weight: headerWeight,
-      fontFamily: tableFontFamily,
-    };
-    const bodyTextStyle = {
-      size: bodyFontSize,
-      color: bodyColor,
-      weight: 'regular' as const,
-      fontFamily: tableFontFamily,
-    };
+  // ── Text Defaults ──────────────────────────────────────────────────────────
+  const headerFontSize = style?.headerFontSize ?? 10;
+  const headerColor = formatColor(style?.headerColor ?? '#000000');
+  const headerWeight = style?.headerFontWeight ?? 'bold';
+  const bodyFontSize = style?.bodyFontSize ?? 10;
+  const bodyColor = formatColor(style?.bodyColor ?? '#334155');
+  const tableFontFamily = style?.fontFamily ?? 'Sarabun';
+  const headerTextStyle = {
+    size: headerFontSize,
+    color: headerColor,
+    weight: headerWeight,
+    fontFamily: tableFontFamily,
+  };
+  const bodyTextStyle = {
+    size: bodyFontSize,
+    color: bodyColor,
+    weight: 'regular' as const,
+    fontFamily: tableFontFamily,
+  };
 
-    // ── Global Table Font Setups ──────────────────────────────────────────────
-    if (style?.fontFamily || style?.fontSize || style?.fontWeight || style?.lineHeight) {
-      const textArgs: string[] = [];
-      if (style.fontSize) textArgs.push(`size: ${style.fontSize}pt`);
-      if (style.fontWeight) textArgs.push(`weight: ${formatWeight(style.fontWeight)}`);
-      textArgs.push(`font: ${formatTypstFontStack(style?.fontFamily)}`);
-      if (textArgs.length > 0) {
-        parts.push(`#set text(${textArgs.join(', ')})\n`);
-      }
-      if (style.lineHeight) {
-        parts.push(`#set par(leading: ${style.lineHeight - 1}em)\n`);
-      }
+  // ── Global Table Font Setups ──────────────────────────────────────────────
+  if (style?.fontFamily || style?.fontSize || style?.fontWeight || style?.lineHeight) {
+    const textArgs: string[] = [];
+    if (style.fontSize) textArgs.push(`size: ${style.fontSize}pt`);
+    if (style.fontWeight) textArgs.push(`weight: ${formatWeight(style.fontWeight)}`);
+    textArgs.push(`font: ${formatTypstFontStack(style?.fontFamily)}`);
+    if (textArgs.length > 0) {
+      parts.push(`#set text(${textArgs.join(', ')})\n`);
     }
-
-    // ── Resolve data items early (needed for rows: parameter) ────────────────
-    const isStatic = comp.isStatic ?? false;
-    const dataItems = isStatic
-      ? [ctx.local]
-      : (() => {
-          const path = comp.dataSource.replace(/\{\{|\}\}/g, '').trim();
-          const raw = resolvePath(path, ctx.local) ?? resolvePath(path, ctx.global);
-          return Array.isArray(raw) ? raw : [];
-        })();
-    const detailRowCount =
-      comp.detailRows && comp.detailRows.length > 0 ? comp.detailRows.length : 1;
-    const padCount =
-      !comp.groupBy && !isStatic && options.minRows
-        ? Math.max(0, options.minRows - dataItems.length)
-        : 0;
-
-    // ── Compute rows: parameter (maps each physical row to its height) ────────
-    // Without this, Typst ignores row.height set in the designer entirely.
-    const rowsArr: string[] = [];
-    let hasCustomRowHeight = false;
-
-    const pushRowHeight = (h: string | undefined) => {
-      if (h) {
-        rowsArr.push(h); // e.g. "12.5mm" — Typst understands directly
-        hasCustomRowHeight = true;
-      } else {
-        rowsArr.push('auto');
-      }
-    };
-
-    // 1. Header rows
-    if (comp.headerRows?.length) {
-      for (const row of comp.headerRows) pushRowHeight(row.height);
-    } else if (comp.showHeader !== false) {
-      pushRowHeight(undefined); // synthetic header: auto
+    if (style.lineHeight) {
+      parts.push(`#set par(leading: ${style.lineHeight - 1}em)\n`);
     }
+  }
 
-    // 2. Data rows — enumerate using resolved dataItems so we know the exact count
-    if (comp.groupBy && !isStatic) {
-      const groups = new Map<string, any[]>();
-      for (const item of dataItems) {
-        const key = String(resolvePath(comp.groupBy, item) ?? 'Other');
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)?.push(item);
-      }
-      for (const items of groups.values()) {
-        rowsArr.push('auto'); // group-header row
-        for (let i = 0; i < items.length; i++) {
-          if (comp.detailRows?.length) {
-            for (const dr of comp.detailRows) pushRowHeight(dr.height);
-          } else {
-            pushRowHeight(undefined);
-          }
-        }
-        if (comp.autoGroupFooter) rowsArr.push('auto');
-        if (comp.repeatSummaryOnGroup && comp.summaryRows?.length) {
-          for (const _sr of comp.summaryRows) rowsArr.push('auto');
-        }
-      }
+  // ── Resolve data items early (needed for rows: parameter) ────────────────
+  const isStatic = comp.isStatic ?? false;
+  const dataItems = isStatic
+    ? [ctx.local]
+    : (() => {
+        const path = comp.dataSource.replace(/\{\{|\}\}/g, '').trim();
+        const raw = resolvePath(path, ctx.local) ?? resolvePath(path, ctx.global);
+        return Array.isArray(raw) ? raw : [];
+      })();
+  const detailRowCount = comp.detailRows && comp.detailRows.length > 0 ? comp.detailRows.length : 1;
+  const padCount =
+    !comp.groupBy && !isStatic && options.minRows
+      ? Math.max(0, options.minRows - dataItems.length)
+      : 0;
+  const renderPlaceholderRows =
+    ctx.renderDesignPlaceholders !== false &&
+    !comp.groupBy &&
+    !isStatic &&
+    dataItems.length === 0 &&
+    padCount === 0;
+  const dataRowsForRender = renderPlaceholderRows ? [{}] : dataItems;
+
+  // ── Compute rows: parameter (maps each physical row to its height) ────────
+  // Without this, Typst ignores row.height set in the designer entirely.
+  const rowsArr: string[] = [];
+  let hasCustomRowHeight = false;
+
+  const pushRowHeight = (h: string | undefined) => {
+    if (h) {
+      rowsArr.push(h); // e.g. "12.5mm" — Typst understands directly
+      hasCustomRowHeight = true;
     } else {
-      for (let i = 0; i < dataItems.length; i++) {
+      rowsArr.push('auto');
+    }
+  };
+
+  // 1. Header rows
+  if (comp.headerRows?.length) {
+    for (const row of comp.headerRows) pushRowHeight(row.height);
+  } else if (comp.showHeader !== false) {
+    pushRowHeight(undefined); // synthetic header: auto
+  }
+
+  // 2. Data rows — enumerate using resolved dataItems so we know the exact count
+  if (comp.groupBy && !isStatic) {
+    const groups = new Map<string, any[]>();
+    for (const item of dataItems) {
+      const key = String(resolvePath(comp.groupBy, item) ?? 'Other');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)?.push(item);
+    }
+    for (const items of groups.values()) {
+      rowsArr.push('auto'); // group-header row
+      for (let i = 0; i < items.length; i++) {
         if (comp.detailRows?.length) {
           for (const dr of comp.detailRows) pushRowHeight(dr.height);
         } else {
           pushRowHeight(undefined);
         }
       }
-      for (let i = 0; i < padCount; i++) {
-        if (comp.detailRows?.length) {
-          for (const dr of comp.detailRows) pushRowHeight(dr.height);
-        } else {
-          pushRowHeight(undefined);
-        }
-      }
-      for (const row of options.trailingRows ?? []) pushRowHeight(row.height);
-      if (comp.summaryRows?.length && !comp.repeatSummaryOnGroup) {
+      if (comp.autoGroupFooter) rowsArr.push('auto');
+      if (comp.repeatSummaryOnGroup && comp.summaryRows?.length) {
         for (const _sr of comp.summaryRows) rowsArr.push('auto');
       }
     }
-
-    // 3. Footer rows
-    for (const row of comp.footerRows ?? []) pushRowHeight(row.height);
-
-    // ── Table args ────────────────────────────────────────────────────────────
-    const inset = style?.inset ?? style?.cellPadding ?? '7pt';
-    const tableArgs = [`columns: (${colWidths})`, `inset: ${inset}`, `stroke: ${strokeStr}`];
-    if (fillFn) tableArgs.push(`fill: ${fillFn}`);
-    if (hasCustomRowHeight && rowsArr.length > 0) {
-      tableArgs.push(`rows: (${rowsArr.join(', ')})`);
+  } else {
+    for (let i = 0; i < dataRowsForRender.length; i++) {
+      if (comp.detailRows?.length) {
+        for (const dr of comp.detailRows) pushRowHeight(dr.height);
+      } else {
+        pushRowHeight(undefined);
+      }
     }
+    for (let i = 0; i < padCount; i++) {
+      if (comp.detailRows?.length) {
+        for (const dr of comp.detailRows) pushRowHeight(dr.height);
+      } else {
+        pushRowHeight(undefined);
+      }
+    }
+    for (const row of options.trailingRows ?? []) pushRowHeight(row.height);
+    if (comp.summaryRows?.length && !comp.repeatSummaryOnGroup) {
+      for (const _sr of comp.summaryRows) rowsArr.push('auto');
+    }
+  }
 
-    parts.push(`#table(\n  ${tableArgs.join(',\n  ')},\n`);
+  // 3. Footer rows
+  for (const row of comp.footerRows ?? []) pushRowHeight(row.height);
 
-    // ── Header ────────────────────────────────────────────────────────────────
-    const repeat = comp.repeatHeaderOnPage !== false;
-    if (comp.headerRows && comp.headerRows.length > 0) {
-      parts.push(`  table.header(repeat: ${repeat},\n`);
-      for (let y = 0; y < comp.headerRows.length; y++) {
-        const row = comp.headerRows[y];
+  // ── Table args ────────────────────────────────────────────────────────────
+  const inset = style?.inset ?? style?.cellPadding ?? '7pt';
+  const tableArgs = [`columns: (${colWidths})`, `inset: ${inset}`, `stroke: ${strokeStr}`];
+  if (fillFn) tableArgs.push(`fill: ${fillFn}`);
+  if (hasCustomRowHeight && rowsArr.length > 0) {
+    tableArgs.push(`rows: (${rowsArr.join(', ')})`);
+  }
+
+  parts.push(`#table(\n  ${tableArgs.join(',\n  ')},\n`);
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  const repeat = comp.repeatHeaderOnPage !== false;
+  if (comp.headerRows && comp.headerRows.length > 0) {
+    parts.push(`  table.header(repeat: ${repeat},\n`);
+    for (let y = 0; y < comp.headerRows.length; y++) {
+      const row = comp.headerRows[y];
+      for (let x = 0; x < row.cells.length; x++) {
+        const cell = row.cells[x];
+        const val = resolveBinding(cell.content, ctx.local, ctx.global);
+        const fmt = cell.format ?? 'text';
+        const formattedVal = formatCellValue(val, fmt);
+        const cellKey = `header:${x}`;
+        const specificKey = `header:${y}:${x}`;
+        parts.push(
+          renderStructuredCell(
+            cell,
+            headerTextStyle,
+            formattedVal,
+            cellKey,
+            specificKey,
+            style?.cellStyles
+          )
+        );
+      }
+    }
+    parts.push('  ),\n');
+  } else if (comp.showHeader !== false) {
+    parts.push(`  table.header(repeat: ${repeat},\n`);
+    const covered = new Set<number>();
+    for (let x = 0; x < cols.length; x++) {
+      if (covered.has(x)) continue;
+      const col = cols[x];
+      const cs = col.colspan ?? 1;
+      const rs = col.rowspan ?? 1;
+      const headerText = escapeTypst(col.header);
+
+      // Build a virtual cell object from TableColumn to pass to renderStructuredCell
+      const virtualCell = {
+        colspan: cs,
+        rowspan: rs,
+        fill: col.background || style?.headerBackground || '#f1f5f9',
+        align: col.align || 'center',
+        style: col.style,
+      };
+
+      const cellKey = `header:${x}`;
+      parts.push(
+        renderStructuredCell(
+          virtualCell,
+          headerTextStyle,
+          headerText,
+          cellKey,
+          undefined,
+          style?.cellStyles
+        )
+      );
+      for (let i = 1; i < cs; i++) covered.add(x + i);
+    }
+    parts.push('  ),\n');
+  }
+
+  // ── Data rows ─────────────────────────────────────────────────────────────
+  // Calculate total rows for stroke function and hlines
+  let totalRows = headerRowCount + (comp.footerRows?.length ?? 0);
+  if (comp.groupBy && !isStatic) {
+    const groups: Record<string, any[]> = {};
+    for (const item of dataItems) {
+      const key = String(resolvePath(comp.groupBy, item) || 'Other');
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
+    }
+    totalRows += dataItems.length * detailRowCount + Object.keys(groups).length; // (items * detailRowCount) + group headers
+    if (comp.autoGroupFooter) totalRows += Object.keys(groups).length; // + group footers
+    if (comp.repeatSummaryOnGroup && comp.summaryRows && comp.summaryRows.length > 0) {
+      totalRows += Object.keys(groups).length * comp.summaryRows.length; // + repeated group summaries
+    }
+  } else {
+    totalRows += dataRowsForRender.length * detailRowCount;
+    totalRows += padCount * detailRowCount;
+    totalRows += options.trailingRows?.length ?? 0;
+    if (comp.summaryRows && comp.summaryRows.length > 0 && !comp.repeatSummaryOnGroup) {
+      totalRows += comp.summaryRows.length; // + table end summaries
+    }
+  }
+
+  const renderRow = (item: any, placeholders = false) => {
+    if (comp.detailRows && comp.detailRows.length > 0) {
+      for (let y = 0; y < comp.detailRows.length; y++) {
+        const row = comp.detailRows[y];
         for (let x = 0; x < row.cells.length; x++) {
           const cell = row.cells[x];
-          const val = resolveBinding(cell.content, ctx.local, ctx.global);
+          const val = resolveBinding(cell.content, item as Record<string, unknown>, ctx.global);
           const fmt = cell.format ?? 'text';
           const formattedVal = formatCellValue(val, fmt);
-          const cellKey = `header:${x}`;
-          const specificKey = `header:${y}:${x}`;
+          const cellKey = `data:${x}`;
+          const specificKey = `data:${y}:${x}`;
           parts.push(
             renderStructuredCell(
               cell,
-              headerTextStyle,
+              bodyTextStyle,
               formattedVal,
               cellKey,
               specificKey,
@@ -248,32 +334,34 @@ export function renderTableComponent(
           );
         }
       }
-      parts.push('  ),\n');
-    } else if (comp.showHeader !== false) {
-      parts.push(`  table.header(repeat: ${repeat},\n`);
+    } else {
       const covered = new Set<number>();
       for (let x = 0; x < cols.length; x++) {
         if (covered.has(x)) continue;
         const col = cols[x];
         const cs = col.colspan ?? 1;
         const rs = col.rowspan ?? 1;
-        const headerText = escapeTypst(col.header);
+        const rawVal = resolvePath(col.field, item);
+        const valStr =
+          rawVal != null ? String(rawVal) : placeholders && col.field ? `{{${col.field}}}` : '';
+        const fmt = col.format ?? 'text';
+        const content = formatCellValue(valStr, fmt);
 
-        // Build a virtual cell object from TableColumn to pass to renderStructuredCell
+        // Build a virtual cell from TableColumn
         const virtualCell = {
           colspan: cs,
           rowspan: rs,
-          fill: col.background || style?.headerBackground || '#f1f5f9',
-          align: col.align || 'center',
+          fill: col.background,
+          align: col.align,
           style: col.style,
         };
 
-        const cellKey = `header:${x}`;
+        const cellKey = `data:${x}`;
         parts.push(
           renderStructuredCell(
             virtualCell,
-            headerTextStyle,
-            headerText,
+            bodyTextStyle,
+            content,
             cellKey,
             undefined,
             style?.cellStyles
@@ -281,313 +369,228 @@ export function renderTableComponent(
         );
         for (let i = 1; i < cs; i++) covered.add(x + i);
       }
-      parts.push('  ),\n');
+    }
+  };
+
+  const renderStandaloneRow = (row: TableRow) => {
+    for (let x = 0; x < row.cells.length; x++) {
+      const cell = row.cells[x];
+      const val = resolveBinding(cell.content, ctx.local, ctx.global, dataItems);
+      const fmt = cell.format ?? 'text';
+      const formattedVal = formatCellValue(val, fmt);
+      parts.push(
+        renderStructuredCell(
+          cell,
+          bodyTextStyle,
+          formattedVal,
+          `data:${x}`,
+          undefined,
+          style?.cellStyles
+        )
+      );
+    }
+  };
+
+  if (comp.groupBy && !isStatic) {
+    const groups: Record<string, any[]> = {};
+    for (const item of dataItems) {
+      const key = String(resolvePath(comp.groupBy, item) || 'Other');
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
     }
 
-    // ── Data rows ─────────────────────────────────────────────────────────────
-    // Calculate total rows for stroke function and hlines
-    let totalRows = headerRowCount + (comp.footerRows?.length ?? 0);
-    if (comp.groupBy && !isStatic) {
-      const groups: Record<string, any[]> = {};
-      for (const item of dataItems) {
-        const key = String(resolvePath(comp.groupBy, item) || 'Other');
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(item);
-      }
-      totalRows += dataItems.length * detailRowCount + Object.keys(groups).length; // (items * detailRowCount) + group headers
-      if (comp.autoGroupFooter) totalRows += Object.keys(groups).length; // + group footers
-      if (comp.repeatSummaryOnGroup && comp.summaryRows && comp.summaryRows.length > 0) {
-        totalRows += Object.keys(groups).length * comp.summaryRows.length; // + repeated group summaries
-      }
-    } else {
-      totalRows += dataItems.length * detailRowCount;
-      totalRows += padCount * detailRowCount;
-      totalRows += options.trailingRows?.length ?? 0;
-      if (comp.summaryRows && comp.summaryRows.length > 0 && !comp.repeatSummaryOnGroup) {
-        totalRows += comp.summaryRows.length; // + table end summaries
-      }
-    }
+    for (const [groupKey, items] of Object.entries(groups)) {
+      const gh = comp.groupHeaderStyle;
+      const ghBg = formatColor(gh?.background || '#f1f5f9');
+      const ghColor = formatColor(gh?.color || '#000000');
+      const ghSize = gh?.fontSize || 10;
+      const ghText = resolveBinding(
+        comp.groupHeaderFormat || '{{group}}',
+        { group: groupKey, ...items[0] },
+        ctx.global,
+        items // Pass the group items for aggregates like {{SUM(...)}}
+      );
 
-    const renderRow = (item: any) => {
-      if (comp.detailRows && comp.detailRows.length > 0) {
-        for (let y = 0; y < comp.detailRows.length; y++) {
-          const row = comp.detailRows[y];
-          for (let x = 0; x < row.cells.length; x++) {
-            const cell = row.cells[x];
-            const val = resolveBinding(cell.content, item as Record<string, unknown>, ctx.global);
-            const fmt = cell.format ?? 'text';
-            const formattedVal = formatCellValue(val, fmt);
-            const cellKey = `data:${x}`;
-            const specificKey = `data:${y}:${x}`;
-            parts.push(
-              renderStructuredCell(
-                cell,
-                bodyTextStyle,
-                formattedVal,
-                cellKey,
-                specificKey,
-                style?.cellStyles
-              )
-            );
-          }
-        }
-      } else {
-        const covered = new Set<number>();
+      const ghAlign = gh?.align || 'left';
+      parts.push(
+        `  table.cell(colspan: ${cols.length}, fill: ${ghBg})` +
+          `[\n    #set text(size: ${ghSize}pt, fill: ${ghColor}, weight: "bold")\n    #set align(${ghAlign})\n    ${escapeTypst(ghText)}\n  ],\n`
+      );
+
+      for (const item of items) renderRow(item);
+
+      // --- Auto Group Footer (Structured Subtotal Row) ---
+      if (comp.autoGroupFooter) {
         for (let x = 0; x < cols.length; x++) {
-          if (covered.has(x)) continue;
           const col = cols[x];
-          const cs = col.colspan ?? 1;
-          const rs = col.rowspan ?? 1;
-          const rawVal = resolvePath(col.field, item);
-          const valStr = rawVal != null ? String(rawVal) : '';
-          const fmt = col.format ?? 'text';
-          const content = formatCellValue(valStr, fmt);
+          let cellContent = '';
 
-          // Build a virtual cell from TableColumn
-          const virtualCell = {
-            colspan: cs,
-            rowspan: rs,
-            fill: col.background,
-            align: col.align,
-            style: col.style,
+          if (col.footerExpr) {
+            cellContent = col.footerExpr;
+          } else if (x === 0) {
+            cellContent = comp.autoGroupFooterLabel || 'Subtotal';
+          } else if (col.field) {
+            cellContent = `{{SUM(${col.field})}}`;
+          }
+
+          if (!cellContent) {
+            const gfBg = formatColor(comp.groupFooterStyle?.background || 'white.darken(3%)');
+            parts.push(`  table.cell(fill: ${gfBg})[],\n`);
+            continue;
+          }
+
+          const val = resolveBinding(cellContent, items[0], ctx.global, items);
+          const align = col.align || 'left';
+          const fmt = col.format || 'text';
+          const isSum = cellContent.includes('SUM');
+          const displayVal = fmt !== 'text' && isSum ? formatCellValue(val, fmt) : escapeTypst(val);
+
+          // Styling overrides for footer
+          const gf = comp.groupFooterStyle;
+          const cellFill = gf?.background || 'white.darken(3%)';
+          const textStyle = {
+            size: gf?.fontSize || bodyFontSize,
+            color: gf?.color || '#000000',
+            weight: gf?.fontWeight || 'bold',
+            fontFamily: tableFontFamily,
           };
 
-          const cellKey = `data:${x}`;
+          const virtualCell = {
+            fill: cellFill,
+            align: align,
+            style: gf,
+          };
+
+          const cellKey = `footer:${x}`;
           parts.push(
             renderStructuredCell(
               virtualCell,
-              bodyTextStyle,
-              content,
+              textStyle,
+              displayVal,
               cellKey,
               undefined,
               style?.cellStyles
             )
           );
-          for (let i = 1; i < cs; i++) covered.add(x + i);
         }
       }
-    };
 
-    const renderStandaloneRow = (row: TableRow) => {
+      // --- Group Summary Notes (Legacy) ---
+      if (comp.repeatSummaryOnGroup && comp.summaryRows && comp.summaryRows.length > 0) {
+        renderSummaryRows(comp.summaryRows, items);
+      }
+    }
+  } else {
+    for (const item of dataRowsForRender) renderRow(item, renderPlaceholderRows);
+    for (let i = 0; i < padCount; i++) renderRow({});
+    for (const row of options.trailingRows ?? []) renderStandaloneRow(row);
+  }
+
+  // ── Summary rows (Legacy / Table End) ────
+  function renderSummaryRows(rows: any[], groupItems?: any[]) {
+    const span = cols.length > 1 ? cols.length - 1 : 1;
+    for (const row of rows) {
+      if (row.separator) parts.push('  table.hline(stroke: 1pt + black),\n');
+      // If we have groupItems, use them for aggregates, otherwise use global context
+      const val = resolveBinding(
+        row.value,
+        ctx.local,
+        ctx.global,
+        groupItems || dataItems // Use group specific items if available
+      );
+      const weight = row.style?.fontWeight === 'bold' ? 'bold' : 'regular';
+      parts.push(
+        `  table.cell(colspan: ${span}, align: right)[*${escapeTypst(row.label)}*],\n` +
+          `  [\n    #set text(weight: "${weight}")\n    ${escapeTypst(val)}\n  ],\n`
+      );
+    }
+  }
+
+  if (comp.summaryRows && comp.summaryRows.length > 0 && !comp.repeatSummaryOnGroup) {
+    renderSummaryRows(comp.summaryRows);
+  }
+
+  // ── Footer rows ───────────────────────────────────────────────────────────
+  if (comp.footerRows && comp.footerRows.length > 0) {
+    const repeatFooter = comp.footerRows[0].repeat !== false;
+    parts.push(`  table.footer(repeat: ${repeatFooter},\n`);
+    for (let y = 0; y < comp.footerRows.length; y++) {
+      const row = comp.footerRows[y];
       for (let x = 0; x < row.cells.length; x++) {
         const cell = row.cells[x];
         const val = resolveBinding(cell.content, ctx.local, ctx.global, dataItems);
         const fmt = cell.format ?? 'text';
         const formattedVal = formatCellValue(val, fmt);
+        const cellKey = `footer:${x}`;
+        const specificKey = `footer:${y}:${x}`;
         parts.push(
           renderStructuredCell(
             cell,
-            bodyTextStyle,
+            { ...bodyTextStyle, weight: 'bold' },
             formattedVal,
-            `data:${x}`,
-            undefined,
+            cellKey,
+            specificKey,
             style?.cellStyles
           )
         );
       }
-    };
-
-    if (comp.groupBy && !isStatic) {
-      const groups: Record<string, any[]> = {};
-      for (const item of dataItems) {
-        const key = String(resolvePath(comp.groupBy, item) || 'Other');
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(item);
-      }
-
-      for (const [groupKey, items] of Object.entries(groups)) {
-        const gh = comp.groupHeaderStyle;
-        const ghBg = formatColor(gh?.background || '#f1f5f9');
-        const ghColor = formatColor(gh?.color || '#000000');
-        const ghSize = gh?.fontSize || 10;
-        const ghText = resolveBinding(
-          comp.groupHeaderFormat || '{{group}}',
-          { group: groupKey, ...items[0] },
-          ctx.global,
-          items // Pass the group items for aggregates like {{SUM(...)}}
-        );
-
-        const ghAlign = gh?.align || 'left';
-        parts.push(
-          `  table.cell(colspan: ${cols.length}, fill: ${ghBg})` +
-            `[\n    #set text(size: ${ghSize}pt, fill: ${ghColor}, weight: "bold")\n    #set align(${ghAlign})\n    ${escapeTypst(ghText)}\n  ],\n`
-        );
-
-        for (const item of items) renderRow(item);
-
-        // --- Auto Group Footer (Structured Subtotal Row) ---
-        if (comp.autoGroupFooter) {
-          for (let x = 0; x < cols.length; x++) {
-            const col = cols[x];
-            let cellContent = '';
-
-            if (col.footerExpr) {
-              cellContent = col.footerExpr;
-            } else if (x === 0) {
-              cellContent = comp.autoGroupFooterLabel || 'Subtotal';
-            } else if (col.field) {
-              cellContent = `{{SUM(${col.field})}}`;
-            }
-
-            if (!cellContent) {
-              const gfBg = formatColor(comp.groupFooterStyle?.background || 'white.darken(3%)');
-              parts.push(`  table.cell(fill: ${gfBg})[],\n`);
-              continue;
-            }
-
-            const val = resolveBinding(cellContent, items[0], ctx.global, items);
-            const align = col.align || 'left';
-            const fmt = col.format || 'text';
-            const isSum = cellContent.includes('SUM');
-            const displayVal =
-              fmt !== 'text' && isSum ? formatCellValue(val, fmt) : escapeTypst(val);
-
-            // Styling overrides for footer
-            const gf = comp.groupFooterStyle;
-            const cellFill = gf?.background || 'white.darken(3%)';
-            const textStyle = {
-              size: gf?.fontSize || bodyFontSize,
-              color: gf?.color || '#000000',
-              weight: gf?.fontWeight || 'bold',
-              fontFamily: tableFontFamily,
-            };
-
-            const virtualCell = {
-              fill: cellFill,
-              align: align,
-              style: gf,
-            };
-
-            const cellKey = `footer:${x}`;
-            parts.push(
-              renderStructuredCell(
-                virtualCell,
-                textStyle,
-                displayVal,
-                cellKey,
-                undefined,
-                style?.cellStyles
-              )
-            );
-          }
-        }
-
-        // --- Group Summary Notes (Legacy) ---
-        if (comp.repeatSummaryOnGroup && comp.summaryRows && comp.summaryRows.length > 0) {
-          renderSummaryRows(comp.summaryRows, items);
-        }
-      }
-    } else {
-      for (const item of dataItems) renderRow(item);
-      for (let i = 0; i < padCount; i++) renderRow({});
-      for (const row of options.trailingRows ?? []) renderStandaloneRow(row);
     }
+    parts.push('  ),\n');
+  }
 
-    // ── Summary rows (Legacy / Table End) ────
-    function renderSummaryRows(rows: any[], groupItems?: any[]) {
-      const span = cols.length > 1 ? cols.length - 1 : 1;
-      for (const row of rows) {
-        if (row.separator) parts.push('  table.hline(stroke: 1pt + black),\n');
-        // If we have groupItems, use them for aggregates, otherwise use global context
-        const val = resolveBinding(
-          row.value,
-          ctx.local,
-          ctx.global,
-          groupItems || dataItems // Use group specific items if available
-        );
-        const weight = row.style?.fontWeight === 'bold' ? 'bold' : 'regular';
-        parts.push(
-          `  table.cell(colspan: ${span}, align: right)[*${escapeTypst(row.label)}*],\n` +
-            `  [\n    #set text(weight: "${weight}")\n    ${escapeTypst(val)}\n  ],\n`
-        );
-      }
-    }
-
-    if (comp.summaryRows && comp.summaryRows.length > 0 && !comp.repeatSummaryOnGroup) {
-      renderSummaryRows(comp.summaryRows);
-    }
-
-    // ── Footer rows ───────────────────────────────────────────────────────────
-    if (comp.footerRows && comp.footerRows.length > 0) {
-      const repeatFooter = comp.footerRows[0].repeat !== false;
-      parts.push(`  table.footer(repeat: ${repeatFooter},\n`);
-      for (let y = 0; y < comp.footerRows.length; y++) {
-        const row = comp.footerRows[y];
-        for (let x = 0; x < row.cells.length; x++) {
-          const cell = row.cells[x];
-          const val = resolveBinding(cell.content, ctx.local, ctx.global, dataItems);
-          const fmt = cell.format ?? 'text';
-          const formattedVal = formatCellValue(val, fmt);
-          const cellKey = `footer:${x}`;
-          const specificKey = `footer:${y}:${x}`;
-          parts.push(
-            renderStructuredCell(
-              cell,
-              { ...bodyTextStyle, weight: 'bold' },
-              formattedVal,
-              cellKey,
-              specificKey,
-              style?.cellStyles
-            )
-          );
-        }
-      }
-      parts.push('  ),\n');
-    }
-
-    // ── Outermost Bottom/Right Borders ────────────────────────────────────────
-    if (style?.borderSides?.bottom !== false) {
-      parts.push(
-        `  table.hline(y: ${totalRows}, stroke: (paint: ${borderColor}, thickness: ${borderWidth})),\n`
-      );
-    }
-    if (style?.borderSides?.right !== false) {
-      parts.push(
-        `  table.vline(x: ${cols.length}, stroke: (paint: ${borderColor}, thickness: ${borderWidth})),\n`
-      );
-    }
-
-    // ── hlines / vlines (Manual overrides) ────────────────────────────────────
-    if (comp.hlines) {
-      for (const hl of comp.hlines) {
-        const args = [`y: ${hl.y}`];
-        if (hl.start && hl.start > 0) args.push(`start: ${hl.start}`);
-        if (hl.end) args.push(`end: ${hl.end}`);
-
-        let s = hl.stroke ? formatColor(hl.stroke) : `${borderWidth} + ${borderColor}`;
-        if (hl.dash && hl.dash !== 'solid') {
-          s = `(paint: ${hl.stroke ? formatColor(hl.stroke) : borderColor}, thickness: ${borderWidth}, dash: "${hl.dash}")`;
-        }
-        args.push(`stroke: ${s}`);
-        if (hl.position) args.push(`position: ${hl.position}`);
-        parts.push(`  table.hline(${args.join(', ')}),\n`);
-      }
-    }
-    if (comp.vlines) {
-      for (const vl of comp.vlines) {
-        const args = [`x: ${vl.x}`];
-        if (vl.start && vl.start > 0) args.push(`start: ${vl.start}`);
-        if (vl.end) args.push(`end: ${vl.end}`);
-        let s = vl.stroke ? formatColor(vl.stroke) : `${borderWidth} + ${borderColor}`;
-        if (vl.dash && vl.dash !== 'solid') {
-          s = `(paint: ${vl.stroke ? formatColor(vl.stroke) : borderColor}, thickness: ${borderWidth}, dash: "${vl.dash}")`;
-        }
-        args.push(`stroke: ${s}`);
-        if (vl.position) args.push(`position: ${vl.position}`);
-        parts.push(`  table.vline(${args.join(', ')}),\n`);
-      }
-    }
-
-    parts.push(')\n');
-    return wrapPlacement(
-      comp,
-      parts.join(''),
-      ctx.offsetX,
-      ctx.offsetY,
-      ctx.flowMode,
-      ctx.fillWidth,
-      ctx.pretty
+  // ── Outermost Bottom/Right Borders ────────────────────────────────────────
+  if (style?.borderSides?.bottom !== false) {
+    parts.push(
+      `  table.hline(y: ${totalRows}, stroke: (paint: ${borderColor}, thickness: ${borderWidth})),\n`
     );
+  }
+  if (style?.borderSides?.right !== false) {
+    parts.push(
+      `  table.vline(x: ${cols.length}, stroke: (paint: ${borderColor}, thickness: ${borderWidth})),\n`
+    );
+  }
+
+  // ── hlines / vlines (Manual overrides) ────────────────────────────────────
+  if (comp.hlines) {
+    for (const hl of comp.hlines) {
+      const args = [`y: ${hl.y}`];
+      if (hl.start && hl.start > 0) args.push(`start: ${hl.start}`);
+      if (hl.end) args.push(`end: ${hl.end}`);
+
+      let s = hl.stroke ? formatColor(hl.stroke) : `${borderWidth} + ${borderColor}`;
+      if (hl.dash && hl.dash !== 'solid') {
+        s = `(paint: ${hl.stroke ? formatColor(hl.stroke) : borderColor}, thickness: ${borderWidth}, dash: "${hl.dash}")`;
+      }
+      args.push(`stroke: ${s}`);
+      if (hl.position) args.push(`position: ${hl.position}`);
+      parts.push(`  table.hline(${args.join(', ')}),\n`);
+    }
+  }
+  if (comp.vlines) {
+    for (const vl of comp.vlines) {
+      const args = [`x: ${vl.x}`];
+      if (vl.start && vl.start > 0) args.push(`start: ${vl.start}`);
+      if (vl.end) args.push(`end: ${vl.end}`);
+      let s = vl.stroke ? formatColor(vl.stroke) : `${borderWidth} + ${borderColor}`;
+      if (vl.dash && vl.dash !== 'solid') {
+        s = `(paint: ${vl.stroke ? formatColor(vl.stroke) : borderColor}, thickness: ${borderWidth}, dash: "${vl.dash}")`;
+      }
+      args.push(`stroke: ${s}`);
+      if (vl.position) args.push(`position: ${vl.position}`);
+      parts.push(`  table.vline(${args.join(', ')}),\n`);
+    }
+  }
+
+  parts.push(')\n');
+  return wrapPlacement(
+    comp,
+    parts.join(''),
+    ctx.offsetX,
+    ctx.offsetY,
+    ctx.flowMode,
+    ctx.fillWidth,
+    ctx.pretty
+  );
 }
 
 export const tablePlugin: ComponentPlugin<TableComponent> = {

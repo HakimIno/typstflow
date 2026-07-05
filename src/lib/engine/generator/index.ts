@@ -1,18 +1,18 @@
 import type { ComponentNode, GroupDefinition, LayoutSchema, Zone } from '@/types/schema';
 import { resolveBinding, resolvePath } from './binding';
 import type { GenerateOptions } from './options';
+import { emitFixedPageBreak } from './pagebreak';
 import {
   FORMAT_HELPERS,
+  PRETTY_FORMAT_HELPERS,
   generateFonts,
   generateImports,
   generatePageSetup,
-  PRETTY_FORMAT_HELPERS,
 } from './preamble';
 import { finalizePrettyOutput, formatComponentComment, generateDocumentBanner } from './pretty';
-import { emitFixedPageBreak } from './pagebreak';
 import { PluginRegistry } from './registry';
-import { shouldRenderZone } from './zone-visibility';
 import type { ComponentPlugin, RenderContext } from './types';
+import { shouldRenderZone } from './zone-visibility';
 
 import { barcodePlugin } from './plugins/barcode';
 import { checklistPlugin } from './plugins/checklist';
@@ -21,9 +21,8 @@ import { fieldGridPlugin } from './plugins/field-grid';
 import { fillInPlugin } from './plugins/fill-in';
 import { formBoxPlugin } from './plugins/form-box';
 import { formTablePlugin } from './plugins/form-table';
-import { letterheadPlugin } from './plugins/letterhead';
-import { signatureBlockPlugin } from './plugins/signature-block';
 import { imagePlugin } from './plugins/image';
+import { letterheadPlugin } from './plugins/letterhead';
 import { linePlugin } from './plugins/line';
 import { pageBreakIndicatorPlugin } from './plugins/page-break-indicator';
 import { pageNumberPlugin } from './plugins/page-number';
@@ -31,6 +30,7 @@ import { qrPlugin } from './plugins/qr';
 import { rectanglePlugin } from './plugins/rectangle';
 import { repeaterPlugin } from './plugins/repeater';
 import { signaturePlugin } from './plugins/signature';
+import { signatureBlockPlugin } from './plugins/signature-block';
 import { spacerPlugin } from './plugins/spacer';
 import { summaryBoxPlugin } from './plugins/summary-box';
 import { tablePlugin } from './plugins/table';
@@ -83,6 +83,7 @@ const BUILT_IN_PLUGINS: ComponentPlugin[] = [
  */
 export class TypstGenerator {
   private readonly registry: PluginRegistry;
+  private renderDesignPlaceholders = true;
 
   constructor(customPlugins: ComponentPlugin[] = []) {
     this.registry = new PluginRegistry();
@@ -96,6 +97,7 @@ export class TypstGenerator {
     options: GenerateOptions = {}
   ): string {
     const pretty = options.pretty ?? false;
+    this.renderDesignPlaceholders = options.renderDesignPlaceholders ?? true;
     const parts: string[] = [];
 
     if (pretty) {
@@ -360,7 +362,7 @@ export class TypstGenerator {
     bodyOffsetY: number,
     headerOffsetY: number,
     footerOffsetY: number,
-    nativeBands = false,
+    _nativeBands = false,
     pretty = false
   ): string {
     const totalPages = schema.pages.length;
@@ -483,6 +485,7 @@ export class TypstGenerator {
         schema,
         flowMode: isFlowZone,
         pretty,
+        renderDesignPlaceholders: this.renderDesignPlaceholders,
         render: renderChild,
         ...overrides,
       };
