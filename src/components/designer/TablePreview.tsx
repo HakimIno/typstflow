@@ -1,7 +1,9 @@
 'use client';
 
+import { useSheetKeyboard } from '@/hooks/use-sheet-keyboard';
 import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { buildFormTableFillerRows, buildFormTableSummaryRows } from '@/lib/utils/form-table';
+import type { SheetNavSection } from '@/lib/utils/table-nav';
 import { buildPreviewFontStack } from '@/lib/utils/preview-fonts';
 import { buildLogicalGrid, physToLogical } from '@/lib/utils/table-grid';
 import { resolveTableColumnPercentages } from '@/lib/utils/table-widths';
@@ -571,6 +573,34 @@ export const TablePreview = memo(function TablePreview({
     }
     return sections;
   }, [component]);
+
+  // Keyboard-navigable rows in render order (generated summary rows excluded —
+  // they're read-only and edited via the properties panel).
+  const navSections: SheetNavSection[] = useMemo(() => {
+    const secs: SheetNavSection[] = [];
+    if (headerRows.length) {
+      secs.push({ section: 'header', sectionKey: 'headerRows', rows: headerRows });
+    }
+    if (bodyRows.length) secs.push({ section: 'data', sectionKey: 'detailRows', rows: bodyRows });
+    for (const fs of footerSections) {
+      if (fs.sectionKey === '__generatedRows') continue;
+      secs.push({ section: 'footer', sectionKey: fs.sectionKey, rows: fs.rows });
+    }
+    return secs;
+  }, [headerRows, bodyRows, footerSections]);
+
+  useSheetKeyboard({
+    component,
+    enabled: isTableEditing && isTableSelected,
+    containerRef: tableContainerRef,
+    sections: navSections,
+    selectedCell,
+    selectedCells,
+    setSelectedCell,
+    setSelectedCells,
+    clearContents: handleClearContents,
+    updateComponent: (id, updates) => updateComponent(id, updates as any),
+  });
 
   // Memoized (stable identity) so cells inside these sections don't re-render on
   // unrelated changes like selection. Recomputed only when the underlying data changes.

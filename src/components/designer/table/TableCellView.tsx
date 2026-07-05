@@ -263,6 +263,8 @@ export const TableCellView = memo(function TableCellView({
     <Tag
       colSpan={cell.colspan && cell.colspan > 1 ? cell.colspan : undefined}
       rowSpan={cell.rowspan && cell.rowspan > 1 ? cell.rowspan : undefined}
+      data-cell-row={rowId}
+      data-cell-col={logicalCol}
       onMouseDown={(e) => onCellMouseDown(section, rowId, logicalCol, e)}
       onMouseEnter={() => onCellMouseEnter(section, rowId, logicalCol)}
       onContextMenu={(e) => onCellContextMenu(section, rowId, logicalCol, e)}

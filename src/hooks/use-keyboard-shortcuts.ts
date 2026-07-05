@@ -22,6 +22,11 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // Sheet mode owns the keyboard: cell navigation/clearing is handled by
+      // use-sheet-keyboard, and component-level shortcuts (Delete removes the
+      // whole table!) must not fire while a table sheet is being edited.
+      if (useDesignerStore.getState().tableSheetEditId) return;
+
       // Read actions + selection fresh from the store (no reactive subscription).
       const {
         undo,

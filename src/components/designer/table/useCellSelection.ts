@@ -1,3 +1,4 @@
+import { useDesignerStore } from '@/store/designer-store';
 import type { AnyTableComponent, TableRow } from '@/types/schema';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useEffect, useState } from 'react';
@@ -61,6 +62,26 @@ export function useCellSelection(
     e: ReactMouseEvent
   ) => {
     e.stopPropagation();
+
+    // Sheet mode is selection-first (Excel-style): the first click on a cell
+    // selects it WITHOUT focusing its textarea, so window-level keyboard
+    // navigation (use-sheet-keyboard) stays in charge. Clicking the already
+    // active cell falls through and focuses the editor for caret editing.
+    const { tableSheetEditId, selectedCell: activeCell } = useDesignerStore.getState();
+    if (tableSheetEditId === component.id) {
+      const isActiveCell =
+        activeCell?.tableId === component.id &&
+        activeCell.section === section &&
+        activeCell.rowId === rowId &&
+        activeCell.cellIdx === logicalCol;
+      if (!isActiveCell || e.shiftKey) {
+        e.preventDefault();
+        // preventDefault keeps the old editor focused — blur it explicitly so
+        // its pending edit commits (CellEditor saves on blur).
+        const focused = document.activeElement;
+        if (focused instanceof HTMLTextAreaElement) focused.blur();
+      }
+    }
 
     // Shift+Click: extend range from anchor without resetting it
     if (e.shiftKey && selectionAnchor && selectionAnchor.section === section) {
