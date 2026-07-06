@@ -2,8 +2,10 @@
 
 import { useAutoFitHeight } from '@/hooks/use-auto-fit-height';
 import { useFormBoxDropTarget } from '@/hooks/use-form-box-drop-target';
+import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { cn } from '@/lib/utils/cn';
 import { findComponentZone } from '@/lib/utils/schema-mutators';
+import { parseTypstUnit } from '@/lib/utils/units';
 import { useDesignerStore } from '@/store/designer-store';
 import type { FormBoxComponent } from '@/types/schema';
 import { useRef } from 'react';
@@ -34,7 +36,9 @@ export function FormBoxPreview({ component, pageIndex }: Props) {
   const inset = component.inset ?? '2mm';
   const fill = component.fill ?? '#ffffff';
   const innerGap = component.innerGap ?? '2mm';
-  const radius = component.radius ? `calc(${component.radius} * 3.78)` : undefined;
+  const radius = component.radius
+    ? LayoutEngine.mmToPx(parseTypstUnit(component.radius))
+    : undefined;
 
   const children = component.components ?? [];
 
@@ -49,10 +53,10 @@ export function FormBoxPreview({ component, pageIndex }: Props) {
         backgroundColor: fill,
         border: `${strokeWidth === '0' || strokeWidth === '0pt' ? 0 : 1}px solid ${strokeColor}`,
         borderRadius: radius,
-        padding: `calc(${inset} * 3.78)`,
+        padding: LayoutEngine.mmToPx(parseTypstUnit(inset)),
         display: 'flex',
         flexDirection: 'column',
-        gap: `calc(${innerGap} * 3.78)`,
+        gap: LayoutEngine.mmToPx(parseTypstUnit(innerGap)),
       }}
     >
       {children.map((child) => (

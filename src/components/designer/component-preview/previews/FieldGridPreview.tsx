@@ -1,7 +1,9 @@
 'use client';
 
 import { useAutoFitHeight } from '@/hooks/use-auto-fit-height';
+import { LayoutEngine } from '@/lib/engine/layout-engine';
 import { resolveBindings } from '@/lib/utils/json-path';
+import { parseTypstUnit } from '@/lib/utils/units';
 import type { FieldGridComponent, FormFieldDefinition } from '@/types/schema';
 import { type ReactNode, memo, useRef } from 'react';
 
@@ -80,7 +82,10 @@ function FieldStack({
   rowGap: string;
 }) {
   return (
-    <div className="flex flex-col w-full" style={{ gap: `calc(${rowGap} * 3.78)` }}>
+    <div
+      className="flex flex-col w-full"
+      style={{ gap: LayoutEngine.mmToPx(parseTypstUnit(rowGap)) }}
+    >
       {fields.map((field) => (
         <FieldRow
           key={field.id}
@@ -125,7 +130,7 @@ export const FieldGridPreview = memo(function FieldGridPreview({ component, samp
         className="grid w-full"
         style={{
           gridTemplateColumns: '1fr 1fr',
-          gap: `calc(${columnGap} * 3.78)`,
+          gap: LayoutEngine.mmToPx(parseTypstUnit(columnGap)),
         }}
       >
         <FieldStack
@@ -176,7 +181,7 @@ export const FieldGridPreview = memo(function FieldGridPreview({ component, samp
           ? {
               backgroundColor: fill,
               border: `1px solid ${strokeColor}`,
-              padding: `calc(${inset} * 3.78)`,
+              padding: LayoutEngine.mmToPx(parseTypstUnit(inset)),
             }
           : undefined
       }
